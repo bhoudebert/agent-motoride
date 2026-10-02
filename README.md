@@ -54,6 +54,9 @@ npm run ride -- --from "Grenoble" "Roadtrip moto this Saturday, no rain, <250km,
 - `--max-30-pct <n>`: target ceiling for the share of the distance in zones
   limited to 30 km/h or less. Default 3.
 - `--max-50-pct <n>`: target ceiling for the share in 31-50 km/h zones. Default 20.
+- `--ride <id|name>`: evolve a saved ride instead of planning from scratch.
+- `--allow-repeat`: accept rides that repeat saved ones.
+- `--save-as <name>`: save the first itinerary under this name.
 - `--once`: print the itinerary and exit, without the refine prompt.
 - The quoted sentence is free text. Relative dates such as "this Saturday" work
   because the app tells the model today's date.
@@ -91,7 +94,8 @@ The whole conversation is kept, including every tool result, so a follow-up
 reuses what was already looked up and only calls tools for what the change
 affects. Press Enter on an empty line, type `exit`, or press Ctrl-D to quit.
 
-- The conversation lives in memory only. Quitting ends it; a new run starts fresh.
+- The conversation lives in memory only. Quitting ends it. Save the ride first
+  (`/save`) to pick it up again later with `--ride`.
 - Road preferences set by flags stay fixed for the session. Motorway avoidance
   is enforced in code, so asking for motorways mid-session has no effect;
   restart with `--allow-motorways`.
@@ -103,6 +107,86 @@ affects. Press Enter on an empty line, type `exit`, or press Ctrl-D to quit.
 A run typically takes one to a few minutes and several tool rounds. Cost
 depends on how many areas the model explores; the token line at the end lets
 you compute it from current pricing.
+
+## Saved rides
+
+Rides are kept in a SQLite file, `data/agentride.db` (git-ignored; override the
+path with `RIDE_DB`). Nothing is saved unless you ask.
+
+### Saving
+
+At the `refine>` prompt:
+
+| Command | Effect |
+|---|---|
+| `/save [name]` | Save the current itinerary. Without a name, the agent's own short title is used. Saving again after a change creates a new version linked to the previous one; nothing is overwritten |
+| `/list` | Saved rides |
+| `/show <id\|name>` | Legs, main roads, map link and full itinerary of a saved ride |
+| `/rate <1-5> [note]` | Rate the ride saved or loaded in this session |
+| `/help` | Command list |
+
+Without the prompt: `npm run ride -- --once --save-as "Vercors loop" "..."`.
+
+What is stored: name, start point, ride date and departure, waypoints, each leg
+with its coordinates, distance, time and main roads, the speed-limit profile,
+the preferences used, your requests, the itinerary text, and the route's
+footprint on a 500 m grid.
+
+Each itinerary ends with a line such as
+`Ride ref: r7 | 2026-10-10 | 09:00 | Vercors loop`. The program reads it to know
+which routed trip the text describes, so the saved distances and geometry come
+from the routing result, not from the model's prose.
+
+### Managing the library
+
+```bash
+npm run rides -- list
+npm run rides -- show 3
+npm run rides -- rate 3 5 "superb, Col de Rousset empty"
+npm run rides -- rate-leg 3 2 2 "gravel patches"
+npm run rides -- delete 3
+npm run rides -- clear-cache
+```
+
+### How saved rides shape later planning
+
+- **No near-duplicates.** Every routed candidate is compared with the saved
+  rides by the share of its 500 m grid cells they already cover. At 70% or more
+  the candidate is flagged as a duplicate and the agent must look elsewhere; from
+  40% it is flagged as similar and mentioned. The same roads ridden in the
+  opposite direction count as the same ride. `--allow-repeat` lifts the rule.
+- **Ratings steer the choice.** The agent reads the library at the start. Legs
+  and rides rated 4-5 are reused as building blocks; those rated 1-2 are avoided.
+  Unrated rides only count for duplicate detection.
+- **Weather is never reused.** A saved ride skips road discovery, not the
+  forecast check.
+
+### Evolving a saved ride
+
+```bash
+npm run ride -- --ride 3 "next Sunday, 50 km longer, lunch in Die, skip Mens"
+npm run ride -- --ride "vercors"        # replan for the coming weekend
+```
+
+The session starts from the saved waypoints and legs instead of searching for
+an area, routes them again, checks the weather for the new day and applies your
+request. Overlap with the ride being evolved is expected and not treated as a
+duplicate. `/save` stores the result as a new version; the original stays.
+
+### Lookup cache
+
+Tool results are cached in the same file so repeated planning does not hit the
+public servers again:
+
+| Lookup | Kept for | Why |
+|---|---|---|
+| Road search | 30 days | Roads rarely change, and this is the slowest call |
+| Routed trip | 7 days | Stable, but closures and map edits happen |
+| Weather | 1 hour | Only to avoid repeat calls within one session |
+| Traffic | never | Must be live |
+
+A cached lookup shows as `(from cache)` in the trace. `npm run rides --
+clear-cache` empties it.
 
 ## Road preferences
 
@@ -123,6 +207,7 @@ OpenStreetMap `maxspeed` tags. Untagged stretches are reported separately as
 | Command | What it does |
 |---|---|
 | `npm run ride -- ...` | Run the agent |
+| `npm run rides -- ...` | List, show, rate and delete saved rides |
 | `npm run smoke` | Call each tool once against the live APIs, without calling Claude. Use it to check connectivity and keys |
 | `npm run typecheck` | Type-check with `tsc --noEmit` |
 
@@ -132,6 +217,7 @@ OpenStreetMap `maxspeed` tags. Untagged stretches are reported separately as
 CLI (src/index.ts)
   └─ planRide (src/agent.ts)
        └─ Claude API, SDK tool runner loop
+            ├─ listSavedRides ─> SQLite (data/agentride.db)
             ├─ getWeather     ─> Open-Meteo
             ├─ searchRoads    ─> OpenStreetMap / Overpass
             ├─ calculateTrip  ─> Valhalla
@@ -159,7 +245,8 @@ that off.
 |---|---|---|---|---|
 | `getWeather` | `location`, `date`, `fromHour?`, `toHour?` | Hourly temperature, rain probability and amount, wind, gusts, sky, plus a day summary with a `dry` flag | [Open-Meteo](https://open-meteo.com/), up to 16 days ahead | none |
 | `searchRoads` | `location`, `radiusKm?` (5 to 40, default 25), `minLengthKm?`, `limit?` | Paved secondary and tertiary roads ranked by curviness, with end coordinates usable as waypoints, and named mountain passes | OpenStreetMap via [Overpass](https://overpass-api.de/) | none |
-| `calculateTrip` | `waypoints`, `roundTrip?`, `avoidMotorways?` | Routed distance and riding time per leg and in total, motorway and toll flags, speed-limit profile (km and % at 30 or less, 31-50, above 50, unposted), Google Maps link | [Valhalla](https://valhalla1.openstreetmap.de/), motorcycle profile | none |
+| `calculateTrip` | `waypoints`, `roundTrip?`, `avoidMotorways?` | Routed distance and riding time per leg and in total, motorway and toll flags, speed-limit profile (km and % at 30 or less, 31-50, above 50, unposted), main roads per leg, comparison with saved rides, Google Maps link | [Valhalla](https://valhalla1.openstreetmap.de/), motorcycle profile | none |
+| `listSavedRides` | `location?`, `radiusKm?` | Saved rides near a place with ratings, notes and legs | local SQLite file | none |
 | `getTraffic` | `waypoints`, `departAt`, `roundTrip?` | Travel time, free-flow time and traffic delay for that departure | TomTom Routing | `TOMTOM_API_KEY` |
 
 Notes:
@@ -180,8 +267,13 @@ Notes:
 
 ```
 src/
-  index.ts          CLI entry point, argument parsing, error messages
+  index.ts          CLI entry point, flags, refine prompt and its commands
+  rides.ts          Library management command (list, show, rate, delete)
   agent.ts          System prompt, model settings, tool runner loop
+  session.ts        Per-session state: routed trips, duplicate comparison
+  store.ts          SQLite storage: rides, legs, lookup cache
+  library.ts        Saving the current ride, formatting saved rides
+  geometry.ts       Route decoding and the grid used to compare routes
   preferences.ts    Rider preferences and their defaults
   http.ts           fetch wrapper with timeout and error text
   tools/
@@ -233,7 +325,12 @@ Run `npm run smoke` to tell a data-service problem from a Claude API problem.
 - Forecasts change. A ride judged dry on Thursday should be rechecked on the day.
 - Road data comes from OpenStreetMap and can be incomplete or out of date.
   Closures and roadworks are not checked.
-- Sessions are not saved: a refine session cannot be resumed after quitting.
+- A saved ride keeps the result, not the conversation: `--ride` starts a new
+  conversation from the stored ride.
+- Duplicate detection compares road footprints. The way out of and back into
+  your home town is shared by most rides and counts toward the overlap.
+- The built-in SQLite module of Node is recent; the file format is standard
+  SQLite and readable by any SQLite tool.
 - Output is text plus a Google Maps link. There is no GPX export yet.
 - Claude is the only provider. OpenAI is not implemented.
 - There are no automated tests beyond the type-check and the live smoke script.

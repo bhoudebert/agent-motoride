@@ -57,17 +57,19 @@ function traceAttributes(shape: string, shapeMatch: "edge_walk" | "map_snap") {
 }
 
 /**
- * Posted speed limits along the routed legs, from OpenStreetMap maxspeed tags.
- * Segments without a tag are counted as "unposted": outside towns that normally
- * means the national default applies, so they are not slow zones.
+ * Posted speed limits along the routed legs, from OpenStreetMap maxspeed tags,
+ * plus the main roads of each leg. Segments without a tag are counted as
+ * "unposted": outside towns that normally means the national default applies,
+ * so they are not slow zones.
  */
-async function speedLimitProfile(legShapes: string[]) {
+async function profileLegs(legShapes: string[]) {
   let km30 = 0;
   let km50 = 0;
   let kmFaster = 0;
   let kmUnposted = 0;
   let kmMotorway = 0;
   const zones30 = new Map<string, number>();
+  const legRoads: string[][] = [];
 
   for (const shape of legShapes) {
     // Exact edge matching is fastest but occasionally fails on a valid route
@@ -78,8 +80,12 @@ async function speedLimitProfile(legShapes: string[]) {
     } catch {
       data = await traceAttributes(shape, "map_snap");
     }
+    const roadKm = new Map<string, number>();
     for (const edge of data.edges) {
       if (edge.road_class === "motorway") kmMotorway += edge.length;
+      // Prefer the road ref ("D 518") over the street name when both are tagged.
+      const label = edge.names?.find((n) => /^[A-Z]{1,2} ?\d/.test(n)) ?? edge.names?.[0];
+      if (label) roadKm.set(label, (roadKm.get(label) ?? 0) + edge.length);
       const limit = edge.speed_limit;
       if (limit === undefined || limit === 0) kmUnposted += edge.length;
       else if (limit <= 30) {
@@ -89,21 +95,64 @@ async function speedLimitProfile(legShapes: string[]) {
       } else if (limit <= 50) km50 += edge.length;
       else kmFaster += edge.length;
     }
+    legRoads.push(
+      [...roadKm.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4)
+        .map(([road, km]) => `${road} (${round1(km)} km)`),
+    );
   }
 
   const total = km30 + km50 + kmFaster + kmUnposted;
   const pct = (km: number) => (total === 0 ? 0 : round1((km / total) * 100));
   return {
-    limit30OrLess: { km: round1(km30), pct: pct(km30) },
-    limit31to50: { km: round1(km50), pct: pct(km50) },
-    limitAbove50: { km: round1(kmFaster), pct: pct(kmFaster) },
-    unposted: { km: round1(kmUnposted), pct: pct(kmUnposted) },
-    motorwayKm: round1(kmMotorway),
-    longest30Zones: [...zones30.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 6)
-      .map(([road, km]) => ({ road, km: Number(km.toFixed(2)) })),
+    legRoads,
+    speedLimits: {
+      limit30OrLess: { km: round1(km30), pct: pct(km30) },
+      limit31to50: { km: round1(km50), pct: pct(km50) },
+      limitAbove50: { km: round1(kmFaster), pct: pct(kmFaster) },
+      unposted: { km: round1(kmUnposted), pct: pct(kmUnposted) },
+      motorwayKm: round1(kmMotorway),
+      longest30Zones: [...zones30.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 6)
+        .map(([road, km]) => ({ road, km: Number(km.toFixed(2)) })),
+    },
   };
+}
+
+type SpeedLimits = Awaited<ReturnType<typeof profileLegs>>["speedLimits"] | { unavailable: string };
+
+export interface TripLeg {
+  from: string;
+  to: string;
+  fromCoords: string;
+  toCoords: string;
+  distanceKm: number;
+  ridingMinutes: number;
+  ridingTime: string;
+  usesMotorway: boolean;
+  mainRoads: string[];
+}
+
+/** A routed trip: what the model sees (`result`) plus the geometry kept for saving and comparing. */
+export interface TripComputation {
+  result: {
+    totalDistanceKm: number;
+    totalRidingTime: string;
+    totalRidingMinutes: number;
+    motorwaysAvoided: boolean;
+    usesMotorway: boolean;
+    usesTollRoad: boolean;
+    speedLimits: SpeedLimits;
+    legs: TripLeg[];
+    mapsUrl: string;
+  };
+  waypoints: string[];
+  roundTrip: boolean;
+  shapes: string[];
+  /** False when the speed-limit lookup failed; such results are not worth caching. */
+  complete: boolean;
 }
 
 /**
@@ -111,7 +160,7 @@ async function speedLimitProfile(legShapes: string[]) {
  * profile) and return distance, riding time and the speed-limit profile.
  * Riding time excludes stops.
  */
-export async function calculateTrip(input: CalculateTripInput) {
+export async function computeTrip(input: CalculateTripInput): Promise<TripComputation> {
   const points = await resolveWaypoints(input.waypoints, input.roundTrip);
   const avoidMotorways = input.avoidMotorways ?? true;
   let data: ValhallaResponse;
@@ -133,31 +182,49 @@ export async function calculateTrip(input: CalculateTripInput) {
     throw new Error(`${error instanceof Error ? error.message : error}. Waypoints resolved as: ${resolved}`);
   }
   const { summary, legs } = data.trip;
+  const shapes = legs.map((leg) => leg.shape);
 
-  let speedLimits: Awaited<ReturnType<typeof speedLimitProfile>> | { unavailable: string };
+  let speedLimits: SpeedLimits;
+  let legRoads: string[][] = [];
+  let complete = true;
   try {
-    speedLimits = await speedLimitProfile(legs.map((leg) => leg.shape));
+    ({ speedLimits, legRoads } = await profileLegs(shapes));
   } catch (error) {
+    complete = false;
     speedLimits = {
       unavailable: `Speed-limit data could not be fetched (${error instanceof Error ? error.message.slice(0, 120) : error}). Slow-zone share is unverified for this route.`,
     };
   }
 
   return {
-    totalDistanceKm: round1(summary.length),
-    totalRidingTime: fmtDuration(summary.time),
-    totalRidingMinutes: Math.round(summary.time / 60),
-    motorwaysAvoided: avoidMotorways,
-    usesMotorway: legs.some((leg) => leg.summary.has_highway),
-    usesTollRoad: legs.some((leg) => leg.summary.has_toll),
-    speedLimits,
-    legs: legs.map((leg, i) => ({
-      from: points[i]!.label,
-      to: points[i + 1]!.label,
-      distanceKm: round1(leg.summary.length),
-      ridingTime: fmtDuration(leg.summary.time),
-      usesMotorway: leg.summary.has_highway,
-    })),
-    mapsUrl: `https://www.google.com/maps/dir/${points.map(fmtCoords).join("/")}`,
+    waypoints: input.waypoints,
+    roundTrip: input.roundTrip ?? false,
+    shapes,
+    complete,
+    result: {
+      totalDistanceKm: round1(summary.length),
+      totalRidingTime: fmtDuration(summary.time),
+      totalRidingMinutes: Math.round(summary.time / 60),
+      motorwaysAvoided: avoidMotorways,
+      usesMotorway: legs.some((leg) => leg.summary.has_highway),
+      usesTollRoad: legs.some((leg) => leg.summary.has_toll),
+      speedLimits,
+      legs: legs.map((leg, i) => ({
+        from: points[i]!.label,
+        to: points[i + 1]!.label,
+        fromCoords: fmtCoords(points[i]!),
+        toCoords: fmtCoords(points[i + 1]!),
+        distanceKm: round1(leg.summary.length),
+        ridingMinutes: Math.round(leg.summary.time / 60),
+        ridingTime: fmtDuration(leg.summary.time),
+        usesMotorway: leg.summary.has_highway,
+        mainRoads: legRoads[i] ?? [],
+      })),
+      mapsUrl: `https://www.google.com/maps/dir/${points.map(fmtCoords).join("/")}`,
+    },
   };
+}
+
+export async function calculateTrip(input: CalculateTripInput) {
+  return (await computeTrip(input)).result;
 }

@@ -1,0 +1,23 @@
+{
+  "name": "agent-ride",
+  "version": "0.1.0",
+  "description": "Agentic motorcycle road-trip planner: Claude + weather/roads/routing/traffic tools",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "ride": "node --env-file-if-exists=.env src/index.ts",
+    "smoke": "node --env-file-if-exists=.env scripts/smoke.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.131.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "typescript": "^7.0.2"
+  }
+}

@@ -1,4 +1,5 @@
 import type { BikeProfile } from "./profile.ts";
+import { isOpenAt, type OpenState } from "./hours.ts";
 import { describeCoords } from "./tools/geo.ts";
 import type { TripLeg } from "./tools/trip.ts";
 
@@ -27,9 +28,13 @@ export interface PlannedStop {
   reason: string;
   /** Where it is, in words: street and village, or the road and the nearest village. */
   where: string;
+  /** Open at the arrival time on the ride date, from the opening_hours tag; "unknown" when not tagged or not readable. */
+  openAtArrival: OpenState;
 }
 
 export interface StopPlan {
+  /** Ride date the opening hours were checked against, if any. */
+  date: string | null;
   fuelAtStartKm: number;
   stops: PlannedStop[];
   warnings: string[];
@@ -93,6 +98,7 @@ export function planStops(
   profile: BikeProfile,
   departure: string,
   fuelAtStartKm = profile.tankRangeKm,
+  date: string | null = null,
 ): StopPlan {
   const totalKm = legs.reduce((sum, leg) => sum + leg.distanceKm, 0);
   const totalMin = legs.reduce((sum, leg) => sum + leg.ridingMinutes, 0);
@@ -104,12 +110,19 @@ export function planStops(
   const pauseMinutes = 15;
   let breakMinutes = 0;
   const eta = (km: number) => hhmm(departMin + minutesAt(legs, km) + breakMinutes);
+  const openAt = (c: StopCandidate): OpenState => (date ? isOpenAt(c.openingHours, date, eta(c.kmAlongRoute)) : "unknown");
+  // Prefer places open at arrival; unknown hours are acceptable; closed ones only as a last resort.
+  const openFirst = <T extends StopCandidate>(list: T[]): T[] => {
+    const rank = (c: T) => ({ open: 0, unknown: 1, closed: 2 })[openAt(c)];
+    return [...list].sort((a, b) => rank(a) - rank(b));
+  };
 
   // Fuel: deadline after deadline until the finish is within reach.
   let deadline = fuelAtStartKm - profile.reserveKm;
   while (deadline < totalKm) {
     const before = candidates.fuel.filter((f) => f.kmAlongRoute <= deadline && f.kmAlongRoute > (stops.filter((s) => s.kind === "fuel").at(-1)?.kmAlongRoute ?? 0) + 5);
-    const chosen = before.sort((a, b) => b.kmAlongRoute - a.kmAlongRoute)[0];
+    const byKm = before.sort((a, b) => b.kmAlongRoute - a.kmAlongRoute);
+    const chosen = byKm.find((f) => openAt(f) !== "closed") ?? byKm[0];
     if (!chosen) {
       warnings.push(`No fuel station found before km ${deadline.toFixed(0)}; fuel up before leaving or extend the search radius.`);
       break;
@@ -125,6 +138,7 @@ export function planStops(
       detourM: chosen.detourM,
       reason: `last station before the ${deadline.toFixed(0)} km fuel deadline`,
       where: addressOf(chosen),
+      openAtArrival: openAt(chosen),
     });
     breakMinutes += 10;
     deadline = chosen.kmAlongRoute + profile.tankRangeKm - profile.reserveKm;
@@ -134,11 +148,13 @@ export function planStops(
   const lunchClock = 12 * 60 + 30;
   if (profile.lunch && departMin < lunchClock && departMin + totalMin > lunchClock - 30) {
     const lunchKm = kmAt(legs, lunchClock - departMin - breakMinutes);
-    const near = candidates.restaurant
-      .filter((r) => Math.abs(r.kmAlongRoute - lunchKm) <= Math.max(15, totalKm * 0.1))
-      .sort((a, b) => Math.abs(a.kmAlongRoute - lunchKm) + a.detourM / 1000 - (Math.abs(b.kmAlongRoute - lunchKm) + b.detourM / 1000))[0];
+    const near = openFirst(
+      candidates.restaurant
+        .filter((r) => Math.abs(r.kmAlongRoute - lunchKm) <= Math.max(15, totalKm * 0.1))
+        .sort((a, b) => Math.abs(a.kmAlongRoute - lunchKm) + a.detourM / 1000 - (Math.abs(b.kmAlongRoute - lunchKm) + b.detourM / 1000)),
+    )[0];
     if (near) {
-      stops.push({ kind: "lunch", name: near.name, kmAlongRoute: near.kmAlongRoute, leg: near.leg, eta: eta(near.kmAlongRoute), coords: near.coords, openingHours: near.openingHours, detourM: near.detourM, reason: "around 12:30 on the route", where: addressOf(near) });
+      stops.push({ kind: "lunch", name: near.name, kmAlongRoute: near.kmAlongRoute, leg: near.leg, eta: eta(near.kmAlongRoute), coords: near.coords, openingHours: near.openingHours, detourM: near.detourM, reason: "around 12:30 on the route", where: addressOf(near), openAtArrival: openAt(near) });
       breakMinutes += 45;
     } else warnings.push(`No restaurant mapped near km ${lunchKm.toFixed(0)}, where the ride passes midday.`);
   }
@@ -159,15 +175,17 @@ export function planStops(
     }
     const targetKm = kmAt(legs, target);
     const pool = [...candidates.cafe, ...candidates.bakery];
-    const near = pool
-      .filter((c) => Math.abs(c.kmAlongRoute - targetKm) <= 12)
-      .sort((a, b) => Math.abs(a.kmAlongRoute - targetKm) + a.detourM / 1000 - (Math.abs(b.kmAlongRoute - targetKm) + b.detourM / 1000))[0];
+    const near = openFirst(
+      pool
+        .filter((c) => Math.abs(c.kmAlongRoute - targetKm) <= 12)
+        .sort((a, b) => Math.abs(a.kmAlongRoute - targetKm) + a.detourM / 1000 - (Math.abs(b.kmAlongRoute - targetKm) + b.detourM / 1000)),
+    )[0];
     if (!near) {
       if (target + profile.maxStintMin - profile.pauseEveryMin < nextAfter) warnings.push(`No café or bakery mapped near km ${targetKm.toFixed(0)}; stint without a stop reaches ${Math.round(nextAfter - lastStopMin)} min.`);
       lastStopMin = nextAfter;
       continue;
     }
-    stops.push({ kind: "pause", name: near.name, kmAlongRoute: near.kmAlongRoute, leg: near.leg, eta: eta(near.kmAlongRoute), coords: near.coords, openingHours: near.openingHours, detourM: near.detourM, reason: `pause after about ${profile.pauseEveryMin} min of riding`, where: addressOf(near) });
+    stops.push({ kind: "pause", name: near.name, kmAlongRoute: near.kmAlongRoute, leg: near.leg, eta: eta(near.kmAlongRoute), coords: near.coords, openingHours: near.openingHours, detourM: near.detourM, reason: `pause after about ${profile.pauseEveryMin} min of riding`, where: addressOf(near), openAtArrival: openAt(near) });
     breakMinutes += pauseMinutes;
     lastStopMin = minutesAt(legs, near.kmAlongRoute);
   }
@@ -177,15 +195,18 @@ export function planStops(
   let extra = 0;
   for (const s of ordered) {
     s.eta = hhmm(departMin + minutesAt(legs, s.kmAlongRoute) + extra);
+    if (date) s.openAtArrival = isOpenAt(s.openingHours, date, s.eta);
+    if (s.openAtArrival === "closed") warnings.push(`${s.name} is closed at ${s.eta} on ${date} (${s.openingHours}); no open alternative nearby.`);
     extra += s.kind === "lunch" ? 45 : s.kind === "fuel" ? 10 : pauseMinutes;
   }
-  return { fuelAtStartKm, stops: ordered, warnings };
+  return { date, fuelAtStartKm, stops: ordered, warnings };
 }
 
 export function formatStopPlan(plan: StopPlan, departure: string, totalRidingMinutes: number): string[] {
+  const openWord = { open: "open at arrival", closed: "CLOSED at arrival", unknown: "hours not known" };
   const lines = plan.stops.flatMap((s) => [
     `  ${s.eta}  km ${String(s.kmAlongRoute).padStart(5)}  ${s.kind.padEnd(5)}  ${s.name}${s.where ? `, ${s.where}` : ""}${s.detourM > 100 ? ` (${s.detourM} m off the route)` : ""}`,
-    `                        ${s.reason}${s.openingHours ? `; open ${s.openingHours}` : ""}`,
+    `                        ${s.reason}; ${plan.date ? openWord[s.openAtArrival] : "hours not checked (no ride date)"}${s.openingHours ? ` [${s.openingHours}]` : ""}`,
   ]);
   const breaks = plan.stops.reduce((sum, s) => sum + (s.kind === "lunch" ? 45 : s.kind === "fuel" ? 10 : 15), 0);
   const [dh = 9, dm = 0] = departure.split(":").map(Number);

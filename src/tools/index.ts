@@ -284,19 +284,20 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
     {
       name: "planStops",
       description:
-        "Choose the stops of a routed trip from the rider's bike profile: the last fuel station before each fuel deadline (tank range minus reserve, from the fuel at departure), a café or bakery pause after the pause interval, a restaurant where the ride crosses midday. Returns the stops with arrival times, the return time with breaks, warnings (no fuel in reach, long stint), and navigation links that include the stops so they are announced on the bike. Call it once for the final loop, after calculateTrip, and name the stops in the itinerary. findStops is only for browsing alternatives.",
+        "Choose the stops of a routed trip from the rider's bike profile: the last fuel station before each fuel deadline (tank range minus reserve, from the fuel at departure), a café or bakery pause after the pause interval, a restaurant where the ride crosses midday, preferring places open at the arrival time when the ride date is given. Returns the stops with arrival times and whether each is open, the return time with breaks, warnings (no fuel in reach, long stint), and navigation links that include the stops so they are announced on the bike. Call it once for the final loop, after calculateTrip, and name the stops in the itinerary. findStops is only for browsing alternatives.",
       inputSchema: z.object({
         routeId: z.string().describe("routeId from calculateTrip"),
         departure: z.string().regex(/^\d{1,2}:\d{2}$/).describe("Planned departure time, HH:MM"),
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("Ride date, to check opening hours at arrival"),
         fuelAtStartKm: z.number().min(10).optional().describe("Range left in the tank at departure, km; default a full tank"),
       }),
-      run: trace("planStops", async (input: { routeId: string; departure: string; fuelAtStartKm?: number }) => {
+      run: trace("planStops", async (input: { routeId: string; departure: string; date?: string; fuelAtStartKm?: number }) => {
         const route = context.routes.get(input.routeId);
         if (!route) throw new Error(`Unknown routeId ${input.routeId}; route the loop with calculateTrip first.`);
         const { trip } = route;
         const profile = store.getProfile();
         const candidates = await stopCandidatesFor(store, trip.shapes, trip.result.legs);
-        const plan = await locateStops(planStops(trip.result.legs, candidates, profile, input.departure, input.fuelAtStartKm));
+        const plan = await locateStops(planStops(trip.result.legs, candidates, profile, input.departure, input.fuelAtStartKm, input.date ?? null));
         context.stopPlans.set(route.id, plan);
         const stopPoints = plan.stops.map((s) => {
           const [lat = 0, lon = 0] = s.coords.split(",").map(Number);

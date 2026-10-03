@@ -85,8 +85,8 @@ export function formatRideMarkdown(ride: SavedRide): string {
   }
 
   if (x?.stopPlan) {
-    push("## Stop plan", "", `Departure ${ride.departure ?? "09:00"}, fuel at start ${x.stopPlan.fuelAtStartKm} km.`, "", "| ETA | km | Stop | Place | Where | Why |", "|---|---|---|---|---|---|");
-    for (const st of x.stopPlan.stops) push(`| ${st.eta} | ${st.kmAlongRoute} | ${st.kind} | ${cell(st.name)}${st.openingHours ? ` (${cell(st.openingHours)})` : ""} | ${cell(st.where ?? "")} | ${cell(st.reason)} |`);
+    push("## Stop plan", "", `Departure ${ride.departure ?? "09:00"}, fuel at start ${x.stopPlan.fuelAtStartKm} km.`, "", "| ETA | km | Stop | Place | Where | Open | Why |", "|---|---|---|---|---|---|---|");
+    for (const st of x.stopPlan.stops) push(`| ${st.eta} | ${st.kmAlongRoute} | ${st.kind} | ${cell(st.name)}${st.openingHours ? ` (${cell(st.openingHours)})` : ""} | ${cell(st.where ?? "")} | ${st.openAtArrival === "open" ? "yes" : st.openAtArrival === "closed" ? "**closed**" : "?"} | ${cell(st.reason)} |`);
     for (const w of x.stopPlan.warnings) push("", `> ${w}`);
     const at = gpxStopsAt(ride);
     if (at.length) push("", `In the GPX route, as an app numbers its stages: ${at.map((s) => `${s.label} is point ${s.index} of ${s.total}`).join("; ")}.`);

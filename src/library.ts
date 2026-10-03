@@ -180,7 +180,7 @@ export async function replanStops(store: Store, ride: SavedRide): Promise<RideEx
     ridingMinutes: leg.ridingMinutes, ridingTime: "", avgSpeedKmh: 0, routerMinutes: 0, usesMotorway: false, mainRoads: leg.mainRoads,
   }));
   const candidates = await stopCandidatesFor(store, ride.shapes, legs);
-  const stopPlan = await locateStops(planStops(legs, candidates, store.getProfile(), ride.departure ?? "09:00"));
+  const stopPlan = await locateStops(planStops(legs, candidates, store.getProfile(), ride.departure ?? "09:00", undefined, ride.rideDate));
   const extras: RideExtras = {
     gatheredAt: ride.extras?.gatheredAt ?? new Date().toISOString(),
     daylight: ride.extras?.daylight ?? null,
@@ -226,7 +226,7 @@ export async function enrichRide(store: Store, ride: SavedRide): Promise<RideExt
   const weather = ride.rideDate ? await settle("weather", () => rideWeather(ride, shapes)) : null;
   const cameras = await settle("cameras", () => speedCamerasAlong(shapes, legs));
   const candidates = await settle("stops", () => stopCandidatesFor(store, shapes, legs));
-  const stopPlan = candidates ? await locateStops(planStops(legs, candidates, store.getProfile(), ride.departure ?? "09:00")) : null;
+  const stopPlan = candidates ? await locateStops(planStops(legs, candidates, store.getProfile(), ride.departure ?? "09:00", undefined, ride.rideDate)) : null;
   // The view lists the shortlist of fuel and cafés; the plan holds the chosen ones.
   const stops = candidates && { fuel: { stops: candidates.fuel.slice(0, 10) }, cafe: { stops: candidates.cafe.slice(0, 10) } };
   // A lookup that failed keeps what the last successful one found.
@@ -281,6 +281,14 @@ export function formatExtras(ride: SavedRide): string[] {
     lines.push(`${name[0]!.toUpperCase()}${name.slice(1)}: last lookup failed (${reason.split(".")[0]})${kept ? ", showing the previous result" : ""}. Run: npm run rides -- refresh ${ride.id}`);
   }
   return lines;
+}
+
+/** Fetch the ride's forecast now and store it on the ride. */
+export async function rideWeatherFor(store: Store, ride: SavedRide): Promise<RideWeather | null> {
+  if (!ride.shapes) return null;
+  const weather = await rideWeather(ride, ride.shapes);
+  if (weather && ride.extras) store.setExtras(ride.id, { ...ride.extras, weather });
+  return weather;
 }
 
 /**

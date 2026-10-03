@@ -279,6 +279,7 @@ npm run rides -- rate-leg 3 2 2 "gravel patches"
 npm run rides -- export 3         # GPX file for a GPS app
 npm run rides -- export-md 3      # Markdown document, the standard full view
 npm run rides -- bike range=250   # bike profile for stop planning
+npm run rides -- today 3          # ride-day briefing, go or no-go
 npm run rides -- qr 3             # QR code of the map link
 npm run rides -- share 3          # phone page on the local Wi-Fi, until Ctrl-C
 npm run rides -- runs             # every planning session: model, tokens, cost, result
@@ -381,6 +382,35 @@ view and the Markdown.
 On the bike, the stops are in what the phone already has: the navigation links
 include them as waypoints, so they are announced in turn, and the GPX carries
 them as named waypoints.
+
+### Ride-day briefing
+
+```bash
+npm run rides -- today            # the next dated ride
+npm run rides -- today 6          # a given ride
+```
+
+Also `/mcp__ride__today [id]` in Claude Code. No planning, no model: the
+briefing re-checks what can change between planning and riding, and ends with
+a verdict:
+
+- daylight for the day and the return time with breaks against the last light;
+- the stop plan rebuilt with the current profile, each stop checked against its
+  opening hours at the arrival time ("open at arrival", "CLOSED at arrival",
+  "hours not known"); a closed place is replaced by an open one nearby when the
+  map has one;
+- the forecast now, at four points of the route for the riding hours: rain,
+  temperature, gusts;
+- traffic at the departure time, when `TOMTOM_API_KEY` is set;
+- the fixed cameras stored on the ride.
+
+`GO`, `GO with caution` (rain risk, strong gusts, cold, tight daylight, traffic
+delay, a warning from the stop plan) or `NO-GO as planned` (rain likely, a stop
+closed, return after dark), with the reasons listed.
+
+Opening hours are read from OpenStreetMap tags in their common forms (`24/7`,
+day ranges with time ranges, `off`). A tag the reader cannot parse counts as
+"hours not known", never as open.
 
 ### Navigation links that stay on the chosen roads
 
@@ -659,6 +689,7 @@ to plan…"), with less guidance.
 | `saveRide` | Save an itinerary to the library, from a route id of this session |
 | `exportGpx` | GPX file from a route id or a saved ride |
 | `showRide` | Full view of one saved ride, as in the CLI: road mix, daylight, cameras, stops, legs, itinerary |
+| `rideBriefing` | Ride-day briefing: weather now, daylight, traffic, stops checked against opening hours, go or no-go |
 | `refreshRide` | Same as `npm run rides -- refresh`: recompute figures, weather, cameras, stops and stop plan, no replanning; `stopsOnly` rebuilds just the stop plan |
 | `exportMarkdown` | The ride's standard Markdown document, written to a file |
 | `listRides` | The library, one line per ride |
@@ -673,6 +704,7 @@ to plan…"), with less guidance.
 | `/mcp__ride__save-ride [name]` | Save the itinerary on the table |
 | `/mcp__ride__export-gpx [id\|name]` | GPX file of the current or a saved ride |
 | `/mcp__ride__show-ride <id\|name>` | Everything stored about one ride |
+| `/mcp__ride__today [id\|name]` | Ride-day briefing with a go or no-go |
 | `/mcp__ride__refresh <id\|name>` | Recompute a ride without changing it |
 | `/mcp__ride__export-md <id\|name> [file]` | Markdown document of a ride, written and shown |
 | `/mcp__ride__list-rides` | The library |
@@ -939,6 +971,8 @@ src/
   maps.ts           Navigation links with pass-through points, split per link budget
   profile.ts        Bike profile (range, reserve, pause, lunch)
   stops.ts          Stop planning from the profile and the candidates along the route
+  hours.ts          Reader of OpenStreetMap opening_hours tags
+  briefing.ts       Ride-day briefing
   preferences.ts    Rider preferences and their defaults
   usage.ts          Per-session token and time accounting, cost estimate
   http.ts           fetch wrapper with timeout and error text
@@ -1008,7 +1042,6 @@ Run `npm run smoke` to tell a data-service problem from a Claude API problem.
   SQLite and readable by any SQLite tool.
 - Output is text, navigation links, a GPX file, a Markdown document and a
   phone page on request. Nothing can be sent to Waze.
-- Opening hours of stops are shown but not checked against the arrival time.
 - Stop timing uses fixed breaks (10 min fuel, 15 min pause, 45 min lunch) and
   ignores traffic.
 - Claude is the only provider. OpenAI is not implemented.

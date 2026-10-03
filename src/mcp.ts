@@ -10,6 +10,7 @@ import { exportSavedRide, writeGpx } from "./gpx.ts";
 import { enrichRide, formatRideDetail, formatRideList, replanStops, saveCurrentRide, tripFigures } from "./library.ts";
 import { formatStopPlan } from "./stops.ts";
 import { routeCells } from "./geometry.ts";
+import { pickRideForToday, rideBriefing } from "./briefing.ts";
 import { computeTrip } from "./tools/trip.ts";
 import { SCOUT_MODEL } from "./model.ts";
 import { formatRideMarkdown, writeRideMarkdown } from "./markdown.ts";
@@ -235,6 +236,21 @@ server.registerTool(
 );
 
 server.registerTool(
+  "rideBriefing",
+  {
+    description:
+      "Ride-day briefing for a saved ride: forecast along the route now, daylight and return time, traffic at departure, the stops re-planned and checked against opening hours at arrival, fixed cameras, and a go, caution or no-go verdict with reasons. Deterministic; show it as returned. Without a ride, takes the next dated ride.",
+    inputSchema: z.object({ ride: z.string().optional().describe("Saved ride id or name; default the next dated ride") }),
+  },
+  async (args) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const target = args.ride ? store.findRide(args.ride) : pickRideForToday(store, today);
+    if (!target) throw new Error(args.ride ? `No saved ride matches "${args.ride}".` : "No saved ride to brief.");
+    return text(await rideBriefing(store, target, today));
+  },
+);
+
+server.registerTool(
   "showRide",
   {
     description:
@@ -371,6 +387,12 @@ server.registerPrompt(
 );
 
 server.registerPrompt(
+  "today",
+  { title: "Ride-day briefing", description: "Weather now, daylight, traffic, stops checked against opening hours, go or no-go for a saved ride.", argsSchema: { ride: z.string().optional().describe("Saved ride id or name; default the next dated ride") } },
+  ({ ride }) => userMessage(`Call rideBriefing${ride ? ` for "${ride}"` : ""} and show the result exactly as returned, in a code block. Then, in one or two sentences, say what you would do about any NO-GO or caution lines (a later departure, a different stop, another day), without calling other tools unless the rider asks.`),
+);
+
+server.registerPrompt(
   "refresh",
   { title: "Refresh a saved ride", description: "Recompute a ride's figures, weather, cameras, stops and stop plan, without changing the ride.", argsSchema: { ride: z.string().describe("Saved ride id or name") } },
   ({ ride }) => userMessage(`Call refreshRide for "${ride}" and show the result exactly as returned, in a code block. Do not ask questions first and do not replan anything: a refresh keeps the ride as it is.`),
@@ -396,6 +418,7 @@ agentRide commands (slash commands):
   /mcp__ride__export-gpx [id|name]       GPX file for a GPS app
   /mcp__ride__export-md <id|name> [file] Markdown document of a ride, the standard full view
   /mcp__ride__show-ride <id|name>        everything stored about one ride (daylight, cameras, stops, legs)
+  /mcp__ride__today [id|name]            ride-day briefing: weather now, daylight, traffic, stops open or not, go/no-go
   /mcp__ride__refresh <id|name>          recompute a ride: figures, weather, cameras, stops, stop plan (no replanning)
   /mcp__ride__list-rides                 the library
   /mcp__ride__help                       this text

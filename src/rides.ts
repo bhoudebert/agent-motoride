@@ -6,6 +6,7 @@ import { enrichRide, formatRideDetail, formatRideList, parseRating, replanStops,
 import { formatStopPlan } from "./stops.ts";
 import { describeProfile, parseProfileArgs } from "./profile.ts";
 import { Store } from "./store.ts";
+import { pickRideForToday, rideBriefing } from "./briefing.ts";
 import { formatRideMarkdown, writeRideMarkdown } from "./markdown.ts";
 import { formatTrace } from "./trace.ts";
 import { setGeoAnchor } from "./tools/geo.ts";
@@ -14,6 +15,7 @@ import { computeTrip } from "./tools/trip.ts";
 const USAGE = `Usage: npm run rides -- <command>
 
   list                                  All saved rides
+  today [id|name]                       Ride-day briefing: weather now, daylight, traffic, stops checked against opening hours, go or no-go
   show <id|name> [--md]                 One ride: legs, map link, itinerary (--md: as Markdown on stdout)
   export-md <id|name> [file.md]         Write the ride as a Markdown document (default: exports/ in the project)
   rate <id|name> <1-5> [note]           Rate a ride after riding it
@@ -47,6 +49,13 @@ try {
     case "list":
       console.log(formatRideList(store.listRides()));
       break;
+    case "today": {
+      const today = new Date().toISOString().slice(0, 10);
+      const target = args[0] ? ride(args[0]) : pickRideForToday(store, today);
+      if (!target) throw new Error("No saved ride to brief. Save one first.");
+      console.log(await rideBriefing(store, target, today));
+      break;
+    }
     case "show":
       console.log(args.includes("--md") ? formatRideMarkdown(ride(args[0])) : formatRideDetail(ride(args[0])));
       break;

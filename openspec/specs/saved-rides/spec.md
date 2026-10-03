@@ -30,3 +30,10 @@ Opening a saved ride SHALL seed the model with its structured data (not the old 
 
 ### Requirement: Library management
 The CLI SHALL list, show (plain or Markdown), rate, rate a leg, export, refresh, delete rides and clear the cache without a model call.
+
+### Requirement: Ride-day briefing
+`today [ride]` SHALL take the given ride, else the next dated ride, and SHALL report daylight and the return time with breaks, the stop plan rebuilt with opening hours at arrival, the forecast now at four points of the route, traffic at departure when available, and the stored cameras, ending with GO, GO with caution or NO-GO and the reasons. It SHALL make no model call.
+
+#### Scenario: Rain likely
+- **WHEN** a point of the route has 50% or more rain probability for the riding hours
+- **THEN** the verdict is NO-GO with the rain risk listed

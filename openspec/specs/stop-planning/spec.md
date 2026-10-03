@@ -19,6 +19,13 @@ Fuel stations, cafés, bakeries and restaurants within a detour of the route SHA
 - **WHEN** the loop is 188 km and the profile allows 303 km before fuel
 - **THEN** no fuel stop is planned
 
+### Requirement: Opening hours at arrival
+When the ride date is known, each candidate SHALL be checked against its opening_hours tag at the arrival time; open places SHALL be preferred, unknown hours accepted, closed places chosen only as a last resort with a warning. Each planned stop SHALL carry "open", "closed" or "unknown" at arrival. A tag the reader cannot parse SHALL yield "unknown", never "open".
+
+#### Scenario: Sunday bakery
+- **WHEN** the arrival time is 10:19 on a Sunday and the tag says "Su 06:30-12:00"
+- **THEN** the stop is marked open at arrival
+
 ### Requirement: Stop location in words
 Every planned stop SHALL carry its name and where it is in words: street and village from the map's address, else the road and nearest village by reverse geocoding, else both combined.
 

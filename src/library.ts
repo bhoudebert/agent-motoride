@@ -1,6 +1,6 @@
 import type { CurrentRide } from "./agent.ts";
 import { centroid, decodePolyline } from "./geometry.ts";
-import type { RideContext } from "./session.ts";
+import { duplicateOf, type RideContext } from "./session.ts";
 import type { NewRide, RideExtras, RideWeather, SavedRide, Store } from "./store.ts";
 import { speedCamerasAlong, stopsAlong, type StopKind } from "./tools/along.ts";
 import { setGeoAnchor } from "./tools/geo.ts";
@@ -13,7 +13,7 @@ import { formatStopPlan, locateStops, planStops, type StopCandidate } from "./st
 import { describeStopsAt, routePointIndex } from "./gpx.ts";
 
 const fmtMinutes = (minutes: number) => `${Math.floor(minutes / 60)}h${String(minutes % 60).padStart(2, "0")}`;
-const stars = (rating: number | null) => (rating === null ? "unrated" : `${"★".repeat(rating)}${"☆".repeat(5 - rating)}`);
+const stars = (rating: number | null) => (rating === null ? "unrated" : rating === 0 ? "✗ never again" : `${"★".repeat(rating)}${"☆".repeat(5 - rating)}`);
 
 /** The stored figures derived from a routed trip. */
 export function tripFigures(trip: TripComputation, cells: string[]) {
@@ -40,13 +40,26 @@ export function tripFigures(trip: TripComputation, cells: string[]) {
   } satisfies Partial<NewRide>;
 }
 
+export class DuplicateRideError extends Error {
+  readonly duplicate: { rideId: number; name: string; overlapPct: number };
+  constructor(duplicate: { rideId: number; name: string; overlapPct: number }) {
+    super(`This ride is ${duplicate.overlapPct}% the same roads as saved ride #${duplicate.rideId} "${duplicate.name}". Not saved. Rate or edit that ride instead, or force the save if it is meant as a copy.`);
+    this.duplicate = duplicate;
+  }
+}
+
 /** Store the current itinerary and its routed trip. Returns the new ride id. */
 export function saveCurrentRide(
   context: RideContext,
   ride: CurrentRide,
-  options: { name?: string; request: string; parentId: number | null; home: string; usage?: RunUsage },
+  options: { name?: string; request: string; parentId: number | null; home: string; usage?: RunUsage; force?: boolean },
 ): number {
   const { trip, cells } = ride.route;
+  // The library exists so that rides differ; a copy of a saved ride is refused unless forced.
+  const duplicate = duplicateOf(context, cells);
+  if (duplicate && !options.force) {
+    throw new DuplicateRideError(duplicate);
+  }
   const id = context.store.saveRide({
     name: options.name?.trim() || ride.title,
     parentId: options.parentId,
@@ -142,8 +155,8 @@ export function formatRideDetail(ride: SavedRide): string {
 /** Parse "<1-5> [note]". */
 export function parseRating(args: string[]): { rating: number; notes: string | null } {
   const rating = Number(args[0]);
-  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
-    throw new Error(`Rating must be a whole number from 1 to 5, got "${args[0] ?? ""}".`);
+  if (!Number.isInteger(rating) || rating < 0 || rating > 5) {
+    throw new Error(`Rating must be a whole number from 0 (never again) to 5, got "${args[0] ?? ""}".`);
   }
   return { rating, notes: args.slice(1).join(" ").trim() || null };
 }

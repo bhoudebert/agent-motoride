@@ -46,6 +46,70 @@ export interface RideContext {
   trace: (event: TraceEvent) => void;
   /** Stop plans made this session, by route id, so links and GPX can carry the stops. */
   stopPlans: Map<string, StopPlan>;
+  /** Roads the rider rated, computed once per session from the library. */
+  ratedRoads?: RatedRoads;
+}
+
+export interface RatedRoads {
+  /** Cells of rides or legs rated 0 or 1: never again. */
+  avoid: Set<string>;
+  avoidFrom: string[];
+  /** Cells of rides or legs rated 4 or 5. */
+  loved: Set<string>;
+  lovedFrom: string[];
+}
+
+/** Rating 0 or 1 means avoid, 4 or 5 means loved; a leg's own rating wins over the ride's. */
+export function ratedRoads(context: RideContext): RatedRoads {
+  if (context.ratedRoads) return context.ratedRoads;
+  const avoid = new Set<string>();
+  const loved = new Set<string>();
+  const avoidFrom: string[] = [];
+  const lovedFrom: string[] = [];
+  for (const ride of context.store.listRides()) {
+    if (!ride.shapes) continue;
+    ride.legs.forEach((leg, i) => {
+      const rating = leg.rating ?? ride.rating;
+      if (rating === null || rating === undefined) return;
+      const shape = ride.shapes![i];
+      if (!shape) return;
+      const target = rating <= 1 ? avoid : rating >= 4 ? loved : null;
+      if (!target) return;
+      for (const cell of routeCells([shape])) target.add(cell);
+      (rating <= 1 ? avoidFrom : lovedFrom).push(`#${ride.id} leg ${leg.seq} (${leg.from} -> ${leg.to}, rated ${rating})`);
+    });
+  }
+  context.ratedRoads = { avoid, avoidFrom, loved, lovedFrom };
+  return context.ratedRoads;
+}
+
+/** Overlap of a candidate with roads the rider rated. */
+export function ratedOverlap(context: RideContext, cells: string[]) {
+  const rated = ratedRoads(context);
+  const avoidPct = overlapPct(cells, rated.avoid);
+  const lovedPct = overlapPct(cells, rated.loved);
+  return {
+    avoidPct,
+    lovedPct,
+    verdict:
+      avoidPct >= 10
+        ? `AVOID: ${avoidPct}% of this route is on roads the rider rated 0 or 1 (${rated.avoidFrom.slice(0, 3).join("; ")}). Not valid unless nothing else meets the hard limits; say so if you keep it.`
+        : avoidPct > 0
+          ? `${avoidPct}% on roads rated 0 or 1; acceptable if short, better bypassed`
+          : lovedPct >= 20
+            ? `${lovedPct}% on roads the rider loves (rated 4-5): a plus`
+            : "no rated roads involved",
+  };
+}
+
+/** A saved ride this candidate would duplicate, if any (outside the session's own lineage). */
+export function duplicateOf(context: RideContext, cells: string[]): { rideId: number; name: string; overlapPct: number } | undefined {
+  for (const ride of context.store.listRides()) {
+    if (context.lineage.has(ride.id)) continue;
+    const pct = overlapPct(cells, new Set(ride.cells));
+    if (pct >= DUPLICATE_PCT) return { rideId: ride.id, name: ride.name, overlapPct: pct };
+  }
+  return undefined;
 }
 
 export function registerRoute(context: RideContext, trip: TripComputation): RegisteredRoute {

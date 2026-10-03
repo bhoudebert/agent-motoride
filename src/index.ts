@@ -2,7 +2,7 @@ import { createInterface } from "node:readline/promises";
 import { parseArgs } from "node:util";
 import Anthropic from "@anthropic-ai/sdk";
 import { openRide, type RideSession } from "./agent.ts";
-import { enrichRide, formatRideDetail, formatRideList, parseRating, rideNavigation, saveCurrentRide } from "./library.ts";
+import { DuplicateRideError, enrichRide, formatRideDetail, formatRideList, parseRating, rideNavigation, saveCurrentRide } from "./library.ts";
 import { pinnedMapsLinks } from "./maps.ts";
 import { exportSavedRide, savedRideGpx, writeGpx } from "./gpx.ts";
 import { writeRideMarkdown } from "./markdown.ts";
@@ -40,7 +40,7 @@ Env equivalents: RIDE_ALLOW_MOTORWAYS=1, RIDE_MAX_30_PCT, RIDE_MAX_50_PCT.
 Needs ANTHROPIC_API_KEY (see .env.example).`;
 
 function refineHelp(): string {
-  return `  /save [name]          Save the current itinerary (new version if already saved)
+  return `  /save [name]          Save the current itinerary (new version if already saved); refused when it duplicates a saved ride, --force to override
   /list                 Saved rides
   /show [id|name]       Details of a saved ride (no argument: the one loaded or saved here)
   /gpx [file.gpx]       Export the current itinerary (or the loaded ride) as a GPX file
@@ -309,7 +309,9 @@ async function plan(
     return ride !== undefined && ride.itinerary !== savedItinerary;
   };
 
-  const save = (name?: string) => {
+  const save = (nameArg?: string) => {
+    const force = /(^|\s)--force(\s|$)/.test(nameArg ?? "");
+    const name = (nameArg ?? "").replace(/(^|\s)--force(\s|$)/, " ").trim();
     const ride = session.current();
     if (!ride) {
       console.log(
@@ -323,13 +325,23 @@ async function plan(
       console.log(`Already saved as #${savedId}. Change the ride first to save a new version.`);
       return;
     }
-    const id = saveCurrentRide(session.context, ride, {
-      name,
-      request: requests.join(" / "),
-      parentId: savedId,
-      home,
-      usage: session.usage(),
-    });
+    let id: number;
+    try {
+      id = saveCurrentRide(session.context, ride, {
+        name,
+        request: requests.join(" / "),
+        parentId: savedId,
+        home,
+        usage: session.usage(),
+        force,
+      });
+    } catch (error) {
+      if (error instanceof DuplicateRideError) {
+        console.log(`${error.message}\nTo save anyway: /save --force${name ? ` ${name}` : ""}`);
+        return;
+      }
+      throw error;
+    }
     runRideId = id;
     logRun(null);
     const version = savedId ? ` (new version of #${savedId})` : "";

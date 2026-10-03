@@ -38,6 +38,9 @@ exports and the data are the same in both.
 
 Start with the one that matches what you have: an API key, or Claude Code.
 
+Whatever the mode, `npm run check` tells you what is missing and whether the
+data services answer from your machine.
+
 ### API mode, in three commands
 
 ```bash
@@ -245,7 +248,7 @@ At the `refine>` prompt:
 | `/md [file]` | Markdown document of the saved ride of this session |
 | `/qr` | QR code of the Google Maps link, to scan with the phone |
 | `/share` | Page for the phone on the local Wi-Fi: map link, itinerary, GPX download, with its QR code |
-| `/rate <1-5> [note]` | Rate the ride saved or loaded in this session |
+| `/rate <0-5> [note]` | Rate the ride saved or loaded in this session; 0 means never again |
 | `/motorways on\|off` | Permit or forbid motorways from now on |
 | `/settings` | Show motorways state, slow-zone targets, traffic check, model and effort, bike profile |
 | `/bike [range=.. reserve=.. pause=.. stint=.. lunch=..]` | Show or set the bike profile used to plan stops |
@@ -275,7 +278,7 @@ distances and geometry come from the routing result, not from the model's prose.
 npm run rides -- list
 npm run rides -- show 3
 npm run rides -- rate 3 5 "superb, Col de Rousset empty"
-npm run rides -- rate-leg 3 2 2 "gravel patches"
+npm run rides -- rate-leg 3 2 0 "gravel, never again"
 npm run rides -- export 3         # GPX file for a GPS app
 npm run rides -- export-md 3      # Markdown document, the standard full view
 npm run rides -- bike range=250   # bike profile for stop planning
@@ -469,13 +472,20 @@ the runs table (`70+t%`, the first reading).
 
 ### How saved rides shape later planning
 
-- **No near-duplicates.** Every routed candidate is compared with the saved
+- **No duplicates, enforced.** Every routed candidate is compared with the saved
   rides by the share of its 500 m grid cells they already cover. At 70% or more
-  the candidate is flagged as a duplicate and the agent must look elsewhere; from
-  40% it is flagged as similar and mentioned. The same roads ridden in the
-  opposite direction count as the same ride. `--allow-repeat` lifts the rule.
-- **Ratings steer the choice.** The agent reads the library at the start. Legs
-  and rides rated 4-5 are reused as building blocks; those rated 1-2 are avoided.
+  it is a duplicate: the agent must look elsewhere, and a save is refused
+  (`/save --force`, or `force` on the MCP tool, overrides it for a deliberate
+  copy). From 40% it is flagged as similar and mentioned. The same roads ridden
+  in the opposite direction count as the same ride. A new version of a ride
+  being edited is not a duplicate of it. `--allow-repeat` lifts the planning
+  rule for a session, not the save check.
+- **Ratings steer the choice.** Ratings run from 0 to 5. The agent reads the
+  library at the start; legs and rides rated 4-5 are reused as building blocks.
+  Roads from rides or legs rated 0 ("never again") or 1 are avoided: every
+  routed trip reports the share of its distance on such roads, and a loop with
+  10% or more on them is only acceptable when nothing else meets the hard
+  limits, which the agent must say. A leg's own rating wins over the ride's.
   Unrated rides only count for duplicate detection.
 - **Weather is never reused for planning.** A saved ride carries the last
   forecast gathered, for reading; a new plan or an edit always checks the
@@ -838,6 +848,8 @@ your real times differ consistently, adjust `bendFactor` in `src/tools/trip.ts`.
 | `npm run mcp:smoke` | Protocol-level check of the MCP server, no model involved |
 | `node scripts/mcp-prompt.ts "<request>"` | Print the `plan-ride` prompt exactly as the server serves it |
 | `npm run smoke` | Call each tool once against the live APIs, without calling Claude. Use it to check connectivity and keys |
+| `npm run check` | Environment check for both modes: credentials, model, start point, every data service, database state. No model call |
+| `npm test` | Unit tests: opening hours, stop planning, map links, geometry, store, and the planner against fake services (no network, no model) |
 | `npm run typecheck` | Type-check with `tsc --noEmit` |
 
 ## How it works
@@ -973,6 +985,7 @@ src/
   stops.ts          Stop planning from the profile and the candidates along the route
   hours.ts          Reader of OpenStreetMap opening_hours tags
   briefing.ts       Ride-day briefing
+  check.ts          Environment check (npm run check)
   preferences.ts    Rider preferences and their defaults
   usage.ts          Per-session token and time accounting, cost estimate
   http.ts           fetch wrapper with timeout and error text
@@ -984,6 +997,8 @@ src/
     trip.ts         calculateTrip
     along.ts        Speed cameras and stops along a routed trip
     traffic.ts      getTraffic
+test/
+  *.test.ts         Unit tests (node --test), with fake services under test/helpers
 scripts/
   smoke.ts          Live check of every tool
   mcp-smoke.ts      Protocol-level check of the MCP server
@@ -1045,4 +1060,5 @@ Run `npm run smoke` to tell a data-service problem from a Claude API problem.
 - Stop timing uses fixed breaks (10 min fuel, 15 min pause, 45 min lunch) and
   ignores traffic.
 - Claude is the only provider. OpenAI is not implemented.
-- There are no automated tests beyond the type-check and the live smoke script.
+- Unit tests cover the deterministic parts and the planner loop against fake
+  services; the model's actual behaviour is only checked by real runs.

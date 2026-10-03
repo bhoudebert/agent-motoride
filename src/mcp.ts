@@ -7,7 +7,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { SYSTEM_CORE, describeSituation } from "./agent.ts";
 import { exportSavedRide, writeGpx } from "./gpx.ts";
-import { enrichRide, formatRideDetail, formatRideList, replanStops, saveCurrentRide, tripFigures } from "./library.ts";
+import { DuplicateRideError, enrichRide, formatRideDetail, formatRideList, replanStops, saveCurrentRide, tripFigures } from "./library.ts";
 import { formatStopPlan } from "./stops.ts";
 import { routeCells } from "./geometry.ts";
 import { pickRideForToday, rideBriefing } from "./briefing.ts";
@@ -91,7 +91,13 @@ async function setHome(location: string): Promise<string> {
 const settingsText = () =>
   `${describeSituation(homeInput, context.home.label ? context.home : undefined, context.preferences)}\nBike: ${describeProfile(store.getProfile())}.\nSaved rides: ${store.listRides().length}. Trace run id: ${runId}.`;
 
-const server = new McpServer({ name: "agentRide", version: "0.1.0" });
+// Server instructions reach the client's system prompt at connection time, so
+// the method applies even when the rider types in plain words instead of using
+// the plan-ride command. Kept to the essentials; the command carries the rest.
+const INSTRUCTIONS = `agentRide plans one-day motorcycle rides. Use its tools for every lookup; never shell commands or web search for roads, weather or routing.
+For a new leisure ride: call listSavedRides, then scoutAreas with 2-4 areas (or searchRoads and calculateTrip yourself if scouts are unavailable), pick the best candidate, then finish it: getDaylight, getWeather along the loop for the riding hours, getSpeedCameras, planStops with the date and departure, getTraffic for the departure. Present the itinerary in plain text (never JSON) with legs named by towns, the figures from the tools, the stops with times, the navigation links from planStops, and end with one line "Route: <routeId>". Save only when the rider asks, with saveRide. For an edit or a question about a saved ride, work from its data (showRide) without replanning. For a practical trip (commute), route point to point, motorways if permitted, with traffic.`;
+
+const server = new McpServer({ name: "agentRide", version: "0.1.0" }, { instructions: INSTRUCTIONS });
 const text = (value: unknown) => ({ content: [{ type: "text" as const, text: typeof value === "string" ? value : JSON.stringify(value) }] });
 
 // The ride tools, shared with the API planner. Each call is traced and counted.
@@ -146,7 +152,7 @@ server.registerTool(
   "saveRide",
   {
     description:
-      "Save an itinerary to the rider's library. Only when the rider asks to save. routeId must be one returned by calculateTrip in this session; the saved distances and geometry come from that routed trip. Returns the saved ride id.",
+      "Save an itinerary to the rider's library. Only when the rider asks to save. routeId must be one returned by calculateTrip in this session; the saved distances and geometry come from that routed trip. A ride that duplicates a saved one (70% or more of the same roads) is refused; pass force only when the rider explicitly wants a copy. Returns the saved ride id.",
     inputSchema: z.object({
       routeId: z.string(),
       name: z.string().describe("A few words a rider would recognise the ride by"),
@@ -154,16 +160,23 @@ server.registerTool(
       departure: z.string().nullable().describe("HH:MM or null"),
       itinerary: z.string().describe("The itinerary text as presented to the rider"),
       request: z.string().describe("What the rider asked for, in one line"),
+      force: z.boolean().optional().describe("Save even if it duplicates a saved ride; only on the rider's explicit wish"),
     }),
   },
   async (args) => {
     const route = context.routes.get(args.routeId);
     if (!route) throw new Error(`Unknown routeId ${args.routeId}; it must come from calculateTrip in this session.`);
-    const id = saveCurrentRide(
-      context,
-      { route, rideDate: args.rideDate, departure: args.departure, title: args.name, itinerary: args.itinerary },
-      { name: args.name, request: args.request, parentId: lastSavedId, home: homeInput, usage },
-    );
+    let id: number;
+    try {
+      id = saveCurrentRide(
+        context,
+        { route, rideDate: args.rideDate, departure: args.departure, title: args.name, itinerary: args.itinerary },
+        { name: args.name, request: args.request, parentId: lastSavedId, home: homeInput, usage, force: args.force },
+      );
+    } catch (error) {
+      if (error instanceof DuplicateRideError) return text(`Not saved: ${error.message} Tell the rider, and only call saveRide again with force if they want the copy.`);
+      throw error;
+    }
     lastSavedId = id;
     lastRouteId = args.routeId;
     syncRun();

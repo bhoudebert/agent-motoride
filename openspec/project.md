@@ -27,7 +27,7 @@ model presents.
 - Everything a ride needs after planning is stored on the ride row (`extras`), gathered at save and on `refresh`.
 
 ### Testing Strategy
-- `npm run typecheck`, `npm run smoke` (live tools, no model), `npm run mcp:smoke` (protocol, no model).
+- `npm test` (unit tests, fake services, no network), `npm run typecheck`, `npm run check` (environment for both modes), `npm run smoke` (live tools, no model), `npm run mcp:smoke` (protocol, no model).
 - Model-side changes are tested against a local stub API first; a real run costs money and needs the rider's go-ahead. Never let a test reach the real API with the `.env` key.
 
 ### Git Workflow

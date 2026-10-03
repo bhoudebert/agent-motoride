@@ -170,7 +170,8 @@ At the `refine>` prompt:
 | `/share` | Page for the phone on the local Wi-Fi: map link, itinerary, GPX download, with its QR code |
 | `/rate <1-5> [note]` | Rate the ride saved or loaded in this session |
 | `/motorways on\|off` | Permit or forbid motorways from now on |
-| `/settings` | Show motorways state, slow-zone targets, traffic check, model and effort |
+| `/settings` | Show motorways state, slow-zone targets, traffic check, model and effort, bike profile |
+| `/bike [range=.. reserve=.. pause=.. stint=.. lunch=..]` | Show or set the bike profile used to plan stops |
 | `/usage` | Model, tokens, time and estimated cost of this session so far |
 | `/trace` | Replay this session's steps so far |
 | `/back` | Return to the start menu (also Ctrl-D) |
@@ -197,6 +198,7 @@ npm run rides -- rate 3 5 "superb, Col de Rousset empty"
 npm run rides -- rate-leg 3 2 2 "gravel patches"
 npm run rides -- export 3         # GPX file for a GPS app
 npm run rides -- export-md 3      # Markdown document, the standard full view
+npm run rides -- bike range=250   # bike profile for stop planning
 npm run rides -- qr 3             # QR code of the map link
 npm run rides -- share 3          # phone page on the local Wi-Fi, until Ctrl-C
 npm run rides -- runs             # every planning session: model, tokens, cost, result
@@ -255,6 +257,52 @@ headline figures, date and start, request, map link, figures, road mix with the
 cameras (one line per spot, doubled entries marked), fuel and café stops with
 opening hours, planning metadata, and the itinerary text as the planner wrote
 it. Plain Markdown with tables, so it versions cleanly in git next to the GPX.
+
+### Bike profile and stop plan
+
+Stops are chosen, not just listed, from a small profile of the bike and the
+rider's rhythm, kept in the database:
+
+```bash
+npm run rides -- bike                                   # show
+npm run rides -- bike range=250 reserve=40 pause=75 stint=90 lunch=yes
+```
+
+| Setting | Default | Used for |
+|---|---|---|
+| `range` | 250 km | Realistic range on a full tank |
+| `reserve` | 40 km | Fuel before range minus reserve, so the tank never runs into reserve |
+| `pause` | 75 min | A café or bakery stop after this much riding since the last stop |
+| `stint` | 90 min | Warning when no stop can be placed within this stretch |
+| `lunch` | yes | A restaurant where the ride crosses 12:30, when it spans midday |
+
+Also `/bike` at the prompt, and the same fields in `rideSettings` in MCP mode.
+"I leave with half a tank" in the request shifts the first fuel stop.
+
+The planner calls `planStops` on the final loop. The plan gives each stop a
+kind, a name, a km mark, an arrival time and a reason, plus the return time
+with breaks and warnings (no fuel in reach, long stint, no restaurant near
+midday). Saved rides get their plan at save and at `refresh`, shown in the
+view and the Markdown.
+
+On the bike, the stops are in what the phone already has: the navigation links
+include them as waypoints, so they are announced in turn, and the GPX carries
+them as named waypoints.
+
+### Navigation links that stay on the chosen roads
+
+A Google Maps link through the waypoints alone lets Google compute its own
+fastest path between them, which is how it drifts off a chosen D-road on a
+long leg. The links the app produces now add pass-through points taken from the
+exact route line, at the places where a fastest-path router would cut away
+(the points farthest from the straight line between two stops). Google accepts
+about ten points per link on the phone, so a long loop gets two or more links,
+"part 1" and "part 2", sharing their boundary point. Planned stops take part of
+the same budget.
+
+The GPX track is exact regardless; when a GPS app shows a different route from
+the GPX, it is recalculating from the route points, and choosing "follow the
+track" in that app fixes it.
 
 ### Handing a ride to the phone
 
@@ -514,6 +562,7 @@ to plan…"), with less guidance.
 | `saveRide` | Save an itinerary to the library, from a route id of this session |
 | `exportGpx` | GPX file from a route id or a saved ride |
 | `showRide` | Full view of one saved ride, as in the CLI: road mix, daylight, cameras, stops, legs, itinerary |
+| `refreshRide` | Same as `npm run rides -- refresh`: recompute figures, weather, cameras, stops and stop plan, no replanning |
 | `exportMarkdown` | The ride's standard Markdown document, written to a file |
 | `listRides` | The library, one line per ride |
 | `getDaylight`, `getSpeedCameras`, `findStops` | Daylight, fixed cameras and stops along a routed trip, as in the CLI |
@@ -527,6 +576,7 @@ to plan…"), with less guidance.
 | `/mcp__ride__save-ride [name]` | Save the itinerary on the table |
 | `/mcp__ride__export-gpx [id\|name]` | GPX file of the current or a saved ride |
 | `/mcp__ride__show-ride <id\|name>` | Everything stored about one ride |
+| `/mcp__ride__refresh <id\|name>` | Recompute a ride without changing it |
 | `/mcp__ride__export-md <id\|name> [file]` | Markdown document of a ride, written and shown |
 | `/mcp__ride__list-rides` | The library |
 | `/mcp__ride__help` | What the server can do, no tool call |
@@ -744,9 +794,10 @@ that the planner ignored.
 |---|---|---|---|---|
 | `getWeather` | `location`, `date`, `fromHour?`, `toHour?` | Hourly temperature, rain probability and amount, wind, gusts, sky, plus a day summary with a `dry` flag | [Open-Meteo](https://open-meteo.com/), up to 16 days ahead | none |
 | `searchRoads` | `location`, `radiusKm?` (5 to 40, default 25), `minLengthKm?`, `limit?` | Paved secondary and tertiary roads ranked by curviness, with end coordinates usable as waypoints, and named mountain passes | OpenStreetMap via [Overpass](https://overpass-api.de/) | none |
-| `calculateTrip` | `waypoints`, `roundTrip?`, `avoidMotorways?` | Routed distance, estimated riding time and average speed per leg and in total, motorway and toll flags, open-road share and speed-limit profile (km and % at 30 or less, 31-50, above 50, untagged open road), share of riding time on roads limited to 70 or more and at an estimated 70 or more, main roads per leg, comparison with saved rides, Google Maps link | [Valhalla](https://valhalla1.openstreetmap.de/), motorcycle profile | none |
+| `calculateTrip` | `waypoints`, `roundTrip?`, `avoidMotorways?` | Routed distance, estimated riding time and average speed per leg and in total, motorway and toll flags, open-road share and speed-limit profile (km and % at 30 or less, 31-50, above 50, untagged open road), share of riding time on roads limited to 70 or more and at an estimated 70 or more, main roads per leg, comparison with saved rides, plain map link and navigation links with pass-through points | [Valhalla](https://valhalla1.openstreetmap.de/), motorcycle profile | none |
 | `getDaylight` | `location`, `date` | Sunrise, sunset, first and last light, daylight hours, any date | Computed locally (NOAA solar equations), timezone from Open-Meteo | none |
 | `getSpeedCameras` | `routeId` | Fixed speed cameras on or beside the routed trip: km mark, leg, limit, direction | OpenStreetMap via Overpass | none |
+| `planStops` | `routeId`, `departure`, `fuelAtStartKm?` | The chosen fuel, pause and lunch stops with arrival times, return time with breaks, warnings, and navigation links including the stops | Stops from OpenStreetMap, choice from the bike profile | none |
 | `findStops` | `routeId`, `kinds?`, `radiusM?`, `limitPerKind?` | Fuel stations, cafés, restaurants, bakeries within a short detour, spread along the route, with opening hours when mapped | OpenStreetMap via Overpass | none |
 | `listSavedRides` | `location?`, `radiusKm?` | Saved rides near a place with ratings, notes and legs | local SQLite file | none |
 | `getTraffic` | `waypoints`, `departAt`, `roundTrip?` | Travel time, free-flow time and traffic delay for that departure | TomTom Routing | `TOMTOM_API_KEY` |
@@ -787,6 +838,9 @@ src/
   gpx.ts            GPX export of a ride
   share.ts          QR codes and the local web page for the phone
   markdown.ts       Markdown document of a ride
+  maps.ts           Navigation links with pass-through points, split per link budget
+  profile.ts        Bike profile (range, reserve, pause, lunch)
+  stops.ts          Stop planning from the profile and the candidates along the route
   preferences.ts    Rider preferences and their defaults
   usage.ts          Per-session token and time accounting, cost estimate
   http.ts           fetch wrapper with timeout and error text

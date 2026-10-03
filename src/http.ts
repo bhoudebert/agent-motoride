@@ -1,4 +1,5 @@
-const USER_AGENT = "agentRide/0.1 (personal motorcycle trip planner)";
+// Contact-style agent string: some public instances reject free-text or browser-like agents.
+const USER_AGENT = "agentRide/0.1 (+https://github.com/bhoudebert/agentRide)";
 
 /** fetch + JSON with a timeout and a readable error on non-2xx responses. */
 export async function fetchJson<T>(

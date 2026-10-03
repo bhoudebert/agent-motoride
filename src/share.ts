@@ -26,6 +26,7 @@ export function lanAddress(): string | undefined {
 export interface Shared {
   name: string;
   mapsUrl: string;
+  mapsUrls?: string[];
   gpx: GpxInput;
   itinerary: string;
 }
@@ -52,7 +53,7 @@ export function startShareServer(current: () => Shared | undefined, port: number
     res.end(`<!doctype html><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(shared.name)}</title>
 <body style="font: 16px/1.5 system-ui, sans-serif; margin: 1.5rem; max-width: 40rem">
 <h1 style="font-size:1.4rem">${esc(shared.name)}</h1>
-<p><a href="${esc(shared.mapsUrl)}" style="display:inline-block;padding:.8rem 1.2rem;background:#1a73e8;color:#fff;border-radius:.5rem;text-decoration:none">Open in Google Maps</a>
+<p>${(shared.mapsUrls ?? [shared.mapsUrl]).map((url, i, all) => `<a href="${esc(url)}" style="display:inline-block;margin:.2rem .4rem .2rem 0;padding:.8rem 1.2rem;background:#1a73e8;color:#fff;border-radius:.5rem;text-decoration:none">Google Maps${all.length > 1 ? ` part ${i + 1}` : ""}</a>`).join("")}
 &nbsp; <a href="/ride.gpx" style="display:inline-block;padding:.8rem 1.2rem;background:#444;color:#fff;border-radius:.5rem;text-decoration:none">Download GPX</a></p>
 <pre style="white-space:pre-wrap;background:#f4f4f4;padding:1rem;border-radius:.5rem">${esc(shared.itinerary)}</pre>
 </body>`);

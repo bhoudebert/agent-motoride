@@ -7,10 +7,14 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { SYSTEM_CORE, describeSituation } from "./agent.ts";
 import { exportSavedRide, writeGpx } from "./gpx.ts";
-import { enrichRide, formatRideDetail, formatRideList, saveCurrentRide } from "./library.ts";
+import { enrichRide, formatRideDetail, formatRideList, replanStops, saveCurrentRide, tripFigures } from "./library.ts";
+import { formatStopPlan } from "./stops.ts";
+import { routeCells } from "./geometry.ts";
+import { computeTrip } from "./tools/trip.ts";
 import { SCOUT_MODEL } from "./model.ts";
 import { formatRideMarkdown, writeRideMarkdown } from "./markdown.ts";
 import { preferencesFromEnv } from "./preferences.ts";
+import { describeProfile } from "./profile.ts";
 import type { RideContext } from "./session.ts";
 import { Store } from "./store.ts";
 import { setGeoAnchor, usePersistentGeoCache } from "./tools/geo.ts";
@@ -37,6 +41,7 @@ const context: RideContext = {
   runId,
   usage,
   trace: (event) => store.addTrace(runId, event),
+  stopPlans: new Map(),
 };
 let homeInput = process.env.RIDE_HOME ?? "";
 let lastSavedId: number | null = null;
@@ -83,7 +88,7 @@ async function setHome(location: string): Promise<string> {
 }
 
 const settingsText = () =>
-  `${describeSituation(homeInput, context.home.label ? context.home : undefined, context.preferences)}\nSaved rides: ${store.listRides().length}. Trace run id: ${runId}.`;
+  `${describeSituation(homeInput, context.home.label ? context.home : undefined, context.preferences)}\nBike: ${describeProfile(store.getProfile())}.\nSaved rides: ${store.listRides().length}. Trace run id: ${runId}.`;
 
 const server = new McpServer({ name: "agentRide", version: "0.1.0" });
 const text = (value: unknown) => ({ content: [{ type: "text" as const, text: typeof value === "string" ? value : JSON.stringify(value) }] });
@@ -115,9 +120,18 @@ server.registerTool(
       max30Pct: z.number().min(0).max(100).optional(),
       max50Pct: z.number().min(0).max(100).optional(),
       allowRepeat: z.boolean().optional().describe("Accept rides that repeat saved ones"),
+      tankRangeKm: z.number().positive().optional().describe("Bike profile: realistic range on a full tank"),
+      reserveKm: z.number().positive().optional().describe("Bike profile: fuel this many km before the range runs out"),
+      pauseEveryMin: z.number().positive().optional().describe("Bike profile: pause after this much riding"),
+      maxStintMin: z.number().positive().optional(),
+      lunch: z.boolean().optional().describe("Bike profile: plan a lunch stop when the ride spans midday"),
     }),
   },
   async (args) => {
+    const { tankRangeKm, reserveKm, pauseEveryMin, maxStintMin, lunch } = args;
+    if ([tankRangeKm, reserveKm, pauseEveryMin, maxStintMin, lunch].some((v) => v !== undefined)) {
+      store.setProfile({ tankRangeKm, reserveKm, pauseEveryMin, maxStintMin, lunch });
+    }
     if (args.home) await setHome(args.home);
     if (args.allowMotorways !== undefined) context.preferences.avoidMotorways = !args.allowMotorways;
     if (args.max30Pct !== undefined) context.preferences.max30Pct = args.max30Pct;
@@ -189,6 +203,34 @@ server.registerTool(
       args.file,
     );
     return text(`GPX written: ${path}`);
+  },
+);
+
+server.registerTool(
+  "refreshRide",
+  {
+    description:
+      "Recompute a saved ride without changing it: route the same waypoints again with the ride's own motorway setting, update distance, times, road mix and leg names, then re-gather daylight, weather, fixed cameras and stops, and rebuild the stop plan from the current bike profile. Deterministic, no planning involved; takes a minute or two. Use it when the rider says refresh, update or recompute a ride; with stopsOnly when only the stops or the bike profile changed. Returns the refreshed view, or the new stop plan.",
+    inputSchema: z.object({
+      ride: z.string().describe("Saved ride id or name"),
+      stopsOnly: z.boolean().optional().describe("Only rebuild the stop plan from the current bike profile; instant when the stops are cached"),
+    }),
+  },
+  async (args) => {
+    const target = store.findRide(args.ride);
+    if (!target) throw new Error(`No saved ride matches "${args.ride}". Call listRides.`);
+    if (args.stopsOnly) {
+      const extras = await replanStops(store, target);
+      if (!extras?.stopPlan) throw new Error(`Ride #${target.id} has no stored route line; run a full refresh first.`);
+      return text(formatStopPlan(extras.stopPlan, target.departure ?? "09:00", target.ridingMinutes).join("\n"));
+    }
+    await setGeoAnchor(target.home);
+    const trip = await computeTrip({ waypoints: target.waypoints, roundTrip: target.roundTrip, avoidMotorways: target.preferences.avoidMotorways });
+    if (trip.result.legs.length !== target.legs.length) throw new Error(`Ride #${target.id} now routes into ${trip.result.legs.length} legs instead of ${target.legs.length}; not updated.`);
+    store.refreshRide(target.id, tripFigures(trip, routeCells(trip.shapes)));
+    const extras = await enrichRide(store, store.findRide(String(target.id))!);
+    const failed = Object.entries(extras?.errors ?? {}).map(([name, reason]) => `${name}: ${reason.split(".")[0]}`);
+    return text(`${failed.length ? `Some lookups failed and kept their previous result: ${failed.join("; ")}\n\n` : ""}${formatRideDetail(store.findRide(String(target.id))!)}`);
   },
 );
 
@@ -329,6 +371,12 @@ server.registerPrompt(
 );
 
 server.registerPrompt(
+  "refresh",
+  { title: "Refresh a saved ride", description: "Recompute a ride's figures, weather, cameras, stops and stop plan, without changing the ride.", argsSchema: { ride: z.string().describe("Saved ride id or name") } },
+  ({ ride }) => userMessage(`Call refreshRide for "${ride}" and show the result exactly as returned, in a code block. Do not ask questions first and do not replan anything: a refresh keeps the ride as it is.`),
+);
+
+server.registerPrompt(
   "list-rides",
   { title: "List saved rides", description: "The rider's library, one line per ride.", argsSchema: {} },
   () => userMessage("Call listRides and show the result as is."),
@@ -348,6 +396,7 @@ agentRide commands (slash commands):
   /mcp__ride__export-gpx [id|name]       GPX file for a GPS app
   /mcp__ride__export-md <id|name> [file] Markdown document of a ride, the standard full view
   /mcp__ride__show-ride <id|name>        everything stored about one ride (daylight, cameras, stops, legs)
+  /mcp__ride__refresh <id|name>          recompute a ride: figures, weather, cameras, stops, stop plan (no replanning)
   /mcp__ride__list-rides                 the library
   /mcp__ride__help                       this text
 

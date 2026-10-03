@@ -37,15 +37,17 @@ const UNPAVED = new Set([
 // parallel must take turns.
 let overpassQueue: Promise<unknown> = Promise.resolve();
 
-export function overpass<T = OverpassElement>(query: string): Promise<T[]> {
-  const turn = overpassQueue.then(() => overpassNow(query)) as Promise<T[]>;
+export function overpass<T = OverpassElement>(query: string, options: { quick?: boolean } = {}): Promise<T[]> {
+  const turn = overpassQueue.then(() => overpassNow(query, options)) as Promise<T[]>;
   overpassQueue = turn.catch(() => undefined);
   return turn;
 }
 
-async function overpassNow(query: string): Promise<OverpassElement[]> {
+async function overpassNow(query: string, options: { quick?: boolean }): Promise<OverpassElement[]> {
   const errors: string[] = [];
-  for (const { url, timeoutMs, waitMs } of OVERPASS_ATTEMPTS) {
+  // Quick mode: two attempts, no pauses; the caller has a cheaper fallback (a smaller query).
+  const attempts = options.quick ? OVERPASS_ATTEMPTS.slice(0, 2).map((a) => ({ ...a, waitMs: 0 })) : OVERPASS_ATTEMPTS;
+  for (const { url, timeoutMs, waitMs } of attempts) {
     if (waitMs) await new Promise((resolve) => setTimeout(resolve, waitMs));
     try {
       const data = await fetchJson<{ elements: OverpassElement[]; remark?: string }>(

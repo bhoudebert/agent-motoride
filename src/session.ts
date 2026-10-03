@@ -3,6 +3,7 @@ import type { RidePreferences } from "./preferences.ts";
 import type { Store } from "./store.ts";
 import type { Point } from "./tools/geo.ts";
 import type { TripComputation } from "./tools/trip.ts";
+import type { StopPlan } from "./stops.ts";
 import type { RunUsage } from "./usage.ts";
 
 /** A candidate above this share of already-saved roads is a duplicate. */
@@ -43,6 +44,8 @@ export interface RideContext {
   usage: RunUsage;
   /** Record one step for later replay. */
   trace: (event: TraceEvent) => void;
+  /** Stop plans made this session, by route id, so links and GPX can carry the stops. */
+  stopPlans: Map<string, StopPlan>;
 }
 
 export function registerRoute(context: RideContext, trip: TripComputation): RegisteredRoute {

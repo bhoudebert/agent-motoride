@@ -3,6 +3,8 @@ import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import type { RidePreferences } from "./preferences.ts";
+import { DEFAULT_PROFILE, type BikeProfile } from "./profile.ts";
+import type { StopPlan } from "./stops.ts";
 import type { RunUsage } from "./usage.ts";
 
 const DEFAULT_DB = resolve(dirname(fileURLToPath(import.meta.url)), "..", "data", "agentride.db");
@@ -54,6 +56,28 @@ export interface RideExtras {
   stops: Record<string, Array<{ kmAlongRoute: number; leg: number; name: string; openingHours: string | null; detourM: number }>>;
   /** Lookups that failed, by name, with the reason; a refresh retries them. */
   errors: Record<string, string>;
+  /** Forecast for the ride date at a few points of the route, when the date was within forecast range. */
+  weather?: RideWeather | null;
+  /** Fuel, pause and lunch stops chosen from the bike profile. */
+  stopPlan?: StopPlan | null;
+}
+
+export interface RideWeather {
+  forecastDate: string;
+  gatheredAt: string;
+  /** Hours covered, e.g. "09:00-16:00", from the departure and the riding time. */
+  window: string;
+  points: Array<{
+    label: string;
+    kmAlongRoute: number;
+    dry: boolean;
+    maxRainProbPct: number;
+    totalRainMm: number;
+    minTempC: number;
+    maxTempC: number;
+    maxGustKmh: number;
+    sky: string;
+  }>;
 }
 
 /** One planning session, logged whether or not its ride was saved. */
@@ -204,6 +228,10 @@ CREATE TABLE IF NOT EXISTS trace (
   payload TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS trace_run ON trace(run_id, id);
+CREATE TABLE IF NOT EXISTS profile (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS tool_cache (
   key TEXT PRIMARY KEY,
   tool TEXT NOT NULL,
@@ -211,6 +239,16 @@ CREATE TABLE IF NOT EXISTS tool_cache (
   expires_at INTEGER NOT NULL
 );
 `;
+
+/** Stop lists are bare arrays per kind; repair any row written as { kind: { stops: [...] } }. */
+function normaliseExtras(extras: RideExtras): RideExtras {
+  const stops: RideExtras["stops"] = {};
+  for (const [kind, value] of Object.entries(extras.stops ?? {})) {
+    const list = Array.isArray(value) ? value : (value as { stops?: unknown }).stops;
+    if (Array.isArray(list)) stops[kind] = list;
+  }
+  return { ...extras, stops, errors: extras.errors ?? {} };
+}
 
 /** Saved rides, their legs, and a cache of tool results, in one SQLite file. */
 export class Store {
@@ -340,7 +378,7 @@ export class Store {
       centerLon: row.center_lon,
       usage: row.usage ? JSON.parse(row.usage) : null,
       shapes: row.shapes ? JSON.parse(row.shapes) : null,
-      extras: row.extras ? JSON.parse(row.extras) : null,
+      extras: row.extras ? normaliseExtras(JSON.parse(row.extras)) : null,
       rating: row.rating,
       notes: row.notes,
       legs: legs.map((leg) => ({
@@ -435,6 +473,19 @@ export class Store {
 
   deleteRide(id: number): boolean {
     return this.#db.prepare("DELETE FROM rides WHERE id = ?").run(id).changes > 0;
+  }
+
+  /** The bike profile: stored values over the defaults. */
+  getProfile(): BikeProfile {
+    const rows = this.#db.prepare("SELECT key, value FROM profile").all() as Array<{ key: string; value: string }>;
+    const stored = Object.fromEntries(rows.map((r) => [r.key, JSON.parse(r.value)]));
+    return { ...DEFAULT_PROFILE, ...stored };
+  }
+
+  setProfile(changes: Partial<BikeProfile>): BikeProfile {
+    const upsert = this.#db.prepare("INSERT OR REPLACE INTO profile (key, value) VALUES (?, ?)");
+    for (const [key, value] of Object.entries(changes)) if (value !== undefined) upsert.run(key, JSON.stringify(value));
+    return this.getProfile();
   }
 
   cacheGet<T>(key: string): T | undefined {

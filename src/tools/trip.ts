@@ -1,5 +1,6 @@
 import { fetchJson } from "../http.ts";
 import { decodePolyline } from "../geometry.ts";
+import { pinnedMapsLinks } from "../maps.ts";
 import { bearingDeg, describeCoords, fmtCoords, haversineKm, resolvePoint, type Point } from "./geo.ts";
 
 export interface CalculateTripInput {
@@ -291,7 +292,10 @@ export interface TripComputation {
     usesTollRoad: boolean;
     speedLimits: SpeedLimits;
     legs: TripLeg[];
+    /** Plain link through the waypoints only. */
     mapsUrl: string;
+    /** Links with pass-through points that keep Google Maps on the chosen roads; more than one for a long loop. */
+    navigationLinks: string[];
   };
   waypoints: string[];
   roundTrip: boolean;
@@ -380,6 +384,7 @@ export async function computeTrip(input: CalculateTripInput): Promise<TripComput
         mainRoads: legRoads[i] ?? [],
       })),
       mapsUrl: `https://www.google.com/maps/dir/${points.map(fmtCoords).join("/")}`,
+      navigationLinks: pinnedMapsLinks(points, shapes),
     },
   };
 }

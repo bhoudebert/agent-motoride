@@ -1,8 +1,10 @@
 // Manage the saved-ride library without starting a planning session.
 import { routeCells } from "./geometry.ts";
-import { exportSavedRide, savedRideGpx } from "./gpx.ts";
+import { describeStopsAt, exportSavedRide, savedRideGpx } from "./gpx.ts";
 import { printQr, startShareServer } from "./share.ts";
-import { enrichRide, formatRideDetail, formatRideList, parseRating, tripFigures } from "./library.ts";
+import { enrichRide, formatRideDetail, formatRideList, parseRating, replanStops, tripFigures } from "./library.ts";
+import { formatStopPlan } from "./stops.ts";
+import { describeProfile, parseProfileArgs } from "./profile.ts";
 import { Store } from "./store.ts";
 import { formatRideMarkdown, writeRideMarkdown } from "./markdown.ts";
 import { formatTrace } from "./trace.ts";
@@ -16,12 +18,14 @@ const USAGE = `Usage: npm run rides -- <command>
   export-md <id|name> [file.md]         Write the ride as a Markdown document (default: exports/ in the project)
   rate <id|name> <1-5> [note]           Rate a ride after riding it
   rate-leg <id|name> <leg> <1-5> [note] Rate one leg of a ride
-  export <id|name> [file.gpx]           Write the ride as a GPX file (default: exports/ in the project)
+  export <id|name> [file.gpx] [--pins N]  Write the ride as a GPX file (default: exports/ in the project); --pins caps the route points
   qr <id|name>                          QR code of the ride's Google Maps link
   share <id|name>                       Serve the ride to the phone on the local Wi-Fi (QR code), until Ctrl-C
   trace <run> [--full]                  Replay a planning session step by step (run ids from "runs")
+  bike [range=250 reserve=40 pause=75 stint=90 lunch=yes]   Show or set the bike profile used to plan stops
   runs [--csv]                          Every planning session with model, effort, tokens, cost and result
-  refresh <id|name|all>                 Route a saved ride again: distance, times, road mix, leg names, daylight, cameras, stops
+  refresh <id|name|all> [--stops]       Route a saved ride again: distance, times, road mix, leg names, daylight, cameras, stops
+                                        --stops: only rebuild the stop plan from the bike profile (instant when the stops are cached)
   delete <id|name>                      Remove a ride and its legs
   clear-cache                           Drop cached road, route and weather lookups
 
@@ -70,8 +74,12 @@ try {
     }
     case "export": {
       const target = ride(args[0]);
-      const { path, rerouted } = await exportSavedRide(store, target, args[1]);
+      const pinsAt = args.indexOf("--pins");
+      const maxPoints = pinsAt >= 0 ? Number(args[pinsAt + 1]) : undefined;
+      const file = args.slice(1).find((a, i) => !a.startsWith("--") && args[i] !== "--pins");
+      const { path, rerouted, stopsAt } = await exportSavedRide(store, target, file, maxPoints);
       console.log(`GPX written: ${path}${rerouted ? "\n(Route line was not stored for this ride; it was routed again from its waypoints.)" : ""}`);
+      if (stopsAt.length) console.log(`Planned stops in the route point list (as an app numbers the stages):\n${describeStopsAt(stopsAt).join("\n")}`);
       break;
     }
     case "trace": {
@@ -95,6 +103,12 @@ try {
       console.log(`Scan with the phone (same Wi-Fi): ${url}\nServing until Ctrl-C.`);
       await printQr(url);
       await new Promise(() => undefined); // until Ctrl-C
+      break;
+    }
+    case "bike": {
+      const profile = args.length ? store.setProfile(parseProfileArgs(args)) : store.getProfile();
+      console.log(`Bike profile: ${describeProfile(profile)}`);
+      if (args.length) console.log("Stop plans of saved rides update on their next refresh.");
       break;
     }
     case "runs": {
@@ -142,6 +156,18 @@ try {
     }
     case "refresh": {
       const targets = args[0] === "all" ? store.listRides() : [ride(args[0])];
+      if (args.includes("--stops")) {
+        for (const target of targets) {
+          const extras = await replanStops(store, target);
+          if (!extras?.stopPlan) {
+            console.log(`#${target.id} "${target.name}": no route line stored; run a full refresh first.`);
+            continue;
+          }
+          console.log(`#${target.id} "${target.name}"`);
+          console.log(formatStopPlan(extras.stopPlan, target.departure ?? "09:00", target.ridingMinutes).join("\n"));
+        }
+        break;
+      }
       for (const target of targets) {
         await setGeoAnchor(target.home);
         const trip = await computeTrip({

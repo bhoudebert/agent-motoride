@@ -43,7 +43,7 @@ The rider's own yardstick is time at 70 km/h or more. Every routed trip reports 
 
 Daylight sets the frame of the day: get the sunrise and sunset for the ride day (getDaylight, also returned with every forecast) and plan departure and return inside them, with a margin before sunset. Say when the last usable light is.
 
-Plan on road data first. Once a loop is chosen, finish it: run the traffic check for the planned departure and report the delay next to the road-data estimate; list the fixed speed cameras on the loop (getSpeedCameras) as places to watch the speed; and place the stops (findStops): a fuel station within the tank range, a café or bakery at a sensible pause, lunch if the ride spans midday, each named with its position along the route. Reconsider the departure time or the loop only if traffic or daylight demands it.
+Plan on road data first. Once a loop is chosen, finish it: run the traffic check for the planned departure and report the delay next to the road-data estimate; list the fixed speed cameras on the loop (getSpeedCameras) as places to watch the speed; and plan the stops with planStops, which applies the rider's bike profile (tank range, reserve, pause interval, lunch) and returns the chosen fuel, pause and lunch stops with arrival times, the return time with breaks, and navigation links that include the stops. Name those stops in the itinerary and use those links, not the plain map link, since they also keep Google Maps on the chosen roads. Reconsider the departure time or the loop only if traffic or daylight demands it.
 
 Not every request is a leisure ride. When the rider asks for a practical trip, such as getting to work or reaching a place by a given time, plan it as one: point to point unless they say otherwise, the quickest sensible route, on motorways when the rider permits them (route it with motorways allowed, and compare with the motorway-free route if the difference is worth showing). Skip the search for winding roads, and do not optimise open road or slow zones; report them briefly. Check the weather for the travel hours and the traffic for the departure time, since a commute lives or dies by traffic, and give the arrival time. Saved-ride overlap does not matter for such a trip: repeating a commute is the point. The itinerary is shorter: route, distance, time with and without traffic, weather, link, and the reference line.
 
@@ -62,8 +62,8 @@ Lay the itinerary out for a terminal, short and scannable, no markdown headings:
 - weather along the route by time of day, one line per point
 - traffic for the planned departure, or "not checked"
 - speed cameras on the loop: km mark, road, limit; or "none mapped"
-- stops: fuel, café or bakery, lunch, each with name, km mark and detour
-- the Google Maps link
+- stops from the stop plan: time, km mark, kind, name; and the return time with breaks
+- the navigation link(s) from planStops (or navigationLinks from calculateTrip when no stops were planned); say "part 1, part 2" when there are several
 - one alternative in a sentence, if evaluated
 Keep explanations to the facts the rider needs; put caveats (unverified data, missed targets) in one line each, not paragraphs.
 
@@ -172,6 +172,7 @@ export async function openRide(request: RideRequest): Promise<RideSession> {
     runId,
     usage,
     trace: (event: TraceEvent) => request.store.addTrace(runId, event),
+    stopPlans: new Map(),
   };
   const tools = createTools(context, { scouts: true });
   let history: Anthropic.Beta.BetaMessageParam[] = [];

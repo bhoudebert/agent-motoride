@@ -2,11 +2,13 @@ import { createInterface } from "node:readline/promises";
 import { parseArgs } from "node:util";
 import Anthropic from "@anthropic-ai/sdk";
 import { openRide, type RideSession } from "./agent.ts";
-import { enrichRide, formatRideDetail, formatRideList, parseRating, saveCurrentRide } from "./library.ts";
+import { enrichRide, formatRideDetail, formatRideList, parseRating, rideNavigation, saveCurrentRide } from "./library.ts";
+import { pinnedMapsLinks } from "./maps.ts";
 import { exportSavedRide, savedRideGpx, writeGpx } from "./gpx.ts";
 import { writeRideMarkdown } from "./markdown.ts";
 import { printQr, startShareServer, type Shared } from "./share.ts";
 import { DEFAULT_PREFERENCES, preferencesFromEnv } from "./preferences.ts";
+import { describeProfile, parseProfileArgs } from "./profile.ts";
 import { usePersistentGeoCache } from "./tools/geo.ts";
 import { Store, type SavedRide } from "./store.ts";
 import { formatTrace } from "./trace.ts";
@@ -48,6 +50,7 @@ function refineHelp(): string {
   /rate <1-5> [note]    Rate the ride saved or loaded in this session
   /motorways on|off     Permit or forbid motorways from now on (default off)
   /settings             Show current settings: motorways, slow-zone targets, traffic
+  /bike [range=250 ...] Show or set the bike profile (range, reserve, pause, stint, lunch) used for stops
   /usage                Model, tokens, time and estimated cost of this session so far
   /trace                Replay this session's steps so far (tool calls, scouts, answers)
   /back                 Leave this ride and return to the start menu (also Ctrl-D)
@@ -238,6 +241,7 @@ async function plan(
 
   if (baseRide) console.error(`Working on saved ride #${baseRide.id} "${baseRide.name}".`);
   console.error(describeSettings(home, preferences));
+  console.error(`Bike: ${describeProfile(store.getProfile())}`);
   const model = process.env.RIDE_MODEL || "claude-opus-5-5";
   if (!isKnownModel(model)) {
     console.error(
@@ -471,19 +475,28 @@ async function startMenu(): Promise<
 async function sharedRide(session: RideSession, savedId: number | null): Promise<Shared | undefined> {
   const current = session.current();
   if (current) {
-    const { trip } = current.route;
+    const { trip, id } = current.route;
+    const plan = session.context.stopPlans.get(id);
+    const stops = (plan?.stops ?? []).map((s) => {
+      const [lat = 0, lon = 0] = s.coords.split(",").map(Number);
+      return { lat, lon, label: `${s.kind}: ${s.name} (${s.eta})`, km: s.kmAlongRoute };
+    });
+    const waypoints = [trip.result.legs[0]!, ...trip.result.legs].map((leg, i) => {
+      const [lat = 0, lon = 0] = (i === 0 ? leg.fromCoords : leg.toCoords).split(",").map(Number);
+      return { lat, lon };
+    });
     lastShared = {
       name: current.title,
-      mapsUrl: trip.result.mapsUrl,
+      mapsUrl: pinnedMapsLinks(waypoints, trip.shapes, stops)[0]!,
       itinerary: current.itinerary,
-      gpx: { name: current.title, description: `${trip.result.totalDistanceKm} km, about ${trip.result.totalRidingTime} riding.`, legs: trip.result.legs, shapes: trip.shapes },
+      gpx: { name: current.title, description: `${trip.result.totalDistanceKm} km, about ${trip.result.totalRidingTime} riding.`, legs: trip.result.legs, shapes: trip.shapes, stops },
     };
     return lastShared;
   }
   const ride = savedId === null ? undefined : store.findRide(String(savedId));
   if (!ride) return undefined;
   const { gpx } = await savedRideGpx(store, ride);
-  lastShared = { name: ride.name, mapsUrl: ride.mapsUrl, itinerary: ride.itinerary, gpx };
+  lastShared = { name: ride.name, mapsUrl: rideNavigation(ride).links[0]!, itinerary: ride.itinerary, gpx };
   return lastShared;
 }
 
@@ -582,7 +595,14 @@ async function refineLoop(
           }
           case "settings":
             console.log(describeSettings(session.context.home.label, session.context.preferences));
+            console.log(`Bike: ${describeProfile(store.getProfile())}`);
             break;
+          case "bike": {
+            const profile = args.length ? store.setProfile(parseProfileArgs(args)) : store.getProfile();
+            console.log(`Bike profile: ${describeProfile(profile)}`);
+            if (args.length) pendingNote = `[Setting changed by the rider: bike profile is now ${describeProfile(profile)}. Plan stops again if an itinerary is on the table.]`;
+            break;
+          }
           case "usage":
             console.log(formatUsage(session.usage()));
             break;
@@ -635,12 +655,17 @@ async function refineLoop(
             if (current) {
               // The itinerary on screen, saved or not, with its exact routed line.
               const { trip, id } = current.route;
+              const planned = (session.context.stopPlans.get(id)?.stops ?? []).map((s) => {
+                const [lat = 0, lon = 0] = s.coords.split(",").map(Number);
+                return { lat, lon, label: `${s.kind}: ${s.name} (${s.eta})`, km: s.kmAlongRoute };
+              });
               const path = writeGpx(
                 {
                   name: current.title,
                   description: `${trip.result.totalDistanceKm} km, about ${trip.result.totalRidingTime} riding. Planned with agentRide.`,
                   legs: trip.result.legs,
                   shapes: trip.shapes,
+                  stops: planned,
                 },
                 savedId() ?? id,
                 file,

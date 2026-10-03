@@ -59,17 +59,30 @@ interface Element {
 
 async function alongRoute(points: RoutePoint[], filters: string[], radiusM: number): Promise<Element[]> {
   // Overpass measures the distance to the line between the points, so a point
-  // every 600 m follows the road closely enough. Long routes go in chunks of
-  // about 50 km: small queries succeed where one big one times out.
+  // every 600 m follows the road closely enough. The route goes in chunks of
+  // about 25 km; a chunk the server cannot answer in time (dense areas) is
+  // split in two and retried, down to a few km.
   const sparse = simplify(points, 0.6);
-  const chunkSize = 80;
   const seen = new Map<string, Element>();
-  for (let start = 0; start < sparse.length - 1; start += chunkSize - 1) {
-    const chunk = sparse.slice(start, start + chunkSize);
+  const query = async (chunk: RoutePoint[], depth: number): Promise<void> => {
     const line = chunk.map((p) => `${p.lat.toFixed(5)},${p.lon.toFixed(5)}`).join(",");
     const union = filters.map((filter) => `nwr${filter}(around:${radiusM},${line});`).join("");
-    const elements = await overpass<Element & { id?: number }>(`[out:json][timeout:30];(${union});out center tags;`);
-    for (const e of elements) seen.set(`${e.type}/${e.id}`, e);
+    const started = Date.now();
+    try {
+      const elements = await overpass<Element & { id?: number }>(`[out:json][timeout:30];(${union});out center tags;`, { quick: depth < 3 });
+      for (const e of elements) seen.set(`${e.type}/${e.id}`, e);
+      process.stderr.write(`\x1b[2m     map chunk km ${chunk[0]!.km.toFixed(0)}-${chunk.at(-1)!.km.toFixed(0)}: ${elements.length} found, ${Date.now() - started} ms\x1b[0m\n`);
+    } catch (error) {
+      process.stderr.write(`\x1b[2m     map chunk km ${chunk[0]!.km.toFixed(0)}-${chunk.at(-1)!.km.toFixed(0)}: failed after ${Date.now() - started} ms${chunk.length >= 8 && depth < 3 ? ", splitting" : ""}\x1b[0m\n`);
+      if (chunk.length < 8 || depth >= 3) throw error;
+      const half = Math.ceil(chunk.length / 2);
+      await query(chunk.slice(0, half + 1), depth + 1);
+      await query(chunk.slice(half), depth + 1);
+    }
+  };
+  const chunkSize = 40;
+  for (let start = 0; start < sparse.length - 1; start += chunkSize - 1) {
+    await query(sparse.slice(start, start + chunkSize), 0);
   }
   return [...seen.values()];
 }
@@ -112,12 +125,22 @@ export async function speedCamerasAlong(shapes: string[], legs: TripLeg[]) {
 
 export type StopKind = "fuel" | "cafe" | "restaurant" | "bakery";
 
-const STOP_FILTERS: Record<StopKind, string> = {
-  fuel: '["amenity"="fuel"]',
-  cafe: '["amenity"="cafe"]',
-  restaurant: '["amenity"="restaurant"]',
-  bakery: '["shop"="bakery"]',
+const STOP_TAGS: Record<StopKind, { key: string; value: string }> = {
+  fuel: { key: "amenity", value: "fuel" },
+  cafe: { key: "amenity", value: "cafe" },
+  restaurant: { key: "amenity", value: "restaurant" },
+  bakery: { key: "shop", value: "bakery" },
 };
+
+/** One regex filter per tag key: far cheaper for the server than one filter per kind. */
+function stopFilters(kinds: StopKind[]): string[] {
+  const byKey = new Map<string, string[]>();
+  for (const kind of kinds) {
+    const { key, value } = STOP_TAGS[kind];
+    byKey.set(key, [...(byKey.get(key) ?? []), value]);
+  }
+  return [...byKey.entries()].map(([key, values]) => (values.length === 1 ? `["${key}"="${values[0]}"]` : `["${key}"~"^(${values.join("|")})$"]`));
+}
 
 /**
  * Keep at most `limit` stops spread along the route: the best of each stretch
@@ -150,7 +173,7 @@ export async function stopsAlong(shapes: string[], legs: TripLeg[], kinds: StopK
   const totalKm = points.at(-1)?.km ?? 0;
   const result: Record<string, unknown> = { totalKm: Number(totalKm.toFixed(1)) };
   // One query for every kind, then sort the elements by their tags.
-  const elements = await alongRoute(points, kinds.map((kind) => STOP_FILTERS[kind]), radiusM);
+  const elements = await alongRoute(points, stopFilters(kinds), radiusM);
   const kindOf = (tags: Record<string, string>): StopKind | undefined =>
     tags.amenity === "fuel" ? "fuel" : tags.amenity === "cafe" ? "cafe" : tags.amenity === "restaurant" ? "restaurant" : tags.shop === "bakery" ? "bakery" : undefined;
   for (const kind of kinds) {
@@ -169,7 +192,8 @@ export async function stopsAlong(shapes: string[], legs: TripLeg[], kinds: StopK
             brand: tags.brand ?? null,
             openingHours: tags.opening_hours ?? null,
             detourM: where.distanceM,
-            place: tags["addr:city"] ?? tags["addr:village"] ?? null,
+            place: tags["addr:city"] ?? tags["addr:village"] ?? tags["addr:town"] ?? null,
+            street: tags["addr:street"] ?? null,
             coords: fmtCoords(at),
           },
         ];

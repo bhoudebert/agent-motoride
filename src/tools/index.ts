@@ -1,6 +1,9 @@
 import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 import { scoutAreas } from "../scouts.ts";
+import { pinnedMapsLinks } from "../maps.ts";
+import { stopCandidatesFor } from "../library.ts";
+import { locateStops, planStops } from "../stops.ts";
 import { speedCamerasAlong, stopsAlong, type StopKind } from "./along.ts";
 import { registerRoute, savedRideOverlap, type RideContext } from "../session.ts";
 import { fmtCoords, haversineKm, resolvePoint } from "./geo.ts";
@@ -276,6 +279,43 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
         return cachedAlong(`findStops|${kinds.join("+")}|${radiusM}|${limit}`, route.trip.shapes, () =>
           stopsAlong(route.trip.shapes, route.trip.result.legs, kinds, radiusM, limit),
         );
+      }),
+    },
+    {
+      name: "planStops",
+      description:
+        "Choose the stops of a routed trip from the rider's bike profile: the last fuel station before each fuel deadline (tank range minus reserve, from the fuel at departure), a café or bakery pause after the pause interval, a restaurant where the ride crosses midday. Returns the stops with arrival times, the return time with breaks, warnings (no fuel in reach, long stint), and navigation links that include the stops so they are announced on the bike. Call it once for the final loop, after calculateTrip, and name the stops in the itinerary. findStops is only for browsing alternatives.",
+      inputSchema: z.object({
+        routeId: z.string().describe("routeId from calculateTrip"),
+        departure: z.string().regex(/^\d{1,2}:\d{2}$/).describe("Planned departure time, HH:MM"),
+        fuelAtStartKm: z.number().min(10).optional().describe("Range left in the tank at departure, km; default a full tank"),
+      }),
+      run: trace("planStops", async (input: { routeId: string; departure: string; fuelAtStartKm?: number }) => {
+        const route = context.routes.get(input.routeId);
+        if (!route) throw new Error(`Unknown routeId ${input.routeId}; route the loop with calculateTrip first.`);
+        const { trip } = route;
+        const profile = store.getProfile();
+        const candidates = await stopCandidatesFor(store, trip.shapes, trip.result.legs);
+        const plan = await locateStops(planStops(trip.result.legs, candidates, profile, input.departure, input.fuelAtStartKm));
+        context.stopPlans.set(route.id, plan);
+        const stopPoints = plan.stops.map((s) => {
+          const [lat = 0, lon = 0] = s.coords.split(",").map(Number);
+          return { lat, lon, label: `${s.kind}: ${s.name}`, km: s.kmAlongRoute };
+        });
+        const waypoints = [trip.result.legs[0]!, ...trip.result.legs].map((leg, i) => {
+          const [lat = 0, lon = 0] = (i === 0 ? leg.fromCoords : leg.toCoords).split(",").map(Number);
+          return { lat, lon };
+        });
+        return {
+          profile,
+          ...plan,
+          navigationLinksWithStops: pinnedMapsLinks(waypoints, trip.shapes, stopPoints),
+          alternatives: {
+            fuel: candidates.fuel.slice(0, 12).map((f) => `${f.name} km ${f.kmAlongRoute}`),
+            cafeOrBakery: [...candidates.cafe, ...candidates.bakery].sort((a, b) => a.kmAlongRoute - b.kmAlongRoute).slice(0, 12).map((c) => `${c.name} km ${c.kmAlongRoute}`),
+            restaurant: candidates.restaurant.slice(0, 8).map((r) => `${r.name} km ${r.kmAlongRoute}`),
+          },
+        };
       }),
     },
     {

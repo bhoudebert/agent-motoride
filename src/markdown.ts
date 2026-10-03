@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { SavedRide } from "./store.ts";
 import { formatUsage } from "./usage.ts";
+import { describeParts, gpxStopsAt, rideNavigation } from "./library.ts";
 
 const EXPORT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..", "exports");
 
@@ -45,7 +46,11 @@ export function formatRideMarkdown(ride: SavedRide): string {
   push(`**${ride.distanceKm} km | ${fmtMinutes(ride.ridingMinutes)} riding | ${avg(ride.distanceKm, ride.ridingMinutes)} km/h average | ${stars(ride.rating)}**`, "");
   push(`Ride date ${ride.rideDate ?? "not set"}, departure ${ride.departure ?? "not set"}, from ${ride.home}. Saved ${ride.createdAt.slice(0, 10)}.`, "");
   if (ride.notes) push(`> ${ride.notes}`, "");
-  push(`Request: ${ride.request}`, "", `Map: <${ride.mapsUrl}>`, "");
+  const nav = rideNavigation(ride);
+  push(`Request: ${ride.request}`, "");
+  nav.links.forEach((link, i) => push(`Map${nav.links.length > 1 ? ` part ${i + 1}/${nav.links.length}` : ""}: <${link}>`));
+  for (const line of describeParts(nav.parts, ride)) push(`- ${line.trim()}`);
+  push(nav.stops.length ? `_Links carry the planned stops and pass-through points that keep Google Maps on the chosen roads._` : `_Links carry pass-through points that keep Google Maps on the chosen roads._`, "");
 
   push("## Figures", "");
   push(`- Riding time: ${fmtMinutes(ride.ridingMinutes)} (${ride.ridingMinutes} min), estimated from speed limits and bends, no stops, no traffic.`);
@@ -68,6 +73,24 @@ export function formatRideMarkdown(ride: SavedRide): string {
 
   if (x?.daylight) {
     push(`## Daylight (${ride.rideDate})`, "", `Sunrise ${x.daylight.sunrise}, sunset ${x.daylight.sunset}. Usable light ${x.daylight.firstLight} to ${x.daylight.lastLight} (${x.daylight.daylightHours} h).`, "");
+  }
+
+  if (x?.weather) {
+    const w = x.weather;
+    push(`## Weather (${w.forecastDate}, ${w.window})`, "", `Forecast as of ${w.gatheredAt.slice(0, 16).replace("T", " ")}.`, "", "| Point | km | Rain | Temp | Gusts | Sky |", "|---|---|---|---|---|---|");
+    for (const p of w.points) push(`| ${p.label} | ${p.kmAlongRoute} | ${p.dry ? "dry" : "risk"}, ${p.maxRainProbPct}% / ${p.totalRainMm} mm | ${p.minTempC}-${p.maxTempC} °C | ${p.maxGustKmh} km/h | ${p.sky} |`);
+    push("");
+  } else if (x && ride.rideDate) {
+    push("## Weather", "", "_No forecast stored: the ride date was beyond the 16-day range at the last refresh._", "");
+  }
+
+  if (x?.stopPlan) {
+    push("## Stop plan", "", `Departure ${ride.departure ?? "09:00"}, fuel at start ${x.stopPlan.fuelAtStartKm} km.`, "", "| ETA | km | Stop | Place | Where | Why |", "|---|---|---|---|---|---|");
+    for (const st of x.stopPlan.stops) push(`| ${st.eta} | ${st.kmAlongRoute} | ${st.kind} | ${cell(st.name)}${st.openingHours ? ` (${cell(st.openingHours)})` : ""} | ${cell(st.where ?? "")} | ${cell(st.reason)} |`);
+    for (const w of x.stopPlan.warnings) push("", `> ${w}`);
+    const at = gpxStopsAt(ride);
+    if (at.length) push("", `In the GPX route, as an app numbers its stages: ${at.map((s) => `${s.label} is point ${s.index} of ${s.total}`).join("; ")}.`);
+    push("");
   }
 
   if (x) {

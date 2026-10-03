@@ -1,23 +1,97 @@
 # agentRide
 
-Agentic motorcycle ride planner. You describe the ride in one sentence, for
-example:
+A motorcycle ride planner driven by an AI agent. You say what you want in one
+sentence:
 
-> Help me find a roadtrip moto, this Saturday, no rain, <250km, winding road and give me an itinerary
+> This Saturday, no rain, under 250 km, winding roads, give me an itinerary
 
-Claude decides where to look, calls tools for roads, routing, weather and
-traffic, checks the result against your constraints, and prints an itinerary
-with a Google Maps link.
+and you get a ride you can follow: the loop, the roads, estimated riding time,
+how much of it is open road, the forecast along the way, sunrise and sunset,
+fixed speed cameras, where to fuel and where to stop for coffee, and the links
+and files to put it on your phone.
+
+The agent decides where to look and what to propose. Everything it states comes
+from tools: road geometry and speed limits from OpenStreetMap, routing from
+Valhalla, forecasts from Open-Meteo, traffic from TomTom when you have a key.
+The code enforces your hard rules (no motorways unless you say so, a saved ride
+is never silently duplicated) and keeps a library of rides you liked, with
+ratings, so the next ride is different and better.
+
+It is also a working example of an agentic application: tool use, parallel
+sub-agents ("scouts"), schema-validated answers, a replayable trace of every
+step, cost accounting and a benchmark of models, and the same tools exposed
+over the Model Context Protocol.
+
+## Two ways to run it
+
+The planning model can come from two places. The tools, the library, the
+exports and the data are the same in both.
+
+| | API mode | MCP mode |
+|---|---|---|
+| What runs the agent | This app, through the Anthropic API | Claude Code (or any MCP client), using this app as a tool server |
+| What you pay with | An Anthropic API key, per token | Your Claude Code subscription; scouts still use the key if set |
+| How you talk to it | A terminal app with a menu and a `refine>` prompt | Slash commands in Claude Code, e.g. `/mcp__ride__plan-ride ...` |
+| Planning guidance | A real system prompt, schema-validated final answer | The same instructions sent as the prompt's text; free-text answer |
+| Model and effort | `RIDE_MODEL`, `RIDE_EFFORT` in `.env` | Claude Code's own model |
+| Best for | Full control, benchmarks, scripted runs | Daily use on a subscription, chatting about rides |
+
+Start with the one that matches what you have: an API key, or Claude Code.
+
+### API mode, in three commands
+
+```bash
+npm install
+cp .env.example .env            # set ANTHROPIC_API_KEY and RIDE_HOME
+npm run ride                    # start menu: plan a new ride or open a saved one
+```
+
+Or plan directly:
+
+```bash
+npm run ride -- --from "Grenoble" "this Saturday, no rain, under 250 km, winding roads"
+```
+
+### MCP mode, in three steps
+
+```bash
+npm install
+cp .env.example .env            # set RIDE_HOME; ANTHROPIC_API_KEY only if you want scouts
+claude                          # start Claude Code in this directory; approve the "ride" server
+```
+
+Then in Claude Code:
+
+```
+/mcp__ride__help
+/mcp__ride__plan-ride this Saturday, no rain, under 250 km, winding roads
+```
+
+Details for each mode: [Usage](#usage) for the terminal app, [MCP mode](#mcp-mode-the-tools-in-claude-code-or-any-mcp-client) for Claude Code.
+
+## What you get
+
+- **An itinerary** built from real data: legs with town names and main roads, distance, estimated riding time and average speed, open-road share, time at 70 km/h or more, slow-zone shares against your targets, daylight, weather by time of day, traffic, fixed cameras, a stop plan with times, navigation links.
+- **A library of saved rides**, versioned, rated, with everything above stored and refreshable, and a rule that keeps new rides from repeating old ones.
+- **Exports**: Google Maps links pinned to the chosen roads, GPX for navigation apps (Liberty Rider, Kurviger, Garmin, TomTom), a Markdown document per ride, a QR code and a phone page on your Wi-Fi.
+- **Accounting**: every run logged with tokens, cost and result; every step replayable; a model benchmark with recommendations.
 
 ## Requirements
 
 - Node.js 24 or newer. The TypeScript sources run directly, there is no build step.
-- A Claude API key from <https://platform.claude.com/>. A Claude Code or
-  claude.ai login does not work for this; the app calls the API itself and is
-  billed per token.
+- API mode: an Anthropic API key from <https://platform.claude.com/>, billed per token.
+- MCP mode: Claude Code (or another MCP client). No API key needed, except for scouts.
 - Internet access to the public data services listed under [Tools](#tools).
-- Optional: a TomTom API key (free tier at <https://developer.tomtom.com/>) to
-  enable traffic checks.
+- Optional: a TomTom API key (free tier at <https://developer.tomtom.com/>) for traffic checks.
+
+## Documentation map
+
+| Where | What |
+|---|---|
+| This README | How to install, use and configure both modes; how it works; benchmark; troubleshooting |
+| `openspec/project.md` | Project context: purpose, stack, conventions, constraints |
+| `openspec/specs/<capability>/spec.md` | What the system does, as requirements with scenarios, one file per capability |
+| `.env.example` | Every setting with its default |
 
 ## Setup
 
@@ -30,7 +104,7 @@ Then edit `.env`:
 
 | Variable | Required | Purpose |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | yes | Claude API key |
+| `ANTHROPIC_API_KEY` | API mode | Anthropic API key. In MCP mode only needed for scouts |
 | `RIDE_HOME` | no | Default start and end point, e.g. `Grenoble`. Overridden by `--from` |
 | `TOMTOM_API_KEY` | no | Enables `getTraffic`. Without it the agent reports traffic as not checked |
 | `RIDE_ALLOW_MOTORWAYS` | no | `1` to permit motorways. Default: never used |
@@ -42,6 +116,9 @@ Then edit `.env`:
 `.env` is git-ignored. Never commit it.
 
 ## Usage
+
+This section is the terminal app, API mode. For Claude Code, see
+[MCP mode](#mcp-mode-the-tools-in-claude-code-or-any-mcp-client).
 
 Two ways to start:
 
@@ -182,8 +259,11 @@ Without the prompt: `npm run ride -- --once --save-as "Vercors loop" "..."`.
 
 What is stored: name, start point, ride date and departure, waypoints, each leg
 with its coordinates, distance, time and main roads, the speed-limit profile,
-the preferences used, your requests, the itinerary text, and the route's
-footprint on a 500 m grid.
+the preferences used, your requests, the itinerary text, the exact route line,
+the route's footprint on a 500 m grid, what the planning session consumed, and,
+gathered right after the save and on every refresh: daylight, the forecast at
+four points of the route for the ride date, fixed cameras, fuel and café
+shortlists, and the stop plan.
 
 Every answer carries, next to the text, the id of the routed trip it presents
 (validated by the API against a schema). `/save` uses that id, so the saved
@@ -202,7 +282,8 @@ npm run rides -- bike range=250   # bike profile for stop planning
 npm run rides -- qr 3             # QR code of the map link
 npm run rides -- share 3          # phone page on the local Wi-Fi, until Ctrl-C
 npm run rides -- runs             # every planning session: model, tokens, cost, result
-npm run rides -- refresh 3        # route it again: updates distance, times, road mix
+npm run rides -- refresh 3        # route it again; recompute times, road mix, leg names, daylight, weather, cameras, stops, stop plan
+npm run rides -- refresh 3 --stops  # only rebuild the stop plan (after a bike profile change); instant once cached
 npm run rides -- refresh all
 npm run rides -- delete 3
 npm run rides -- clear-cache
@@ -224,13 +305,25 @@ what it reads:
 
 | In the file | What it is | Used by |
 |---|---|---|
-| Track | The exact road line from the router, one segment per leg | Apps that follow a line. This is what keeps you on the chosen roads |
-| Route | The start and each stop, in order | Apps that compute their own way between stops |
-| Waypoints | The same stops as named points | Shown as markers |
+| Track | The exact road line from the router, one segment per leg | Apps that follow a line |
+| Route | The loop's stops, the planned fuel and pause stops as named stages, and pass-through points taken from the exact line where an app would otherwise cut away (40 points by default) | Apps that compute their own path between points: Liberty Rider, Garmin, TomTom |
+| Waypoints | The stops and the planned stops as named markers, with their time | Shown as markers |
 
-Import it in a motorcycle or outdoor navigation app (Kurviger, Calimoto, OsmAnd,
-Scenic) or a Garmin or TomTom unit. When the app asks, choose to follow the
-**track**: an app that recalculates from the route may leave the planned roads.
+Import it in a motorcycle or outdoor navigation app (Liberty Rider, Kurviger,
+Calimoto, OsmAnd, Scenic) or a Garmin or TomTom unit. An app that follows the
+track keeps the exact line. An app that recomputes its own path between points
+(Liberty Rider does, by its own documentation) stays on the planned roads
+thanks to the pass-through points; one or two may still need a nudge by hand.
+
+```bash
+npm run rides -- export 6 --pins 15        # fewer route points: shorter stage list, a little more drift
+```
+
+Liberty Rider shows the route points as numbered stages without names, so the
+export, the ride view and the Markdown say where each planned stop sits in that
+list ("pause: ... route point 22 of 40") and where it is in words (name, road,
+village). The number holds as long as the file is exported with the same
+`--pins` value.
 
 Waze and Google Maps navigation cannot import GPX. For Google Maps, use the map
 link in the itinerary; for speed-camera alerts next to it, run an alert app
@@ -354,8 +447,9 @@ the runs table (`70+t%`, the first reading).
 - **Ratings steer the choice.** The agent reads the library at the start. Legs
   and rides rated 4-5 are reused as building blocks; those rated 1-2 are avoided.
   Unrated rides only count for duplicate detection.
-- **Weather is never reused.** A saved ride skips road discovery, not the
-  forecast check.
+- **Weather is never reused for planning.** A saved ride carries the last
+  forecast gathered, for reading; a new plan or an edit always checks the
+  forecast afresh for the day in question.
 
 ### Viewing and editing a saved ride
 
@@ -388,6 +482,9 @@ public servers again:
 |---|---|---|
 | Road search | 30 days | Roads rarely change, and this is the slowest call |
 | Routed trip | 7 days | Stable, but closures and map edits happen |
+| Fixed cameras, stops along a route | 30 days | Keyed by the route line, so a refresh or a replan is instant |
+| Daylight | 1 year | Astronomy does not change |
+| Place names for coordinates | 1 year | Neither do village names |
 | Weather | 1 hour | Only to avoid repeat calls within one session |
 | Traffic | never | Must be live |
 
@@ -562,7 +659,7 @@ to plan…"), with less guidance.
 | `saveRide` | Save an itinerary to the library, from a route id of this session |
 | `exportGpx` | GPX file from a route id or a saved ride |
 | `showRide` | Full view of one saved ride, as in the CLI: road mix, daylight, cameras, stops, legs, itinerary |
-| `refreshRide` | Same as `npm run rides -- refresh`: recompute figures, weather, cameras, stops and stop plan, no replanning |
+| `refreshRide` | Same as `npm run rides -- refresh`: recompute figures, weather, cameras, stops and stop plan, no replanning; `stopsOnly` rebuilds just the stop plan |
 | `exportMarkdown` | The ride's standard Markdown document, written to a file |
 | `listRides` | The library, one line per ride |
 | `getDaylight`, `getSpeedCameras`, `findStops` | Daylight, fixed cameras and stops along a routed trip, as in the CLI |
@@ -707,6 +804,7 @@ your real times differ consistently, adjust `bendFactor` in `src/tools/trip.ts`.
 | `npm run rides -- ...` | List, show, rate, export, replay and delete saved rides and runs |
 | `npm run mcp` | MCP server on stdio, for Claude Code or another MCP client |
 | `npm run mcp:smoke` | Protocol-level check of the MCP server, no model involved |
+| `node scripts/mcp-prompt.ts "<request>"` | Print the `plan-ride` prompt exactly as the server serves it |
 | `npm run smoke` | Call each tool once against the live APIs, without calling Claude. Use it to check connectivity and keys |
 | `npm run typecheck` | Type-check with `tsc --noEmit` |
 
@@ -855,6 +953,7 @@ src/
 scripts/
   smoke.ts          Live check of every tool
   mcp-smoke.ts      Protocol-level check of the MCP server
+  mcp-prompt.ts     Prints the plan-ride prompt as served
 ```
 
 The tool implementations are plain async functions with no SDK dependency.
@@ -882,6 +981,12 @@ keeps a later port to Rust or Java, or a second provider, contained.
 | Agent says the road search failed on a first try | Public Overpass servers are shared and sometimes overloaded. The tool retries five times across three public instances (main, OSM France, the main service's second entry point), which can take up to a minute, and the model retries too. Usually harmless |
 | `searchRoads` fails with "unavailable right now" | All Overpass attempts failed. Retry later |
 | Speed-limit share reported as unverified | The Valhalla speed lookup failed for that route. Distance and time are still valid |
+| Cameras or stops "last lookup failed" in a ride view | The OpenStreetMap query service was unavailable; the previous result is kept. `npm run rides -- refresh <id>` retries |
+| Camera or stop lookups take minutes | The public query service is shared and often slow. Routes are queried in chunks and dense ones are split; results are cached 30 days per route |
+| Connection refused by overpass-api.de | The main instance blocks an address temporarily after heavy use; the app falls back on the OSM France instance. It lifts by itself |
+| HTTP 403 "only available to white-listed usages" | That instance filters by User-Agent; the app sends a contact-style one (`src/http.ts`). Keep that format if you change it |
+| Claude Code still shows old behaviour after a code change | The server process is the old one; quit and relaunch Claude Code, then check `npm run rides -- runs` for a new row |
+| A stop is "route point 22 of 40" in Liberty Rider | Stages are unnamed there; the ride view gives the stop's name, road and village, and its km mark |
 | `Place not found` | None of the three geocoders knows the text. Check spelling, write it as `"street, town"`, or use `"lat,lon"` |
 | `Stopped after 40 tool rounds` | The model did not converge. Loosen the constraints or rerun |
 | `.env not found. Continuing without it.` | Informational only, printed by Node when no `.env` exists |
@@ -901,7 +1006,10 @@ Run `npm run smoke` to tell a data-service problem from a Claude API problem.
   your home town is shared by most rides and counts toward the overlap.
 - The built-in SQLite module of Node is recent; the file format is standard
   SQLite and readable by any SQLite tool.
-- Output is text, a Google Maps link and a GPX file on request. Nothing can be
-  sent to Waze.
+- Output is text, navigation links, a GPX file, a Markdown document and a
+  phone page on request. Nothing can be sent to Waze.
+- Opening hours of stops are shown but not checked against the arrival time.
+- Stop timing uses fixed breaks (10 min fuel, 15 min pause, 45 min lunch) and
+  ignores traffic.
 - Claude is the only provider. OpenAI is not implemented.
 - There are no automated tests beyond the type-check and the live smoke script.

@@ -31,7 +31,17 @@ const UNPAVED = new Set([
   "unpaved", "gravel", "fine_gravel", "dirt", "earth", "ground", "grass", "sand", "mud", "compacted", "pebblestone",
 ]);
 
-async function overpass(query: string): Promise<OverpassElement[]> {
+// The public servers limit concurrent requests per client; scouts running in
+// parallel must take turns.
+let overpassQueue: Promise<unknown> = Promise.resolve();
+
+function overpass(query: string): Promise<OverpassElement[]> {
+  const turn = overpassQueue.then(() => overpassNow(query));
+  overpassQueue = turn.catch(() => undefined);
+  return turn;
+}
+
+async function overpassNow(query: string): Promise<OverpassElement[]> {
   const errors: string[] = [];
   for (const { url, timeoutMs, waitMs } of OVERPASS_ATTEMPTS) {
     if (waitMs) await new Promise((resolve) => setTimeout(resolve, waitMs));

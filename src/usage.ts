@@ -1,3 +1,5 @@
+import type Anthropic from "@anthropic-ai/sdk";
+
 /** What one planning session consumed, accumulated over all its turns. */
 export interface RunUsage {
   model: string;
@@ -63,3 +65,29 @@ export function formatUsage(usage: RunUsage): string {
     cost === null ? "cost unknown for this model" : `about $${cost.toFixed(2)}`,
   ].join("  |  ");
 }
+
+/** Accumulate one model response into the session's usage counters. */
+export function countUsage(usage: RunUsage, message: Anthropic.Beta.BetaMessage): void {
+  usage.modelCalls++;
+  usage.inputTokens += message.usage.input_tokens;
+  usage.cacheWriteTokens += message.usage.cache_creation_input_tokens ?? 0;
+  usage.cacheReadTokens += message.usage.cache_read_input_tokens ?? 0;
+  usage.outputTokens += message.usage.output_tokens;
+  for (const block of message.content) if (block.type === "tool_use") usage.toolCalls++;
+}
+
+/** What a model response did, for the trace. */
+export function describeResponse(message: Anthropic.Beta.BetaMessage) {
+  return {
+    stopReason: message.stop_reason,
+    tools: message.content.flatMap((b) => (b.type === "tool_use" ? [b.name] : [])),
+    text: message.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("\n").slice(0, 2000),
+    tokens: {
+      in: message.usage.input_tokens,
+      cacheWrite: message.usage.cache_creation_input_tokens ?? 0,
+      cacheRead: message.usage.cache_read_input_tokens ?? 0,
+      out: message.usage.output_tokens,
+    },
+  };
+}
+

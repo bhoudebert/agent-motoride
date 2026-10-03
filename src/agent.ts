@@ -1,10 +1,12 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { EFFORT, MODEL, isLegacyThinking, requestSettings } from "./model.ts";
 import { DEFAULT_PREFERENCES, type RidePreferences } from "./preferences.ts";
-import type { RegisteredRoute, RideContext } from "./session.ts";
+import { RideAnswer } from "./schema.ts";
+import type { RegisteredRoute, RideContext, TraceEvent } from "./session.ts";
 import type { SavedRide, Store } from "./store.ts";
 import { setGeoAnchor } from "./tools/geo.ts";
 import { createTools } from "./tools/index.ts";
-import type { RunUsage } from "./usage.ts";
+import { countUsage, describeResponse, type RunUsage } from "./usage.ts";
 
 export interface RideRequest {
   home: string;
@@ -26,32 +28,12 @@ export interface CurrentRide {
   itinerary: string;
 }
 
-type Effort = "low" | "medium" | "high" | "xhigh" | "max";
-
-const MODEL = process.env.RIDE_MODEL || "claude-opus-5-5";
-const EFFORT = (process.env.RIDE_EFFORT || "high") as Effort;
-// Haiku 4.5 predates adaptive thinking and the effort setting: it takes a fixed
-// thinking budget instead, and has no refusal-fallback route.
-const LEGACY_THINKING = MODEL.startsWith("claude-haiku");
-
-/** Request settings that depend on the model generation. */
-function modelSettings() {
-  if (LEGACY_THINKING) {
-    return { thinking: { type: "enabled" as const, budget_tokens: 4000 } };
-  }
-  return {
-    thinking: { type: "adaptive" as const },
-    output_config: { effort: EFFORT },
-    // If a safety classifier declines the request, the API re-runs it on a fallback model.
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default" as const,
-  };
-}
 const MAX_ITERATIONS = 40;
 
-const SYSTEM = `You plan one-day motorcycle rides for a rider who wants an itinerary they can follow tomorrow morning.
+/** What the planner is and how it works; shared by the API planner and the MCP prompt. */
+export const SYSTEM_CORE = `You plan one-day motorcycle rides for a rider who wants an itinerary they can follow tomorrow morning.
 
-You work from real data, gathered with your tools: road geometry from OpenStreetMap, routed distances and times, hourly forecasts, and traffic when a source is configured. You decide where to look. Typically that means picking a few promising riding areas within reach of the rider's start point, finding winding roads there, assembling a loop, routing it to get the true distance, and checking the weather at the start, along the route and on the way back for the hours the rider would be at each place. If the weather or the distance rules an area out, try another one. Independent lookups can be issued together in one turn.
+You work from real data, gathered with your tools: road geometry from OpenStreetMap, routed distances and times, hourly forecasts, and traffic when a source is configured. You decide where to look. For a new leisure ride, start by sending scouts: pick two to four riding areas within reach of the start point (a town or village in the middle of promising country, not a city), and call scoutAreas once with all of them. Each scout searches its area, assembles a loop within the constraints, routes it and checks the weather, then reports a candidate with a routeId you can use directly. Compare the candidates, take the best, confirm anything a scout left unverified (weather at the hours in question, the return leg), improve it if a slow stretch can be bypassed, and present it. If no scout found a satisfying loop, send scouts to other areas or build a loop yourself with searchRoads and calculateTrip. Do not send scouts for an edit of an existing itinerary, a question, or a practical trip. Independent lookups can be issued together in one turn.
 
 What makes a good ride here is open road: time spent outside towns and villages, on roads that bend, and never on motorways. Every routed trip reports openRoadPct, the share of its distance outside built-up areas and off motorways, next to the share in zones limited to 30 km/h or less and to 31-50 km/h. Slow zones cannot be avoided completely, since every ride leaves a town and crosses villages; the job is to keep them as small as the terrain allows. The rider's percentages are targets to aim for, not pass/fail limits. Among loops that satisfy the hard constraints, prefer the one with the most open road, and when a loop is over a target, look at where its longest 30 and 50 stretches are and move or drop waypoints so the route skirts town centres instead of crossing them, then route it again. Do this before settling, and do not give up a clearly better riding area just to shave a point of slow zone. Limits come from OpenStreetMap; untagged stretches are classed by whether they lie in a built-up area.
 
@@ -67,23 +49,27 @@ The rider's constraints are hard limits: a ride described as dry must be dry alo
 
 Only state what the tools returned. If a tool fails or has no data source, say that part is unverified rather than filling it in from general knowledge. Road refs, distances, times and forecasts in the answer must come from tool results.
 
-Finish with the itinerary in plain text for a terminal:
-- one line naming the ride and why it was picked
-- departure time, total distance, estimated riding time, average riding speed, and a realistic total with breaks
-- open-road share, motorway use (should be none), and the share of distance in zones of 30 km/h or less and of 31-50 km/h against the rider's targets
-- numbered legs: road refs, towns passed, leg distance, riding time and average speed, what makes the leg worth riding
-- weather along the route by time of day
-- traffic for the planned departure: expected delay and the resulting time, or a note that it was not checked
-- the Google Maps link from the final routed loop
-- one alternative in a sentence or two, if you evaluated one
-
-Every answer that presents an itinerary ends with exactly one reference line, which the program reads when the rider saves the ride:
-Ride ref: <routeId> | <YYYY-MM-DD> | <HH:MM> | <short ride name>
-The routeId is the one returned by the routing call for the exact loop the itinerary describes, the date and time are the ride day and departure, and the name is a few words a rider would recognise the ride by. The legs, distance and link in the itinerary must be those of that routed trip.
+Lay the itinerary out for a terminal, short and scannable, no markdown headings:
+- one line: ride name, and why it was picked
+- one line: departure, total distance, estimated riding time, average speed, realistic total with breaks
+- one line: open-road share, motorway use (should be none), 30 and 50 zone shares against the rider's targets
+- legs, one per line, numbered: from -> to (town names, never bare coordinates: name the nearest village or the road), main roads, distance, riding time, average speed, and a few words on what makes the leg worth riding
+- weather along the route by time of day, one line per point
+- traffic for the planned departure, or "not checked"
+- the Google Maps link
+- one alternative in a sentence, if evaluated
+Keep explanations to the facts the rider needs; put caveats (unverified data, missed targets) in one line each, not paragraphs.
 
 The rider may then ask for changes. Treat a follow-up as an edit of the current itinerary: keep what they did not ask to change, reuse lookups you already have, and call tools again for anything the change affects (a new loop must be routed again, new places need their forecast). Answer with the full updated itinerary in the same format, opening with one line on what changed. If the follow-up is a question rather than a change, just answer it.`;
 
-function describePreferences(p: RidePreferences): string {
+/** API planner only: the final answer is validated against a schema. */
+const JSON_ANSWER = `Your final answer is a JSON object with two fields. "message" holds the full text for the rider, written for a terminal. "ride" names the routed trip the message presents: the routeId from the routing call for the exact loop the itinerary describes, the ride date and departure, and a short name a rider would recognise the ride by; it is null when the message is an answer without a new itinerary. The legs, distance and link in the itinerary must be those of that routed trip.`;
+
+export const SYSTEM = `${SYSTEM_CORE}
+
+${JSON_ANSWER}`;
+
+export function describePreferences(p: RidePreferences): string {
   return [
     p.avoidMotorways
       ? "- Motorways (autoroutes): never. This is a hard limit, including on the way out and back."
@@ -96,8 +82,6 @@ function describePreferences(p: RidePreferences): string {
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-// Tolerates markdown decoration (bold, backticks, quote marks) around the line.
-const RIDE_REF = /^[\s*`>_-]*Ride ref:[\s*`]*(r\d+)\s*\|\s*(\d{4}-\d{2}-\d{2})?\s*\|\s*(\d{1,2}:\d{2})?\s*\|\s*(.+?)[\s*`_]*$/m;
 
 function describeBaseRide(ride: SavedRide): string {
   const data = {
@@ -134,7 +118,7 @@ export interface RideSession {
   send(text: string): Promise<void>;
   /** The latest itinerary that can be saved, if the model has produced one. */
   current(): CurrentRide | undefined;
-  /** Model, effort, tokens and time consumed by this session so far. */
+  /** Model, effort, tokens and time consumed by this session so far, scouts included. */
   usage(): RunUsage;
 }
 
@@ -161,21 +145,9 @@ export async function openRide(request: RideRequest): Promise<RideSession> {
   const now = request.now ?? new Date();
   const preferences = request.preferences ?? DEFAULT_PREFERENCES;
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  const context: RideContext = {
-    store: request.store,
-    preferences,
-    home: start,
-    allowRepeat: request.allowRepeat ?? false,
-    lineage: new Set(request.baseRide ? [request.baseRide.id] : []),
-    routes: new Map(),
-  };
-  // Copied, so a mid-session switch does not leak into the caller's object.
-  context.preferences = { ...preferences };
-  const tools = createTools(context);
-  let history: Anthropic.Beta.BetaMessageParam[] = [];
   const usage: RunUsage = {
     model: MODEL,
-    effort: LEGACY_THINKING ? "n/a" : EFFORT,
+    effort: isLegacyThinking(MODEL) ? "n/a" : EFFORT,
     turns: 0,
     modelCalls: 0,
     toolCalls: 0,
@@ -185,13 +157,30 @@ export async function openRide(request: RideRequest): Promise<RideSession> {
     outputTokens: 0,
     seconds: 0,
   };
+  // The run row exists from the start so that every step can be traced against it.
+  const runId = request.store.startRun({ home: request.home, request: "", usage, costUsd: 0, result: null, rideId: null, error: null });
+  const context: RideContext = {
+    store: request.store,
+    // Copied, so a mid-session switch does not leak into the caller's object.
+    preferences: { ...preferences },
+    home: start,
+    allowRepeat: request.allowRepeat ?? false,
+    lineage: new Set(request.baseRide ? [request.baseRide.id] : []),
+    routes: new Map(),
+    runId,
+    usage,
+    trace: (event: TraceEvent) => request.store.addTrace(runId, event),
+  };
+  const tools = createTools(context, { scouts: true });
+  let history: Anthropic.Beta.BetaMessageParam[] = [];
   let current: CurrentRide | undefined;
 
   async function send(text: string): Promise<void> {
+    context.trace({ scope: "main", kind: "user", name: "message", payload: text });
     const runner = client.beta.messages.toolRunner({
       model: MODEL,
       max_tokens: 16000,
-      ...modelSettings(),
+      ...requestSettings(MODEL, EFFORT, RideAnswer),
       // Cache the growing conversation so each round and each follow-up re-reads it cheaply.
       cache_control: { type: "ephemeral" },
       system: SYSTEM,
@@ -208,16 +197,18 @@ export async function openRide(request: RideRequest): Promise<RideSession> {
     try {
       for await (const message of runner) {
         last = message;
-        usage.modelCalls++;
-        usage.inputTokens += message.usage.input_tokens;
-        usage.cacheWriteTokens += message.usage.cache_creation_input_tokens ?? 0;
-        usage.cacheReadTokens += message.usage.cache_read_input_tokens ?? 0;
-        usage.outputTokens += message.usage.output_tokens;
-        for (const block of message.content) {
-          if (block.type === "tool_use") usage.toolCalls++;
-          if (block.type === "text" && block.text.trim()) console.log(`\n${block.text.trim()}`);
+        countUsage(usage, message);
+        context.trace({ scope: "main", kind: "model", name: message.model, ms: Date.now() - started, payload: describeResponse(message) });
+        // Text before the final answer is rare (progress goes to thinking); show it as is.
+        if (message.stop_reason !== "end_turn") {
+          for (const block of message.content) {
+            if (block.type === "text" && block.text.trim()) console.log(`\n${block.text.trim()}`);
+          }
         }
       }
+    } catch (error) {
+      context.trace({ scope: "main", kind: "error", name: "turn", payload: error instanceof Error ? error.message : String(error) });
+      throw error;
     } finally {
       // Counted even when the turn fails: failed attempts cost tokens too.
       usage.seconds += (Date.now() - started) / 1000;
@@ -233,13 +224,23 @@ export async function openRide(request: RideRequest): Promise<RideSession> {
         if (messages.at(-1)?.role !== "assistant") messages.push({ role: "assistant", content: last.content });
         history = messages;
 
-        // An answer carrying a reference line is a new itinerary; anything else
-        // (a plain answer to a question) leaves the current one in place.
-        const answer = last.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("\n").trim();
-        const ref = RIDE_REF.exec(answer);
-        const route = ref && context.routes.get(ref[1]!);
-        if (ref && route) {
-          current = { route, rideDate: ref[2] ?? null, departure: ref[3] ?? null, title: ref[4]!, itinerary: answer };
+        const raw = last.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("\n").trim();
+        const answer = parseAnswer(raw);
+        console.log(`\n${answer.message.trim()}`);
+        context.trace({ scope: "main", kind: "answer", name: answer.ride ? "itinerary" : "answer", payload: answer });
+        // An answer naming a routed trip is a new itinerary; a plain answer leaves the current one in place.
+        const route = answer.ride && context.routes.get(answer.ride.routeId);
+        if (answer.ride && !route) {
+          console.error(`\nWarning: the answer refers to route ${answer.ride.routeId}, which was never routed this session; it cannot be saved.`);
+        }
+        if (answer.ride && route) {
+          current = {
+            route,
+            rideDate: answer.ride.rideDate,
+            departure: answer.ride.departure,
+            title: answer.ride.name,
+            itinerary: answer.message.trim(),
+          };
         }
         return;
       }
@@ -267,4 +268,17 @@ export async function openRide(request: RideRequest): Promise<RideSession> {
     opened = true;
   }
   return { context, send: sendWithContext, current: () => current, usage: () => ({ ...usage }) };
+}
+
+/**
+ * The API validates the answer against the schema, so this normally just
+ * parses. Should a model ever answer in prose anyway, show the prose rather
+ * than fail the turn.
+ */
+function parseAnswer(raw: string): RideAnswer {
+  try {
+    return RideAnswer.parse(JSON.parse(raw));
+  } catch {
+    return { message: raw, ride: null };
+  }
 }

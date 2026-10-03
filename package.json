@@ -11,10 +11,13 @@
     "ride": "node --env-file-if-exists=.env src/index.ts",
     "rides": "node --env-file-if-exists=.env src/rides.ts",
     "smoke": "node --env-file-if-exists=.env scripts/smoke.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "mcp": "node --env-file-if-exists=.env src/mcp.ts",
+    "mcp:smoke": "node scripts/mcp-smoke.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
+    "@modelcontextprotocol/sdk": "^1.32.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {

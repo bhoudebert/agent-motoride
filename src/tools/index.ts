@@ -1,5 +1,6 @@
 import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
+import { scoutAreas } from "../scouts.ts";
 import { registerRoute, savedRideOverlap, type RideContext } from "../session.ts";
 import { fmtCoords, haversineKm, resolvePoint } from "./geo.ts";
 import { searchRoads } from "./roads.ts";
@@ -36,26 +37,54 @@ const waypoints = z
   .max(20)
   .describe("Ordered stops, each a town, a street or address, or \"lat,lon\". First one is the start.");
 
-/** Log each call to stderr, and return the result to the model as JSON. */
-function traced<I, O>(name: string, fn: (input: I) => Promise<O>) {
+/** Log each call to stderr and to the trace, and return the result to the model as JSON. */
+function traced<I, O>(context: RideContext, scope: string, name: string, fn: (input: I) => Promise<O>) {
   return async (input: I): Promise<string> => {
     const started = Date.now();
-    process.stderr.write(`\x1b[2m  -> ${name}(${JSON.stringify(input)})\x1b[0m\n`);
+    const tag = scope === "main" ? "" : `[${scope}] `;
+    process.stderr.write(`\x1b[2m  -> ${tag}${name}(${JSON.stringify(input)})\x1b[0m\n`);
     try {
-      const result = JSON.stringify(await fn(input));
-      process.stderr.write(`\x1b[2m     ok, ${Date.now() - started} ms\x1b[0m\n`);
+      const output = await fn(input);
+      const result = JSON.stringify(output);
+      process.stderr.write(`\x1b[2m     ${tag}ok, ${Date.now() - started} ms\x1b[0m\n`);
+      context.trace({ scope, kind: "tool", name, ms: Date.now() - started, payload: { input, output } });
       return result;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      process.stderr.write(`\x1b[2m     failed: ${message}\x1b[0m\n`);
+      process.stderr.write(`\x1b[2m     ${tag}failed: ${message}\x1b[0m\n`);
+      context.trace({ scope, kind: "tool", name, ms: Date.now() - started, payload: { input, error: message } });
       throw error; // the tool runner reports it to the model as an is_error result
     }
   };
 }
 
+/** A tool as both the API runner and the MCP server see it: schema plus implementation. */
+export interface ToolDefinition {
+  name: string;
+  description: string;
+  inputSchema: z.ZodType;
+  run: (input: any) => Promise<string>;
+}
+
+export interface ToolOptions {
+  /** Trace scope: "main" for the planner, "scout:<area>" for a scout. */
+  scope?: string;
+  /** Give the planner the scoutAreas tool. Scouts never get it. */
+  scouts?: boolean;
+  /** Restrict to these tool names. */
+  only?: string[];
+}
+
+/** Tools for the API tool runner. */
+export function createTools(context: RideContext, options: ToolOptions = {}) {
+  return createToolDefinitions(context, options).map((definition) => betaZodTool(definition));
+}
+
 /** Build the tool set. Rider preferences are enforced here, not left to the model. */
-export function createTools(context: RideContext) {
+export function createToolDefinitions(context: RideContext, options: ToolOptions = {}): ToolDefinition[] {
   const { store } = context;
+  const scope = options.scope ?? "main";
+  const trace = <I, O>(name: string, fn: (input: I) => Promise<O>) => traced<I, O>(context, scope, name, fn);
   // The rider can switch motorways on or off during a session, so the rule is
   // read from the context at each call and reported back in every result,
   // rather than written into the (fixed) tool descriptions.
@@ -79,8 +108,8 @@ export function createTools(context: RideContext) {
 
   const cachedTrip = cached<CalculateTripInput, TripComputation>("calculateTrip", computeTrip, (trip) => trip.complete);
 
-  return [
-    betaZodTool({
+  const tools: ToolDefinition[] = [
+    {
       name: "listSavedRides",
       description:
         "The rider's library of saved rides near a place, with rating (1-5, null if not ridden yet), notes, waypoints and legs. Each leg has coordinates usable directly as calculateTrip waypoints, its main roads, and its own rating when the rider gave one. Call it once at the start: legs rated 4-5 are proven building blocks, rides or legs rated 1-2 are roads to stay away from, and anything already saved is ground the rider has covered.",
@@ -88,7 +117,7 @@ export function createTools(context: RideContext) {
         location: location.optional().describe("Centre of the search, default the rider's start point"),
         radiusKm: z.number().min(10).max(500).optional().describe("Default 150"),
       }),
-      run: traced("listSavedRides", async (input: { location?: string; radiusKm?: number }) => {
+      run: trace("listSavedRides", async (input: { location?: string; radiusKm?: number }) => {
         const centre = input.location ? await resolvePoint(input.location) : context.home;
         const radiusKm = input.radiusKm ?? 150;
         const rides = store
@@ -120,8 +149,8 @@ export function createTools(context: RideContext) {
           }));
         return { centre: centre.label, radiusKm, count: rides.length, rides };
       }),
-    }),
-    betaZodTool({
+    },
+    {
       name: "getWeather",
       description:
         "Hourly weather forecast for one place on one day (up to 16 days ahead): temperature, rain probability and amount, wind, gusts, sky. Call it for the start point and for several points along a candidate route, covering the hours the rider would actually be there.",
@@ -131,9 +160,9 @@ export function createTools(context: RideContext) {
         fromHour: z.number().int().min(0).max(23).optional().describe("First local hour to include, default 8"),
         toHour: z.number().int().min(0).max(23).optional().describe("Last local hour to include, default 20"),
       }),
-      run: traced("getWeather", cached("getWeather", getWeather)),
-    }),
-    betaZodTool({
+      run: trace("getWeather", cached("getWeather", getWeather)),
+    },
+    {
       name: "searchRoads",
       description:
         "Find winding paved secondary/tertiary roads and mountain passes around a place, from OpenStreetMap. Roads are ranked by curvinessDegPerKm (cumulative heading change per km: under 200 mostly straight, 200-400 flowing bends, over 400 properly twisty mountain road); areaMedianCurviness tells you how twisty the area is overall. Each road comes with `from`/`to` coordinates usable as waypoints in calculateTrip. Search around an area you expect to be good riding country, not around a city centre.",
@@ -143,9 +172,9 @@ export function createTools(context: RideContext) {
         minLengthKm: z.number().min(1).optional().describe("Ignore roads shorter than this, default 5"),
         limit: z.number().int().min(1).max(25).optional().describe("Max roads returned, default 12"),
       }),
-      run: traced("searchRoads", cached("searchRoads", searchRoads)),
-    }),
-    betaZodTool({
+      run: trace("searchRoads", cached("searchRoads", searchRoads)),
+    },
+    {
       name: "calculateTrip",
       description: `Route through waypoints in order with a motorcycle profile. Returns a routeId identifying this exact routed trip, real road distance, and per leg and in total: estimated riding time and average speed (from each road segment's speed limit and bends, without stops or traffic; the router's own pessimistic time is given as routerUpperBoundTime), main roads, and a Google Maps link. speedLimits gives openRoadPct (share of distance outside built-up areas and off motorways, the figure to maximise), km and percent in zones of 30 km/h or less and of 31-50 km/h (untagged streets in built-up areas are counted as 50 zones), above 50, and untagged open road (assumed at the legal default of its country and region), plus the longest 30 and 50 stretches by road name so you can move waypoints to bypass them. savedRides compares the route with the rider's saved rides: a verdict plus the percent of this route that runs on roads of each similar saved ride. Motorways: the result says whether the rider currently permits them (motorwaysPermitted) and whether this trip was routed with them excluded (motorwaysAvoided). When they are not permitted they are excluded whatever you pass; if usesMotorway is still true, no motorway-free route exists between those waypoints and they must be changed. When they are permitted, pass avoidMotorways false to let the router take them where faster. Use it to check every candidate loop; straight-line guesses are not reliable on winding roads.`,
       inputSchema: z.object({
@@ -156,7 +185,7 @@ export function createTools(context: RideContext) {
           .optional()
           .describe("Default true. False takes motorways where faster, and only has effect when the rider permits motorways"),
       }),
-      run: traced("calculateTrip", async (input: CalculateTripInput) => {
+      run: trace("calculateTrip", async (input: CalculateTripInput) => {
         const trip = await cachedTrip({
           waypoints: input.waypoints,
           roundTrip: input.roundTrip ?? false,
@@ -170,8 +199,8 @@ export function createTools(context: RideContext) {
           savedRides: savedRideOverlap(context, route.cells),
         };
       }),
-    }),
-    betaZodTool({
+    },
+    {
       name: "getTraffic",
       description:
         "Expected traffic along a route for a given departure time: travel time with traffic, free-flow time and the delay between them. Meant for the final loop once it is chosen on road data, not for comparing candidates. Report trafficDelayMinutes on top of the riding-time estimate from calculateTrip. May report that no traffic source is configured; in that case say so in the answer instead of estimating.",
@@ -187,9 +216,30 @@ export function createTools(context: RideContext) {
           .optional()
           .describe("Use the same value as the calculateTrip call for this route. Default true"),
       }),
-      run: traced("getTraffic", (input: Parameters<typeof getTraffic>[0]) =>
+      run: trace("getTraffic", (input: Parameters<typeof getTraffic>[0]) =>
         getTraffic({ ...input, avoidMotorways: !mayUseMotorways(input.avoidMotorways) }),
       ),
-    }),
+    },
+    {
+      name: "scoutAreas",
+      description:
+        "Send one scout per area, in parallel, to find the best loop from the start point through that area within the constraints. Each scout searches roads, assembles and routes a loop, reads its open-road and slow-zone shares, checks the weather, and reports a candidate with its routeId, which you can present directly or route again (free, cached) to refine. Use it once at the start of a new leisure ride with 2 to 4 areas; not for edits, questions or practical trips. Give each area a name and a central town or village of good riding country, not a city.",
+      inputSchema: z.object({
+        areas: z
+          .array(z.object({ name: z.string().describe("Short name for the area, e.g. Vercors"), location }))
+          .min(1)
+          .max(4),
+        rideDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("Ride day, YYYY-MM-DD"),
+        departure: z.string().describe("Planned departure time, HH:MM"),
+        maxDistanceKm: z.number().nullable().describe("Hard distance cap from the rider's request, or null"),
+        maxRidingMinutes: z.number().nullable().describe("Hard riding-time cap in minutes, or null"),
+        constraints: z.string().describe("The rider's request and constraints, in one paragraph, as scouts will not see the conversation"),
+      }),
+      run: trace("scoutAreas", (input: Parameters<typeof scoutAreas>[1]) => scoutAreas(context, input)),
+    },
   ];
+  return tools.filter((tool) => {
+    if (tool.name === "scoutAreas" && !options.scouts) return false;
+    return !options.only || options.only.includes(tool.name);
+  });
 }

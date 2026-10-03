@@ -3,11 +3,22 @@ import type { RidePreferences } from "./preferences.ts";
 import type { Store } from "./store.ts";
 import type { Point } from "./tools/geo.ts";
 import type { TripComputation } from "./tools/trip.ts";
+import type { RunUsage } from "./usage.ts";
 
 /** A candidate above this share of already-saved roads is a duplicate. */
 export const DUPLICATE_PCT = 70;
 /** A candidate above this share is worth mentioning as similar. */
 export const SIMILAR_PCT = 40;
+
+/** One step of a planning session, kept for replay. */
+export interface TraceEvent {
+  /** "main" for the planner, "scout:<area>" for a scout. */
+  scope: string;
+  kind: "user" | "model" | "tool" | "answer" | "error";
+  name: string;
+  ms?: number;
+  payload: unknown;
+}
 
 export interface RegisteredRoute {
   id: string;
@@ -26,6 +37,12 @@ export interface RideContext {
   lineage: Set<number>;
   /** Every trip routed this session, by route ID. */
   routes: Map<string, RegisteredRoute>;
+  /** Row of this session in the runs table. */
+  runId: number;
+  /** Tokens and time consumed so far, by the planner and its scouts together. */
+  usage: RunUsage;
+  /** Record one step for later replay. */
+  trace: (event: TraceEvent) => void;
 }
 
 export function registerRoute(context: RideContext, trip: TripComputation): RegisteredRoute {

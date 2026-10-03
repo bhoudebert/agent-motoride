@@ -3,6 +3,7 @@ import { routeCells } from "./geometry.ts";
 import { exportSavedRide } from "./gpx.ts";
 import { formatRideDetail, formatRideList, parseRating, tripFigures } from "./library.ts";
 import { Store } from "./store.ts";
+import { formatTrace } from "./trace.ts";
 import { setGeoAnchor } from "./tools/geo.ts";
 import { computeTrip } from "./tools/trip.ts";
 
@@ -13,6 +14,7 @@ const USAGE = `Usage: npm run rides -- <command>
   rate <id|name> <1-5> [note]           Rate a ride after riding it
   rate-leg <id|name> <leg> <1-5> [note] Rate one leg of a ride
   export <id|name> [file.gpx]           Write the ride as a GPX file (default: exports/ in the project)
+  trace <run> [--full]                  Replay a planning session step by step (run ids from "runs")
   runs [--csv]                          Every planning session with model, effort, tokens, cost and result
   refresh <id|name|all>                 Route a saved ride again and update its distance, times and road mix
   delete <id|name>                      Remove a ride and its legs
@@ -60,6 +62,13 @@ try {
       const target = ride(args[0]);
       const { path, rerouted } = await exportSavedRide(store, target, args[1]);
       console.log(`GPX written: ${path}${rerouted ? "\n(Route line was not stored for this ride; it was routed again from its waypoints.)" : ""}`);
+      break;
+    }
+    case "trace": {
+      const id = Number(args[0]);
+      const run = Number.isInteger(id) ? store.findRun(id) : undefined;
+      if (!run) throw new Error(`Which run? Give a run id from: npm run rides -- runs`);
+      console.log(formatTrace(run, store.listTrace(run.id), args.includes("--full")));
       break;
     }
     case "runs": {

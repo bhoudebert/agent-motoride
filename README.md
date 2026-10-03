@@ -169,6 +169,7 @@ At the `refine>` prompt:
 | `/motorways on\|off` | Permit or forbid motorways from now on |
 | `/settings` | Show motorways state, slow-zone targets, traffic check, model and effort |
 | `/usage` | Model, tokens, time and estimated cost of this session so far |
+| `/trace` | Replay this session's steps so far |
 | `/back` | Return to the start menu (also Ctrl-D) |
 | `/quit` | Quit the program |
 | `/help` | Command list |
@@ -180,10 +181,9 @@ with its coordinates, distance, time and main roads, the speed-limit profile,
 the preferences used, your requests, the itinerary text, and the route's
 footprint on a 500 m grid.
 
-Each itinerary ends with a line such as
-`Ride ref: r7 | 2026-10-10 | 09:00 | Vercors loop`. The program reads it to know
-which routed trip the text describes, so the saved distances and geometry come
-from the routing result, not from the model's prose.
+Every answer carries, next to the text, the id of the routed trip it presents
+(validated by the API against a schema). `/save` uses that id, so the saved
+distances and geometry come from the routing result, not from the model's prose.
 
 ### Managing the library
 
@@ -408,6 +408,91 @@ Use your own start point and your own kind of request; that is the only
 benchmark that tells you what to pick. Three runs per setup give a picture, one
 is an anecdote.
 
+## MCP mode: the tools in Claude Code or any MCP client
+
+The same tools run as a Model Context Protocol server, so a client with its own
+model can plan rides with them. In Claude Code that means planning on your
+subscription: the client's model does the thinking, this server does roads,
+routing, weather, traffic, saved rides and GPX. No API key is needed for that
+part.
+
+```bash
+npm run mcp            # starts the server on stdio (a client launches this; not for typing into)
+```
+
+### Using it from Claude Code
+
+The project ships a `.mcp.json`, so starting Claude Code in this directory
+offers the server automatically (approve it when asked). To use it from
+anywhere:
+
+```bash
+claude mcp add --scope user ride -- node --env-file-if-exists=/abs/path/agentRide/.env /abs/path/agentRide/src/mcp.ts
+```
+
+Then, in Claude Code:
+
+```
+/mcp__ride__plan-ride this Saturday, no rain, under 250 km, winding roads
+```
+
+That prompt carries the full planning instructions of the built-in planner, the
+rider's settings and today's date. Plain requests work too ("use the ride tools
+to plan…"), with less guidance.
+
+### What the server exposes
+
+| Tool | Purpose |
+|---|---|
+| `rideSettings` | Show or set the start point, motorway permission, slow-zone targets, repeat allowance. Required before anything else unless `RIDE_HOME` is set |
+| `listSavedRides`, `getWeather`, `searchRoads`, `calculateTrip`, `getTraffic` | The planner's tools, unchanged |
+| `scoutAreas` | Parallel scouts. They are model sessions of their own, so they need `ANTHROPIC_API_KEY` and bill it; `RIDE_SCOUTS=0` turns them off and the client's model explores by itself |
+| `saveRide` | Save an itinerary to the library, from a route id of this session |
+| `exportGpx` | GPX file from a route id or a saved ride |
+| `listRides` | The library, one line per ride |
+| prompt `plan-ride` | The planning instructions plus settings, as a slash command in Claude Code |
+
+Every tool call is traced like a built-in session: `npm run rides -- runs` shows
+an `mcp-client` run, `npm run rides -- trace <id>` replays it. Tokens and cost
+are unknown to the server (the client's model is not visible to it), so those
+columns stay at zero.
+
+### Differences from the built-in planner
+
+- **The client's model plans.** Quality and cost follow that model and its
+  settings, not `RIDE_MODEL`.
+- **The final answer is not schema-validated.** `saveRide` takes the route id
+  explicitly instead, and refuses an id that was not routed in the session.
+- **Settings live for the server's lifetime.** One server process is one
+  session: routed trips, start point and preferences persist across prompts
+  until the client restarts it.
+- **Logging goes to stderr.** Standard output carries the protocol.
+
+### Reloading after a change
+
+Claude Code starts the server as a child process and keeps it for the whole
+session. A change to the server code, to any module it imports, or to `.env`
+needs a **full quit and relaunch of Claude Code**; the `/mcp` reconnect action
+restarts remote servers only, not local ones (an open limitation in Claude
+Code at the time of writing). To confirm the new code is running:
+
+```bash
+npm run rides -- runs | grep mcp-client     # a new row with a fresh time = new process
+```
+
+Each server start creates a run row before any tool is called, so no new row
+means the old process is still serving. Routed trips and settings of the old
+process are gone after a restart; saved rides, cache and traces are on disk and
+survive.
+
+The `plan-ride` prompt is fetched on every use, but a conversation that already
+contains old answers keeps imitating them: start a fresh conversation after a
+prompt change.
+
+`npm run mcp:smoke` drives the server through a client without any model, as a
+check that it starts and answers. `node scripts/mcp-prompt.ts "<request>"`
+prints the `plan-ride` prompt exactly as the server serves it.
+
 ## Road preferences
 
 The goal is as much riding as possible on open road: outside towns and
@@ -489,7 +574,9 @@ your real times differ consistently, adjust `bendFactor` in `src/tools/trip.ts`.
 | Command | What it does |
 |---|---|
 | `npm run ride -- ...` | Run the agent |
-| `npm run rides -- ...` | List, show, rate and delete saved rides |
+| `npm run rides -- ...` | List, show, rate, export, replay and delete saved rides and runs |
+| `npm run mcp` | MCP server on stdio, for Claude Code or another MCP client |
+| `npm run mcp:smoke` | Protocol-level check of the MCP server, no model involved |
 | `npm run smoke` | Call each tool once against the live APIs, without calling Claude. Use it to check connectivity and keys |
 | `npm run typecheck` | Type-check with `tsc --noEmit` |
 
@@ -497,29 +584,79 @@ your real times differ consistently, adjust `bendFactor` in `src/tools/trip.ts`.
 
 ```
 CLI (src/index.ts)
-  └─ planRide (src/agent.ts)
-       └─ Claude API, SDK tool runner loop
+  └─ planner session (src/agent.ts)
+       └─ Claude API, SDK tool runner loop, schema-validated final answer
+            ├─ scoutAreas     ─> 2-4 scouts in parallel (src/scouts.ts), each its own small session
+            │                      ├─ searchRoads ─> OpenStreetMap / Overpass
+            │                      ├─ calculateTrip ─> Valhalla
+            │                      └─ getWeather ─> Open-Meteo
             ├─ listSavedRides ─> SQLite (data/agentride.db)
             ├─ getWeather     ─> Open-Meteo
             ├─ searchRoads    ─> OpenStreetMap / Overpass
             ├─ calculateTrip  ─> Valhalla
             └─ getTraffic     ─> TomTom (optional)
+       every step ─> trace table (replay with `rides trace`)
 ```
 
-1. `src/index.ts` parses arguments and maps API errors to readable messages.
-2. `src/agent.ts` sends the system prompt, your sentence, the start point and
-   today's date to Claude with the four tools attached.
+1. `src/index.ts` parses arguments, runs the menu and the refine prompt, and
+   maps API errors to readable messages.
+2. `src/agent.ts` opens a session: system prompt, the rider's settings, and the
+   tools. Nothing is sent until the first message.
 3. The SDK tool runner loops: the model asks for tool calls, the runner executes
-   them locally and returns the results, until the model answers without
-   calling a tool. The loop is capped at 40 rounds per turn.
-4. The model is instructed to treat your constraints as hard limits, to state
-   only what the tools returned, and to say so when something could not be
-   verified.
+   them locally (several at once when the model asks for several) and returns
+   the results, until the model answers without calling a tool. The loop is
+   capped at 40 rounds per turn.
+4. For a new leisure ride the model first calls `scoutAreas` with two to four
+   candidate areas. Each scout is a separate, cheaper model session with three
+   tools, running in parallel with the others; it finds roads, assembles and
+   routes a loop, checks the weather, and reports a candidate with its route
+   id. The planner compares the reports, confirms what matters, and presents
+   the best. Scouts are not used for edits, questions or commutes.
+5. The final answer is not free text: the API validates it against a schema
+   (`src/schema.ts`) with two fields, the message for the rider and the routed
+   trip it presents (route id, date, departure, name). That is what `/save`
+   stores, so the saved figures come from the routing result, never from prose.
+6. Every step, planner and scouts alike, is written to the trace table: the
+   rider's messages, each model response with its tokens and tool calls, each
+   tool call with input, output and duration, and the final answer.
 
-The agent uses adaptive thinking and enables the API's server-side refusal
+The model is instructed to treat your constraints as hard limits, to state
+only what the tools returned, and to say so when something could not be
+verified.
+
+The planner uses adaptive thinking and enables the API's server-side refusal
 fallback, which reruns the request on another model if a safety classifier
-declines it. Remove the `betas` and `fallbacks` lines in `src/agent.ts` to turn
+declines it. Remove the `betas` and `fallbacks` lines in `src/model.ts` to turn
 that off.
+
+### Scouts
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `RIDE_SCOUT_MODEL` | `claude-sonnet-5-5` | Model each scout runs on |
+| `RIDE_SCOUT_EFFORT` | `low` | Scouts do narrow, well-briefed work; low effort is enough |
+
+At most four scouts per call, each capped at 14 tool rounds. Their tokens count
+in the session's usage and cost. Road searches are serialised across scouts so
+the public OpenStreetMap server is never hit by several at once; routing and
+weather calls run in parallel. A scout that fails does not fail the plan: the
+planner is told which scout failed and why.
+
+### Replaying a session
+
+```bash
+npm run rides -- runs             # find the run id
+npm run rides -- trace 7          # timeline: messages, model calls, tool calls, scouts, answer
+npm run rides -- trace 7 --full   # with every payload in full
+```
+
+Also `/trace` at the `refine>` prompt for the current session. The timeline
+shows, per step, the elapsed time, who acted (planner or which scout), what was
+called with which input, how long it took, and a one-line reading of the result
+(for a routed trip: distance, time, open road and slow-zone shares). The summary
+at the end gives tokens, cost, scouts used, and time per tool. Use it to see
+where a run wasted calls, why a ride came out as it did, or what a scout found
+that the planner ignored.
 
 ## Tools
 
@@ -554,8 +691,13 @@ Notes:
 src/
   index.ts          CLI entry point, flags, refine prompt and its commands
   rides.ts          Library management command (list, show, rate, delete)
-  agent.ts          System prompt, model settings, tool runner loop
-  session.ts        Per-session state: routed trips, duplicate comparison
+  agent.ts          System prompt, planner session, tool runner loop
+  model.ts          Model and effort settings, per-model request parameters
+  schema.ts         Schemas of the planner's final answer and of a scout report
+  scouts.ts         Parallel scouts: one small session per candidate area
+  mcp.ts            MCP server exposing the tools, saving, export and the planning prompt
+  trace.ts          Replay of a session from the trace table
+  session.ts        Per-session state: routed trips, duplicate comparison, usage, trace
   store.ts          SQLite storage: rides, legs, lookup cache
   library.ts        Saving the current ride, formatting saved rides
   geometry.ts       Route decoding and the grid used to compare routes
@@ -572,6 +714,7 @@ src/
     traffic.ts      getTraffic
 scripts/
   smoke.ts          Live check of every tool
+  mcp-smoke.ts      Protocol-level check of the MCP server
 ```
 
 The tool implementations are plain async functions with no SDK dependency.

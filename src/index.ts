@@ -6,6 +6,7 @@ import { formatRideDetail, formatRideList, parseRating, saveCurrentRide } from "
 import { exportSavedRide, writeGpx } from "./gpx.ts";
 import { DEFAULT_PREFERENCES } from "./preferences.ts";
 import { Store, type SavedRide } from "./store.ts";
+import { formatTrace } from "./trace.ts";
 import { estimateCostUsd, formatUsage, isKnownModel } from "./usage.ts";
 
 const USAGE = `Usage: npm run ride                              Start menu: plan a new ride or open a saved one
@@ -42,6 +43,7 @@ function refineHelp(): string {
   /motorways on|off     Permit or forbid motorways from now on (default off)
   /settings             Show current settings: motorways, slow-zone targets, traffic
   /usage                Model, tokens, time and estimated cost of this session so far
+  /trace                Replay this session's steps so far (tool calls, scouts, answers)
   /back                 Leave this ride and return to the start menu (also Ctrl-D)
   /quit                 Quit the program (also exit, Ctrl-C)
   /help                 This list`;
@@ -241,9 +243,8 @@ async function plan(
   let savedItinerary: string | null = null;
   const requests: string[] = [];
 
-  // Every turn is logged to the runs table, saved ride or not, failed or not,
+  // Every turn updates the runs table, saved ride or not, failed or not,
   // so models and effort levels can be compared afterwards.
-  let runId: number | null = null;
   let runRideId: number | null = null;
   const logRun = (error: string | null) => {
     const trip = session.current()?.route.trip.result;
@@ -269,12 +270,12 @@ async function plan(
       rideId: runRideId,
       error,
     };
-    if (runId === null) runId = store.startRun(record);
-    else store.updateRun(runId, record);
+    store.updateRun(session.context.runId, record);
   };
   const send = session.send;
   session.send = async (text: string) => {
     requests.push(text.replace(/^\[Setting changed[^\]]*\]\n/, ""));
+    console.error(`\x1b[2m(run #${session.context.runId}; replay later with: npm run rides -- trace ${session.context.runId})\x1b[0m`);
     try {
       await send(text);
       logRun(null);
@@ -312,7 +313,7 @@ async function plan(
       usage: session.usage(),
     });
     runRideId = id;
-    if (runId !== null) logRun(null);
+    logRun(null);
     const version = savedId ? ` (new version of #${savedId})` : "";
     savedId = id;
     savedItinerary = ride.itinerary;
@@ -323,7 +324,7 @@ async function plan(
 
   // Refine loop: only when a person is at the terminal.
   if (!values.once && interactive) {
-    return refineLoop(session, requests, save, () => savedId, hasUnsaved, request === null);
+    return refineLoop(session, requests, save, () => savedId, hasUnsaved, () => logRun(null), request === null);
   }
   return "quit";
 }
@@ -456,6 +457,7 @@ async function refineLoop(
   save: (name?: string) => void,
   savedId: () => number | null,
   hasUnsaved: () => boolean,
+  logRunNow: () => void,
   editing = false,
 ): Promise<Outcome> {
   console.log(
@@ -542,6 +544,12 @@ async function refineLoop(
           case "usage":
             console.log(formatUsage(session.usage()));
             break;
+          case "trace": {
+            logRunNow();
+            const run = store.findRun(session.context.runId)!;
+            console.log(formatTrace(run, store.listTrace(run.id), args.includes("--full")));
+            break;
+          }
           case "gpx": {
             const file = args.join(" ") || undefined;
             const current = session.current();

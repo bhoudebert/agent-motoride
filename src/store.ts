@@ -180,6 +180,17 @@ CREATE TABLE IF NOT EXISTS runs (
   ride_id INTEGER REFERENCES rides(id) ON DELETE SET NULL,
   error TEXT
 );
+CREATE TABLE IF NOT EXISTS trace (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  run_id INTEGER NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+  at TEXT NOT NULL,
+  scope TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  name TEXT NOT NULL,
+  ms INTEGER,
+  payload TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS trace_run ON trace(run_id, id);
 CREATE TABLE IF NOT EXISTS tool_cache (
   key TEXT PRIMARY KEY,
   tool TEXT NOT NULL,
@@ -224,6 +235,23 @@ export class Store {
     this.#db
       .prepare("UPDATE runs SET request = ?, usage = ?, cost_usd = ?, result = ?, ride_id = ?, error = ? WHERE id = ?")
       .run(run.request, JSON.stringify(run.usage), run.costUsd, run.result && JSON.stringify(run.result), run.rideId, run.error, id);
+  }
+
+  addTrace(runId: number, event: { scope: string; kind: string; name: string; ms?: number; payload: unknown }): void {
+    this.#db
+      .prepare("INSERT INTO trace (run_id, at, scope, kind, name, ms, payload) VALUES (?, ?, ?, ?, ?, ?, ?)")
+      .run(runId, new Date().toISOString(), event.scope, event.kind, event.name, event.ms ?? null, JSON.stringify(event.payload ?? null));
+  }
+
+  listTrace(runId: number): Array<{ id: number; at: string; scope: string; kind: string; name: string; ms: number | null; payload: unknown }> {
+    const rows = this.#db.prepare("SELECT * FROM trace WHERE run_id = ? ORDER BY id").all(runId) as unknown as Array<{
+      id: number; at: string; scope: string; kind: string; name: string; ms: number | null; payload: string;
+    }>;
+    return rows.map((row) => ({ ...row, payload: JSON.parse(row.payload) }));
+  }
+
+  findRun(id: number): SavedRun | undefined {
+    return this.listRuns().find((run) => run.id === id);
   }
 
   listRuns(): SavedRun[] {

@@ -6,7 +6,7 @@ import type { RegisteredRoute, RideContext, TraceEvent } from "./session.ts";
 import type { SavedRide, Store } from "./store.ts";
 import { setGeoAnchor } from "./tools/geo.ts";
 import { createTools } from "./tools/index.ts";
-import { countUsage, describeResponse, type RunUsage } from "./usage.ts";
+import { countUsage, describeResponse, emptyUsage, type RunUsage } from "./usage.ts";
 
 export interface RideRequest {
   home: string;
@@ -39,7 +39,11 @@ What makes a good ride here is open road: time spent outside towns and villages,
 
 Riding time is estimated per road segment from its speed limit and how much it bends, without stops or traffic. Judge time constraints against that estimate. The router's own time is also returned as an upper bound; it is pessimistic and is not the figure to plan with.
 
-Plan on road data first. Traffic comes last: once a loop is chosen, run that final loop through the traffic check for the planned departure to see how much longer it would take, report the result next to the road-data estimate, and reconsider the departure time or the loop only if the delay is substantial.
+The rider's own yardstick is time at 70 km/h or more. Every routed trip reports timeOnRoads70PlusPct (share of riding time on roads limited to 70 or above) and timeAbove70EstimatedPct (time at an estimated 70 or more, which needs limits of 80 and up). Report both, and prefer loops where they are high.
+
+Daylight sets the frame of the day: get the sunrise and sunset for the ride day (getDaylight, also returned with every forecast) and plan departure and return inside them, with a margin before sunset. Say when the last usable light is.
+
+Plan on road data first. Once a loop is chosen, finish it: run the traffic check for the planned departure and report the delay next to the road-data estimate; list the fixed speed cameras on the loop (getSpeedCameras) as places to watch the speed; and place the stops (findStops): a fuel station within the tank range, a café or bakery at a sensible pause, lunch if the ride spans midday, each named with its position along the route. Reconsider the departure time or the loop only if traffic or daylight demands it.
 
 Not every request is a leisure ride. When the rider asks for a practical trip, such as getting to work or reaching a place by a given time, plan it as one: point to point unless they say otherwise, the quickest sensible route, on motorways when the rider permits them (route it with motorways allowed, and compare with the motorway-free route if the difference is worth showing). Skip the search for winding roads, and do not optimise open road or slow zones; report them briefly. Check the weather for the travel hours and the traffic for the departure time, since a commute lives or dies by traffic, and give the arrival time. Saved-ride overlap does not matter for such a trip: repeating a commute is the point. The itinerary is shorter: route, distance, time with and without traffic, weather, link, and the reference line.
 
@@ -52,10 +56,13 @@ Only state what the tools returned. If a tool fails or has no data source, say t
 Lay the itinerary out for a terminal, short and scannable, no markdown headings:
 - one line: ride name, and why it was picked
 - one line: departure, total distance, estimated riding time, average speed, realistic total with breaks
-- one line: open-road share, motorway use (should be none), 30 and 50 zone shares against the rider's targets
+- one line: open-road share, time at 70 km/h or more (both readings), motorway use (should be none), 30 and 50 zone shares against the rider's targets
+- one line: daylight for the day (sunrise, sunset, last light) and whether the plan fits inside it
 - legs, one per line, numbered: from -> to (town names, never bare coordinates: name the nearest village or the road), main roads, distance, riding time, average speed, and a few words on what makes the leg worth riding
 - weather along the route by time of day, one line per point
 - traffic for the planned departure, or "not checked"
+- speed cameras on the loop: km mark, road, limit; or "none mapped"
+- stops: fuel, café or bakery, lunch, each with name, km mark and detour
 - the Google Maps link
 - one alternative in a sentence, if evaluated
 Keep explanations to the facts the rider needs; put caveats (unverified data, missed targets) in one line each, not paragraphs.
@@ -68,6 +75,13 @@ const JSON_ANSWER = `Your final answer is a JSON object with two fields. "messag
 export const SYSTEM = `${SYSTEM_CORE}
 
 ${JSON_ANSWER}`;
+
+/** The lines every planner, built-in or MCP, gets about the rider's situation. */
+export function describeSituation(home: string, start: { label: string; lat: number; lon: number } | undefined, preferences: RidePreferences, now = new Date()): string {
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const where = start?.label ? `${home} (${start.label}, ${start.lat},${start.lon})` : "NOT SET";
+  return `Start and end point: ${where}\nRoad preferences:\n${describePreferences(preferences)}\nToday is ${WEEKDAYS[now.getDay()]} ${today}.`;
+}
 
 export function describePreferences(p: RidePreferences): string {
   return [
@@ -144,19 +158,7 @@ export async function openRide(request: RideRequest): Promise<RideSession> {
   const start = await setGeoAnchor(request.home);
   const now = request.now ?? new Date();
   const preferences = request.preferences ?? DEFAULT_PREFERENCES;
-  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  const usage: RunUsage = {
-    model: MODEL,
-    effort: isLegacyThinking(MODEL) ? "n/a" : EFFORT,
-    turns: 0,
-    modelCalls: 0,
-    toolCalls: 0,
-    inputTokens: 0,
-    cacheWriteTokens: 0,
-    cacheReadTokens: 0,
-    outputTokens: 0,
-    seconds: 0,
-  };
+  const usage = emptyUsage(MODEL, isLegacyThinking(MODEL) ? "n/a" : EFFORT);
   // The run row exists from the start so that every step can be traced against it.
   const runId = request.store.startRun({ home: request.home, request: "", usage, costUsd: 0, result: null, rideId: null, error: null });
   const context: RideContext = {
@@ -262,9 +264,7 @@ export async function openRide(request: RideRequest): Promise<RideSession> {
     if (opened) return send(text);
     const repeatRule = context.allowRepeat ? "\nRepeating saved rides is allowed this time." : "";
     const base = request.baseRide ? `\n\n${describeBaseRide(request.baseRide)}` : "";
-    await send(
-      `${text}\n\nStart and end point: ${request.home} (${start.label}, ${start.lat},${start.lon})\nRoad preferences:\n${describePreferences(context.preferences)}${repeatRule}\nToday is ${WEEKDAYS[now.getDay()]} ${today}.${base}`,
-    );
+    await send(`${text}\n\n${describeSituation(request.home, start, context.preferences, now)}${repeatRule}${base}`);
     opened = true;
   }
   return { context, send: sendWithContext, current: () => current, usage: () => ({ ...usage }) };

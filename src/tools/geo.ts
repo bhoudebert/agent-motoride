@@ -175,6 +175,60 @@ export async function resolvePoint(location: string): Promise<Point> {
   return point;
 }
 
+interface ReverseResponse {
+  features: Array<{
+    properties: { name?: string; street?: string; locality?: string; district?: string; city?: string; osm_key?: string; osm_value?: string };
+  }>;
+}
+
+const reverseCache = new Map<string, string>();
+/** Optional persistent cache, wired by the app to SQLite; place names do not change. */
+let persistentCache: { get(key: string): string | undefined; set(key: string, value: string): void } | undefined;
+export function usePersistentGeoCache(cache: typeof persistentCache): void {
+  persistentCache = cache;
+}
+
+/**
+ * A rider-readable name for a point given as coordinates: a pass or place name
+ * when the point is one, otherwise the road and the nearest village,
+ * e.g. "Col de Montmirat", "D 531 near Villard-de-Lans".
+ */
+export async function describeCoords(lat: number, lon: number): Promise<string> {
+  const key = `${lat.toFixed(3)},${lon.toFixed(3)}`;
+  const cached = reverseCache.get(key) ?? persistentCache?.get(`reverse|${key}`);
+  // Labels cached before postcodes were filtered out are not worth keeping.
+  if (cached && !/^\d+$/.test(cached)) return cached;
+  let label = key;
+  try {
+    const url = new URL("https://photon.komoot.io/reverse");
+    url.searchParams.set("lat", String(lat));
+    url.searchParams.set("lon", String(lon));
+    url.searchParams.set("limit", "5");
+    const features = (await fetchJson<ReverseResponse>(url.toString(), {}, 10_000)).features.map((f) => f.properties);
+    // Roads, passes and settlements make good labels; postcodes, boundaries and bare numbers do not.
+    type Props = ReverseResponse["features"][number]["properties"];
+    const clean = (p: Props) => p.osm_value !== "postcode" && !/^\d+$/.test(p.name ?? "");
+    const p =
+      features.find((f) => clean(f) && (f.osm_key === "highway" || f.osm_key === "mountain_pass")) ??
+      features.find((f) => clean(f) && f.osm_key === "place") ??
+      features.find((f) => clean(f) && Boolean(f.street)) ??
+      features[0];
+    if (p) {
+      const place = p.locality ?? p.district ?? p.city;
+      const isRoad = p.osm_key === "highway";
+      const name = p.name ?? p.street;
+      if (name && isRoad) label = place && place !== name ? `${name} near ${place}` : name;
+      else if (name) label = place && place !== name ? `${name}, ${place}` : name;
+      else if (place) label = `near ${place}`;
+    }
+  } catch {
+    // Keep the coordinates; a missing name must not fail a routing call.
+  }
+  reverseCache.set(key, label);
+  persistentCache?.set(`reverse|${key}`, label);
+  return label;
+}
+
 const toRad = (deg: number) => (deg * Math.PI) / 180;
 
 /** Great-circle distance in km. */

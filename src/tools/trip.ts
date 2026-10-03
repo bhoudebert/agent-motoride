@@ -1,6 +1,6 @@
 import { fetchJson } from "../http.ts";
 import { decodePolyline } from "../geometry.ts";
-import { bearingDeg, fmtCoords, haversineKm, resolvePoint, type Point } from "./geo.ts";
+import { bearingDeg, describeCoords, fmtCoords, haversineKm, resolvePoint, type Point } from "./geo.ts";
 
 export interface CalculateTripInput {
   waypoints: string[];
@@ -104,7 +104,12 @@ export async function resolveWaypoints(waypoints: string[], roundTrip = false): 
     throw new Error("At least two waypoints are required");
   }
   const points: Point[] = [];
-  for (const waypoint of waypoints) points.push(await resolvePoint(waypoint));
+  for (const waypoint of waypoints) {
+    const point = await resolvePoint(waypoint);
+    // A waypoint given as coordinates gets a name a rider can read on the itinerary.
+    if (/^-?\d/.test(point.label)) point.label = await describeCoords(point.lat, point.lon);
+    points.push(point);
+  }
   if (roundTrip) points.push(points[0]!);
   return points;
 }
@@ -151,6 +156,11 @@ async function profileLegs(legShapes: string[]) {
   const assumedLimits = new Map<number, number>();
   const legRoads: string[][] = [];
   const legSeconds: number[] = [];
+  // The rider's own yardstick: riding time at an estimated 70 km/h or more.
+  let secondsFast = 0;
+  let secondsOn70Plus = 0;
+  let secondsAll = 0;
+  let kmLimit70Plus = 0;
 
   for (const legShape of legShapes) {
     // Exact edge matching is fastest but occasionally fails on a valid route
@@ -196,7 +206,15 @@ async function profileLegs(legShapes: string[]) {
       const turning = turningDegPerKm(shape, edge.begin_shape_index ?? 0, edge.end_shape_index ?? 0, km);
       // In town, junctions and traffic lights cost more than bends do.
       const factor = limit <= 50 ? Math.min(bendFactor(turning), 0.85) : bendFactor(turning);
-      seconds += (km / (limit * factor)) * 3600;
+      const speed = limit * factor;
+      const edgeSeconds = (km / speed) * 3600;
+      seconds += edgeSeconds;
+      secondsAll += edgeSeconds;
+      if (speed >= 70) secondsFast += edgeSeconds;
+      if (limit >= 70) {
+        kmLimit70Plus += km;
+        secondsOn70Plus += edgeSeconds;
+      }
     }
     legSeconds.push(seconds);
     legRoads.push(
@@ -219,6 +237,12 @@ async function profileLegs(legShapes: string[]) {
     legSeconds,
     speedLimits: {
       openRoadPct: pct(kmFaster + kmOpenUnposted - kmMotorway),
+      // The rider's yardstick, "most of the time riding at 70 or more", two ways:
+      // time on roads where the limit is 70 or more, and time at an estimated 70 or more
+      // (which needs a limit of 80 or above, since bends and junctions take a few km/h off).
+      timeOnRoads70PlusPct: secondsAll === 0 ? 0 : round1((secondsOn70Plus / secondsAll) * 100),
+      timeAbove70EstimatedPct: secondsAll === 0 ? 0 : round1((secondsFast / secondsAll) * 100),
+      distanceLimit70PlusPct: pct(kmLimit70Plus),
       limit30OrLess: { km: round1(km30), pct: pct(km30) },
       limit31to50: { km: round1(km50), pct: pct(km50), ofWhichUntaggedBuiltUpKm: round1(km50Assumed) },
       limitAbove50: { km: round1(kmFaster), pct: pct(kmFaster) },

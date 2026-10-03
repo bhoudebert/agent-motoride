@@ -1,19 +1,20 @@
 import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 import { scoutAreas } from "../scouts.ts";
+import { speedCamerasAlong, stopsAlong, type StopKind } from "./along.ts";
 import { registerRoute, savedRideOverlap, type RideContext } from "../session.ts";
 import { fmtCoords, haversineKm, resolvePoint } from "./geo.ts";
 import { searchRoads } from "./roads.ts";
 import { getTraffic } from "./traffic.ts";
 import { computeTrip, type CalculateTripInput, type TripComputation } from "./trip.ts";
-import { getWeather } from "./weather.ts";
+import { getDaylight, getWeather } from "./weather.ts";
 
 // Bump when the shape of cached tool results changes, so stale entries are ignored.
-const CACHE_VERSION = 4;
+const CACHE_VERSION = 5;
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 // Roads rarely change; routes can (closures, map edits); forecasts move by the hour.
-const TTL = { searchRoads: 30 * DAY, calculateTrip: 7 * DAY, getWeather: HOUR };
+const TTL = { searchRoads: 30 * DAY, calculateTrip: 7 * DAY, getWeather: HOUR, getSpeedCameras: 30 * DAY, findStops: 30 * DAY, getDaylight: 365 * DAY };
 
 /** JSON with sorted keys, so equal inputs always give the same cache key. */
 function stableJson(value: unknown): string {
@@ -108,6 +109,20 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
 
   const cachedTrip = cached<CalculateTripInput, TripComputation>("calculateTrip", computeTrip, (trip) => trip.complete);
 
+  /** Cache lookups made along a route by the route's geometry, which outlives the session's route ids. */
+  async function cachedAlong<O>(label: string, shapes: string[], fn: () => Promise<O>): Promise<O> {
+    const tool = label.split("|")[0] as keyof typeof TTL;
+    const key = `${label}@${CACHE_VERSION}|${shapes.join("").length}:${shapes.map((s) => s.slice(0, 24) + s.slice(-24)).join("|")}`;
+    const hit = store.cacheGet<O>(key);
+    if (hit !== undefined) {
+      process.stderr.write("\x1b[2m     (from cache)\x1b[0m\n");
+      return hit;
+    }
+    const output = await fn();
+    store.cacheSet(key, tool, output, TTL[tool]);
+    return output;
+  }
+
   const tools: ToolDefinition[] = [
     {
       name: "listSavedRides",
@@ -135,6 +150,10 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
             notes: ride.notes,
             waypoints: ride.waypoints,
             roundTrip: ride.roundTrip,
+            // Gathered at save or refresh; absent on rides saved before that existed.
+            daylight: ride.extras?.daylight ?? null,
+            fixedCameras: ride.extras?.cameras.length ?? null,
+            stops: ride.extras ? Object.fromEntries(Object.entries(ride.extras.stops).map(([k, v]) => [k, v.map((s) => `${s.name} (km ${s.kmAlongRoute})`)])) : null,
             legs: ride.legs.map((leg) => ({
               leg: leg.seq,
               from: leg.from,
@@ -219,6 +238,45 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
       run: trace("getTraffic", (input: Parameters<typeof getTraffic>[0]) =>
         getTraffic({ ...input, avoidMotorways: !mayUseMotorways(input.avoidMotorways) }),
       ),
+    },
+    {
+      name: "getDaylight",
+      description:
+        "Sunrise, sunset, first and last usable light, and daylight hours for a place and a date, any date. Use it to set the departure time and to check the return is before sunset; weather results carry the same figures for the forecast day.",
+      inputSchema: z.object({ location, date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("YYYY-MM-DD") }),
+      run: trace("getDaylight", cached("getDaylight", getDaylight)),
+    },
+    {
+      name: "getSpeedCameras",
+      description:
+        "Fixed speed cameras mapped in OpenStreetMap on or beside a routed trip, with position along the route, leg, posted limit and direction. Call it for the final loop so the itinerary can warn where to watch the speed. Fixed cameras only, no mobile controls, and only those mappers recorded.",
+      inputSchema: z.object({ routeId: z.string().describe("routeId from calculateTrip") }),
+      run: trace("getSpeedCameras", async (input: { routeId: string }) => {
+        const route = context.routes.get(input.routeId);
+        if (!route) throw new Error(`Unknown routeId ${input.routeId}; route the loop with calculateTrip first.`);
+        return cachedAlong("getSpeedCameras", route.trip.shapes, () => speedCamerasAlong(route.trip.shapes, route.trip.result.legs));
+      }),
+    },
+    {
+      name: "findStops",
+      description:
+        "Fuel stations, cafés, restaurants and bakeries within a short detour of a routed trip, ordered by distance from the start, with opening hours when mapped. Use it on the final loop to place a fuel stop within the tank range and a coffee or lunch stop at a sensible point, and name them in the itinerary.",
+      inputSchema: z.object({
+        routeId: z.string().describe("routeId from calculateTrip"),
+        kinds: z.array(z.enum(["fuel", "cafe", "restaurant", "bakery"])).min(1).optional().describe("Default fuel and cafe"),
+        radiusM: z.number().int().min(50).max(2000).optional().describe("Max detour from the route in metres, default 400"),
+        limitPerKind: z.number().int().min(1).max(40).optional().describe("Default 15"),
+      }),
+      run: trace("findStops", async (input: { routeId: string; kinds?: StopKind[]; radiusM?: number; limitPerKind?: number }) => {
+        const route = context.routes.get(input.routeId);
+        if (!route) throw new Error(`Unknown routeId ${input.routeId}; route the loop with calculateTrip first.`);
+        const kinds = input.kinds ?? ["fuel", "cafe"];
+        const radiusM = input.radiusM ?? 400;
+        const limit = input.limitPerKind ?? 15;
+        return cachedAlong(`findStops|${kinds.join("+")}|${radiusM}|${limit}`, route.trip.shapes, () =>
+          stopsAlong(route.trip.shapes, route.trip.result.legs, kinds, radiusM, limit),
+        );
+      }),
     },
     {
       name: "scoutAreas",

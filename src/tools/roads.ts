@@ -21,9 +21,11 @@ interface OverpassElement {
 // so alternate between the main server and mirrors, pausing before each retry.
 const OVERPASS_ATTEMPTS: Array<{ url: string; timeoutMs: number; waitMs: number }> = [
   { url: "https://overpass-api.de/api/interpreter", timeoutMs: 45_000, waitMs: 0 },
-  { url: "https://overpass.private.coffee/api/interpreter", timeoutMs: 25_000, waitMs: 0 },
-  { url: "https://overpass-api.de/api/interpreter", timeoutMs: 45_000, waitMs: 4_000 },
-  { url: "https://overpass.kumi.systems/api/interpreter", timeoutMs: 25_000, waitMs: 0 },
+  // Worldwide instance run by OSM France; usually the quickest to answer.
+  { url: "https://overpass.openstreetmap.fr/api/interpreter", timeoutMs: 45_000, waitMs: 0 },
+  // Second entry point of the main service.
+  { url: "https://z.overpass-api.de/api/interpreter", timeoutMs: 45_000, waitMs: 2_000 },
+  { url: "https://overpass.openstreetmap.fr/api/interpreter", timeoutMs: 45_000, waitMs: 5_000 },
   { url: "https://overpass-api.de/api/interpreter", timeoutMs: 45_000, waitMs: 8_000 },
 ];
 
@@ -35,8 +37,8 @@ const UNPAVED = new Set([
 // parallel must take turns.
 let overpassQueue: Promise<unknown> = Promise.resolve();
 
-function overpass(query: string): Promise<OverpassElement[]> {
-  const turn = overpassQueue.then(() => overpassNow(query));
+export function overpass<T = OverpassElement>(query: string): Promise<T[]> {
+  const turn = overpassQueue.then(() => overpassNow(query)) as Promise<T[]>;
   overpassQueue = turn.catch(() => undefined);
   return turn;
 }
@@ -46,7 +48,7 @@ async function overpassNow(query: string): Promise<OverpassElement[]> {
   for (const { url, timeoutMs, waitMs } of OVERPASS_ATTEMPTS) {
     if (waitMs) await new Promise((resolve) => setTimeout(resolve, waitMs));
     try {
-      const data = await fetchJson<{ elements: OverpassElement[] }>(
+      const data = await fetchJson<{ elements: OverpassElement[]; remark?: string }>(
         url,
         {
           method: "POST",
@@ -55,13 +57,15 @@ async function overpassNow(query: string): Promise<OverpassElement[]> {
         },
         timeoutMs,
       );
+      // A remark means the query was cut short (timeout, memory); the result is partial or empty.
+      if (data.remark) throw new Error(`server remark: ${data.remark.slice(0, 80)}`);
       return data.elements;
     } catch (error) {
       const reason = error instanceof Error ? error.message.slice(0, 80) : String(error);
       errors.push(`${new URL(url).host}: ${reason}`);
     }
   }
-  throw new Error(`OpenStreetMap road search is unavailable right now (${errors.join("; ")}). Retry later or try a smaller radius.`);
+  throw new Error(`OpenStreetMap query service is unavailable right now (${errors.join("; ")}). Retry later or try a smaller radius.`);
 }
 
 interface RoadGroup {

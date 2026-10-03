@@ -1,8 +1,10 @@
 // Manage the saved-ride library without starting a planning session.
 import { routeCells } from "./geometry.ts";
-import { exportSavedRide } from "./gpx.ts";
-import { formatRideDetail, formatRideList, parseRating, tripFigures } from "./library.ts";
+import { exportSavedRide, savedRideGpx } from "./gpx.ts";
+import { printQr, startShareServer } from "./share.ts";
+import { enrichRide, formatRideDetail, formatRideList, parseRating, tripFigures } from "./library.ts";
 import { Store } from "./store.ts";
+import { formatRideMarkdown, writeRideMarkdown } from "./markdown.ts";
 import { formatTrace } from "./trace.ts";
 import { setGeoAnchor } from "./tools/geo.ts";
 import { computeTrip } from "./tools/trip.ts";
@@ -10,13 +12,16 @@ import { computeTrip } from "./tools/trip.ts";
 const USAGE = `Usage: npm run rides -- <command>
 
   list                                  All saved rides
-  show <id|name>                        One ride: legs, map link, itinerary
+  show <id|name> [--md]                 One ride: legs, map link, itinerary (--md: as Markdown on stdout)
+  export-md <id|name> [file.md]         Write the ride as a Markdown document (default: exports/ in the project)
   rate <id|name> <1-5> [note]           Rate a ride after riding it
   rate-leg <id|name> <leg> <1-5> [note] Rate one leg of a ride
   export <id|name> [file.gpx]           Write the ride as a GPX file (default: exports/ in the project)
+  qr <id|name>                          QR code of the ride's Google Maps link
+  share <id|name>                       Serve the ride to the phone on the local Wi-Fi (QR code), until Ctrl-C
   trace <run> [--full]                  Replay a planning session step by step (run ids from "runs")
   runs [--csv]                          Every planning session with model, effort, tokens, cost and result
-  refresh <id|name|all>                 Route a saved ride again and update its distance, times and road mix
+  refresh <id|name|all>                 Route a saved ride again: distance, times, road mix, leg names, daylight, cameras, stops
   delete <id|name>                      Remove a ride and its legs
   clear-cache                           Drop cached road, route and weather lookups
 
@@ -39,8 +44,13 @@ try {
       console.log(formatRideList(store.listRides()));
       break;
     case "show":
-      console.log(formatRideDetail(ride(args[0])));
+      console.log(args.includes("--md") ? formatRideMarkdown(ride(args[0])) : formatRideDetail(ride(args[0])));
       break;
+    case "export-md": {
+      const target = ride(args[0]);
+      console.log(`Markdown written: ${writeRideMarkdown(target, args[1])}`);
+      break;
+    }
     case "rate": {
       const target = ride(args[0]);
       const { rating, notes } = parseRating(args.slice(1));
@@ -71,10 +81,26 @@ try {
       console.log(formatTrace(run, store.listTrace(run.id), args.includes("--full")));
       break;
     }
+    case "qr": {
+      const target = ride(args[0]);
+      console.log(`${target.name}\n${target.mapsUrl}`);
+      await printQr(target.mapsUrl);
+      break;
+    }
+    case "share": {
+      const target = ride(args[0]);
+      const { gpx } = await savedRideGpx(store, target);
+      const shared = { name: target.name, mapsUrl: target.mapsUrl, itinerary: target.itinerary, gpx };
+      const { url } = await startShareServer(() => shared, Number(process.env.RIDE_SHARE_PORT) || 8787);
+      console.log(`Scan with the phone (same Wi-Fi): ${url}\nServing until Ctrl-C.`);
+      await printQr(url);
+      await new Promise(() => undefined); // until Ctrl-C
+      break;
+    }
     case "runs": {
       const runs = store.listRuns();
       const csv = args.includes("--csv");
-      const header = ["run", "date", "model", "effort", "turns", "calls", "tools", "in", "cache", "out", "secs", "cost", "km", "ride_min", "open%", "50%", "30%", "ride", "status", "request"];
+      const header = ["run", "date", "model", "effort", "turns", "calls", "tools", "in", "cache", "out", "secs", "cost", "km", "ride_min", "open%", "70+t%", "50%", "30%", "ride", "status", "request"];
       const rows = runs.map((run) => {
         const u = run.usage;
         return [
@@ -93,6 +119,7 @@ try {
           run.result?.distanceKm ?? "-",
           run.result?.ridingMinutes ?? "-",
           run.result?.openRoadPct ?? "-",
+          run.result?.time70Pct ?? "-",
           run.result?.pct50 ?? "-",
           run.result?.pct30 ?? "-",
           run.rideId ? `#${run.rideId}` : "-",
@@ -109,7 +136,7 @@ try {
         const widths = header.map((h, i) => Math.max(h.length, ...rows.map((row) => row[i]!.length)));
         const line = (row: string[]) => row.map((cell, i) => (i === row.length - 1 ? cell : cell.padEnd(widths[i]!))).join("  ");
         console.log([line(header), ...rows.map(line)].join("\n"));
-        console.log("\nin = input tokens billed at or above full rate; cache = tokens read from cache; cost = estimate in USD from list prices.");
+        console.log("\nin = input tokens billed at or above full rate; cache = tokens read from cache; cost = estimate in USD from list prices; 70+t% = share of riding time on roads limited to 70 or more.\nmcp-client rows: tokens and cost are the scouts' only (the client's model is not visible); km and shares are from the saved ride, else the last routed trip.");
       }
       break;
     }
@@ -126,6 +153,8 @@ try {
           throw new Error(`Ride #${target.id} now routes into ${trip.result.legs.length} legs instead of ${target.legs.length}; not updated.`);
         }
         store.refreshRide(target.id, tripFigures(trip, routeCells(trip.shapes)));
+        const extras = await enrichRide(store, store.findRide(String(target.id))!);
+        for (const [name, reason] of Object.entries(extras?.errors ?? {})) console.error(`  ${name}: ${reason.split(".")[0]}`);
         const fmt = (m: number) => `${Math.floor(m / 60)}h${String(m % 60).padStart(2, "0")}`;
         console.log(
           `Refreshed #${target.id} "${target.name}": ${target.distanceKm} km, ${fmt(target.ridingMinutes)} -> ${trip.result.totalDistanceKm} km, ${fmt(trip.result.totalRidingMinutes)}.` +

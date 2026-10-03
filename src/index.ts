@@ -2,9 +2,12 @@ import { createInterface } from "node:readline/promises";
 import { parseArgs } from "node:util";
 import Anthropic from "@anthropic-ai/sdk";
 import { openRide, type RideSession } from "./agent.ts";
-import { formatRideDetail, formatRideList, parseRating, saveCurrentRide } from "./library.ts";
-import { exportSavedRide, writeGpx } from "./gpx.ts";
-import { DEFAULT_PREFERENCES } from "./preferences.ts";
+import { enrichRide, formatRideDetail, formatRideList, parseRating, saveCurrentRide } from "./library.ts";
+import { exportSavedRide, savedRideGpx, writeGpx } from "./gpx.ts";
+import { writeRideMarkdown } from "./markdown.ts";
+import { printQr, startShareServer, type Shared } from "./share.ts";
+import { DEFAULT_PREFERENCES, preferencesFromEnv } from "./preferences.ts";
+import { usePersistentGeoCache } from "./tools/geo.ts";
 import { Store, type SavedRide } from "./store.ts";
 import { formatTrace } from "./trace.ts";
 import { estimateCostUsd, formatUsage, isKnownModel } from "./usage.ts";
@@ -39,6 +42,9 @@ function refineHelp(): string {
   /list                 Saved rides
   /show [id|name]       Details of a saved ride (no argument: the one loaded or saved here)
   /gpx [file.gpx]       Export the current itinerary (or the loaded ride) as a GPX file
+  /md [file.md]         Export the saved or loaded ride as a Markdown document (save first)
+  /qr                   QR code of the Google Maps link, to scan with the phone
+  /share                Page for the phone on the local Wi-Fi (map link, itinerary, GPX download) with its QR code
   /rate <1-5> [note]    Rate the ride saved or loaded in this session
   /motorways on|off     Permit or forbid motorways from now on (default off)
   /settings             Show current settings: motorways, slow-zone targets, traffic
@@ -74,8 +80,7 @@ if (values.help || (!hasRequest && !interactive)) {
   process.exit(values.help ? 0 : 1);
 }
 
-const motorwayDefault = () =>
-  Boolean(values["allow-motorways"] ?? ["1", "true"].includes(process.env.RIDE_ALLOW_MOTORWAYS ?? ""));
+const motorwayDefault = () => Boolean(values["allow-motorways"] ?? !preferencesFromEnv().avoidMotorways);
 
 /** One line stating the settings a session runs with, so nothing is implicit. */
 function describeSettings(home: string, preferences: { avoidMotorways: boolean; max30Pct: number; max50Pct: number }): string {
@@ -153,7 +158,17 @@ const prompter = (() => {
   };
 })();
 
+let shareServer: import("node:http").Server | undefined;
+let shareUrl: string | undefined;
+// Keeps the last ride served, so the share page can answer without routing again.
+let lastShared: Shared | undefined;
+
 const store = new Store();
+// Place names for coordinates never change: keep them across sessions.
+usePersistentGeoCache({
+  get: (key) => store.cacheGet<string>(key),
+  set: (key, value) => store.cacheSet(key, "reverseGeocode", value, 365 * 24 * 3_600_000),
+});
 let exitCode = 0;
 
 try {
@@ -191,6 +206,7 @@ try {
   exitCode = 1;
 } finally {
   prompter.close();
+  shareServer?.close();
   store.close();
 }
 process.exit(exitCode);
@@ -212,15 +228,12 @@ async function plan(
     throw new Error("Editing a saved ride needs a terminal and a ride to open.");
   }
 
+  const fromEnv = preferencesFromEnv();
   const preferences = {
     // Explicit choice first (menu answer or flag), then a saved ride's own setting, then the env default.
-    avoidMotorways: !(
-      allowMotorways ??
-      values["allow-motorways"] ??
-      ((baseRide && !baseRide.preferences.avoidMotorways) || ["1", "true"].includes(process.env.RIDE_ALLOW_MOTORWAYS ?? ""))
-    ),
-    max30Pct: percent("--max-30-pct", values["max-30-pct"] ?? process.env.RIDE_MAX_30_PCT, DEFAULT_PREFERENCES.max30Pct),
-    max50Pct: percent("--max-50-pct", values["max-50-pct"] ?? process.env.RIDE_MAX_50_PCT, DEFAULT_PREFERENCES.max50Pct),
+    avoidMotorways: !(allowMotorways ?? values["allow-motorways"] ?? ((baseRide && !baseRide.preferences.avoidMotorways) || !fromEnv.avoidMotorways)),
+    max30Pct: percent("--max-30-pct", values["max-30-pct"], fromEnv.max30Pct),
+    max50Pct: percent("--max-50-pct", values["max-50-pct"], fromEnv.max50Pct),
   };
 
   if (baseRide) console.error(`Working on saved ride #${baseRide.id} "${baseRide.name}".`);
@@ -249,7 +262,7 @@ async function plan(
   const logRun = (error: string | null) => {
     const trip = session.current()?.route.trip.result;
     const limits = trip?.speedLimits as
-      | { openRoadPct?: number; limit31to50?: { pct: number }; limit30OrLess?: { pct: number }; motorwayKm?: number }
+      | { openRoadPct?: number; limit31to50?: { pct: number }; limit30OrLess?: { pct: number }; motorwayKm?: number; timeOnRoads70PlusPct?: number }
       | undefined;
     const usage = session.usage();
     const record = {
@@ -265,6 +278,7 @@ async function plan(
             pct50: limits?.limit31to50?.pct ?? null,
             pct30: limits?.limit30OrLess?.pct ?? null,
             motorwayKm: limits?.motorwayKm ?? null,
+            time70Pct: limits?.timeOnRoads70PlusPct ?? null,
           }
         : null,
       rideId: runRideId,
@@ -318,6 +332,8 @@ async function plan(
     savedId = id;
     savedItinerary = ride.itinerary;
     console.log(`Saved as #${id} "${store.findRide(String(id))!.name}"${version}, ${ride.route.trip.result.totalDistanceKm} km.`);
+    // Daylight, cameras and stops for the ride view; cached lookups, so quick after a plan.
+    void enrichRide(store, store.findRide(String(id))!).catch(() => undefined);
   };
 
   if (values["save-as"]) save(values["save-as"]);
@@ -451,6 +467,32 @@ async function startMenu(): Promise<
 }
 
 /** The free prompt on the current ride. Returns whether to go back to the menu or quit. */
+/** The ride to hand to the phone: the itinerary on screen, else the saved or loaded ride. */
+async function sharedRide(session: RideSession, savedId: number | null): Promise<Shared | undefined> {
+  const current = session.current();
+  if (current) {
+    const { trip } = current.route;
+    lastShared = {
+      name: current.title,
+      mapsUrl: trip.result.mapsUrl,
+      itinerary: current.itinerary,
+      gpx: { name: current.title, description: `${trip.result.totalDistanceKm} km, about ${trip.result.totalRidingTime} riding.`, legs: trip.result.legs, shapes: trip.shapes },
+    };
+    return lastShared;
+  }
+  const ride = savedId === null ? undefined : store.findRide(String(savedId));
+  if (!ride) return undefined;
+  const { gpx } = await savedRideGpx(store, ride);
+  lastShared = { name: ride.name, mapsUrl: ride.mapsUrl, itinerary: ride.itinerary, gpx };
+  return lastShared;
+}
+
+function sharedRideSync(session: RideSession, savedId: number | null): Shared | undefined {
+  const current = session.current();
+  if (current && current.itinerary !== lastShared?.itinerary) void sharedRide(session, savedId);
+  return lastShared;
+}
+
 async function refineLoop(
   session: RideSession,
   requests: string[],
@@ -548,6 +590,43 @@ async function refineLoop(
             logRunNow();
             const run = store.findRun(session.context.runId)!;
             console.log(formatTrace(run, store.listTrace(run.id), args.includes("--full")));
+            break;
+          }
+          case "md": {
+            const id = savedId();
+            const ride = id === null ? undefined : store.findRide(String(id));
+            if (!ride) {
+              console.log("Markdown is exported from a saved ride: /save first, then /md.");
+              break;
+            }
+            if (hasUnsaved()) console.log("Note: the itinerary on screen is not saved; exporting the saved version.");
+            console.log(`Markdown written: ${writeRideMarkdown(ride, args.join(" ") || undefined)}`);
+            break;
+          }
+          case "qr": {
+            const shared = await sharedRide(session, savedId());
+            if (!shared) {
+              console.log("Nothing to show yet: no itinerary in this session.");
+              break;
+            }
+            console.log(`${shared.name}\n${shared.mapsUrl}`);
+            await printQr(shared.mapsUrl);
+            break;
+          }
+          case "share": {
+            const shared = await sharedRide(session, savedId());
+            if (!shared) {
+              console.log("Nothing to share yet: no itinerary in this session.");
+              break;
+            }
+            if (!shareUrl) {
+              const port = Number(process.env.RIDE_SHARE_PORT) || 8787;
+              const started = await startShareServer(() => sharedRideSync(session, savedId()), port);
+              shareServer = started.server;
+              shareUrl = started.url;
+            }
+            console.log(`Scan with the phone (same Wi-Fi): ${shareUrl}\nThe page follows the current itinerary and stays up until you quit.`);
+            await printQr(shareUrl);
             break;
           }
           case "gpx": {

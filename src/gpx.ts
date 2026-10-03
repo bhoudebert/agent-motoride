@@ -90,10 +90,10 @@ export function writeGpx(input: GpxInput, id: string | number, file?: string): s
 }
 
 /**
- * Export a saved ride. Rides saved before route lines were stored are routed
- * again from their waypoints, and the line is then kept for next time.
+ * The GPX content of a saved ride. Rides saved before route lines were stored
+ * are routed again from their waypoints, and the line is then kept for next time.
  */
-export async function exportSavedRide(store: Store, ride: SavedRide, file?: string): Promise<{ path: string; rerouted: boolean }> {
+export async function savedRideGpx(store: Store, ride: SavedRide): Promise<{ gpx: GpxInput; rerouted: boolean }> {
   let shapes = ride.shapes;
   let legs: GpxLeg[] = ride.legs;
   const rerouted = !shapes;
@@ -110,15 +110,19 @@ export async function exportSavedRide(store: Store, ride: SavedRide, file?: stri
     if (trip.result.legs.length === ride.legs.length) store.setRouteLine(ride.id, shapes, routeCells(shapes));
   }
   const hours = `${Math.floor(ride.ridingMinutes / 60)}h${String(ride.ridingMinutes % 60).padStart(2, "0")}`;
-  const path = writeGpx(
-    {
+  return {
+    rerouted,
+    gpx: {
       name: ride.name,
       description: `${ride.distanceKm} km, about ${hours} riding. Planned with agentRide from ${ride.home}.`,
       legs,
       shapes,
     },
-    ride.id,
-    file,
-  );
-  return { path, rerouted };
+  };
+}
+
+/** Export a saved ride as a GPX file. */
+export async function exportSavedRide(store: Store, ride: SavedRide, file?: string): Promise<{ path: string; rerouted: boolean }> {
+  const { gpx, rerouted } = await savedRideGpx(store, ride);
+  return { path: writeGpx(gpx, ride.id, file), rerouted };
 }

@@ -42,7 +42,18 @@ export interface NewRide {
   centerLon: number;
   /** What the planning session had consumed when the ride was saved. */
   usage: RunUsage | null;
+  /** Daylight, fixed cameras and stops along the route, gathered at save or refresh. */
+  extras: RideExtras | null;
   legs: Array<Omit<SavedLeg, "rating" | "notes">>;
+}
+
+export interface RideExtras {
+  gatheredAt: string;
+  daylight: { sunrise: string | null; sunset: string | null; firstLight: string | null; lastLight: string | null; daylightHours: number } | null;
+  cameras: Array<{ kmAlongRoute: number; leg: number; limitKmh: number | string | null; direction: string | null; coords: string }>;
+  stops: Record<string, Array<{ kmAlongRoute: number; leg: number; name: string; openingHours: string | null; detourM: number }>>;
+  /** Lookups that failed, by name, with the reason; a refresh retries them. */
+  errors: Record<string, string>;
 }
 
 /** One planning session, logged whether or not its ride was saved. */
@@ -59,6 +70,7 @@ export interface RunRecord {
     pct50: number | null;
     pct30: number | null;
     motorwayKm: number | null;
+    time70Pct?: number | null;
   } | null;
   rideId: number | null;
   error: string | null;
@@ -101,6 +113,7 @@ interface RideRow {
   notes: string | null;
   usage: string | null;
   shapes: string | null;
+  extras: string | null;
 }
 
 interface RunRow {
@@ -212,7 +225,7 @@ export class Store {
     this.#db.exec(SCHEMA);
     // Databases created before usage tracking lack this column.
     const columns = this.#db.prepare("PRAGMA table_info(rides)").all() as Array<{ name: string }>;
-    for (const name of ["usage", "shapes"]) {
+    for (const name of ["usage", "shapes", "extras"]) {
       if (!columns.some((column) => column.name === name)) this.#db.exec(`ALTER TABLE rides ADD COLUMN ${name} TEXT`);
     }
   }
@@ -275,15 +288,15 @@ export class Store {
       const { lastInsertRowid } = this.#db
         .prepare(
           `INSERT INTO rides (name, created_at, parent_id, home, ride_date, departure, distance_km, riding_minutes,
-             waypoints, round_trip, speed_limits, preferences, request, itinerary, maps_url, cells, center_lat, center_lon, usage, shapes)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             waypoints, round_trip, speed_limits, preferences, request, itinerary, maps_url, cells, center_lat, center_lon, usage, shapes, extras)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           ride.name, new Date().toISOString(), ride.parentId, ride.home, ride.rideDate, ride.departure,
           ride.distanceKm, ride.ridingMinutes, JSON.stringify(ride.waypoints), ride.roundTrip ? 1 : 0,
           JSON.stringify(ride.speedLimits), JSON.stringify(ride.preferences), ride.request, ride.itinerary,
           ride.mapsUrl, JSON.stringify(ride.cells), ride.centerLat, ride.centerLon,
-          ride.usage && JSON.stringify(ride.usage), ride.shapes && JSON.stringify(ride.shapes),
+          ride.usage && JSON.stringify(ride.usage), ride.shapes && JSON.stringify(ride.shapes), ride.extras && JSON.stringify(ride.extras),
         );
       const id = Number(lastInsertRowid);
       const insertLeg = this.#db.prepare(
@@ -327,6 +340,7 @@ export class Store {
       centerLon: row.center_lon,
       usage: row.usage ? JSON.parse(row.usage) : null,
       shapes: row.shapes ? JSON.parse(row.shapes) : null,
+      extras: row.extras ? JSON.parse(row.extras) : null,
       rating: row.rating,
       notes: row.notes,
       legs: legs.map((leg) => ({
@@ -408,6 +422,10 @@ export class Store {
       this.#db.exec("ROLLBACK");
       throw error;
     }
+  }
+
+  setExtras(id: number, extras: RideExtras): void {
+    this.#db.prepare("UPDATE rides SET extras = ? WHERE id = ?").run(JSON.stringify(extras), id);
   }
 
   /** Attach the exact route line to a ride saved without one. */

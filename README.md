@@ -165,6 +165,9 @@ At the `refine>` prompt:
 | `/list` | Saved rides |
 | `/show [id\|name]` | Legs, main roads, map link and full itinerary of a saved ride. No argument: the ride loaded or saved in this session |
 | `/gpx [file]` | Export the itinerary on screen, or the loaded ride, as a GPX file |
+| `/md [file]` | Markdown document of the saved ride of this session |
+| `/qr` | QR code of the Google Maps link, to scan with the phone |
+| `/share` | Page for the phone on the local Wi-Fi: map link, itinerary, GPX download, with its QR code |
 | `/rate <1-5> [note]` | Rate the ride saved or loaded in this session |
 | `/motorways on\|off` | Permit or forbid motorways from now on |
 | `/settings` | Show motorways state, slow-zone targets, traffic check, model and effort |
@@ -193,6 +196,9 @@ npm run rides -- show 3
 npm run rides -- rate 3 5 "superb, Col de Rousset empty"
 npm run rides -- rate-leg 3 2 2 "gravel patches"
 npm run rides -- export 3         # GPX file for a GPS app
+npm run rides -- export-md 3      # Markdown document, the standard full view
+npm run rides -- qr 3             # QR code of the map link
+npm run rides -- share 3          # phone page on the local Wi-Fi, until Ctrl-C
 npm run rides -- runs             # every planning session: model, tokens, cost, result
 npm run rides -- refresh 3        # route it again: updates distance, times, road mix
 npm run rides -- refresh all
@@ -231,6 +237,64 @@ link in the itinerary; for speed-camera alerts next to it, run an alert app
 Rides saved before this feature did not store the route line. Exporting one
 routes it again from its waypoints and then keeps the line; the result can
 differ slightly from the original if map data changed in between.
+
+### Exporting a ride as Markdown
+
+```bash
+npm run rides -- export-md 6            # writes exports/6-<name>.md
+npm run rides -- export-md 6 ~/rides/eau-d-heure.md
+npm run rides -- show 6 --md            # same document on stdout
+```
+
+Also `/md [file]` at the `refine>` prompt (on the saved ride of the session),
+`exportMarkdown` and `/mcp__ride__export-md` in MCP mode.
+
+The document is the standard full view of a ride, in a fixed layout: title and
+headline figures, date and start, request, map link, figures, road mix with the
+70 km/h readings, legs table with main roads and ratings, daylight, fixed
+cameras (one line per spot, doubled entries marked), fuel and café stops with
+opening hours, planning metadata, and the itinerary text as the planner wrote
+it. Plain Markdown with tables, so it versions cleanly in git next to the GPX.
+
+### Handing a ride to the phone
+
+- **`/qr`** (or `npm run rides -- qr 3`) prints a QR code of the Google Maps
+  link. Scan it, tap, navigate.
+- **`/share`** (or `npm run rides -- share 3`) starts a small web page on your
+  computer, reachable from a phone on the same Wi-Fi, and prints its QR code.
+  The page has the map link, the itinerary text and a GPX download. It follows
+  the current itinerary while the session runs and stops when you quit. Nothing
+  leaves the local network. Port `RIDE_SHARE_PORT`, default 8787.
+
+### Cameras, stops and daylight
+
+Once a loop is chosen, the agent completes it with three more lookups, all from
+free sources:
+
+- **Fixed speed cameras** on or beside the route, from OpenStreetMap, with the
+  km mark along the ride, the leg, the posted limit and direction. Fixed
+  installations only: mobile controls are not in any map, and an unmapped
+  camera is not shown. In France exact positions are legally sensitive; the
+  itinerary presents them as places to watch the speed.
+- **Stops**: fuel stations, cafés, restaurants and bakeries within a short
+  detour, spread along the whole route (not only the first town), with opening
+  hours when mapped. The agent places a fuel stop within tank range and a pause
+  at a sensible point, and names them with their km mark.
+- **Daylight**: sunrise, sunset, first and last usable light for the ride day,
+  computed locally for any date, so a ride in 2027 gets correct times (winter
+  and summer time included). The agent plans departure and return inside it.
+
+### Time at 70 km/h or more
+
+Every routed trip reports two readings of the rider's own yardstick:
+
+| Figure | Meaning |
+|---|---|
+| time on 70+ roads | share of riding time on roads limited to 70 km/h or more |
+| time at 70+ estimated | share of riding time at an estimated 70 or more, which needs limits of 80 and up since bends and junctions take a few km/h off |
+
+Both appear in the itinerary, in the saved-ride view ("Road mix" line) and in
+the runs table (`70+t%`, the first reading).
 
 ### How saved rides shape later planning
 
@@ -449,13 +513,29 @@ to plan…"), with less guidance.
 | `scoutAreas` | Parallel scouts. They are model sessions of their own, so they need `ANTHROPIC_API_KEY` and bill it; `RIDE_SCOUTS=0` turns them off and the client's model explores by itself |
 | `saveRide` | Save an itinerary to the library, from a route id of this session |
 | `exportGpx` | GPX file from a route id or a saved ride |
+| `showRide` | Full view of one saved ride, as in the CLI: road mix, daylight, cameras, stops, legs, itinerary |
+| `exportMarkdown` | The ride's standard Markdown document, written to a file |
 | `listRides` | The library, one line per ride |
-| prompt `plan-ride` | The planning instructions plus settings, as a slash command in Claude Code |
+| `getDaylight`, `getSpeedCameras`, `findStops` | Daylight, fixed cameras and stops along a routed trip, as in the CLI |
+| prompts | Slash commands in Claude Code, see below |
+
+| Slash command | Does |
+|---|---|
+| `/mcp__ride__plan-ride <request>` | Plan a new leisure ride with the full planning instructions |
+| `/mcp__ride__commute <destination> <when> [from]` | Practical trip, motorways permitted, traffic checked |
+| `/mcp__ride__edit-ride <id\|name> <change>` | Load a saved ride and apply a change, or ask about it |
+| `/mcp__ride__save-ride [name]` | Save the itinerary on the table |
+| `/mcp__ride__export-gpx [id\|name]` | GPX file of the current or a saved ride |
+| `/mcp__ride__show-ride <id\|name>` | Everything stored about one ride |
+| `/mcp__ride__export-md <id\|name> [file]` | Markdown document of a ride, written and shown |
+| `/mcp__ride__list-rides` | The library |
+| `/mcp__ride__help` | What the server can do, no tool call |
 
 Every tool call is traced like a built-in session: `npm run rides -- runs` shows
-an `mcp-client` run, `npm run rides -- trace <id>` replays it. Tokens and cost
-are unknown to the server (the client's model is not visible to it), so those
-columns stay at zero.
+an `mcp-client` run, `npm run rides -- trace <id>` replays it. In those rows the
+request is the text given to `plan-ride`, the ride figures come from the saved
+ride (else the last routed trip), and tokens and cost are the scouts' only: the
+client's model is not visible to the server, so its own tokens are not counted.
 
 ### Differences from the built-in planner
 
@@ -664,7 +744,10 @@ that the planner ignored.
 |---|---|---|---|---|
 | `getWeather` | `location`, `date`, `fromHour?`, `toHour?` | Hourly temperature, rain probability and amount, wind, gusts, sky, plus a day summary with a `dry` flag | [Open-Meteo](https://open-meteo.com/), up to 16 days ahead | none |
 | `searchRoads` | `location`, `radiusKm?` (5 to 40, default 25), `minLengthKm?`, `limit?` | Paved secondary and tertiary roads ranked by curviness, with end coordinates usable as waypoints, and named mountain passes | OpenStreetMap via [Overpass](https://overpass-api.de/) | none |
-| `calculateTrip` | `waypoints`, `roundTrip?`, `avoidMotorways?` | Routed distance, estimated riding time and average speed per leg and in total, motorway and toll flags, open-road share and speed-limit profile (km and % at 30 or less, 31-50, above 50, untagged open road), main roads per leg, comparison with saved rides, Google Maps link | [Valhalla](https://valhalla1.openstreetmap.de/), motorcycle profile | none |
+| `calculateTrip` | `waypoints`, `roundTrip?`, `avoidMotorways?` | Routed distance, estimated riding time and average speed per leg and in total, motorway and toll flags, open-road share and speed-limit profile (km and % at 30 or less, 31-50, above 50, untagged open road), share of riding time on roads limited to 70 or more and at an estimated 70 or more, main roads per leg, comparison with saved rides, Google Maps link | [Valhalla](https://valhalla1.openstreetmap.de/), motorcycle profile | none |
+| `getDaylight` | `location`, `date` | Sunrise, sunset, first and last light, daylight hours, any date | Computed locally (NOAA solar equations), timezone from Open-Meteo | none |
+| `getSpeedCameras` | `routeId` | Fixed speed cameras on or beside the routed trip: km mark, leg, limit, direction | OpenStreetMap via Overpass | none |
+| `findStops` | `routeId`, `kinds?`, `radiusM?`, `limitPerKind?` | Fuel stations, cafés, restaurants, bakeries within a short detour, spread along the route, with opening hours when mapped | OpenStreetMap via Overpass | none |
 | `listSavedRides` | `location?`, `radiusKm?` | Saved rides near a place with ratings, notes and legs | local SQLite file | none |
 | `getTraffic` | `waypoints`, `departAt`, `roundTrip?` | Travel time, free-flow time and traffic delay for that departure | TomTom Routing | `TOMTOM_API_KEY` |
 
@@ -702,15 +785,18 @@ src/
   library.ts        Saving the current ride, formatting saved rides
   geometry.ts       Route decoding and the grid used to compare routes
   gpx.ts            GPX export of a ride
+  share.ts          QR codes and the local web page for the phone
+  markdown.ts       Markdown document of a ride
   preferences.ts    Rider preferences and their defaults
   usage.ts          Per-session token and time accounting, cost estimate
   http.ts           fetch wrapper with timeout and error text
   tools/
     index.ts        Tool schemas and descriptions shown to the model
     geo.ts          Geocoding, distance and bearing helpers
-    weather.ts      getWeather
+    weather.ts      getWeather, getDaylight
     roads.ts        searchRoads
     trip.ts         calculateTrip
+    along.ts        Speed cameras and stops along a routed trip
     traffic.ts      getTraffic
 scripts/
   smoke.ts          Live check of every tool
@@ -739,7 +825,7 @@ keeps a later port to Rust or Java, or a second provider, contained.
 | `Claude API rate limit hit` | Wait a minute, or lower `RIDE_EFFORT` |
 | `No start point...` | Pass `--from` or set `RIDE_HOME` |
 | Agent says "traffic not checked" | Expected without `TOMTOM_API_KEY`. Add the key to `.env` to enable traffic |
-| Agent says the road search failed on a first try | Public Overpass servers are shared and sometimes overloaded. The tool retries five times across three servers, which can take up to a minute, and the model retries too. Usually harmless |
+| Agent says the road search failed on a first try | Public Overpass servers are shared and sometimes overloaded. The tool retries five times across three public instances (main, OSM France, the main service's second entry point), which can take up to a minute, and the model retries too. Usually harmless |
 | `searchRoads` fails with "unavailable right now" | All Overpass attempts failed. Retry later |
 | Speed-limit share reported as unverified | The Valhalla speed lookup failed for that route. Distance and time are still valid |
 | `Place not found` | None of the three geocoders knows the text. Check spelling, write it as `"street, town"`, or use `"lat,lon"` |

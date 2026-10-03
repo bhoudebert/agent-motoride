@@ -27,7 +27,7 @@ function summariseTool(name: string, payload: any): string {
         .join(", ")}`;
     case "calculateTrip": {
       const s = o.speedLimits ?? {};
-      return `${o.routeId}: ${o.totalDistanceKm} km, ${o.totalRidingTime}, open ${s.openRoadPct ?? "?"}%, 50z ${s.limit31to50?.pct ?? "?"}%, 30z ${s.limit30OrLess?.pct ?? "?"}%${o.usesMotorway ? ", MOTORWAY" : ""} | ${clip(o.savedRides?.verdict ?? "", 60)}`;
+      return `${o.routeId}: ${o.totalDistanceKm} km, ${o.totalRidingTime}, open ${s.openRoadPct ?? "?"}%, 70+ ${s.timeOnRoads70PlusPct ?? "?"}%t, 50z ${s.limit31to50?.pct ?? "?"}%, 30z ${s.limit30OrLess?.pct ?? "?"}%${o.usesMotorway ? ", MOTORWAY" : ""} | ${clip(o.savedRides?.verdict ?? "", 60)}`;
     }
     case "getWeather": {
       const s = o.summary ?? {};
@@ -35,6 +35,15 @@ function summariseTool(name: string, payload: any): string {
     }
     case "listSavedRides":
       return `${o.count} saved ride(s) within ${o.radiusKm} km`;
+    case "getDaylight":
+      return `${o.location}: sunrise ${o.sunrise}, sunset ${o.sunset}, last light ${o.lastLight}`;
+    case "getSpeedCameras":
+      return `${o.count} fixed camera(s)${o.count ? `: ${o.cameras.slice(0, 4).map((c: any) => `km ${c.kmAlongRoute}${c.limitKmh ? ` @${c.limitKmh}` : ""}`).join(", ")}` : ""}`;
+    case "findStops":
+      return Object.entries(o)
+        .filter(([k]) => k !== "totalKm")
+        .map(([k, v]: [string, any]) => `${k} ${v.found} found`)
+        .join(", ");
     case "getTraffic":
       return o.available === false ? "no traffic source" : `delay ${o.trafficDelayMinutes} min, ${o.travelMinutes} min with traffic`;
     case "scoutAreas":

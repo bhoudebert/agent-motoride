@@ -21,6 +21,10 @@ export interface RunUsage {
   seconds: number;
 }
 
+export function emptyUsage(model: string, effort: string): RunUsage {
+  return { model, effort, turns: 0, modelCalls: 0, toolCalls: 0, inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0, seconds: 0 };
+}
+
 // USD per million tokens: input, output, cache read, cache write (5-minute cache).
 // List prices as of 2026-09; update here when they change.
 const PRICES: Array<[prefix: string, input: number, output: number, cacheRead: number, cacheWrite: number]> = [

@@ -7,6 +7,8 @@ import { getTraffic } from "./traffic.ts";
 import { computeTrip, type CalculateTripInput, type TripComputation } from "./trip.ts";
 import { getWeather } from "./weather.ts";
 
+// Bump when the shape of cached tool results changes, so stale entries are ignored.
+const CACHE_VERSION = 4;
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 // Roads rarely change; routes can (closures, map edits); forecasts move by the hour.
@@ -27,12 +29,12 @@ function stableJson(value: unknown): string {
 
 const location = z
   .string()
-  .describe('Place name ("Florac", "Vannes, France") or "lat,lon" coordinates');
+  .describe('Town ("Florac", "Vannes, France"), street or address ("Avenue de Bretagne, Lille"), or "lat,lon" coordinates');
 const waypoints = z
   .array(location)
   .min(1)
   .max(20)
-  .describe("Ordered stops, each a place name or \"lat,lon\". First one is the start.");
+  .describe("Ordered stops, each a town, a street or address, or \"lat,lon\". First one is the start.");
 
 /** Log each call to stderr, and return the result to the model as JSON. */
 function traced<I, O>(name: string, fn: (input: I) => Promise<O>) {
@@ -53,16 +55,17 @@ function traced<I, O>(name: string, fn: (input: I) => Promise<O>) {
 
 /** Build the tool set. Rider preferences are enforced here, not left to the model. */
 export function createTools(context: RideContext) {
-  const { preferences, store } = context;
-  const motorwayRule = preferences.avoidMotorways
-    ? "Motorways are always avoided for this rider; if usesMotorway is still true, no motorway-free route exists between those waypoints and they must be changed."
-    : "Set avoidMotorways to keep off motorways.";
+  const { store } = context;
+  // The rider can switch motorways on or off during a session, so the rule is
+  // read from the context at each call and reported back in every result,
+  // rather than written into the (fixed) tool descriptions.
+  const mayUseMotorways = (requested: boolean | undefined) => !context.preferences.avoidMotorways && requested === false;
 
   /** Serve a tool result from the SQLite cache when a fresh one exists. */
   function cached<I, O>(tool: keyof typeof TTL, fn: (input: I) => Promise<O>, keep: (output: O) => boolean = () => true) {
     return async (input: I): Promise<O> => {
       // Place names resolve relative to the start point, so it is part of the key.
-      const key = `${tool}|${fmtCoords(context.home)}|${stableJson(input)}`;
+      const key = `${tool}@${CACHE_VERSION}|${fmtCoords(context.home)}|${stableJson(input)}`;
       const hit = store.cacheGet<O>(key);
       if (hit !== undefined) {
         process.stderr.write("\x1b[2m     (from cache)\x1b[0m\n");
@@ -144,26 +147,34 @@ export function createTools(context: RideContext) {
     }),
     betaZodTool({
       name: "calculateTrip",
-      description: `Route through waypoints in order with a motorcycle profile and return real road distance and riding time (stops excluded), per leg and in total, with each leg's main roads, plus a Google Maps link. Returns a routeId that identifies this exact routed trip. Also returns speedLimits: km and percent of the route posted at 30 km/h or less, at 31-50, above 50, and unposted (no limit tagged in OpenStreetMap, typically open road at the national default), with the longest 30 km/h stretches by road name so you can move waypoints to bypass them. savedRides compares the route with the rider's saved rides: a verdict plus the percent of this route that runs on roads of each similar saved ride. ${motorwayRule} Use it to check every candidate loop; straight-line guesses are not reliable on winding roads.`,
+      description: `Route through waypoints in order with a motorcycle profile. Returns a routeId identifying this exact routed trip, real road distance, and per leg and in total: estimated riding time and average speed (from each road segment's speed limit and bends, without stops or traffic; the router's own pessimistic time is given as routerUpperBoundTime), main roads, and a Google Maps link. speedLimits gives openRoadPct (share of distance outside built-up areas and off motorways, the figure to maximise), km and percent in zones of 30 km/h or less and of 31-50 km/h (untagged streets in built-up areas are counted as 50 zones), above 50, and untagged open road (assumed at the legal default of its country and region), plus the longest 30 and 50 stretches by road name so you can move waypoints to bypass them. savedRides compares the route with the rider's saved rides: a verdict plus the percent of this route that runs on roads of each similar saved ride. Motorways: the result says whether the rider currently permits them (motorwaysPermitted) and whether this trip was routed with them excluded (motorwaysAvoided). When they are not permitted they are excluded whatever you pass; if usesMotorway is still true, no motorway-free route exists between those waypoints and they must be changed. When they are permitted, pass avoidMotorways false to let the router take them where faster. Use it to check every candidate loop; straight-line guesses are not reliable on winding roads.`,
       inputSchema: z.object({
         waypoints,
         roundTrip: z.boolean().optional().describe("Return to the first waypoint at the end, default false"),
-        avoidMotorways: z.boolean().optional().describe("Keep off motorways, default true"),
+        avoidMotorways: z
+          .boolean()
+          .optional()
+          .describe("Default true. False takes motorways where faster, and only has effect when the rider permits motorways"),
       }),
       run: traced("calculateTrip", async (input: CalculateTripInput) => {
         const trip = await cachedTrip({
           waypoints: input.waypoints,
           roundTrip: input.roundTrip ?? false,
-          avoidMotorways: preferences.avoidMotorways || (input.avoidMotorways ?? true),
+          avoidMotorways: !mayUseMotorways(input.avoidMotorways),
         });
         const route = registerRoute(context, trip);
-        return { routeId: route.id, ...trip.result, savedRides: savedRideOverlap(context, route.cells) };
+        return {
+          routeId: route.id,
+          motorwaysPermitted: !context.preferences.avoidMotorways,
+          ...trip.result,
+          savedRides: savedRideOverlap(context, route.cells),
+        };
       }),
     }),
     betaZodTool({
       name: "getTraffic",
       description:
-        "Expected traffic delay along a route for a given departure time. May report that no traffic source is configured; in that case say so in the answer instead of estimating.",
+        "Expected traffic along a route for a given departure time: travel time with traffic, free-flow time and the delay between them. Meant for the final loop once it is chosen on road data, not for comparing candidates. Report trafficDelayMinutes on top of the riding-time estimate from calculateTrip. May report that no traffic source is configured; in that case say so in the answer instead of estimating.",
       inputSchema: z.object({
         waypoints,
         departAt: z
@@ -171,9 +182,13 @@ export function createTools(context: RideContext) {
           .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/)
           .describe("Local departure date-time, e.g. 2026-10-03T09:00:00"),
         roundTrip: z.boolean().optional().describe("Return to the first waypoint at the end, default false"),
+        avoidMotorways: z
+          .boolean()
+          .optional()
+          .describe("Use the same value as the calculateTrip call for this route. Default true"),
       }),
       run: traced("getTraffic", (input: Parameters<typeof getTraffic>[0]) =>
-        getTraffic({ ...input, avoidMotorways: preferences.avoidMotorways }),
+        getTraffic({ ...input, avoidMotorways: !mayUseMotorways(input.avoidMotorways) }),
       ),
     }),
   ];

@@ -4,9 +4,9 @@ import type { RegisteredRoute, RideContext } from "./session.ts";
 import type { SavedRide, Store } from "./store.ts";
 import { setGeoAnchor } from "./tools/geo.ts";
 import { createTools } from "./tools/index.ts";
+import type { RunUsage } from "./usage.ts";
 
 export interface RideRequest {
-  prompt: string;
   home: string;
   store: Store;
   preferences?: RidePreferences;
@@ -28,15 +28,38 @@ export interface CurrentRide {
 
 type Effort = "low" | "medium" | "high" | "xhigh" | "max";
 
-const MODEL = process.env.RIDE_MODEL ?? "claude-opus-5-5";
-const EFFORT = (process.env.RIDE_EFFORT ?? "high") as Effort;
+const MODEL = process.env.RIDE_MODEL || "claude-opus-5-5";
+const EFFORT = (process.env.RIDE_EFFORT || "high") as Effort;
+// Haiku 4.5 predates adaptive thinking and the effort setting: it takes a fixed
+// thinking budget instead, and has no refusal-fallback route.
+const LEGACY_THINKING = MODEL.startsWith("claude-haiku");
+
+/** Request settings that depend on the model generation. */
+function modelSettings() {
+  if (LEGACY_THINKING) {
+    return { thinking: { type: "enabled" as const, budget_tokens: 4000 } };
+  }
+  return {
+    thinking: { type: "adaptive" as const },
+    output_config: { effort: EFFORT },
+    // If a safety classifier declines the request, the API re-runs it on a fallback model.
+    betas: ["server-side-fallback-2026-07-01"],
+    fallbacks: "default" as const,
+  };
+}
 const MAX_ITERATIONS = 40;
 
 const SYSTEM = `You plan one-day motorcycle rides for a rider who wants an itinerary they can follow tomorrow morning.
 
 You work from real data, gathered with your tools: road geometry from OpenStreetMap, routed distances and times, hourly forecasts, and traffic when a source is configured. You decide where to look. Typically that means picking a few promising riding areas within reach of the rider's start point, finding winding roads there, assembling a loop, routing it to get the true distance, and checking the weather at the start, along the route and on the way back for the hours the rider would be at each place. If the weather or the distance rules an area out, try another one. Independent lookups can be issued together in one turn.
 
-Slow zones spoil a ride. Every routed trip reports how much of it is posted at 30 km/h or less and at 31-50 km/h. When a loop exceeds the rider's targets, look at where the slow stretches are and move or drop waypoints so the route skirts town and village centres instead of crossing them, then route it again. Passing through a few villages is normal; a ride that crawls from town to town is not what was asked for. Speed limits come from OpenStreetMap tags and are incomplete, so present the shares as "posted" figures.
+What makes a good ride here is open road: time spent outside towns and villages, on roads that bend, and never on motorways. Every routed trip reports openRoadPct, the share of its distance outside built-up areas and off motorways, next to the share in zones limited to 30 km/h or less and to 31-50 km/h. Slow zones cannot be avoided completely, since every ride leaves a town and crosses villages; the job is to keep them as small as the terrain allows. The rider's percentages are targets to aim for, not pass/fail limits. Among loops that satisfy the hard constraints, prefer the one with the most open road, and when a loop is over a target, look at where its longest 30 and 50 stretches are and move or drop waypoints so the route skirts town centres instead of crossing them, then route it again. Do this before settling, and do not give up a clearly better riding area just to shave a point of slow zone. Limits come from OpenStreetMap; untagged stretches are classed by whether they lie in a built-up area.
+
+Riding time is estimated per road segment from its speed limit and how much it bends, without stops or traffic. Judge time constraints against that estimate. The router's own time is also returned as an upper bound; it is pessimistic and is not the figure to plan with.
+
+Plan on road data first. Traffic comes last: once a loop is chosen, run that final loop through the traffic check for the planned departure to see how much longer it would take, report the result next to the road-data estimate, and reconsider the departure time or the loop only if the delay is substantial.
+
+Not every request is a leisure ride. When the rider asks for a practical trip, such as getting to work or reaching a place by a given time, plan it as one: point to point unless they say otherwise, the quickest sensible route, on motorways when the rider permits them (route it with motorways allowed, and compare with the motorway-free route if the difference is worth showing). Skip the search for winding roads, and do not optimise open road or slow zones; report them briefly. Check the weather for the travel hours and the traffic for the departure time, since a commute lives or dies by traffic, and give the arrival time. Saved-ride overlap does not matter for such a trip: repeating a commute is the point. The itinerary is shorter: route, distance, time with and without traffic, weather, link, and the reference line.
 
 The rider keeps a library of saved rides, and each ride and leg may carry a rating from 1 to 5 given after riding it. Look at the library once at the start. Legs rated 4 or 5 are proven: reuse them as building blocks when they fit, since their coordinates go straight into a route. Stay off roads from rides or legs rated 1 or 2. The rider saves rides so that the next one is different: every routed trip comes back with a verdict comparing it with the saved rides, and a trip marked DUPLICATE is not a valid proposal unless the rider asked for that ride or a variant of it; choose other roads or another area. A trip marked similar is fine, and worth a mention. Saved data replaces road discovery only: weather is always checked fresh for the day in question.
 
@@ -46,11 +69,11 @@ Only state what the tools returned. If a tool fails or has no data source, say t
 
 Finish with the itinerary in plain text for a terminal:
 - one line naming the ride and why it was picked
-- departure time, total distance, riding time, and a realistic total with breaks
-- motorway use (should be none) and the share of distance posted at 30 km/h or less and at 31-50 km/h, against the rider's targets
-- numbered legs: road refs, towns passed, leg distance, what makes the leg worth riding
+- departure time, total distance, estimated riding time, average riding speed, and a realistic total with breaks
+- open-road share, motorway use (should be none), and the share of distance in zones of 30 km/h or less and of 31-50 km/h against the rider's targets
+- numbered legs: road refs, towns passed, leg distance, riding time and average speed, what makes the leg worth riding
 - weather along the route by time of day
-- traffic, or a note that it was not checked
+- traffic for the planned departure: expected delay and the resulting time, or a note that it was not checked
 - the Google Maps link from the final routed loop
 - one alternative in a sentence or two, if you evaluated one
 
@@ -64,9 +87,10 @@ function describePreferences(p: RidePreferences): string {
   return [
     p.avoidMotorways
       ? "- Motorways (autoroutes): never. This is a hard limit, including on the way out and back."
-      : "- Motorways (autoroutes): allowed for getting to and from the riding area, not for the ride itself.",
-    `- Zones limited to 30 km/h or less: as little as possible, target at most ${p.max30Pct}% of the distance.`,
-    `- Zones limited to 31-50 km/h: acceptable where needed, target at most ${p.max50Pct}% of the distance.`,
+      : "- Motorways (autoroutes): permitted. For a leisure ride, use them only to get to and from the riding area, never for the ride itself. For a practical trip, use them freely.",
+    "- Goal: as much riding as possible on open road outside towns and villages.",
+    `- Zones limited to 30 km/h or less: minimise, aim for at most ${p.max30Pct}% of the distance.`,
+    `- Zones limited to 31-50 km/h: fine to get through a town, minimise overall, aim for at most ${p.max50Pct}% of the distance.`,
   ].join("\n");
 }
 
@@ -100,23 +124,34 @@ function describeBaseRide(ride: SavedRide): string {
     })),
     originalRequest: ride.request,
   };
-  return `This session evolves saved ride #${ride.id} "${ride.name}". Start from its waypoints rather than searching for a new area: route it again to get a route ID for this session, check the weather for the new day, then apply the request above, changing only what it asks for. Overlap with this ride is expected.\n${JSON.stringify(data)}`;
+  return `This session evolves saved ride #${ride.id} "${ride.name}". Work from its waypoints rather than searching for a new area. If the message above asks for a change or a new date, route the ride again to get a route ID for this session, check the weather for the day in question, and apply the request, changing only what it asks for. If it is only a question about the ride, answer it from this data and the tools, without replanning. Overlap with this ride is expected.\n${JSON.stringify(data)}`;
 }
 
 export interface RideSession {
+  /** Shared state; `context.preferences` may be changed between messages. */
   context: RideContext;
   /** Send the next message (a refinement of the previous itinerary) and print the answer. */
   send(text: string): Promise<void>;
   /** The latest itinerary that can be saved, if the model has produced one. */
   current(): CurrentRide | undefined;
+  /** Model, effort, tokens and time consumed by this session so far. */
+  usage(): RunUsage;
+}
+
+/** Plan a ride from a request: opens a session and sends the request. */
+export async function startRide(request: RideRequest & { prompt: string }): Promise<RideSession> {
+  const session = await openRide(request);
+  await session.send(request.prompt);
+  return session;
 }
 
 /**
- * Plan the ride, printing the model's text as it arrives. The returned session
- * keeps the whole conversation, tool results included, so follow-ups such as
- * "shorter" or "skip Die" build on what was already looked up.
+ * Open a session without calling the model: nothing is sent until the first
+ * `send`. The session keeps the whole conversation, tool results included, so
+ * follow-ups such as "shorter" or "skip Die" build on what was already looked up.
+ * With `baseRide`, the first message works on that saved ride.
  */
-export async function startRide(request: RideRequest): Promise<RideSession> {
+export async function openRide(request: RideRequest): Promise<RideSession> {
   if (!process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_AUTH_TOKEN) {
     throw new Error("No Claude credentials: copy .env.example to .env and set ANTHROPIC_API_KEY.");
   }
@@ -134,19 +169,29 @@ export async function startRide(request: RideRequest): Promise<RideSession> {
     lineage: new Set(request.baseRide ? [request.baseRide.id] : []),
     routes: new Map(),
   };
+  // Copied, so a mid-session switch does not leak into the caller's object.
+  context.preferences = { ...preferences };
   const tools = createTools(context);
   let history: Anthropic.Beta.BetaMessageParam[] = [];
+  const usage: RunUsage = {
+    model: MODEL,
+    effort: LEGACY_THINKING ? "n/a" : EFFORT,
+    turns: 0,
+    modelCalls: 0,
+    toolCalls: 0,
+    inputTokens: 0,
+    cacheWriteTokens: 0,
+    cacheReadTokens: 0,
+    outputTokens: 0,
+    seconds: 0,
+  };
   let current: CurrentRide | undefined;
 
   async function send(text: string): Promise<void> {
     const runner = client.beta.messages.toolRunner({
       model: MODEL,
       max_tokens: 16000,
-      thinking: { type: "adaptive" },
-      output_config: { effort: EFFORT },
-      // If a safety classifier declines the request, the API re-runs it on a fallback model.
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
+      ...modelSettings(),
       // Cache the growing conversation so each round and each follow-up re-reads it cheaply.
       cache_control: { type: "ephemeral" },
       system: SYSTEM,
@@ -157,21 +202,29 @@ export async function startRide(request: RideRequest): Promise<RideSession> {
     });
 
     let last: Anthropic.Beta.BetaMessage | undefined;
-    let inputTokens = 0;
-    let cachedTokens = 0;
-    let outputTokens = 0;
-    for await (const message of runner) {
-      last = message;
-      inputTokens += message.usage.input_tokens + (message.usage.cache_creation_input_tokens ?? 0);
-      cachedTokens += message.usage.cache_read_input_tokens ?? 0;
-      outputTokens += message.usage.output_tokens;
-      for (const block of message.content) {
-        if (block.type === "text" && block.text.trim()) console.log(`\n${block.text.trim()}`);
+    const before = { ...usage };
+    const started = Date.now();
+    usage.turns++;
+    try {
+      for await (const message of runner) {
+        last = message;
+        usage.modelCalls++;
+        usage.inputTokens += message.usage.input_tokens;
+        usage.cacheWriteTokens += message.usage.cache_creation_input_tokens ?? 0;
+        usage.cacheReadTokens += message.usage.cache_read_input_tokens ?? 0;
+        usage.outputTokens += message.usage.output_tokens;
+        for (const block of message.content) {
+          if (block.type === "tool_use") usage.toolCalls++;
+          if (block.type === "text" && block.text.trim()) console.log(`\n${block.text.trim()}`);
+        }
       }
+    } finally {
+      // Counted even when the turn fails: failed attempts cost tokens too.
+      usage.seconds += (Date.now() - started) / 1000;
     }
 
     process.stderr.write(
-      `\x1b[2m\n[${MODEL}, ${inputTokens} tokens in, ${cachedTokens} read from cache, ${outputTokens} out]\x1b[0m\n`,
+      `\x1b[2m\n[${MODEL}, ${usage.inputTokens + usage.cacheWriteTokens - before.inputTokens - before.cacheWriteTokens} tokens in, ${usage.cacheReadTokens - before.cacheReadTokens} read from cache, ${usage.outputTokens - before.outputTokens} out]\x1b[0m\n`,
     );
     switch (last?.stop_reason) {
       case "end_turn": {
@@ -201,10 +254,17 @@ export async function startRide(request: RideRequest): Promise<RideSession> {
     }
   }
 
-  const repeatRule = context.allowRepeat ? "\nRepeating saved rides is allowed this time." : "";
-  const base = request.baseRide ? `\n\n${describeBaseRide(request.baseRide)}` : "";
-  await send(
-    `${request.prompt}\n\nStart and end point: ${request.home} (${start.label}, ${start.lat},${start.lon})\nRoad preferences:\n${describePreferences(preferences)}${repeatRule}\nToday is ${WEEKDAYS[now.getDay()]} ${today}.${base}`,
-  );
-  return { context, send, current: () => current };
+  // Context the model needs once, attached to whatever the rider says first.
+  // Settings are read at that moment, so a switch made before it is honoured.
+  let opened = false;
+  async function sendWithContext(text: string): Promise<void> {
+    if (opened) return send(text);
+    const repeatRule = context.allowRepeat ? "\nRepeating saved rides is allowed this time." : "";
+    const base = request.baseRide ? `\n\n${describeBaseRide(request.baseRide)}` : "";
+    await send(
+      `${text}\n\nStart and end point: ${request.home} (${start.label}, ${start.lat},${start.lon})\nRoad preferences:\n${describePreferences(context.preferences)}${repeatRule}\nToday is ${WEEKDAYS[now.getDay()]} ${today}.${base}`,
+    );
+    opened = true;
+  }
+  return { context, send: sendWithContext, current: () => current, usage: () => ({ ...usage }) };
 }

@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import type { RidePreferences } from "./preferences.ts";
+import type { RunUsage } from "./usage.ts";
 
 const DEFAULT_DB = resolve(dirname(fileURLToPath(import.meta.url)), "..", "data", "agentride.db");
 
@@ -35,9 +36,37 @@ export interface NewRide {
   itinerary: string;
   mapsUrl: string;
   cells: string[];
+  /** Exact route line: one encoded polyline per leg. Null on rides saved before it was stored. */
+  shapes: string[] | null;
   centerLat: number;
   centerLon: number;
+  /** What the planning session had consumed when the ride was saved. */
+  usage: RunUsage | null;
   legs: Array<Omit<SavedLeg, "rating" | "notes">>;
+}
+
+/** One planning session, logged whether or not its ride was saved. */
+export interface RunRecord {
+  home: string;
+  request: string;
+  usage: RunUsage;
+  costUsd: number | null;
+  /** Null until the session produced a routed itinerary. */
+  result: {
+    distanceKm: number;
+    ridingMinutes: number;
+    openRoadPct: number | null;
+    pct50: number | null;
+    pct30: number | null;
+    motorwayKm: number | null;
+  } | null;
+  rideId: number | null;
+  error: string | null;
+}
+
+export interface SavedRun extends RunRecord {
+  id: number;
+  startedAt: string;
 }
 
 export interface SavedRide extends Omit<NewRide, "legs"> {
@@ -70,6 +99,20 @@ interface RideRow {
   center_lon: number;
   rating: number | null;
   notes: string | null;
+  usage: string | null;
+  shapes: string | null;
+}
+
+interface RunRow {
+  id: number;
+  started_at: string;
+  home: string;
+  request: string;
+  usage: string;
+  cost_usd: number | null;
+  result: string | null;
+  ride_id: number | null;
+  error: string | null;
 }
 
 interface SegmentRow {
@@ -124,6 +167,19 @@ CREATE TABLE IF NOT EXISTS segments (
   notes TEXT
 );
 CREATE INDEX IF NOT EXISTS segments_ride ON segments(ride_id, seq);
+CREATE TABLE IF NOT EXISTS runs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  started_at TEXT NOT NULL,
+  home TEXT NOT NULL,
+  request TEXT NOT NULL,
+  model TEXT NOT NULL,
+  effort TEXT NOT NULL,
+  usage TEXT NOT NULL,
+  cost_usd REAL,
+  result TEXT,
+  ride_id INTEGER REFERENCES rides(id) ON DELETE SET NULL,
+  error TEXT
+);
 CREATE TABLE IF NOT EXISTS tool_cache (
   key TEXT PRIMARY KEY,
   tool TEXT NOT NULL,
@@ -143,6 +199,46 @@ export class Store {
     this.#db = new DatabaseSync(path);
     this.#db.exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;");
     this.#db.exec(SCHEMA);
+    // Databases created before usage tracking lack this column.
+    const columns = this.#db.prepare("PRAGMA table_info(rides)").all() as Array<{ name: string }>;
+    for (const name of ["usage", "shapes"]) {
+      if (!columns.some((column) => column.name === name)) this.#db.exec(`ALTER TABLE rides ADD COLUMN ${name} TEXT`);
+    }
+  }
+
+  /** Log a planning session. Returns its run id, to update as the session goes on. */
+  startRun(run: RunRecord): number {
+    const { lastInsertRowid } = this.#db
+      .prepare(
+        `INSERT INTO runs (started_at, home, request, model, effort, usage, cost_usd, result, ride_id, error)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        new Date().toISOString(), run.home, run.request, run.usage.model, run.usage.effort, JSON.stringify(run.usage),
+        run.costUsd, run.result && JSON.stringify(run.result), run.rideId, run.error,
+      );
+    return Number(lastInsertRowid);
+  }
+
+  updateRun(id: number, run: RunRecord): void {
+    this.#db
+      .prepare("UPDATE runs SET request = ?, usage = ?, cost_usd = ?, result = ?, ride_id = ?, error = ? WHERE id = ?")
+      .run(run.request, JSON.stringify(run.usage), run.costUsd, run.result && JSON.stringify(run.result), run.rideId, run.error, id);
+  }
+
+  listRuns(): SavedRun[] {
+    const rows = this.#db.prepare("SELECT * FROM runs ORDER BY id").all() as unknown as RunRow[];
+    return rows.map((row) => ({
+      id: row.id,
+      startedAt: row.started_at,
+      home: row.home,
+      request: row.request,
+      usage: JSON.parse(row.usage),
+      costUsd: row.cost_usd,
+      result: row.result ? JSON.parse(row.result) : null,
+      rideId: row.ride_id,
+      error: row.error,
+    }));
   }
 
   saveRide(ride: NewRide): number {
@@ -151,14 +247,15 @@ export class Store {
       const { lastInsertRowid } = this.#db
         .prepare(
           `INSERT INTO rides (name, created_at, parent_id, home, ride_date, departure, distance_km, riding_minutes,
-             waypoints, round_trip, speed_limits, preferences, request, itinerary, maps_url, cells, center_lat, center_lon)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             waypoints, round_trip, speed_limits, preferences, request, itinerary, maps_url, cells, center_lat, center_lon, usage, shapes)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           ride.name, new Date().toISOString(), ride.parentId, ride.home, ride.rideDate, ride.departure,
           ride.distanceKm, ride.ridingMinutes, JSON.stringify(ride.waypoints), ride.roundTrip ? 1 : 0,
           JSON.stringify(ride.speedLimits), JSON.stringify(ride.preferences), ride.request, ride.itinerary,
           ride.mapsUrl, JSON.stringify(ride.cells), ride.centerLat, ride.centerLon,
+          ride.usage && JSON.stringify(ride.usage), ride.shapes && JSON.stringify(ride.shapes),
         );
       const id = Number(lastInsertRowid);
       const insertLeg = this.#db.prepare(
@@ -200,6 +297,8 @@ export class Store {
       cells: JSON.parse(row.cells),
       centerLat: row.center_lat,
       centerLon: row.center_lon,
+      usage: row.usage ? JSON.parse(row.usage) : null,
+      shapes: row.shapes ? JSON.parse(row.shapes) : null,
       rating: row.rating,
       notes: row.notes,
       legs: legs.map((leg) => ({
@@ -254,6 +353,38 @@ export class Store {
       .prepare("UPDATE segments SET rating = ?, notes = coalesce(?, notes) WHERE ride_id = ? AND seq = ?")
       .run(rating, notes, rideId, seq);
     return result.changes > 0;
+  }
+
+  /** Replace a ride's computed figures after re-routing it. Ratings and notes are kept. */
+  refreshRide(
+    id: number,
+    data: Pick<NewRide, "distanceKm" | "ridingMinutes" | "speedLimits" | "mapsUrl" | "cells" | "shapes" | "centerLat" | "centerLon" | "legs">,
+  ): void {
+    this.#db.exec("BEGIN");
+    try {
+      this.#db
+        .prepare(
+          `UPDATE rides SET distance_km = ?, riding_minutes = ?, speed_limits = ?, maps_url = ?, cells = ?, shapes = ?, center_lat = ?, center_lon = ?
+           WHERE id = ?`,
+        )
+        .run(data.distanceKm, data.ridingMinutes, JSON.stringify(data.speedLimits), data.mapsUrl, JSON.stringify(data.cells), data.shapes && JSON.stringify(data.shapes), data.centerLat, data.centerLon, id);
+      const update = this.#db.prepare(
+        `UPDATE segments SET from_label = ?, to_label = ?, from_coords = ?, to_coords = ?, distance_km = ?, riding_minutes = ?, main_roads = ?
+         WHERE ride_id = ? AND seq = ?`,
+      );
+      for (const leg of data.legs) {
+        update.run(leg.from, leg.to, leg.fromCoords, leg.toCoords, leg.distanceKm, leg.ridingMinutes, JSON.stringify(leg.mainRoads), id, leg.seq);
+      }
+      this.#db.exec("COMMIT");
+    } catch (error) {
+      this.#db.exec("ROLLBACK");
+      throw error;
+    }
+  }
+
+  /** Attach the exact route line to a ride saved without one. */
+  setRouteLine(id: number, shapes: string[], cells: string[]): void {
+    this.#db.prepare("UPDATE rides SET shapes = ?, cells = ? WHERE id = ?").run(JSON.stringify(shapes), JSON.stringify(cells), id);
   }
 
   deleteRide(id: number): boolean {

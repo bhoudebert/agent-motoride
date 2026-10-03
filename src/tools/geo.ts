@@ -8,6 +8,7 @@ export interface Point {
 
 const COORDS = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/;
 const cache = new Map<string, Point>();
+const MAX_ADDRESS_DISTANCE_KM = 500;
 let anchor: { lat: number; lon: number } | undefined;
 
 /**
@@ -28,15 +29,103 @@ interface GeocodeResponse {
     latitude: number;
     longitude: number;
     country?: string;
+    population?: number;
     country_code?: string;
     admin1?: string;
     admin2?: string;
   }>;
 }
 
+interface PhotonResponse {
+  features: Array<{
+    geometry: { coordinates: [number, number] };
+    properties: { name?: string; street?: string; housenumber?: string; city?: string; state?: string; country?: string };
+  }>;
+}
+
+interface NominatimResult {
+  lat: string;
+  lon: string;
+  display_name: string;
+}
+
+/** Towns and villages (Open-Meteo). Returns undefined when nothing fits the name and its qualifiers. */
+async function geocodeTown(location: string): Promise<Point | undefined> {
+  const [name = "", ...qualifiers] = location.split(",").map((part) => part.trim());
+  const url = new URL("https://geocoding-api.open-meteo.com/v1/search");
+  url.searchParams.set("name", name);
+  url.searchParams.set("count", "20");
+  url.searchParams.set("language", "en");
+  url.searchParams.set("format", "json");
+  const results = (await fetchJson<GeocodeResponse>(url.toString())).results ?? [];
+
+  const wanted = qualifiers.map((q) => q.toLowerCase());
+  // "Rue des Templiers, Lille": when the qualifiers match no town of that name,
+  // the text is an address, not a town, and belongs to the street geocoder.
+  const candidates =
+    wanted.length === 0
+      ? results
+      : results.filter((r) => {
+          const fields = [r.country, r.country_code, r.admin1, r.admin2]
+            .filter((f): f is string => Boolean(f))
+            .map((f) => f.toLowerCase());
+          return wanted.every((q) => fields.includes(q));
+        });
+  const origin = anchor;
+  // Near the start point wins, but a real town beats a namesake hamlet that is
+  // only slightly closer: distance is discounted by the size of the place.
+  const score = (r: (typeof results)[number]) =>
+    origin ? haversineKm(origin, { lat: r.latitude, lon: r.longitude }) / Math.log10((r.population ?? 0) + 10) : 0;
+  // Results arrive ranked by relevance; the stable sort keeps that order when there is no anchor.
+  const best = [...candidates].sort((a, b) => score(a) - score(b))[0];
+  return (
+    best && {
+      lat: best.latitude,
+      lon: best.longitude,
+      label: [best.name, best.admin1, best.country].filter(Boolean).join(", "),
+    }
+  );
+}
+
+/** Streets, addresses and places, tolerant of typos (Photon, OpenStreetMap data). */
+async function geocodeAddress(location: string): Promise<Point | undefined> {
+  const url = new URL("https://photon.komoot.io/api/");
+  url.searchParams.set("q", location);
+  url.searchParams.set("limit", "1");
+  if (anchor) {
+    // Prefer matches near the rider's start point.
+    url.searchParams.set("lat", String(anchor.lat));
+    url.searchParams.set("lon", String(anchor.lon));
+  }
+  const feature = (await fetchJson<PhotonResponse>(url.toString(), {}, 15_000)).features[0];
+  if (!feature) return undefined;
+  const p = feature.properties;
+  const street = [p.housenumber, p.street].filter(Boolean).join(" ");
+  return {
+    lat: feature.geometry.coordinates[1],
+    lon: feature.geometry.coordinates[0],
+    label: [...new Set([p.name, street, p.city, p.country].filter(Boolean))].join(", "),
+  };
+}
+
+/** Last resort: exact-match address search (Nominatim, OpenStreetMap). */
+async function geocodeNominatim(location: string): Promise<Point | undefined> {
+  const url = new URL("https://nominatim.openstreetmap.org/search");
+  url.searchParams.set("q", location);
+  url.searchParams.set("format", "jsonv2");
+  url.searchParams.set("limit", "1");
+  const result = (await fetchJson<NominatimResult[]>(url.toString(), {}, 15_000))[0];
+  return result && {
+    lat: Number(result.lat),
+    lon: Number(result.lon),
+    label: result.display_name.split(",").slice(0, 3).map((part) => part.trim()).join(", "),
+  };
+}
+
 /**
- * Resolve a location to coordinates. Accepts "lat,lon" or a place name,
- * optionally qualified: "Vannes, France", "Florac, Lozère".
+ * Resolve a location to coordinates. Accepts "lat,lon", a town
+ * ("Florac", "Vannes, France") or a street or address
+ * ("Avenue de Bretagne, Lille", "12 rue Nationale Lille").
  */
 export async function resolvePoint(location: string): Promise<Point> {
   const coords = COORDS.exec(location);
@@ -53,37 +142,35 @@ export async function resolvePoint(location: string): Promise<Point> {
   const cached = cache.get(key);
   if (cached) return cached;
 
-  const [name = "", ...qualifiers] = location.split(",").map((s) => s.trim());
-  const url = new URL("https://geocoding-api.open-meteo.com/v1/search");
-  url.searchParams.set("name", name);
-  url.searchParams.set("count", "20");
-  url.searchParams.set("language", "en");
-  url.searchParams.set("format", "json");
-  const data = await fetchJson<GeocodeResponse>(url.toString());
-  const results = data.results ?? [];
-  if (results.length === 0) {
-    throw new Error(`Place not found: "${location}". Try a nearby town name or "lat,lon".`);
+  // Towns first (fast, clean labels), then streets and addresses. A geocoder
+  // that is down must not hide a match from the next one.
+  let point: Point | undefined;
+  let tooFar: Point | undefined;
+  for (const [geocode, fuzzy] of [[geocodeTown, false], [geocodeAddress, true], [geocodeNominatim, true]] as const) {
+    let found: Point | undefined;
+    try {
+      found = await geocode(location);
+    } catch {
+      continue;
+    }
+    if (!found) continue;
+    // The address geocoders always answer something, even for a typo they
+    // cannot place. A day ride does not have a waypoint a country away.
+    if (fuzzy && anchor && haversineKm(anchor, found) > MAX_ADDRESS_DISTANCE_KM) {
+      tooFar ??= found;
+      continue;
+    }
+    point = found;
+    break;
   }
-
-  const wanted = qualifiers.map((q) => q.toLowerCase());
-  const qualified = results.filter((r) => {
-    const fields = [r.country, r.country_code, r.admin1, r.admin2]
-      .filter((f): f is string => Boolean(f))
-      .map((f) => f.toLowerCase());
-    return wanted.length > 0 && wanted.every((q) => fields.includes(q));
-  });
-  const candidates = qualified.length > 0 ? qualified : results;
-  const origin = anchor;
-  const distanceTo = (r: (typeof results)[number]) =>
-    origin ? haversineKm(origin, { lat: r.latitude, lon: r.longitude }) : 0;
-  // Results arrive ranked by relevance; the stable sort keeps that order when there is no anchor.
-  const best = [...candidates].sort((a, b) => distanceTo(a) - distanceTo(b))[0]!;
-
-  const point: Point = {
-    lat: best.latitude,
-    lon: best.longitude,
-    label: [best.name, best.admin1, best.country].filter(Boolean).join(", "),
-  };
+  if (!point && tooFar) {
+    throw new Error(
+      `Place not found near the start point: "${location}". The closest text match is "${tooFar.label}", ${Math.round(haversineKm(anchor!, tooFar))} km away. Check the spelling or add the town ("street, town").`,
+    );
+  }
+  if (!point) {
+    throw new Error(`Place not found: "${location}". Check the spelling, add the town ("street, town"), or use "lat,lon".`);
+  }
   cache.set(key, point);
   return point;
 }

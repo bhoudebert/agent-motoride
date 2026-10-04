@@ -3,10 +3,33 @@ import { test } from "node:test";
 import { planStops, type StopCandidate } from "../src/stops.ts";
 import type { TripLeg } from "../src/tools/trip.ts";
 
-const legs: TripLeg[] = [[77.1, 53], [13.1, 12], [13.2, 14], [13.1, 14], [71.3, 49]].map(([d, m], i) => ({
-  from: `a${i}`, to: `b${i}`, fromCoords: "50,3", toCoords: "50,3", distanceKm: d!, ridingMinutes: m!, ridingTime: "", avgSpeedKmh: 0, routerMinutes: 0, usesMotorway: false, mainRoads: [],
+const legs: TripLeg[] = [
+  [77.1, 53],
+  [13.1, 12],
+  [13.2, 14],
+  [13.1, 14],
+  [71.3, 49],
+].map(([d, m], i) => ({
+  from: `a${i}`,
+  to: `b${i}`,
+  fromCoords: "50,3",
+  toCoords: "50,3",
+  distanceKm: d!,
+  ridingMinutes: m!,
+  ridingTime: "",
+  avgSpeedKmh: 0,
+  routerMinutes: 0,
+  usesMotorway: false,
+  mainRoads: [],
 }));
-const c = (km: number, name: string, openingHours: string | null = null): StopCandidate => ({ kmAlongRoute: km, leg: 1, name, openingHours, detourM: 50, coords: "50,3" });
+const c = (km: number, name: string, openingHours: string | null = null): StopCandidate => ({
+  kmAlongRoute: km,
+  leg: 1,
+  name,
+  openingHours,
+  detourM: 50,
+  coords: "50,3",
+});
 const candidates = {
   fuel: [24, 52, 65, 78, 104, 114, 126, 162, 180].map((k) => c(k, `Fuel${k}`)),
   cafe: [0, 24, 52, 66, 77, 85, 117, 160, 180].map((k) => c(k, `Cafe${k}`)),
@@ -25,7 +48,10 @@ test("fuel stop before the deadline, pause after the interval, breaks in the ETA
 
 test("no fuel stop when the loop is inside the range", () => {
   const plan = planStops(legs, candidates, { ...profile, tankRangeKm: 338 }, "09:00");
-  assert.equal(plan.stops.some((s) => s.kind === "fuel"), false);
+  assert.equal(
+    plan.stops.some((s) => s.kind === "fuel"),
+    false,
+  );
 });
 
 test("fuel at start shifts the first fuel stop; lunch warns when no restaurant is near midday", () => {
@@ -36,7 +62,10 @@ test("fuel at start shifts the first fuel stop; lunch warns when no restaurant i
 });
 
 test("a café closed at arrival is skipped for an open one when the date is known", () => {
-  const cafes = { ...candidates, cafe: [c(85, "ClosedSunday", "Mo-Sa 08:00-18:00"), c(88, "OpenSunday", "Su 08:00-14:00")] };
+  const cafes = {
+    ...candidates,
+    cafe: [c(85, "ClosedSunday", "Mo-Sa 08:00-18:00"), c(88, "OpenSunday", "Su 08:00-14:00")],
+  };
   const plan = planStops(legs, cafes, profile, "09:00", undefined, "2026-10-11");
   const pause = plan.stops.find((s) => s.kind === "pause")!;
   assert.equal(pause.name, "OpenSunday");

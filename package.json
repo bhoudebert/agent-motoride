@@ -16,7 +16,13 @@
     "mcp:smoke": "node scripts/mcp-smoke.ts",
     "test": "node --test 'test/**/*.test.ts'",
     "check": "node --env-file-if-exists=.env src/check.ts",
-    "codex:register": "node scripts/codex-register.ts"
+    "codex:register": "node scripts/codex-register.ts",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "quality": "npm run typecheck && npm run lint && npm run format:check && npm test",
+    "prepare": "simple-git-hooks"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
@@ -25,8 +31,35 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@commitlint/cli": "^21.2.3",
+    "@commitlint/config-conventional": "^21.2.3",
+    "@eslint/js": "^10.0.1",
     "@types/node": "^26.6.4",
     "@types/qrcode-terminal": "^0.12.2",
-    "typescript": "^7.0.2"
-  }
+    "eslint": "^10.12.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.13.0",
+    "lint-staged": "^17.6.0",
+    "prettier": "^3.9.9",
+    "simple-git-hooks": "^2.14.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.71.0"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "npx lint-staged",
+    "commit-msg": "npx commitlint --edit $1"
+  },
+  "lint-staged": {
+    "*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": "prettier --write"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bhoudebert/agent-motoride.git"
+  },
+  "author": "Benjamin Houdebert"
 }

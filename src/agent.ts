@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { EFFORT, MODEL, isLegacyThinking, requestSettings } from "./model.ts";
+import { EFFORT, isLegacyThinking, MODEL, requestSettings } from "./model.ts";
 import { DEFAULT_PREFERENCES, type RidePreferences } from "./preferences.ts";
 import { RideAnswer } from "./schema.ts";
 import type { RegisteredRoute, RideContext, TraceEvent } from "./session.ts";
@@ -77,7 +77,12 @@ export const SYSTEM = `${SYSTEM_CORE}
 ${JSON_ANSWER}`;
 
 /** The lines every planner, built-in or MCP, gets about the rider's situation. */
-export function describeSituation(home: string, start: { label: string; lat: number; lon: number } | undefined, preferences: RidePreferences, now = new Date()): string {
+export function describeSituation(
+  home: string,
+  start: { label: string; lat: number; lon: number } | undefined,
+  preferences: RidePreferences,
+  now = new Date(),
+): string {
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const where = start?.label ? `${home} (${start.label}, ${start.lat},${start.lon})` : "NOT SET";
   return `Start and end point: ${where}\nRoad preferences:\n${describePreferences(preferences)}\nToday is ${WEEKDAYS[now.getDay()]} ${today}.`;
@@ -95,7 +100,6 @@ export function describePreferences(p: RidePreferences): string {
 }
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-
 
 function describeBaseRide(ride: SavedRide): string {
   const data = {
@@ -160,7 +164,15 @@ export async function openRide(request: RideRequest): Promise<RideSession> {
   const preferences = request.preferences ?? DEFAULT_PREFERENCES;
   const usage = emptyUsage(MODEL, isLegacyThinking(MODEL) ? "n/a" : EFFORT);
   // The run row exists from the start so that every step can be traced against it.
-  const runId = request.store.startRun({ home: request.home, request: "", usage, costUsd: 0, result: null, rideId: null, error: null });
+  const runId = request.store.startRun({
+    home: request.home,
+    request: "",
+    usage,
+    costUsd: 0,
+    result: null,
+    rideId: null,
+    error: null,
+  });
   const context: RideContext = {
     store: request.store,
     // Copied, so a mid-session switch does not leak into the caller's object.
@@ -201,7 +213,13 @@ export async function openRide(request: RideRequest): Promise<RideSession> {
       for await (const message of runner) {
         last = message;
         countUsage(usage, message);
-        context.trace({ scope: "main", kind: "model", name: message.model, ms: Date.now() - started, payload: describeResponse(message) });
+        context.trace({
+          scope: "main",
+          kind: "model",
+          name: message.model,
+          ms: Date.now() - started,
+          payload: describeResponse(message),
+        });
         // Text before the final answer is rare (progress goes to thinking); show it as is.
         if (message.stop_reason !== "end_turn") {
           for (const block of message.content) {
@@ -210,7 +228,12 @@ export async function openRide(request: RideRequest): Promise<RideSession> {
         }
       }
     } catch (error) {
-      context.trace({ scope: "main", kind: "error", name: "turn", payload: error instanceof Error ? error.message : String(error) });
+      context.trace({
+        scope: "main",
+        kind: "error",
+        name: "turn",
+        payload: error instanceof Error ? error.message : String(error),
+      });
       throw error;
     } finally {
       // Counted even when the turn fails: failed attempts cost tokens too.
@@ -227,14 +250,19 @@ export async function openRide(request: RideRequest): Promise<RideSession> {
         if (messages.at(-1)?.role !== "assistant") messages.push({ role: "assistant", content: last.content });
         history = messages;
 
-        const raw = last.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("\n").trim();
+        const raw = last.content
+          .flatMap((b) => (b.type === "text" ? [b.text] : []))
+          .join("\n")
+          .trim();
         const answer = parseAnswer(raw);
         console.log(`\n${answer.message.trim()}`);
         context.trace({ scope: "main", kind: "answer", name: answer.ride ? "itinerary" : "answer", payload: answer });
         // An answer naming a routed trip is a new itinerary; a plain answer leaves the current one in place.
         const route = answer.ride && context.routes.get(answer.ride.routeId);
         if (answer.ride && !route) {
-          console.error(`\nWarning: the answer refers to route ${answer.ride.routeId}, which was never routed this session; it cannot be saved.`);
+          console.error(
+            `\nWarning: the answer refers to route ${answer.ride.routeId}, which was never routed this session; it cannot be saved.`,
+          );
         }
         if (answer.ride && route) {
           current = {

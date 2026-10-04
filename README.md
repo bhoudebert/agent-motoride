@@ -788,6 +788,44 @@ What differs from Claude Code, verified against Codex 0.160:
 Everything else (library, duplicates, exports, traces in `rides runs`) is the
 same server, so it behaves the same.
 
+### From your phone with Codex
+
+Codex has the same idea: the ChatGPT mobile app can connect to a machine
+running the Codex app and drive it, with that machine's projects, files and
+configuration. Our server is part of that configuration once registered there.
+
+1. On the host machine (a Mac or a Windows PC running the Codex app, as of
+   October 2026), clone the project, `npm install`, create `.env`, and register
+   the server: `npm run codex:register`, then add
+   `default_tools_approval_mode = "approve"` under `[mcp_servers.ride]` in
+   `~/.codex/config.toml` as above.
+2. In the ChatGPT app on the phone, open Codex and connect to that machine
+   (the pairing flow is in the ChatGPT app; it changes between versions, follow
+   the app).
+3. Ask in plain words, as in Codex CLI: "show saved ride 7", "plan me a ride
+   Sunday from Coutiches, no rain, under 220 km". No slash commands; the model
+   fetches the planning guidance through the `planningGuide` tool.
+
+Alternative host: a Codex cloud environment, or a DigitalOcean droplet through
+Codex's DigitalOcean plugin, which keeps working when nothing at home is awake.
+Same steps on that machine; the library then lives there.
+
+Caveats: host requirements for Codex remote control have changed several times
+in 2026 (Mac first, Windows later); check the ChatGPT changelog before counting
+on a Linux home box as a direct host. Our server's behaviour under Codex is the
+one verified with Codex CLI 0.160 in this repository; the remote-control path
+itself has not been tried here.
+
+| | Claude Code Remote Control | Codex remote control |
+|---|---|---|
+| Phone side | Claude app or claude.ai | ChatGPT app |
+| Host | any machine running `claude remote-control` | a machine running the Codex app, or a Codex cloud environment |
+| Our server | `.mcp.json` in the project, found automatically | registered once in the host's `~/.codex/config.toml` |
+| Slash commands | yes | no: plain words and `planningGuide` |
+
+Sources: ChatGPT & Codex changelog (learn.chatgpt.com/docs/changelog); OpenAI on
+reusable cloud environments (September 2026).
+
 ### What the server exposes
 
 | Tool | Purpose |

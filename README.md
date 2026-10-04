@@ -799,15 +799,24 @@ there, since the app and the CLI share `~/.codex/config.toml`.
    install the Codex app, clone the project, `npm install`, create `.env`, run
    `npm run codex:register`, and add `default_tools_approval_mode = "approve"`
    under `[mcp_servers.ride]` in `~/.codex/config.toml`.
-2. In the Codex app, sidebar, choose **Set up Codex mobile**. It shows a QR code.
-3. Scan it with the phone: ChatGPT opens and pairs with the computer. Both
-   must be on the same ChatGPT account and workspace; complete any login step.
-4. In the ChatGPT app, Codex now works on that computer. Open the agentRide
+2. In the desktop app: **Settings > Connections > Control this Mac or PC**,
+   then **Set up**. It shows a QR code.
+3. Scan it with the ChatGPT app on the phone, confirm the account and
+   workspace (same on both sides), complete any login step. The computer then
+   appears in the app's Codex section.
+4. In the ChatGPT app, Codex now works on that computer with its projects,
+   files, credentials and local tools, our server included. Open the agentRide
    project and ask in plain words: "show saved ride 7", "plan me a ride Sunday
    from Coutiches, no rain, under 220 km". No slash commands; the model fetches
    the planning guidance through the `planningGuide` tool.
 
-The computer stays awake and online while you are out.
+The computer stays awake, online and signed in while you are out. The official
+page also lists SSH remote development environments as hosts, reached through
+the desktop app, so a Linux box can sit behind a Mac or PC. Full details and
+requirements: <https://learn.chatgpt.com/docs/remote-connections>.
+
+It is more involved than the Claude Code route, which needs one command on any
+machine, Linux included, and no desktop app.
 
 Alternative host: a Codex cloud environment, or a DigitalOcean droplet through
 Codex's DigitalOcean plugin, which keeps working when nothing at home is awake.
@@ -816,8 +825,8 @@ Same steps on that machine; the library then lives there.
 Caveats: host requirements have changed during 2026 (Mac first, Windows later);
 plan entitlements for Codex in the mobile app have changed too, check yours in
 the app. Our server's behaviour under Codex is the one verified with Codex CLI
-0.160 in this repository; the pairing flow above comes from a July 2026 guide
-and has not been tried here.
+0.160 in this repository; the connection flow above is the official one and has
+not been tried here.
 
 | | Claude Code Remote Control | Codex remote control |
 |---|---|---|
@@ -826,8 +835,8 @@ and has not been tried here.
 | Our server | `.mcp.json` in the project, found automatically | registered once in the host's `~/.codex/config.toml` |
 | Slash commands | yes | no: plain words and `planningGuide` |
 
-Sources: ChatGPT & Codex changelog (learn.chatgpt.com/docs/changelog); OpenAI on
-reusable cloud environments (September 2026).
+Sources: Remote connections for Codex (learn.chatgpt.com/docs/remote-connections);
+ChatGPT & Codex changelog (learn.chatgpt.com/docs/changelog).
 
 ### What the server exposes
 

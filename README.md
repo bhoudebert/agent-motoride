@@ -34,9 +34,14 @@ exports and the data are the same in both.
 | How you talk to it | A terminal app with a menu and a `refine>` prompt | Slash commands in Claude Code, e.g. `/mcp__ride__plan-ride ...` |
 | Planning guidance | A real system prompt, schema-validated final answer | The same instructions sent as the prompt's text; free-text answer |
 | Model and effort | `RIDE_MODEL`, `RIDE_EFFORT` in `.env` | Claude Code's own model |
-| Best for | Full control, benchmarks, scripted runs | Daily use on a subscription, chatting about rides |
+| Best for | Full control, benchmarks, scripted runs | Daily use on a subscription, chatting about rides, and the phone through Remote Control |
 
 Start with the one that matches what you have: an API key, or Claude Code.
+
+**From your phone, with nothing to install**: a Claude Code session running on
+any machine (your computer, a Raspberry Pi, a VPS) can be driven from the Claude
+app or claude.ai, with this server attached. See
+[From your phone: Remote Control](#from-your-phone-remote-control).
 
 Whatever the mode, `npm run check` tells you what is missing and whether the
 data services answer from your machine.
@@ -688,6 +693,49 @@ Then, in Claude Code:
 That prompt carries the full planning instructions of the built-in planner, the
 rider's settings and today's date. Plain requests work too ("use the ride tools
 to plan…"), with less guidance.
+
+### From your phone: Remote Control
+
+Claude Code can hand a running session to the Claude mobile app or to
+claude.ai in a browser. The session keeps running where it was started, with
+its project, its `.mcp.json` and therefore this server, its library and its
+exports; the phone is the keyboard and the screen. No app of ours, no bot, no
+hosting of the server on the internet: a remote prompt on top of everything in
+this README.
+
+```bash
+cd agentRide
+claude remote-control        # prints a URL and a QR code
+```
+
+Scan the code with the Claude app (or open the URL on claude.ai), then ask as
+in Claude Code: `/mcp__ride__plan-ride ...`, "show ride 7", "briefing for
+ride 7", "save it". From inside a running session, `/rc` does the same.
+
+Where the session runs is your choice:
+
+| Machine | Notes |
+|---|---|
+| Your computer | Zero setup; must stay awake while you are out |
+| A small always-on box at home (Raspberry Pi, NAS) | Clone the project there with `.env` and the database; the library lives on that box |
+| A VPS | Same, and the laptop is free; the library lives on the VPS |
+
+Requirements, from the Claude Code documentation: a Pro, Max, Team or
+Enterprise plan signed in with `/login` (an API key alone does not qualify);
+not available through Bedrock, Vertex or a custom API base URL. MCP servers
+from `.mcp.json` are documented as staying available in a remote-controlled
+session.
+
+Files: the session writes Markdown and GPX on the machine it runs on. At home,
+`/share` gives the phone a page with the links and the GPX download. Away from
+home, ask the session to show the ride's Markdown: the Google links in it open
+on the phone directly.
+
+Since the session is also a development session, new features can be asked
+for, built and tried from the phone as well. Scouts, if enabled, still run on
+the Anthropic key of that machine's `.env`.
+
+Source: Claude Code documentation, Remote Control (code.claude.com/docs/en/remote-control).
 
 ### Using it from Codex CLI
 

@@ -45,7 +45,12 @@ with a navigation app (Liberty Rider, Google Maps) on the phone.
   entry; prompts appear as slash commands there. Codex is supported already.
 
 - **Telegram bot**: plan, brief and fetch exports from the phone, away from the
-  computer. The agent becomes usable on the road.
+  computer. Largely superseded by Claude Code Remote Control (see README), which
+  gives a remote prompt with no bot and no API cost; kept for a path that does
+  not depend on a Claude plan.
+- **Files to the phone when away from home**: Remote Control shows text; GPX
+  and Markdown stay on the machine. A small upload step (private share link)
+  would complete the remote use.
 - **Weekly auto-plan**: Friday evening, best weekend day, sent to the phone.
 
 ## Agent quality

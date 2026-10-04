@@ -790,36 +790,39 @@ same server, so it behaves the same.
 
 ### From your phone with Codex
 
-Codex has the same idea: the ChatGPT mobile app can connect to a machine
-running the Codex app and drive it, with that machine's projects, files and
-configuration. Our server is part of that configuration once registered there.
+Codex has the same idea: the ChatGPT mobile app can drive a computer running
+the **Codex desktop app** (not the CLI), with that computer's projects, files
+and configuration. Our server is part of that configuration once registered
+there, since the app and the CLI share `~/.codex/config.toml`.
 
-1. On the host machine (a Mac or a Windows PC running the Codex app, as of
-   October 2026), clone the project, `npm install`, create `.env`, and register
-   the server: `npm run codex:register`, then add
-   `default_tools_approval_mode = "approve"` under `[mcp_servers.ride]` in
-   `~/.codex/config.toml` as above.
-2. In the ChatGPT app on the phone, open Codex and connect to that machine
-   (the pairing flow is in the ChatGPT app; it changes between versions, follow
-   the app).
-3. Ask in plain words, as in Codex CLI: "show saved ride 7", "plan me a ride
-   Sunday from Coutiches, no rain, under 220 km". No slash commands; the model
-   fetches the planning guidance through the `planningGuide` tool.
+1. On the host, a Mac or a Windows PC (Linux is not a host as of October 2026):
+   install the Codex app, clone the project, `npm install`, create `.env`, run
+   `npm run codex:register`, and add `default_tools_approval_mode = "approve"`
+   under `[mcp_servers.ride]` in `~/.codex/config.toml`.
+2. In the Codex app, sidebar, choose **Set up Codex mobile**. It shows a QR code.
+3. Scan it with the phone: ChatGPT opens and pairs with the computer. Both
+   must be on the same ChatGPT account and workspace; complete any login step.
+4. In the ChatGPT app, Codex now works on that computer. Open the agentRide
+   project and ask in plain words: "show saved ride 7", "plan me a ride Sunday
+   from Coutiches, no rain, under 220 km". No slash commands; the model fetches
+   the planning guidance through the `planningGuide` tool.
+
+The computer stays awake and online while you are out.
 
 Alternative host: a Codex cloud environment, or a DigitalOcean droplet through
 Codex's DigitalOcean plugin, which keeps working when nothing at home is awake.
 Same steps on that machine; the library then lives there.
 
-Caveats: host requirements for Codex remote control have changed several times
-in 2026 (Mac first, Windows later); check the ChatGPT changelog before counting
-on a Linux home box as a direct host. Our server's behaviour under Codex is the
-one verified with Codex CLI 0.160 in this repository; the remote-control path
-itself has not been tried here.
+Caveats: host requirements have changed during 2026 (Mac first, Windows later);
+plan entitlements for Codex in the mobile app have changed too, check yours in
+the app. Our server's behaviour under Codex is the one verified with Codex CLI
+0.160 in this repository; the pairing flow above comes from a July 2026 guide
+and has not been tried here.
 
 | | Claude Code Remote Control | Codex remote control |
 |---|---|---|
 | Phone side | Claude app or claude.ai | ChatGPT app |
-| Host | any machine running `claude remote-control` | a machine running the Codex app, or a Codex cloud environment |
+| Host | any machine running `claude remote-control`, Linux included | a Mac or Windows PC running the Codex desktop app, or a Codex cloud environment |
 | Our server | `.mcp.json` in the project, found automatically | registered once in the host's `~/.codex/config.toml` |
 | Slash commands | yes | no: plain words and `planningGuide` |
 

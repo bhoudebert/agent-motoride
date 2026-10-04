@@ -33,10 +33,18 @@ exports and the data are the same in both.
 | What you pay with | An Anthropic API key, per token | Your Claude Code or Codex plan; scouts still use the key if set |
 | How you talk to it | A terminal app with a menu and a `refine>` prompt | Slash commands in Claude Code, e.g. `/mcp__ride__plan-ride ...` |
 | Planning guidance | A real system prompt, schema-validated final answer | The same instructions sent as the prompt's text; free-text answer |
-| Model and effort | `RIDE_MODEL`, `RIDE_EFFORT` in `.env` | Claude Code's own model |
-| Best for | Full control, benchmarks, scripted runs | Daily use on a subscription, chatting about rides |
+| Model and effort | `RIDE_MODEL`, `RIDE_EFFORT` in `.env` | The MCP client's own model |
+| Best for | Full control, benchmarks, scripted runs | Daily use on a subscription, chatting about rides, and the phone through Remote Control |
 
-Start with the one that matches what you have: an API key, or Claude Code.
+Start with the one that matches what you have: an API key, Claude Code or
+Codex.
+
+**From your phone, with nothing to install**: a Claude Code session running on
+any machine (your computer, a Raspberry Pi, a VPS) can be driven from the Claude
+app or claude.ai, with this server attached. See
+[From your phone: Remote Control](#from-your-phone-remote-control).
+For the equivalent Codex workflow in the ChatGPT mobile app, see
+[From your phone with Codex](#from-your-phone-with-codex).
 
 Whatever the mode, `npm run check` tells you what is missing and whether the
 data services answer from your machine.
@@ -689,12 +697,54 @@ That prompt carries the full planning instructions of the built-in planner, the
 rider's settings and today's date. Plain requests work too ("use the ride tools
 to plan…"), with less guidance.
 
+### From your phone: Remote Control
+
+Claude Code can hand a running session to the Claude mobile app or to
+claude.ai in a browser. The session keeps running where it was started, with
+its project, its `.mcp.json` and therefore this server, its library and its
+exports; the phone is the keyboard and the screen. No app of ours, no bot, no
+hosting of the server on the internet: a remote prompt on top of everything in
+this README.
+
+```bash
+cd agentRide
+claude remote-control        # prints a URL and a QR code
+```
+
+Scan the code with the Claude app (or open the URL on claude.ai), then ask as
+in Claude Code: `/mcp__ride__plan-ride ...`, "show ride 7", "briefing for
+ride 7", "save it". From inside a running session, `/rc` does the same.
+
+Where the session runs is your choice:
+
+| Machine | Notes |
+|---|---|
+| Your computer | Zero setup; must stay awake while you are out |
+| A small always-on box at home (Raspberry Pi, NAS) | Clone the project there with `.env` and the database; the library lives on that box |
+| A VPS | Same, and the laptop is free; the library lives on the VPS |
+
+Requirements, from the Claude Code documentation: a Pro, Max, Team or
+Enterprise plan signed in with `/login` (an API key alone does not qualify);
+not available through Bedrock, Vertex or a custom API base URL. MCP servers
+from `.mcp.json` are documented as staying available in a remote-controlled
+session.
+
+Files: the session writes Markdown and GPX on the machine it runs on. At home,
+`/share` gives the phone a page with the links and the GPX download. Away from
+home, ask the session to show the ride's Markdown: the Google links in it open
+on the phone directly.
+
+Since the session is also a development session, new features can be asked
+for, built and tried from the phone as well. Scouts, if enabled, still run on
+the Anthropic key of that machine's `.env`.
+
+Source: Claude Code documentation, Remote Control (code.claude.com/docs/en/remote-control).
+
 ### Using it from Codex CLI
 
-Unlike Claude Code, Codex has no project-level MCP file: it reads servers only
-from the user's `~/.codex/config.toml` (verified on Codex 0.160, a
-`.codex/config.toml` in the project is ignored). So the server is registered
-once per machine, with absolute paths:
+Register the server once on every Codex host that should use it. The included
+helper writes a user-level entry with absolute paths, so it works regardless of
+which directory Codex starts in:
 
 ```bash
 npm run codex:register
@@ -719,26 +769,117 @@ Say what you want instead:
 
 ```
 show saved ride 7
-plan me a ride this Saturday from Coutiches, no rain, under 220 km, winding roads
+plan me a ride this Saturday from YOUR_START_TOWN, no rain, under 220 km, winding roads
 briefing for ride 7
 ```
 
 The server's instructions tell the model that ride requests go to its tools,
 never to the shell; add "using the ride tools" if it still reaches for a
 terminal. `/mcp` in Codex shows the server as `ride: connected (19 tools)`.
-What differs from Claude Code, verified against Codex 0.160:
+What differs from Claude Code:
 
 | | Claude Code | Codex |
 |---|---|---|
 | Tools | all | all |
 | Server instructions (the planning method) | received | received |
 | Slash commands (`plan-ride`, `today`, ...) | yes | no: Codex does not expose MCP prompts. The model fetches the same guidance through the `planningGuide` tool, which the instructions tell it to call for a new ride |
-| Server discovery | from the repo's `.mcp.json` | user-level config only; one registration per machine |
+| Server discovery | from the repo's `.mcp.json` | this project uses a user-level `~/.codex/config.toml` entry, registered once per host |
 | Approval of tool calls | once per server | per call unless `default_tools_approval_mode` is set |
 | What pays | your Claude plan | your Codex or ChatGPT plan; scouts still need the Anthropic key or `RIDE_SCOUTS=0` |
 
 Everything else (library, duplicates, exports, traces in `rides runs`) is the
 same server, so it behaves the same.
+
+### From your phone with Codex
+
+Codex Remote lets the ChatGPT mobile app control Codex on another computer.
+The phone is the interface; the repository, commands, MCP process, `.env`, ride
+database and exports stay on the connected host. Because `ride` is a local
+stdio MCP server, it does **not** need a public URL or an open firewall port.
+
+#### Recommended: pair the ChatGPT desktop app
+
+1. On the Mac or Windows host that will run Codex, clone this repository, run
+   `npm install`, create `.env`, and run `npm run codex:register`.
+2. Sign in to the latest ChatGPT desktop and mobile apps with the same ChatGPT
+   account and workspace. A workspace administrator may need to enable Remote
+   Control.
+3. In the desktop app, open **Settings > Connections > Control this Mac or
+   PC**, then choose **Set up** or **Add**.
+4. Scan the QR code with the phone and complete any MFA, SSO or passkey prompt.
+5. In the mobile app, open **Codex** (or **Remote** on older versions), select
+   the host and this project, then continue an existing chat or start a new one.
+
+Ask in plain words, for example:
+
+```text
+show saved ride 7
+plan me a ride Sunday from YOUR_START_TOWN, no rain, under 220 km
+```
+
+Codex does not expose this server's MCP prompts as slash commands. For a new
+ride it obtains the same method from the `planningGuide` tool automatically.
+The host must remain online, awake and signed in. Remote sessions keep the
+host's sandbox and approval policy; prompts sent from the phone do not bypass
+them.
+
+#### Linux or another remote development host
+
+The supported desktop pairing flow starts from the ChatGPT desktop app on macOS
+or Windows. If the project lives on a Linux server, NAS or other development
+machine, add that machine to the desktop app as an SSH host first. Install and
+authenticate Codex on the SSH host, register `ride` there, and select the remote
+project directory in **Settings > Connections > SSH**. The phone connects to
+the desktop host, while Codex and this MCP server execute on the SSH machine.
+
+Use normal SSH hardening: key-based authentication, a least-privilege account,
+and a VPN or mesh network when the host is outside the local network. Do not
+publish a Codex app-server listener directly on a shared or public network.
+
+#### Experimental: start Remote Control from the CLI
+
+Recent Codex CLI releases also document an experimental remote-control daemon.
+This is useful on a host where the command is available, but its interface and
+availability may change. Start it, then generate a short-lived pairing code:
+
+```bash
+codex remote-control start
+codex remote-control pair
+```
+
+Use the manual pairing option in Codex on the ChatGPT mobile app to enter the
+code. Stop the daemon when the host should no longer accept remote sessions:
+
+```bash
+codex remote-control stop
+```
+
+Run `codex remote-control --help` if the subcommand is unavailable or behaves
+differently in the installed release. The desktop-app flow above is the stable,
+fully documented path.
+
+#### Privacy and security
+
+- Never commit `.env`, API keys, the ride database, exported private routes,
+  SSH private keys, authentication files or pairing codes.
+- Treat a pairing code like a temporary password: do not paste it into issues,
+  logs, screenshots or documentation.
+- Pair only devices signed in to the intended account and workspace, and remove
+  devices that should no longer have access.
+- Remote Control shares access to the host session; it does not turn `src/mcp.ts`
+  into a public MCP endpoint. Publishing the MCP separately would require a
+  deliberate Streamable HTTP transport, authentication and secure deployment.
+
+Official documentation: [Remote connections](https://learn.chatgpt.com/docs/remote-connections),
+[Codex developer commands](https://learn.chatgpt.com/docs/developer-commands),
+and [MCP configuration](https://learn.chatgpt.com/docs/extend/mcp).
+
+| | Claude Code Remote Control | Codex remote control |
+|---|---|---|
+| Phone side | Claude app or claude.ai | ChatGPT app |
+| Host | any machine running `claude remote-control`, Linux included | Mac or Windows desktop app; SSH development hosts are supported behind it; CLI daemon is experimental |
+| Our server | `.mcp.json` in the project, found automatically | registered once in the host's `~/.codex/config.toml` |
+| Slash commands | yes | no: plain words and `planningGuide` |
 
 ### What the server exposes
 

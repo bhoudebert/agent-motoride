@@ -4,9 +4,48 @@ import { Store } from "../src/store.ts";
 import { emptyUsage } from "../src/usage.ts";
 
 const ride = (name: string) => ({
-  name, parentId: null, home: "Lille", rideDate: "2026-10-10", departure: "09:00", distanceKm: 100, ridingMinutes: 120, waypoints: ["Lille", "Cassel"], roundTrip: true,
-  speedLimits: {}, preferences: { avoidMotorways: true, max30Pct: 3, max50Pct: 20 }, request: "test", itinerary: "text", mapsUrl: "https://maps", cells: ["1:1"], shapes: ["abc"],
-  centerLat: 50, centerLon: 3, usage: null, extras: null, legs: [{ seq: 1, from: "Lille", to: "Cassel", fromCoords: "50,3", toCoords: "50.8,2.5", distanceKm: 50, ridingMinutes: 60, mainRoads: ["D 938"] }, { seq: 2, from: "Cassel", to: "Lille", fromCoords: "50.8,2.5", toCoords: "50,3", distanceKm: 50, ridingMinutes: 60, mainRoads: [] }],
+  name,
+  parentId: null,
+  home: "Lille",
+  rideDate: "2026-10-10",
+  departure: "09:00",
+  distanceKm: 100,
+  ridingMinutes: 120,
+  waypoints: ["Lille", "Cassel"],
+  roundTrip: true,
+  speedLimits: {},
+  preferences: { avoidMotorways: true, max30Pct: 3, max50Pct: 20 },
+  request: "test",
+  itinerary: "text",
+  mapsUrl: "https://maps",
+  cells: ["1:1"],
+  shapes: ["abc"],
+  centerLat: 50,
+  centerLon: 3,
+  usage: null,
+  extras: null,
+  legs: [
+    {
+      seq: 1,
+      from: "Lille",
+      to: "Cassel",
+      fromCoords: "50,3",
+      toCoords: "50.8,2.5",
+      distanceKm: 50,
+      ridingMinutes: 60,
+      mainRoads: ["D 938"],
+    },
+    {
+      seq: 2,
+      from: "Cassel",
+      to: "Lille",
+      fromCoords: "50.8,2.5",
+      toCoords: "50,3",
+      distanceKm: 50,
+      ridingMinutes: 60,
+      mainRoads: [],
+    },
+  ],
 });
 
 test("rides: save, find by id and name, rate, version, delete", () => {
@@ -30,7 +69,13 @@ test("rides: save, find by id and name, rate, version, delete", () => {
 test("extras written in the wrong shape are repaired on read", () => {
   const store = new Store(":memory:");
   const id = store.saveRide(ride("x"));
-  store.setExtras(id, { gatheredAt: "now", daylight: null, cameras: [], errors: {}, stops: { fuel: { stops: [{ kmAlongRoute: 1, leg: 1, name: "F", openingHours: null, detourM: 10 }] } } as any });
+  store.setExtras(id, {
+    gatheredAt: "now",
+    daylight: null,
+    cameras: [],
+    errors: {},
+    stops: { fuel: { stops: [{ kmAlongRoute: 1, leg: 1, name: "F", openingHours: null, detourM: 10 }] } } as any,
+  });
   const stops = store.findRide(String(id))!.extras!.stops;
   assert.ok(Array.isArray(stops.fuel));
   assert.equal(stops.fuel![0]!.name, "F");
@@ -39,8 +84,22 @@ test("extras written in the wrong shape are repaired on read", () => {
 
 test("runs, trace, profile and cache", () => {
   const store = new Store(":memory:");
-  const runId = store.startRun({ home: "Lille", request: "r", usage: emptyUsage("m", "n/a"), costUsd: null, result: null, rideId: null, error: null });
-  store.addTrace(runId, { scope: "main", kind: "tool", name: "calculateTrip", ms: 5, payload: { input: {}, output: {} } });
+  const runId = store.startRun({
+    home: "Lille",
+    request: "r",
+    usage: emptyUsage("m", "n/a"),
+    costUsd: null,
+    result: null,
+    rideId: null,
+    error: null,
+  });
+  store.addTrace(runId, {
+    scope: "main",
+    kind: "tool",
+    name: "calculateTrip",
+    ms: 5,
+    payload: { input: {}, output: {} },
+  });
   assert.equal(store.listTrace(runId).length, 1);
   assert.equal(store.findRun(runId)!.request, "r");
   assert.equal(store.getProfile().tankRangeKm, 250);

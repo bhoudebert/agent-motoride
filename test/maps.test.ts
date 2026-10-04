@@ -1,10 +1,16 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { navigationPoints, pinnedMapsParts, splitLinks, MAX_POINTS_PER_LINK } from "../src/maps.ts";
+import { MAX_POINTS_PER_LINK, navigationPoints, pinnedMapsParts, splitLinks } from "../src/maps.ts";
 import { bentLine, encodePolyline } from "./helpers/polyline.ts";
 
-const A = { lat: 50.0, lon: 3.0 }, B = { lat: 50.3, lon: 3.4 }, C = { lat: 50.6, lon: 3.0 };
-const shapes = [encodePolyline(bentLine(A, B, 60, 0.03)), encodePolyline(bentLine(B, C, 60, -0.03)), encodePolyline(bentLine(C, A, 60, 0.0))];
+const A = { lat: 50.0, lon: 3.0 },
+  B = { lat: 50.3, lon: 3.4 },
+  C = { lat: 50.6, lon: 3.0 };
+const shapes = [
+  encodePolyline(bentLine(A, B, 60, 0.03)),
+  encodePolyline(bentLine(B, C, 60, -0.03)),
+  encodePolyline(bentLine(C, A, 60, 0.0)),
+];
 
 test("pass-through points go where the road strays from the straight line", () => {
   const points = navigationPoints([A, B, C, A], shapes, [], MAX_POINTS_PER_LINK);
@@ -13,7 +19,10 @@ test("pass-through points go where the road strays from the straight line", () =
   assert.ok(vias.length >= 4);
   // The straight third leg gets none.
   const thirdLegStart = points.filter((p) => p.kind === "waypoint")[2]!.km;
-  assert.equal(vias.some((v) => v.km > thirdLegStart), false);
+  assert.equal(
+    vias.some((v) => v.km > thirdLegStart),
+    false,
+  );
 });
 
 test("links are split at a planned stop, never into a tiny tail", () => {

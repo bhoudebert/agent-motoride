@@ -1,15 +1,15 @@
 import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
-import { scoutAreas } from "../scouts.ts";
-import { pinnedMapsLinks } from "../maps.ts";
 import { stopCandidatesFor } from "../library.ts";
+import { pinnedMapsLinks } from "../maps.ts";
+import { scoutAreas } from "../scouts.ts";
+import { type RideContext, ratedOverlap, registerRoute, savedRideOverlap } from "../session.ts";
 import { locateStops, planStops } from "../stops.ts";
-import { speedCamerasAlong, stopsAlong, type StopKind } from "./along.ts";
-import { ratedOverlap, registerRoute, savedRideOverlap, type RideContext } from "../session.ts";
+import { type StopKind, speedCamerasAlong, stopsAlong } from "./along.ts";
 import { fmtCoords, haversineKm, resolvePoint } from "./geo.ts";
 import { searchRoads } from "./roads.ts";
 import { getTraffic } from "./traffic.ts";
-import { computeTrip, type CalculateTripInput, type TripComputation } from "./trip.ts";
+import { type CalculateTripInput, computeTrip, type TripComputation } from "./trip.ts";
 import { getDaylight, getWeather } from "./weather.ts";
 
 // Bump when the shape of cached tool results changes, so stale entries are ignored.
@@ -17,7 +17,14 @@ const CACHE_VERSION = 5;
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 // Roads rarely change; routes can (closures, map edits); forecasts move by the hour.
-const TTL = { searchRoads: 30 * DAY, calculateTrip: 7 * DAY, getWeather: HOUR, getSpeedCameras: 30 * DAY, findStops: 30 * DAY, getDaylight: 365 * DAY };
+const TTL = {
+  searchRoads: 30 * DAY,
+  calculateTrip: 7 * DAY,
+  getWeather: HOUR,
+  getSpeedCameras: 30 * DAY,
+  findStops: 30 * DAY,
+  getDaylight: 365 * DAY,
+};
 
 /** JSON with sorted keys, so equal inputs always give the same cache key. */
 function stableJson(value: unknown): string {
@@ -34,12 +41,14 @@ function stableJson(value: unknown): string {
 
 const location = z
   .string()
-  .describe('Town ("Florac", "Vannes, France"), street or address ("Avenue de Bretagne, Lille"), or "lat,lon" coordinates');
+  .describe(
+    'Town ("Florac", "Vannes, France"), street or address ("Avenue de Bretagne, Lille"), or "lat,lon" coordinates',
+  );
 const waypoints = z
   .array(location)
   .min(1)
   .max(20)
-  .describe("Ordered stops, each a town, a street or address, or \"lat,lon\". First one is the start.");
+  .describe('Ordered stops, each a town, a street or address, or "lat,lon". First one is the start.');
 
 /** Log each call to stderr and to the trace, and return the result to the model as JSON. */
 function traced<I, O>(context: RideContext, scope: string, name: string, fn: (input: I) => Promise<O>) {
@@ -67,7 +76,9 @@ export interface ToolDefinition {
   name: string;
   description: string;
   inputSchema: z.ZodType;
-  run: (input: any) => Promise<string>;
+  // Method syntax on purpose: each definition's run takes its own input type,
+  // and method parameters are checked bivariantly, so the list can mix them.
+  run(input: unknown): Promise<string>;
 }
 
 export interface ToolOptions {
@@ -92,10 +103,15 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
   // The rider can switch motorways on or off during a session, so the rule is
   // read from the context at each call and reported back in every result,
   // rather than written into the (fixed) tool descriptions.
-  const mayUseMotorways = (requested: boolean | undefined) => !context.preferences.avoidMotorways && requested === false;
+  const mayUseMotorways = (requested: boolean | undefined) =>
+    !context.preferences.avoidMotorways && requested === false;
 
   /** Serve a tool result from the SQLite cache when a fresh one exists. */
-  function cached<I, O>(tool: keyof typeof TTL, fn: (input: I) => Promise<O>, keep: (output: O) => boolean = () => true) {
+  function cached<I, O>(
+    tool: keyof typeof TTL,
+    fn: (input: I) => Promise<O>,
+    keep: (output: O) => boolean = () => true,
+  ) {
     return async (input: I): Promise<O> => {
       // Place names resolve relative to the start point, so it is part of the key.
       const key = `${tool}@${CACHE_VERSION}|${fmtCoords(context.home)}|${stableJson(input)}`;
@@ -156,7 +172,14 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
             // Gathered at save or refresh; absent on rides saved before that existed.
             daylight: ride.extras?.daylight ?? null,
             fixedCameras: ride.extras?.cameras.length ?? null,
-            stops: ride.extras ? Object.fromEntries(Object.entries(ride.extras.stops).map(([k, v]) => [k, v.map((s) => `${s.name} (km ${s.kmAlongRoute})`)])) : null,
+            stops: ride.extras
+              ? Object.fromEntries(
+                  Object.entries(ride.extras.stops).map(([k, v]) => [
+                    k,
+                    v.map((s) => `${s.name} (km ${s.kmAlongRoute})`),
+                  ]),
+                )
+              : null,
             legs: ride.legs.map((leg) => ({
               leg: leg.seq,
               from: leg.from,
@@ -178,7 +201,10 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
         "Hourly weather forecast for one place on one day (up to 16 days ahead): temperature, rain probability and amount, wind, gusts, sky. Call it for the start point and for several points along a candidate route, covering the hours the rider would actually be there.",
       inputSchema: z.object({
         location,
-        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("Day to forecast, YYYY-MM-DD"),
+        date: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .describe("Day to forecast, YYYY-MM-DD"),
         fromHour: z.number().int().min(0).max(23).optional().describe("First local hour to include, default 8"),
         toHour: z.number().int().min(0).max(23).optional().describe("Last local hour to include, default 20"),
       }),
@@ -205,7 +231,9 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
         avoidMotorways: z
           .boolean()
           .optional()
-          .describe("Default true. False takes motorways where faster, and only has effect when the rider permits motorways"),
+          .describe(
+            "Default true. False takes motorways where faster, and only has effect when the rider permits motorways",
+          ),
       }),
       run: trace("calculateTrip", async (input: CalculateTripInput) => {
         const trip = await cachedTrip({
@@ -247,7 +275,13 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
       name: "getDaylight",
       description:
         "Sunrise, sunset, first and last usable light, and daylight hours for a place and a date, any date. Use it to set the departure time and to check the return is before sunset; weather results carry the same figures for the forecast day.",
-      inputSchema: z.object({ location, date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("YYYY-MM-DD") }),
+      inputSchema: z.object({
+        location,
+        date: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .describe("YYYY-MM-DD"),
+      }),
       run: trace("getDaylight", cached("getDaylight", getDaylight)),
     },
     {
@@ -258,7 +292,9 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
       run: trace("getSpeedCameras", async (input: { routeId: string }) => {
         const route = context.routes.get(input.routeId);
         if (!route) throw new Error(`Unknown routeId ${input.routeId}; route the loop with calculateTrip first.`);
-        return cachedAlong("getSpeedCameras", route.trip.shapes, () => speedCamerasAlong(route.trip.shapes, route.trip.result.legs));
+        return cachedAlong("getSpeedCameras", route.trip.shapes, () =>
+          speedCamerasAlong(route.trip.shapes, route.trip.result.legs),
+        );
       }),
     },
     {
@@ -267,20 +303,33 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
         "Fuel stations, cafés, restaurants and bakeries within a short detour of a routed trip, ordered by distance from the start, with opening hours when mapped. Use it on the final loop to place a fuel stop within the tank range and a coffee or lunch stop at a sensible point, and name them in the itinerary.",
       inputSchema: z.object({
         routeId: z.string().describe("routeId from calculateTrip"),
-        kinds: z.array(z.enum(["fuel", "cafe", "restaurant", "bakery"])).min(1).optional().describe("Default fuel and cafe"),
-        radiusM: z.number().int().min(50).max(2000).optional().describe("Max detour from the route in metres, default 400"),
+        kinds: z
+          .array(z.enum(["fuel", "cafe", "restaurant", "bakery"]))
+          .min(1)
+          .optional()
+          .describe("Default fuel and cafe"),
+        radiusM: z
+          .number()
+          .int()
+          .min(50)
+          .max(2000)
+          .optional()
+          .describe("Max detour from the route in metres, default 400"),
         limitPerKind: z.number().int().min(1).max(40).optional().describe("Default 15"),
       }),
-      run: trace("findStops", async (input: { routeId: string; kinds?: StopKind[]; radiusM?: number; limitPerKind?: number }) => {
-        const route = context.routes.get(input.routeId);
-        if (!route) throw new Error(`Unknown routeId ${input.routeId}; route the loop with calculateTrip first.`);
-        const kinds = input.kinds ?? ["fuel", "cafe"];
-        const radiusM = input.radiusM ?? 400;
-        const limit = input.limitPerKind ?? 15;
-        return cachedAlong(`findStops|${kinds.join("+")}|${radiusM}|${limit}`, route.trip.shapes, () =>
-          stopsAlong(route.trip.shapes, route.trip.result.legs, kinds, radiusM, limit),
-        );
-      }),
+      run: trace(
+        "findStops",
+        async (input: { routeId: string; kinds?: StopKind[]; radiusM?: number; limitPerKind?: number }) => {
+          const route = context.routes.get(input.routeId);
+          if (!route) throw new Error(`Unknown routeId ${input.routeId}; route the loop with calculateTrip first.`);
+          const kinds = input.kinds ?? ["fuel", "cafe"];
+          const radiusM = input.radiusM ?? 400;
+          const limit = input.limitPerKind ?? 15;
+          return cachedAlong(`findStops|${kinds.join("+")}|${radiusM}|${limit}`, route.trip.shapes, () =>
+            stopsAlong(route.trip.shapes, route.trip.result.legs, kinds, radiusM, limit),
+          );
+        },
+      ),
     },
     {
       name: "planStops",
@@ -288,37 +337,56 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
         "Choose the stops of a routed trip from the rider's bike profile: the last fuel station before each fuel deadline (tank range minus reserve, from the fuel at departure), a café or bakery pause after the pause interval, a restaurant where the ride crosses midday, preferring places open at the arrival time when the ride date is given. Returns the stops with arrival times and whether each is open, the return time with breaks, warnings (no fuel in reach, long stint), and navigation links that include the stops so they are announced on the bike. Call it once for the final loop, after calculateTrip, and name the stops in the itinerary. findStops is only for browsing alternatives.",
       inputSchema: z.object({
         routeId: z.string().describe("routeId from calculateTrip"),
-        departure: z.string().regex(/^\d{1,2}:\d{2}$/).describe("Planned departure time, HH:MM"),
-        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("Ride date, to check opening hours at arrival"),
-        fuelAtStartKm: z.number().min(10).optional().describe("Range left in the tank at departure, km; default a full tank"),
+        departure: z
+          .string()
+          .regex(/^\d{1,2}:\d{2}$/)
+          .describe("Planned departure time, HH:MM"),
+        date: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional()
+          .describe("Ride date, to check opening hours at arrival"),
+        fuelAtStartKm: z
+          .number()
+          .min(10)
+          .optional()
+          .describe("Range left in the tank at departure, km; default a full tank"),
       }),
-      run: trace("planStops", async (input: { routeId: string; departure: string; date?: string; fuelAtStartKm?: number }) => {
-        const route = context.routes.get(input.routeId);
-        if (!route) throw new Error(`Unknown routeId ${input.routeId}; route the loop with calculateTrip first.`);
-        const { trip } = route;
-        const profile = store.getProfile();
-        const candidates = await stopCandidatesFor(store, trip.shapes, trip.result.legs);
-        const plan = await locateStops(planStops(trip.result.legs, candidates, profile, input.departure, input.fuelAtStartKm, input.date ?? null));
-        context.stopPlans.set(route.id, plan);
-        const stopPoints = plan.stops.map((s) => {
-          const [lat = 0, lon = 0] = s.coords.split(",").map(Number);
-          return { lat, lon, label: `${s.kind}: ${s.name}`, km: s.kmAlongRoute };
-        });
-        const waypoints = [trip.result.legs[0]!, ...trip.result.legs].map((leg, i) => {
-          const [lat = 0, lon = 0] = (i === 0 ? leg.fromCoords : leg.toCoords).split(",").map(Number);
-          return { lat, lon };
-        });
-        return {
-          profile,
-          ...plan,
-          navigationLinksWithStops: pinnedMapsLinks(waypoints, trip.shapes, stopPoints),
-          alternatives: {
-            fuel: candidates.fuel.slice(0, 12).map((f) => `${f.name} km ${f.kmAlongRoute}`),
-            cafeOrBakery: [...candidates.cafe, ...candidates.bakery].sort((a, b) => a.kmAlongRoute - b.kmAlongRoute).slice(0, 12).map((c) => `${c.name} km ${c.kmAlongRoute}`),
-            restaurant: candidates.restaurant.slice(0, 8).map((r) => `${r.name} km ${r.kmAlongRoute}`),
-          },
-        };
-      }),
+      run: trace(
+        "planStops",
+        async (input: { routeId: string; departure: string; date?: string; fuelAtStartKm?: number }) => {
+          const route = context.routes.get(input.routeId);
+          if (!route) throw new Error(`Unknown routeId ${input.routeId}; route the loop with calculateTrip first.`);
+          const { trip } = route;
+          const profile = store.getProfile();
+          const candidates = await stopCandidatesFor(store, trip.shapes, trip.result.legs);
+          const plan = await locateStops(
+            planStops(trip.result.legs, candidates, profile, input.departure, input.fuelAtStartKm, input.date ?? null),
+          );
+          context.stopPlans.set(route.id, plan);
+          const stopPoints = plan.stops.map((s) => {
+            const [lat = 0, lon = 0] = s.coords.split(",").map(Number);
+            return { lat, lon, label: `${s.kind}: ${s.name}`, km: s.kmAlongRoute };
+          });
+          const waypoints = [trip.result.legs[0]!, ...trip.result.legs].map((leg, i) => {
+            const [lat = 0, lon = 0] = (i === 0 ? leg.fromCoords : leg.toCoords).split(",").map(Number);
+            return { lat, lon };
+          });
+          return {
+            profile,
+            ...plan,
+            navigationLinksWithStops: pinnedMapsLinks(waypoints, trip.shapes, stopPoints),
+            alternatives: {
+              fuel: candidates.fuel.slice(0, 12).map((f) => `${f.name} km ${f.kmAlongRoute}`),
+              cafeOrBakery: [...candidates.cafe, ...candidates.bakery]
+                .sort((a, b) => a.kmAlongRoute - b.kmAlongRoute)
+                .slice(0, 12)
+                .map((c) => `${c.name} km ${c.kmAlongRoute}`),
+              restaurant: candidates.restaurant.slice(0, 8).map((r) => `${r.name} km ${r.kmAlongRoute}`),
+            },
+          };
+        },
+      ),
     },
     {
       name: "scoutAreas",
@@ -329,11 +397,16 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
           .array(z.object({ name: z.string().describe("Short name for the area, e.g. Vercors"), location }))
           .min(1)
           .max(4),
-        rideDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("Ride day, YYYY-MM-DD"),
+        rideDate: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .describe("Ride day, YYYY-MM-DD"),
         departure: z.string().describe("Planned departure time, HH:MM"),
         maxDistanceKm: z.number().nullable().describe("Hard distance cap from the rider's request, or null"),
         maxRidingMinutes: z.number().nullable().describe("Hard riding-time cap in minutes, or null"),
-        constraints: z.string().describe("The rider's request and constraints, in one paragraph, as scouts will not see the conversation"),
+        constraints: z
+          .string()
+          .describe("The rider's request and constraints, in one paragraph, as scouts will not see the conversation"),
       }),
       run: trace("scoutAreas", (input: Parameters<typeof scoutAreas>[1]) => scoutAreas(context, input)),
     },

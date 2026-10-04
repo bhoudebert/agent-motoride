@@ -69,11 +69,17 @@ async function alongRoute(points: RoutePoint[], filters: string[], radiusM: numb
     const union = filters.map((filter) => `nwr${filter}(around:${radiusM},${line});`).join("");
     const started = Date.now();
     try {
-      const elements = await overpass<Element & { id?: number }>(`[out:json][timeout:30];(${union});out center tags;`, { quick: depth < 3 });
+      const elements = await overpass<Element & { id?: number }>(`[out:json][timeout:30];(${union});out center tags;`, {
+        quick: depth < 3,
+      });
       for (const e of elements) seen.set(`${e.type}/${e.id}`, e);
-      process.stderr.write(`\x1b[2m     map chunk km ${chunk[0]!.km.toFixed(0)}-${chunk.at(-1)!.km.toFixed(0)}: ${elements.length} found, ${Date.now() - started} ms\x1b[0m\n`);
+      process.stderr.write(
+        `\x1b[2m     map chunk km ${chunk[0]!.km.toFixed(0)}-${chunk.at(-1)!.km.toFixed(0)}: ${elements.length} found, ${Date.now() - started} ms\x1b[0m\n`,
+      );
     } catch (error) {
-      process.stderr.write(`\x1b[2m     map chunk km ${chunk[0]!.km.toFixed(0)}-${chunk.at(-1)!.km.toFixed(0)}: failed after ${Date.now() - started} ms${chunk.length >= 8 && depth < 3 ? ", splitting" : ""}\x1b[0m\n`);
+      process.stderr.write(
+        `\x1b[2m     map chunk km ${chunk[0]!.km.toFixed(0)}-${chunk.at(-1)!.km.toFixed(0)}: failed after ${Date.now() - started} ms${chunk.length >= 8 && depth < 3 ? ", splitting" : ""}\x1b[0m\n`,
+      );
       if (chunk.length < 8 || depth >= 3) throw error;
       const half = Math.ceil(chunk.length / 2);
       await query(chunk.slice(0, half + 1), depth + 1);
@@ -139,7 +145,9 @@ function stopFilters(kinds: StopKind[]): string[] {
     const { key, value } = STOP_TAGS[kind];
     byKey.set(key, [...(byKey.get(key) ?? []), value]);
   }
-  return [...byKey.entries()].map(([key, values]) => (values.length === 1 ? `["${key}"="${values[0]}"]` : `["${key}"~"^(${values.join("|")})$"]`));
+  return [...byKey.entries()].map(([key, values]) =>
+    values.length === 1 ? `["${key}"="${values[0]}"]` : `["${key}"~"^(${values.join("|")})$"]`,
+  );
 }
 
 /**
@@ -147,7 +155,11 @@ function stopFilters(kinds: StopKind[]): string[] {
  * (named, then smallest detour), then the best leftovers. A plain cut by
  * distance would list only the first town's stops.
  */
-function spread<T extends { kmAlongRoute: number; name: string; detourM: number }>(stops: T[], totalKm: number, limit: number): T[] {
+function spread<T extends { kmAlongRoute: number; name: string; detourM: number }>(
+  stops: T[],
+  totalKm: number,
+  limit: number,
+): T[] {
   if (stops.length <= limit) return stops;
   const score = (s: T) => (s.name.endsWith("(unnamed)") ? 10_000 : 0) + s.detourM;
   const bucketKm = totalKm / limit;
@@ -168,14 +180,28 @@ function spread<T extends { kmAlongRoute: number; name: string; detourM: number 
  * Fuel stations, cafés, restaurants and bakeries near the route, ordered by
  * distance from the start, so stops can be planned by tank range and timing.
  */
-export async function stopsAlong(shapes: string[], legs: TripLeg[], kinds: StopKind[], radiusM: number, limitPerKind: number) {
+export async function stopsAlong(
+  shapes: string[],
+  legs: TripLeg[],
+  kinds: StopKind[],
+  radiusM: number,
+  limitPerKind: number,
+) {
   const points = routePoints(shapes);
   const totalKm = points.at(-1)?.km ?? 0;
   const result: Record<string, unknown> = { totalKm: Number(totalKm.toFixed(1)) };
   // One query for every kind, then sort the elements by their tags.
   const elements = await alongRoute(points, stopFilters(kinds), radiusM);
   const kindOf = (tags: Record<string, string>): StopKind | undefined =>
-    tags.amenity === "fuel" ? "fuel" : tags.amenity === "cafe" ? "cafe" : tags.amenity === "restaurant" ? "restaurant" : tags.shop === "bakery" ? "bakery" : undefined;
+    tags.amenity === "fuel"
+      ? "fuel"
+      : tags.amenity === "cafe"
+        ? "cafe"
+        : tags.amenity === "restaurant"
+          ? "restaurant"
+          : tags.shop === "bakery"
+            ? "bakery"
+            : undefined;
   for (const kind of kinds) {
     const stops = elements
       .filter((e) => kindOf(e.tags ?? {}) === kind)
@@ -200,7 +226,12 @@ export async function stopsAlong(shapes: string[], legs: TripLeg[], kinds: StopK
       })
       .sort((a, b) => a.kmAlongRoute - b.kmAlongRoute);
     const chosen = spread(stops, totalKm, limitPerKind);
-    result[kind] = { found: stops.length, listed: chosen.length, stops: chosen, legsHint: legs.map((l, i) => `${i + 1}: ${l.from} -> ${l.to}`) };
+    result[kind] = {
+      found: stops.length,
+      listed: chosen.length,
+      stops: chosen,
+      legsHint: legs.map((l, i) => `${i + 1}: ${l.from} -> ${l.to}`),
+    };
   }
   return result;
 }

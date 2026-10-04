@@ -38,7 +38,10 @@ const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
  * itinerary and a GPX download, for the phone. Content is read on each request,
  * so the page follows the current itinerary. Nothing leaves the local network.
  */
-export function startShareServer(current: () => Shared | undefined, port: number): Promise<{ server: Server; url: string }> {
+export function startShareServer(
+  current: () => Shared | undefined,
+  port: number,
+): Promise<{ server: Server; url: string }> {
   const server = createServer((req, res) => {
     const shared = current();
     if (!shared) {
@@ -46,7 +49,10 @@ export function startShareServer(current: () => Shared | undefined, port: number
       return res.end("No itinerary to share yet.");
     }
     if (req.url?.startsWith("/ride.gpx")) {
-      res.writeHead(200, { "content-type": "application/gpx+xml", "content-disposition": 'attachment; filename="ride.gpx"' });
+      res.writeHead(200, {
+        "content-type": "application/gpx+xml",
+        "content-disposition": 'attachment; filename="ride.gpx"',
+      });
       return res.end(buildGpx(shared.gpx));
     }
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" });

@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { SCOUT_EFFORT, SCOUT_MODEL, requestSettings } from "./model.ts";
+import { requestSettings, SCOUT_EFFORT, SCOUT_MODEL } from "./model.ts";
 import { ScoutReport } from "./schema.ts";
 import type { RideContext } from "./session.ts";
 import { createTools } from "./tools/index.ts";
@@ -28,7 +28,10 @@ Report the best loop you routed, with its routeId, even if it misses a target, a
  * tools, and return their reports, best first. Routes they computed are
  * registered in the planner's session, so the planner can present them directly.
  */
-export async function scoutAreas(context: RideContext, input: ScoutInput): Promise<{ reports: ScoutReport[]; notes: string[] }> {
+export async function scoutAreas(
+  context: RideContext,
+  input: ScoutInput,
+): Promise<{ reports: ScoutReport[]; notes: string[] }> {
   const notes: string[] = [];
   // Under an MCP client the planner is someone else's model; scouts still need
   // API credentials of their own to run.
@@ -77,7 +80,13 @@ export async function scoutAreas(context: RideContext, input: ScoutInput): Promi
       for await (const message of runner) {
         last = message;
         countUsage(context.usage, message);
-        context.trace({ scope, kind: "model", name: message.model, ms: Date.now() - started, payload: describeResponse(message) });
+        context.trace({
+          scope,
+          kind: "model",
+          name: message.model,
+          ms: Date.now() - started,
+          payload: describeResponse(message),
+        });
       }
       if (last?.stop_reason !== "end_turn") throw new Error(`scout stopped with ${last?.stop_reason ?? "no response"}`);
       const raw = last.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("\n");

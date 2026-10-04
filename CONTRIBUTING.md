@@ -59,3 +59,9 @@ publishes GitHub release notes. Nothing is published to npm.
 - Public map services: serialise, chunk, cache, and surface failures.
 - Lint: ESLint with typescript-eslint, `eslint.config.js`. Format: Prettier,
   `.prettierrc.json`. Both pure JavaScript, no platform-specific binaries.
+- TypeScript, two packages on purpose: `@typescript/native` is TypeScript 7,
+  the native compiler behind `tsc` and `npm run typecheck`; `typescript` is an
+  alias of `@typescript/typescript6`, the last version with a JavaScript API,
+  which typescript-eslint and editors import. This is the layout the
+  TypeScript 7 announcement recommends. Both are bumped by Dependabot
+  independently.

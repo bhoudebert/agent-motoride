@@ -36,13 +36,14 @@
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.6.4",
     "@types/qrcode-terminal": "^0.12.2",
+    "@typescript/native": "npm:typescript@^7.0.2",
     "eslint": "^10.12.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.13.0",
     "lint-staged": "^17.6.0",
     "prettier": "^3.9.9",
     "simple-git-hooks": "^2.14.0",
-    "typescript": "^5.9.3",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
     "typescript-eslint": "^8.71.0"
   },
   "simple-git-hooks": {

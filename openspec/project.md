@@ -11,7 +11,7 @@ model presents.
 
 ## Tech Stack
 
-- TypeScript on Node 24 (type stripping, no build step), SQLite via `node:sqlite`
+- TypeScript on Node 24 (type stripping, no build step; TypeScript 7 native compiler for checks, TypeScript 6 API package for tooling), SQLite via `node:sqlite`
 - `@anthropic-ai/sdk` tool runner for the built-in planner; `@modelcontextprotocol/sdk` for MCP mode
 - Data: OpenStreetMap via Overpass (roads, cameras, stops), Valhalla (routing, speed limits), Open-Meteo (weather, geocoding), Photon and Nominatim (addresses, reverse geocoding), TomTom (traffic, optional)
 

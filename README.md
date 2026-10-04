@@ -97,17 +97,17 @@ Details for each mode: [Usage](#usage) for the terminal app, [MCP mode](#mcp-mod
 
 ## Project conventions
 
-|                     |                                                                                                                        |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Quality gate        | `npm run quality`: typecheck, lint, format check, unit tests. Runs in CI on every pull request                         |
-| Formatting and lint | ESLint (`eslint.config.js`) and Prettier (`.prettierrc.json`); `npm run lint:fix` and `npm run format`                 |
-| TypeScript          | 7 (native compiler) for `tsc`; 6 as the API package for ESLint and editors, per the TypeScript 7 side-by-side guidance |
-| Commits             | Conventional Commits, enforced by a commit-msg hook and in CI; `feat`/`fix` drive versions                             |
-| Hooks               | installed by `npm install`: lint-staged on pre-commit, commitlint on commit-msg                                        |
-| Releases            | release-please maintains a release PR with changelog and version; merging it tags the release                          |
-| Dependencies        | Dependabot, weekly, grouped dev tooling                                                                                |
-| Specs               | `openspec/`, updated before behaviour changes                                                                          |
-| Contributing        | `CONTRIBUTING.md`; security notes in `SECURITY.md`; MIT licence                                                        |
+|                     |                                                                                                                                                                                                                                                                             |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Quality gate        | `npm run quality`: typecheck, lint, format check, unit tests. Runs in CI on every pull request                                                                                                                                                                              |
+| Formatting and lint | ESLint (`eslint.config.js`) and Prettier (`.prettierrc.json`); `npm run lint:fix` and `npm run format`                                                                                                                                                                      |
+| TypeScript          | 7 (native compiler) for `tsc`; 6 as the API package for ESLint and editors, per the TypeScript 7 side-by-side guidance                                                                                                                                                      |
+| Commits             | Conventional Commits with the full type set (`feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`, `ci`, `chore`, `style`, `revert`) and kebab-case scopes, enforced by a commit-msg hook and in CI; rules and examples in `CONTRIBUTING.md`. Agents read `AGENTS.md` |
+| Hooks               | installed by `npm install`: lint-staged on pre-commit, commitlint on commit-msg                                                                                                                                                                                             |
+| Releases            | release-please maintains a release PR with changelog and version; merging it tags the release                                                                                                                                                                               |
+| Dependencies        | Dependabot, weekly, grouped dev tooling                                                                                                                                                                                                                                     |
+| Specs               | `openspec/`, updated before behaviour changes                                                                                                                                                                                                                               |
+| Contributing        | `CONTRIBUTING.md`; security notes in `SECURITY.md`; MIT licence                                                                                                                                                                                                             |
 
 ## Documentation map
 

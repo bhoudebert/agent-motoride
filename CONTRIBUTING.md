@@ -27,19 +27,70 @@ npm run check           # environment and data services
 
 ## Commits
 
-Conventional Commits, one concern per commit:
+Conventional Commits, enforced by the commit-msg hook and in CI:
+
+```
+<type>(<scope>): <subject>
+
+<body: what and why, wrapped at 120 columns, optional>
+
+<footer: BREAKING CHANGE: ..., Refs #12, optional>
+```
+
+### Types
+
+| Type       | Use for                                                | Release effect                 |
+| ---------- | ------------------------------------------------------ | ------------------------------ |
+| `feat`     | A capability the rider or an agent did not have before | minor version                  |
+| `fix`      | Wrong behaviour corrected                              | patch version                  |
+| `perf`     | Same behaviour, faster or cheaper                      | patch version                  |
+| `refactor` | Code change with no behaviour change                   | none                           |
+| `docs`     | README, specs, roadmap, comments                       | none (listed in the changelog) |
+| `test`     | Tests only                                             | none                           |
+| `build`    | Dependencies, tooling, scripts, package.json           | none (listed in the changelog) |
+| `ci`       | GitHub Actions, Dependabot, release automation         | none                           |
+| `chore`    | Housekeeping that fits nowhere else                    | none                           |
+| `style`    | Formatting, no logic change                            | none                           |
+| `revert`   | Reverts a previous commit; subject names it            | depends on what is reverted    |
+
+A breaking change adds `!` after the scope, `feat(mcp)!: ...`, and a
+`BREAKING CHANGE:` footer explaining the migration. Before 1.0 it bumps the
+minor version, after 1.0 the major.
+
+### Scopes
+
+Lower-case, kebab-case, the area touched. Common ones:
+
+`planner`, `scouts`, `tools`, `routing`, `roads`, `weather`, `stops`,
+`cameras`, `rides` (the library), `export` (GPX, Markdown), `share`, `cli`,
+`mcp`, `codex`, `trace`, `runs`, `store`, `profile`, `deps`, `release`.
+
+A scope is optional for changes that span the project (`docs: ...`,
+`build: ...`).
+
+### Subject and body
+
+- Imperative, present tense: "add", "fix", "remove", not "added" or "adds".
+- No trailing period, at most 100 characters for the whole header.
+- Body when the why is not obvious from the diff: what changed, why, what was
+  verified. Reference issues in the footer: `Refs #12`, `Closes #12`.
+- One concern per commit. A PR with a feature, its tests and its docs is three
+  commits, or one `feat` commit when they are inseparable.
+
+### Examples
 
 ```
 feat(stops): prefer places open at arrival
 fix(mcp): route ride requests to the tools, not the shell
-docs: Codex remote connections
+perf(roads): chunk Overpass queries along the route
+refactor(tools): share tool definitions between the runner and the MCP server
+docs(codex): remote connections from the ChatGPT app
 test(maps): split links at a planned stop
-build: ESLint and Prettier
+build(deps): TypeScript 7 native compiler next to the TypeScript 6 API
+ci: format check in the quality job
+chore: remove scratch exports
+revert: "feat(stops): prefer places open at arrival"
 ```
-
-`feat` and `fix` drive the version and the changelog through release
-automation; `docs`, `test`, `build`, `chore`, `refactor`, `style` do not bump
-the version.
 
 No attribution trailers or generated-by footers in commits or pull requests.
 

@@ -41,6 +41,9 @@ with a navigation app (Liberty Rider, Google Maps) on the phone.
 
 ## Reach
 
+- **GitHub Copilot as MCP client** (VS Code agent mode): a `.vscode/mcp.json`
+  entry; prompts appear as slash commands there. Codex is supported already.
+
 - **Telegram bot**: plan, brief and fetch exports from the phone, away from the
   computer. The agent becomes usable on the road.
 - **Weekly auto-plan**: Friday evening, best weekend day, sent to the phone.

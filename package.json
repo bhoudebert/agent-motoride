@@ -15,7 +15,8 @@
     "mcp": "node --env-file-if-exists=.env src/mcp.ts",
     "mcp:smoke": "node scripts/mcp-smoke.ts",
     "test": "node --test 'test/**/*.test.ts'",
-    "check": "node --env-file-if-exists=.env src/check.ts"
+    "check": "node --env-file-if-exists=.env src/check.ts",
+    "codex:register": "node scripts/codex-register.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

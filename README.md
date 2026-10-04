@@ -29,8 +29,8 @@ exports and the data are the same in both.
 
 | | API mode | MCP mode |
 |---|---|---|
-| What runs the agent | This app, through the Anthropic API | Claude Code (or any MCP client), using this app as a tool server |
-| What you pay with | An Anthropic API key, per token | Your Claude Code subscription; scouts still use the key if set |
+| What runs the agent | This app, through the Anthropic API | Claude Code or Codex CLI (any MCP client), using this app as a tool server |
+| What you pay with | An Anthropic API key, per token | Your Claude Code or Codex plan; scouts still use the key if set |
 | How you talk to it | A terminal app with a menu and a `refine>` prompt | Slash commands in Claude Code, e.g. `/mcp__ride__plan-ride ...` |
 | Planning guidance | A real system prompt, schema-validated final answer | The same instructions sent as the prompt's text; free-text answer |
 | Model and effort | `RIDE_MODEL`, `RIDE_EFFORT` in `.env` | Claude Code's own model |
@@ -660,10 +660,10 @@ is an anecdote.
 ## MCP mode: the tools in Claude Code or any MCP client
 
 The same tools run as a Model Context Protocol server, so a client with its own
-model can plan rides with them. In Claude Code that means planning on your
-subscription: the client's model does the thinking, this server does roads,
-routing, weather, traffic, saved rides and GPX. No API key is needed for that
-part.
+model can plan rides with them: Claude Code, Codex CLI, or any other MCP client.
+The client's model does the thinking on your existing plan; this server does
+roads, routing, weather, traffic, saved rides and GPX. No API key is needed for
+that part.
 
 ```bash
 npm run mcp            # starts the server on stdio (a client launches this; not for typing into)
@@ -689,6 +689,57 @@ That prompt carries the full planning instructions of the built-in planner, the
 rider's settings and today's date. Plain requests work too ("use the ride tools
 to plan…"), with less guidance.
 
+### Using it from Codex CLI
+
+Unlike Claude Code, Codex has no project-level MCP file: it reads servers only
+from the user's `~/.codex/config.toml` (verified on Codex 0.160, a
+`.codex/config.toml` in the project is ignored). So the server is registered
+once per machine, with absolute paths:
+
+```bash
+npm run codex:register
+```
+
+which runs `codex mcp add ride ... -- node --env-file-if-exists=<abs>/.env <abs>/src/mcp.ts`
+and prints the one line still to add by hand in `~/.codex/config.toml`, under
+`[mcp_servers.ride]`:
+
+```toml
+default_tools_approval_mode = "approve"
+```
+
+Without it Codex asks for a confirmation before every tool call, and a plan
+makes twenty. `"writes"` is the middle ground: lookups run freely, saving and
+settings changes still ask, based on the read-only annotations the tools carry.
+The full example with comments is in `codex/config.example.toml`.
+
+Then start `codex` and ask in plain words. Codex has no slash commands for MCP
+servers: `/ride` does nothing, and `ride show 7` is taken for a shell command.
+Say what you want instead:
+
+```
+show saved ride 7
+plan me a ride this Saturday from Coutiches, no rain, under 220 km, winding roads
+briefing for ride 7
+```
+
+The server's instructions tell the model that ride requests go to its tools,
+never to the shell; add "using the ride tools" if it still reaches for a
+terminal. `/mcp` in Codex shows the server as `ride: connected (19 tools)`.
+What differs from Claude Code, verified against Codex 0.160:
+
+| | Claude Code | Codex |
+|---|---|---|
+| Tools | all | all |
+| Server instructions (the planning method) | received | received |
+| Slash commands (`plan-ride`, `today`, ...) | yes | no: Codex does not expose MCP prompts. The model fetches the same guidance through the `planningGuide` tool, which the instructions tell it to call for a new ride |
+| Server discovery | from the repo's `.mcp.json` | user-level config only; one registration per machine |
+| Approval of tool calls | once per server | per call unless `default_tools_approval_mode` is set |
+| What pays | your Claude plan | your Codex or ChatGPT plan; scouts still need the Anthropic key or `RIDE_SCOUTS=0` |
+
+Everything else (library, duplicates, exports, traces in `rides runs`) is the
+same server, so it behaves the same.
+
 ### What the server exposes
 
 | Tool | Purpose |
@@ -700,6 +751,7 @@ to plan…"), with less guidance.
 | `exportGpx` | GPX file from a route id or a saved ride |
 | `showRide` | Full view of one saved ride, as in the CLI: road mix, daylight, cameras, stops, legs, itinerary |
 | `rideBriefing` | Ride-day briefing: weather now, daylight, traffic, stops checked against opening hours, go or no-go |
+| `planningGuide` | The planning guidance as text, for clients that do not expose prompts (Codex) |
 | `refreshRide` | Same as `npm run rides -- refresh`: recompute figures, weather, cameras, stops and stop plan, no replanning; `stopsOnly` rebuilds just the stop plan |
 | `exportMarkdown` | The ride's standard Markdown document, written to a file |
 | `listRides` | The library, one line per ride |
@@ -846,6 +898,7 @@ your real times differ consistently, adjust `bendFactor` in `src/tools/trip.ts`.
 | `npm run rides -- ...` | List, show, rate, export, replay and delete saved rides and runs |
 | `npm run mcp` | MCP server on stdio, for Claude Code or another MCP client |
 | `npm run mcp:smoke` | Protocol-level check of the MCP server, no model involved |
+| `npm run codex:register` | Register the server in Codex CLI's user config (once per machine) |
 | `node scripts/mcp-prompt.ts "<request>"` | Print the `plan-ride` prompt exactly as the server serves it |
 | `npm run smoke` | Call each tool once against the live APIs, without calling Claude. Use it to check connectivity and keys |
 | `npm run check` | Environment check for both modes: credentials, model, start point, every data service, database state. No model call |
@@ -1003,6 +1056,7 @@ scripts/
   smoke.ts          Live check of every tool
   mcp-smoke.ts      Protocol-level check of the MCP server
   mcp-prompt.ts     Prints the plan-ride prompt as served
+  codex-register.ts Registers the server in Codex CLI's config
 ```
 
 The tool implementations are plain async functions with no SDK dependency.

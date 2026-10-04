@@ -94,7 +94,7 @@ const settingsText = () =>
 // Server instructions reach the client's system prompt at connection time, so
 // the method applies even when the rider types in plain words instead of using
 // the plan-ride command. Kept to the essentials; the command carries the rest.
-const INSTRUCTIONS = `agentRide plans one-day motorcycle rides. Use its tools for every lookup; never shell commands or web search for roads, weather or routing.
+const INSTRUCTIONS = `agentRide plans one-day motorcycle rides and keeps the rider's library of saved rides. Anything the rider says about rides, trips, loops, routes, the library, stops, cameras, weather for a ride, or a ride-day briefing is a request for this server's tools: showRide, listRides, rideBriefing, refreshRide, exportGpx, exportMarkdown, planningGuide and the planning tools. Never run shell commands, scripts or web searches for these, and never look for a "ride" program: "ride show 7" or "/ride plan ..." typed by the rider means "use the ride tools" (here: showRide for ride 7). If your client does not expose this server's prompts, call planningGuide with the rider's request before planning a new ride, and follow it.
 For a new leisure ride: call listSavedRides, then scoutAreas with 2-4 areas (or searchRoads and calculateTrip yourself if scouts are unavailable), pick the best candidate, then finish it: getDaylight, getWeather along the loop for the riding hours, getSpeedCameras, planStops with the date and departure, getTraffic for the departure. Present the itinerary in plain text (never JSON) with legs named by towns, the figures from the tools, the stops with times, the navigation links from planStops, and end with one line "Route: <routeId>". Save only when the rider asks, with saveRide. For an edit or a question about a saved ride, work from its data (showRide) without replanning. For a practical trip (commute), route point to point, motorways if permitted, with traffic.`;
 
 const server = new McpServer({ name: "agentRide", version: "0.1.0" }, { instructions: INSTRUCTIONS });
@@ -104,7 +104,8 @@ const text = (value: unknown) => ({ content: [{ type: "text" as const, text: typ
 for (const tool of createToolDefinitions(context, { scouts: true })) {
   server.registerTool(
     tool.name,
-    { description: tool.description, inputSchema: tool.inputSchema },
+    // Lookups only: a client in "writes" approval mode lets these run without asking.
+    { description: tool.description, inputSchema: tool.inputSchema, annotations: { readOnlyHint: true, openWorldHint: true } },
     async (args: unknown) => {
       if (!context.home.label) throw new Error("No start point yet: call rideSettings with the rider's home first.");
       usage.toolCalls++;
@@ -269,6 +270,7 @@ server.registerTool(
     description:
       "Full view of one saved ride, as the rider sees it in the app: figures, road mix, time at 70+, daylight, fixed cameras, fuel and café stops, legs with names, main roads, times and ratings, map link and the itinerary text. Show it to the rider as is; do not rebuild it from other tools.",
     inputSchema: z.object({ ride: z.string().describe("Saved ride id or name") }),
+    annotations: { readOnlyHint: true },
   },
   async (args) => {
     const ride = store.findRide(args.ride);
@@ -298,16 +300,62 @@ server.registerTool(
 
 server.registerTool(
   "listRides",
-  { description: "The rider's saved rides, one line each (id, name, distance, time, date, rating).", inputSchema: z.object({}) },
+  { description: "The rider's saved rides, one line each (id, name, distance, time, date, rating).", inputSchema: z.object({}), annotations: { readOnlyHint: true } },
   async () => text(formatRideList(store.listRides())),
+);
+
+const RULES = `Use the agentRide tools for every lookup, never shell commands or web search. The settings below are the rider's defaults; when the request changes one (motorways allowed, other targets, repeats allowed), apply it with rideSettings before planning. Answer in plain text as laid out above, never JSON. End an itinerary with one line "Route: <routeId>" naming the routed trip it describes, so the ride can be saved later. Save only when the rider asks, with saveRide and that routeId.`;
+const userMessage = (text: string) => ({ messages: [{ role: "user" as const, content: { type: "text" as const, text } }] });
+/** Guidance for working on a saved ride: its data plus the rules for edits and questions. */
+const editText = (saved: ReturnType<typeof store.findRide> & object, change: string) => {
+  const data = {
+    rideId: saved.id,
+    name: saved.name,
+    lastPlannedFor: saved.rideDate,
+    departure: saved.departure,
+    distanceKm: saved.distanceKm,
+    ridingMinutes: saved.ridingMinutes,
+    waypoints: saved.waypoints,
+    roundTrip: saved.roundTrip,
+    legs: saved.legs.map((l) => ({ leg: l.seq, from: l.from, to: l.to, fromCoords: l.fromCoords, toCoords: l.toCoords, distanceKm: l.distanceKm, mainRoads: l.mainRoads, rating: l.rating, notes: l.notes })),
+    rating: saved.rating,
+    notes: saved.notes,
+    originalRequest: saved.request,
+  };
+  return planText(
+    `${change}\n\nThis concerns saved ride #${saved.id} "${saved.name}". Work from its waypoints rather than searching for a new area. If the message asks for a change or a new date, route the ride again with calculateTrip, check the weather for that day, and apply the change, keeping everything else. If it is only a question, answer it from this data and the tools. Overlap with this ride is expected; use rideSettings to allow repeats if the duplicate check objects.\n${JSON.stringify(data)}`,
+  );
+};
+const planText = (request: string) => `${SYSTEM_CORE}\n\n${RULES}\n\n---\n\nRider's request: ${request}\n\n${settingsText()}`;
+
+// Clients without prompt support (Codex) cannot use the slash commands below;
+// this tool hands them the same text on request.
+server.registerTool(
+  "planningGuide",
+  {
+    description:
+      "The full planning guidance for a new ride (how to search, what to check, how to lay out the itinerary), with the rider's request and current settings. Call it first when the rider asks for a new ride and your client has no access to this server's prompts; then follow it. With a saved ride id, returns the guidance for editing that ride instead.",
+    inputSchema: z.object({
+      request: z.string().describe("What the rider asked for, verbatim"),
+      ride: z.string().optional().describe("Saved ride id or name, when the request is about an existing ride"),
+    }),
+    annotations: { readOnlyHint: true },
+  },
+  async (args) => {
+    if (args.ride) {
+      const saved = store.findRide(args.ride);
+      if (!saved) throw new Error(`No saved ride matches "${args.ride}". Call listRides.`);
+      return text(editText(saved, args.request));
+    }
+    requests.push(args.request);
+    usage.turns++;
+    syncRun();
+    return text(planText(args.request));
+  },
 );
 
 // Prompts become slash commands in Claude Code (/mcp__ride__<name>). They are
 // text only: the client's model reads them and decides which tools to call.
-const RULES = `Use the agentRide tools for every lookup, never shell commands or web search. The settings below are the rider's defaults; when the request changes one (motorways allowed, other targets, repeats allowed), apply it with rideSettings before planning. Answer in plain text as laid out above, never JSON. End an itinerary with one line "Route: <routeId>" naming the routed trip it describes, so the ride can be saved later. Save only when the rider asks, with saveRide and that routeId.`;
-const userMessage = (text: string) => ({ messages: [{ role: "user" as const, content: { type: "text" as const, text } }] });
-const planText = (request: string) => `${SYSTEM_CORE}\n\n${RULES}\n\n---\n\nRider's request: ${request}\n\n${settingsText()}`;
-
 server.registerPrompt(
   "plan-ride",
   {
@@ -353,25 +401,11 @@ server.registerPrompt(
   ({ ride, change }) => {
     const saved = store.findRide(ride);
     if (!saved) return userMessage(`No saved ride matches "${ride}". Call listRides to see the library.`);
-    const data = {
-      rideId: saved.id,
-      name: saved.name,
-      lastPlannedFor: saved.rideDate,
-      departure: saved.departure,
-      distanceKm: saved.distanceKm,
-      ridingMinutes: saved.ridingMinutes,
-      waypoints: saved.waypoints,
-      roundTrip: saved.roundTrip,
-      legs: saved.legs.map((l) => ({ leg: l.seq, from: l.from, to: l.to, fromCoords: l.fromCoords, toCoords: l.toCoords, distanceKm: l.distanceKm, mainRoads: l.mainRoads, rating: l.rating, notes: l.notes })),
-      rating: saved.rating,
-      notes: saved.notes,
-      originalRequest: saved.request,
-    };
-    const request = `${change}\n\nThis concerns saved ride #${saved.id} "${saved.name}". Work from its waypoints rather than searching for a new area. If the message asks for a change or a new date, route the ride again with calculateTrip, check the weather for that day, and apply the change, keeping everything else. If it is only a question, answer it from this data and the tools. Overlap with this ride is expected; use rideSettings to allow repeats if the duplicate check objects.\n${JSON.stringify(data)}`;
+    const request = editText(saved, change);
     requests.push(`edit #${saved.id}: ${change}`);
     usage.turns++;
     syncRun();
-    return userMessage(planText(request));
+    return userMessage(request);
   },
 );
 

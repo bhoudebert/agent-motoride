@@ -51,9 +51,7 @@ export async function getTraffic(input: GetTrafficInput) {
     distanceKm: Number((summary.lengthInMeters / 1000).toFixed(1)),
     travelMinutes: Math.round(summary.travelTimeInSeconds / 60),
     freeFlowMinutes:
-      summary.noTrafficTravelTimeInSeconds === undefined
-        ? null
-        : Math.round(summary.noTrafficTravelTimeInSeconds / 60),
+      summary.noTrafficTravelTimeInSeconds === undefined ? null : Math.round(summary.noTrafficTravelTimeInSeconds / 60),
     trafficDelayMinutes: Math.round(summary.trafficDelayInSeconds / 60),
   };
 }

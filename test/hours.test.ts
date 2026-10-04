@@ -17,7 +17,7 @@ test("opening hours: common tag forms", () => {
 
 test("opening hours: unreadable tags are unknown, never open", () => {
   assert.equal(isOpenAt("sunrise-sunset", "2026-10-11", "09:00"), "unknown");
-  assert.equal(isOpenAt("Mo-Fr 08:00-18:00 \"by appointment\"", "2026-10-12", "09:00"), "unknown");
+  assert.equal(isOpenAt('Mo-Fr 08:00-18:00 "by appointment"', "2026-10-12", "09:00"), "unknown");
   assert.equal(isOpenAt(null, "2026-10-11", "09:00"), "unknown");
   assert.equal(isOpenAt("", "2026-10-11", "09:00"), "unknown");
 });

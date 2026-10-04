@@ -1,9 +1,9 @@
 import { overlapPct, routeCells } from "./geometry.ts";
 import type { RidePreferences } from "./preferences.ts";
+import type { StopPlan } from "./stops.ts";
 import type { Store } from "./store.ts";
 import type { Point } from "./tools/geo.ts";
 import type { TripComputation } from "./tools/trip.ts";
-import type { StopPlan } from "./stops.ts";
 import type { RunUsage } from "./usage.ts";
 
 /** A candidate above this share of already-saved roads is a duplicate. */
@@ -76,7 +76,9 @@ export function ratedRoads(context: RideContext): RatedRoads {
       const target = rating <= 1 ? avoid : rating >= 4 ? loved : null;
       if (!target) return;
       for (const cell of routeCells([shape])) target.add(cell);
-      (rating <= 1 ? avoidFrom : lovedFrom).push(`#${ride.id} leg ${leg.seq} (${leg.from} -> ${leg.to}, rated ${rating})`);
+      (rating <= 1 ? avoidFrom : lovedFrom).push(
+        `#${ride.id} leg ${leg.seq} (${leg.from} -> ${leg.to}, rated ${rating})`,
+      );
     });
   }
   context.ratedRoads = { avoid, avoidFrom, loved, lovedFrom };
@@ -103,7 +105,10 @@ export function ratedOverlap(context: RideContext, cells: string[]) {
 }
 
 /** A saved ride this candidate would duplicate, if any (outside the session's own lineage). */
-export function duplicateOf(context: RideContext, cells: string[]): { rideId: number; name: string; overlapPct: number } | undefined {
+export function duplicateOf(
+  context: RideContext,
+  cells: string[],
+): { rideId: number; name: string; overlapPct: number } | undefined {
   for (const ride of context.store.listRides()) {
     if (context.lineage.has(ride.id)) continue;
     const pct = overlapPct(cells, new Set(ride.cells));

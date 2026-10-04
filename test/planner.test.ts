@@ -21,12 +21,38 @@ test("planner: routes, presents a scout's route, saves it; usage and trace are k
   const store = new Store(":memory:");
   try {
     api.script = [
-      toolUse("scoutAreas", { areas: [{ name: "Flandre", location: "Cassel" }], rideDate: "2026-10-10", departure: "09:00", maxDistanceKm: 250, maxRidingMinutes: 180, constraints: "dry" }),
+      toolUse("scoutAreas", {
+        areas: [{ name: "Flandre", location: "Cassel" }],
+        rideDate: "2026-10-10",
+        departure: "09:00",
+        maxDistanceKm: 250,
+        maxRidingMinutes: 180,
+        constraints: "dry",
+      }),
       // The scout's own session:
       toolUse("calculateTrip", { waypoints: ["Lille", "Cassel", "Mont des Cats"], roundTrip: true }),
-      finalText(JSON.stringify({ area: "Flandre", found: true, routeId: "r1", waypoints: ["Lille", "Cassel", "Mont des Cats"], distanceKm: 135, ridingMinutes: 110, openRoadPct: 70, pct50: 20, pct30: 1, weather: "dry", verdict: "ok" })),
+      finalText(
+        JSON.stringify({
+          area: "Flandre",
+          found: true,
+          routeId: "r1",
+          waypoints: ["Lille", "Cassel", "Mont des Cats"],
+          distanceKm: 135,
+          ridingMinutes: 110,
+          openRoadPct: 70,
+          pct50: 20,
+          pct30: 1,
+          weather: "dry",
+          verdict: "ok",
+        }),
+      ),
       // Back in the planner:
-      finalText(JSON.stringify({ message: "Itinerary text", ride: { routeId: "r1", rideDate: "2026-10-10", departure: "09:00", name: "Flandre loop" } })),
+      finalText(
+        JSON.stringify({
+          message: "Itinerary text",
+          ride: { routeId: "r1", rideDate: "2026-10-10", departure: "09:00", name: "Flandre loop" },
+        }),
+      ),
     ];
     const session = await openRide({ home: "Lille", store });
     await session.send("ride saturday");
@@ -41,9 +67,18 @@ test("planner: routes, presents a scout's route, saves it; usage and trace are k
     assert.ok(String(api.requests[0].messages[0].content).includes("Start and end point"));
     assert.equal(api.requests[0].output_config.format.type, "json_schema");
     assert.ok(api.requests[0].tools.some((t: any) => t.name === "scoutAreas"));
-    assert.equal(api.requests[1].tools.some((t: any) => t.name === "scoutAreas"), false, "scouts have no scouts");
+    assert.equal(
+      api.requests[1].tools.some((t: any) => t.name === "scoutAreas"),
+      false,
+      "scouts have no scouts",
+    );
 
-    const id = saveCurrentRide(session.context, current!, { request: "ride saturday", parentId: null, home: "Lille", usage: session.usage() });
+    const id = saveCurrentRide(session.context, current!, {
+      request: "ride saturday",
+      parentId: null,
+      home: "Lille",
+      usage: session.usage(),
+    });
     const saved = store.findRide(String(id))!;
     assert.equal(saved.distanceKm, current!.route.trip.result.totalDistanceKm);
     assert.equal(saved.shapes!.length, 3);
@@ -60,7 +95,11 @@ test("planner: an answer naming an unknown route is shown but not saveable", asy
   const restore = quiet();
   const store = new Store(":memory:");
   try {
-    api.script = [finalText(JSON.stringify({ message: "Hello", ride: { routeId: "r99", rideDate: null, departure: null, name: "ghost" } }))];
+    api.script = [
+      finalText(
+        JSON.stringify({ message: "Hello", ride: { routeId: "r99", rideDate: null, departure: null, name: "ghost" } }),
+      ),
+    ];
     const session = await openRide({ home: "Lille", store });
     await session.send("hi");
     assert.equal(session.current(), undefined);
@@ -74,7 +113,10 @@ test("planner: motorways stay excluded when forbidden, even if the model asks", 
   const restore = quiet();
   const store = new Store(":memory:");
   try {
-    api.script = [toolUse("calculateTrip", { waypoints: ["Lille", "Cassel"], roundTrip: true, avoidMotorways: false }), finalText(JSON.stringify({ message: "x", ride: null }))];
+    api.script = [
+      toolUse("calculateTrip", { waypoints: ["Lille", "Cassel"], roundTrip: true, avoidMotorways: false }),
+      finalText(JSON.stringify({ message: "x", ride: null })),
+    ];
     const session = await openRide({ home: "Lille", store });
     await session.send("go");
     const result = JSON.parse(api.requests[1].messages.at(-1).content[0].content);
@@ -91,7 +133,12 @@ test("saving a duplicate of a saved ride is refused unless forced; rated roads a
   const store = new Store(":memory:");
   const { DuplicateRideError } = await import("../src/library.ts");
   try {
-    const answer = finalText(JSON.stringify({ message: "x", ride: { routeId: "r1", rideDate: "2026-10-10", departure: "09:00", name: "Loop" } }));
+    const answer = finalText(
+      JSON.stringify({
+        message: "x",
+        ride: { routeId: "r1", rideDate: "2026-10-10", departure: "09:00", name: "Loop" },
+      }),
+    );
     api.script = [toolUse("calculateTrip", { waypoints: ["Lille", "Cassel"], roundTrip: true }), answer];
     const first = await openRide({ home: "Lille", store });
     await first.send("go");
@@ -104,8 +151,16 @@ test("saving a duplicate of a saved ride is refused unless forced; rated roads a
     const result = JSON.parse(api.requests.at(-1).messages.at(-1).content[0].content);
     assert.ok(result.savedRides.verdict.startsWith("DUPLICATE"));
     assert.ok(result.ratedRoads.verdict.startsWith("AVOID"), result.ratedRoads.verdict);
-    assert.throws(() => saveCurrentRide(second.context, second.current()!, { request: "go again", parentId: null, home: "Lille" }), DuplicateRideError);
-    const forced = saveCurrentRide(second.context, second.current()!, { request: "go again", parentId: null, home: "Lille", force: true });
+    assert.throws(
+      () => saveCurrentRide(second.context, second.current()!, { request: "go again", parentId: null, home: "Lille" }),
+      DuplicateRideError,
+    );
+    const forced = saveCurrentRide(second.context, second.current()!, {
+      request: "go again",
+      parentId: null,
+      home: "Lille",
+      force: true,
+    });
     assert.ok(forced > id);
   } finally {
     restore();

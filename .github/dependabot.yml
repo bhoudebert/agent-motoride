@@ -4,6 +4,11 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # typescript-eslint supports TypeScript below 6.1; TypeScript 7 cannot be
+      # installed next to it. Lift this when typescript-eslint moves its peer range.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
     groups:
       dev-tooling:
         patterns:

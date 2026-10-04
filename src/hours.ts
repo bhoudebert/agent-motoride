@@ -50,7 +50,10 @@ export function isOpenAt(openingHours: string | null | undefined, date: string, 
   for (const rawRule of text.split(";")) {
     const rule = rawRule.trim();
     if (!rule || /^PH\b|^SH\b/.test(rule)) continue; // public and school holidays: ignored
-    const m = /^((?:(?:Mo|Tu|We|Th|Fr|Sa|Su)(?:-(?:Mo|Tu|We|Th|Fr|Sa|Su))?,?\s*)+)?\s*(off|closed|(?:\d{1,2}:\d{2}-\d{1,2}:\d{2}(?:,\s*)?)+)$/.exec(rule);
+    const m =
+      /^((?:(?:Mo|Tu|We|Th|Fr|Sa|Su)(?:-(?:Mo|Tu|We|Th|Fr|Sa|Su))?,?\s*)+)?\s*(off|closed|(?:\d{1,2}:\d{2}-\d{1,2}:\d{2}(?:,\s*)?)+)$/.exec(
+        rule,
+      );
     if (!m) return "unknown"; // a rule we cannot read: say nothing rather than mislead
     const days = m[1] ? expandDays(m[1]) : [0, 1, 2, 3, 4, 5, 6];
     if (!days) return "unknown";
@@ -62,7 +65,9 @@ export function isOpenAt(openingHours: string | null | undefined, date: string, 
       continue;
     }
     const ranges = body.split(",").map((r) => r.trim().split("-").map(toMinutes) as [number, number]);
-    const open = ranges.some(([from, to]) => (to > from ? minutes >= from && minutes < to : minutes >= from || minutes < to));
+    const open = ranges.some(([from, to]) =>
+      to > from ? minutes >= from && minutes < to : minutes >= from || minutes < to,
+    );
     // Later rules for the same day override earlier ones, as in OSM.
     state = open ? "open" : "closed";
   }

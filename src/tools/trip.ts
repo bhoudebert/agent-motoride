@@ -1,7 +1,7 @@
-import { fetchJson } from "../http.ts";
 import { decodePolyline } from "../geometry.ts";
+import { fetchJson } from "../http.ts";
 import { pinnedMapsLinks } from "../maps.ts";
-import { bearingDeg, describeCoords, fmtCoords, haversineKm, resolvePoint, type Point } from "./geo.ts";
+import { bearingDeg, describeCoords, fmtCoords, haversineKm, type Point, resolvePoint } from "./geo.ts";
 
 export interface CalculateTripInput {
   waypoints: string[];
@@ -42,9 +42,30 @@ interface TraceAttributesResponse {
 // areas, used where OpenStreetMap has no limit tagged. Keyed by country, or
 // "country-region" where regions differ. Sources: national highway codes.
 const RURAL_DEFAULT_KMH: Record<string, number> = {
-  "BE-WAL": 90, "BE-VLG": 70, "BE-BRU": 70,
-  FR: 80, LU: 90, NL: 80, DE: 100, CH: 80, AT: 100, IT: 90, ES: 90, PT: 90,
-  GB: 97, IE: 80, DK: 80, SE: 70, NO: 80, FI: 80, PL: 90, CZ: 90, SK: 90, SI: 90, HR: 90, HU: 90,
+  "BE-WAL": 90,
+  "BE-VLG": 70,
+  "BE-BRU": 70,
+  FR: 80,
+  LU: 90,
+  NL: 80,
+  DE: 100,
+  CH: 80,
+  AT: 100,
+  IT: 90,
+  ES: 90,
+  PT: 90,
+  GB: 97,
+  IE: 80,
+  DK: 80,
+  SE: 70,
+  NO: 80,
+  FI: 80,
+  PL: 90,
+  CZ: 90,
+  SK: 90,
+  SI: 90,
+  HR: 90,
+  HU: 90,
 };
 const UNKNOWN_COUNTRY_DEFAULT_KMH = 80;
 // The legal default also applies to farm lanes and estate roads, but nobody
@@ -56,7 +77,9 @@ const MAJOR_CLASSES = new Set(["motorway", "trunk", "primary", "secondary", "ter
 function ruralDefaultKmh(roadClass: string, admin: { country_code?: string; state_code?: string } | undefined): number {
   const country = admin?.country_code ?? "";
   const legal =
-    RURAL_DEFAULT_KMH[`${country}-${admin?.state_code ?? ""}`] ?? RURAL_DEFAULT_KMH[country] ?? UNKNOWN_COUNTRY_DEFAULT_KMH;
+    RURAL_DEFAULT_KMH[`${country}-${admin?.state_code ?? ""}`] ??
+    RURAL_DEFAULT_KMH[country] ??
+    UNKNOWN_COUNTRY_DEFAULT_KMH;
   if (MAJOR_CLASSES.has(roadClass)) return legal;
   return Math.min(legal, MINOR_ROAD_CAP_KMH[roadClass] ?? 30);
 }
@@ -74,7 +97,12 @@ function bendFactor(turningDegPerKm: number): number {
   return Math.min(0.95, Math.max(0.5, 0.95 - turningDegPerKm / 1400));
 }
 
-function turningDegPerKm(shape: Array<{ lat: number; lon: number }>, from: number, to: number, lengthKm: number): number {
+function turningDegPerKm(
+  shape: Array<{ lat: number; lon: number }>,
+  from: number,
+  to: number,
+  lengthKm: number,
+): number {
   if (lengthKm <= 0) return 0;
   let turning = 0;
   let previous: number | null = null;
@@ -125,9 +153,17 @@ function traceAttributes(shape: string, shapeMatch: "edge_walk" | "map_snap") {
       costing: "motorcycle",
       filters: {
         attributes: [
-          "edge.length", "edge.speed_limit", "edge.road_class", "edge.density", "edge.names",
-          "edge.begin_shape_index", "edge.end_shape_index", "shape",
-          "node.admin_index", "admin.country_code", "admin.state_code",
+          "edge.length",
+          "edge.speed_limit",
+          "edge.road_class",
+          "edge.density",
+          "edge.names",
+          "edge.begin_shape_index",
+          "edge.end_shape_index",
+          "shape",
+          "node.admin_index",
+          "admin.country_code",
+          "admin.state_code",
         ],
         action: "include",
       },
@@ -331,7 +367,9 @@ export async function computeTrip(input: CalculateTripInput): Promise<TripComput
   } catch (error) {
     // Show how each waypoint was resolved: a wrong geocoding match is the usual cause.
     const resolved = points.map((p) => `${p.label} (${fmtCoords(p)})`).join(" -> ");
-    throw new Error(`${error instanceof Error ? error.message : error}. Waypoints resolved as: ${resolved}`);
+    throw new Error(`${error instanceof Error ? error.message : error}. Waypoints resolved as: ${resolved}`, {
+      cause: error,
+    });
   }
   const { summary, legs } = data.trip;
   const shapes = legs.map((leg) => leg.shape);

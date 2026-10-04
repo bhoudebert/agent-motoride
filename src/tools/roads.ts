@@ -30,7 +30,17 @@ const OVERPASS_ATTEMPTS: Array<{ url: string; timeoutMs: number; waitMs: number 
 ];
 
 const UNPAVED = new Set([
-  "unpaved", "gravel", "fine_gravel", "dirt", "earth", "ground", "grass", "sand", "mud", "compacted", "pebblestone",
+  "unpaved",
+  "gravel",
+  "fine_gravel",
+  "dirt",
+  "earth",
+  "ground",
+  "grass",
+  "sand",
+  "mud",
+  "compacted",
+  "pebblestone",
 ]);
 
 // The public servers limit concurrent requests per client; scouts running in
@@ -67,7 +77,9 @@ async function overpassNow(query: string, options: { quick?: boolean }): Promise
       errors.push(`${new URL(url).host}: ${reason}`);
     }
   }
-  throw new Error(`OpenStreetMap query service is unavailable right now (${errors.join("; ")}). Retry later or try a smaller radius.`);
+  throw new Error(
+    `OpenStreetMap query service is unavailable right now (${errors.join("; ")}). Retry later or try a smaller radius.`,
+  );
 }
 
 interface RoadGroup {

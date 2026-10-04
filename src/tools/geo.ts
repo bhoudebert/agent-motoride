@@ -39,7 +39,14 @@ interface GeocodeResponse {
 interface PhotonResponse {
   features: Array<{
     geometry: { coordinates: [number, number] };
-    properties: { name?: string; street?: string; housenumber?: string; city?: string; state?: string; country?: string };
+    properties: {
+      name?: string;
+      street?: string;
+      housenumber?: string;
+      city?: string;
+      state?: string;
+      country?: string;
+    };
   }>;
 }
 
@@ -115,11 +122,17 @@ async function geocodeNominatim(location: string): Promise<Point | undefined> {
   url.searchParams.set("format", "jsonv2");
   url.searchParams.set("limit", "1");
   const result = (await fetchJson<NominatimResult[]>(url.toString(), {}, 15_000))[0];
-  return result && {
-    lat: Number(result.lat),
-    lon: Number(result.lon),
-    label: result.display_name.split(",").slice(0, 3).map((part) => part.trim()).join(", "),
-  };
+  return (
+    result && {
+      lat: Number(result.lat),
+      lon: Number(result.lon),
+      label: result.display_name
+        .split(",")
+        .slice(0, 3)
+        .map((part) => part.trim())
+        .join(", "),
+    }
+  );
 }
 
 /**
@@ -146,7 +159,11 @@ export async function resolvePoint(location: string): Promise<Point> {
   // that is down must not hide a match from the next one.
   let point: Point | undefined;
   let tooFar: Point | undefined;
-  for (const [geocode, fuzzy] of [[geocodeTown, false], [geocodeAddress, true], [geocodeNominatim, true]] as const) {
+  for (const [geocode, fuzzy] of [
+    [geocodeTown, false],
+    [geocodeAddress, true],
+    [geocodeNominatim, true],
+  ] as const) {
     let found: Point | undefined;
     try {
       found = await geocode(location);
@@ -169,7 +186,9 @@ export async function resolvePoint(location: string): Promise<Point> {
     );
   }
   if (!point) {
-    throw new Error(`Place not found: "${location}". Check the spelling, add the town ("street, town"), or use "lat,lon".`);
+    throw new Error(
+      `Place not found: "${location}". Check the spelling, add the town ("street, town"), or use "lat,lon".`,
+    );
   }
   cache.set(key, point);
   return point;
@@ -177,7 +196,15 @@ export async function resolvePoint(location: string): Promise<Point> {
 
 interface ReverseResponse {
   features: Array<{
-    properties: { name?: string; street?: string; locality?: string; district?: string; city?: string; osm_key?: string; osm_value?: string };
+    properties: {
+      name?: string;
+      street?: string;
+      locality?: string;
+      district?: string;
+      city?: string;
+      osm_key?: string;
+      osm_value?: string;
+    };
   }>;
 }
 
@@ -235,9 +262,7 @@ const toRad = (deg: number) => (deg * Math.PI) / 180;
 export function haversineKm(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
   const dLat = toRad(b.lat - a.lat);
   const dLon = toRad(b.lon - a.lon);
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLon / 2) ** 2;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLon / 2) ** 2;
   return 6371 * 2 * Math.asin(Math.sqrt(h));
 }
 
@@ -246,10 +271,8 @@ export function bearingDeg(a: { lat: number; lon: number }, b: { lat: number; lo
   const dLon = toRad(b.lon - a.lon);
   const y = Math.sin(dLon) * Math.cos(toRad(b.lat));
   const x =
-    Math.cos(toRad(a.lat)) * Math.sin(toRad(b.lat)) -
-    Math.sin(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.cos(dLon);
+    Math.cos(toRad(a.lat)) * Math.sin(toRad(b.lat)) - Math.sin(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.cos(dLon);
   return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
 }
 
-export const fmtCoords = (p: { lat: number; lon: number }) =>
-  `${p.lat.toFixed(5)},${p.lon.toFixed(5)}`;
+export const fmtCoords = (p: { lat: number; lon: number }) => `${p.lat.toFixed(5)},${p.lon.toFixed(5)}`;

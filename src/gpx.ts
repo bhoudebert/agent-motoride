@@ -40,15 +40,29 @@ const point = (coords: string) => {
 const ROUTE_POINTS_MAX = 40;
 
 /** Position of each planned stop in the GPX route point list, as the importing app numbers them. */
-export function routePointIndex(input: GpxInput, maxPoints = input.maxRoutePoints ?? ROUTE_POINTS_MAX): Array<{ label: string; index: number; total: number }> {
+export function routePointIndex(
+  input: GpxInput,
+  maxPoints = input.maxRoutePoints ?? ROUTE_POINTS_MAX,
+): Array<{ label: string; index: number; total: number }> {
   const points = gpxRoutePoints(input, maxPoints);
-  return points.flatMap((p, i) => (p.kind === "stop" ? [{ label: p.label ?? "stop", index: i + 1, total: points.length }] : []));
+  return points.flatMap((p, i) =>
+    p.kind === "stop" ? [{ label: p.label ?? "stop", index: i + 1, total: points.length }] : [],
+  );
 }
 
 function gpxRoutePoints(input: GpxInput, maxPoints: number) {
   const loopPoints = [input.legs[0]!.fromCoords, ...input.legs.map((leg) => leg.toCoords)].map((coords, i, all) => {
     const [lat = 0, lon = 0] = coords.split(",").map(Number);
-    return { lat, lon, label: i === 0 ? `Start: ${input.legs[0]!.from}` : i === all.length - 1 ? `Finish: ${input.legs.at(-1)!.to}` : `${i}. ${input.legs[i - 1]!.to}` };
+    return {
+      lat,
+      lon,
+      label:
+        i === 0
+          ? `Start: ${input.legs[0]!.from}`
+          : i === all.length - 1
+            ? `Finish: ${input.legs.at(-1)!.to}`
+            : `${i}. ${input.legs[i - 1]!.to}`,
+    };
   });
   const plannedStops = (input.stops ?? []).map((s) => ({ lat: s.lat, lon: s.lon, label: s.label, km: s.km ?? 0 }));
   return navigationPoints(loopPoints, input.shapes, plannedStops, maxPoints);
@@ -75,7 +89,10 @@ export function buildGpx(input: GpxInput): string {
   ];
   const waypoints = [
     ...stops.map((s) => `  <wpt ${point(s.coords)}><name>${xml(s.name)}</name></wpt>`),
-    ...(input.stops ?? []).map((s) => `  <wpt lat="${s.lat.toFixed(6)}" lon="${s.lon.toFixed(6)}"><name>${xml(s.label)}</name><sym>Flag</sym></wpt>`),
+    ...(input.stops ?? []).map(
+      (s) =>
+        `  <wpt lat="${s.lat.toFixed(6)}" lon="${s.lon.toFixed(6)}"><name>${xml(s.label)}</name><sym>Flag</sym></wpt>`,
+    ),
   ];
 
   // Route points: loop stops, planned stops and pass-through pins, in riding order.
@@ -86,7 +103,9 @@ export function buildGpx(input: GpxInput): string {
   const segments = input.shapes.map((shape, i) => {
     const leg = input.legs[i];
     const comment = leg ? `    <!-- leg ${i + 1}: ${xml(leg.from)} to ${xml(leg.to)} -->\n` : "";
-    const points = decodePolyline(shape).map((p) => `      <trkpt lat="${p.lat.toFixed(6)}" lon="${p.lon.toFixed(6)}"/>`);
+    const points = decodePolyline(shape).map(
+      (p) => `      <trkpt lat="${p.lat.toFixed(6)}" lon="${p.lon.toFixed(6)}"/>`,
+    );
     return `${comment}    <trkseg>\n${points.join("\n")}\n    </trkseg>`;
   });
 

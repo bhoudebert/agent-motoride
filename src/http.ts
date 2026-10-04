@@ -2,11 +2,7 @@
 const USER_AGENT = "agentRide/0.1 (+https://github.com/bhoudebert/agentRide)";
 
 /** fetch + JSON with a timeout and a readable error on non-2xx responses. */
-export async function fetchJson<T>(
-  url: string,
-  init: RequestInit = {},
-  timeoutMs = 30_000,
-): Promise<T> {
+export async function fetchJson<T>(url: string, init: RequestInit = {}, timeoutMs = 30_000): Promise<T> {
   const res = await fetch(url, {
     ...init,
     headers: { "User-Agent": USER_AGENT, Accept: "application/json", ...init.headers },

@@ -27,7 +27,13 @@ export function describeProfile(p: BikeProfile): string {
 /** Parse "key=value" or "--key value" style settings into a partial profile. */
 export function parseProfileArgs(args: string[]): Partial<BikeProfile> {
   const out: Partial<BikeProfile> = {};
-  const map: Record<string, keyof BikeProfile> = { range: "tankRangeKm", reserve: "reserveKm", pause: "pauseEveryMin", stint: "maxStintMin", lunch: "lunch" };
+  const map: Record<string, keyof BikeProfile> = {
+    range: "tankRangeKm",
+    reserve: "reserveKm",
+    pause: "pauseEveryMin",
+    stint: "maxStintMin",
+    lunch: "lunch",
+  };
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]!;
     let key: string;

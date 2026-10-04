@@ -19,12 +19,16 @@ export interface MapPoint extends LatLon {
 /** Distance from point p to the chord a-b, in km (flat-earth, fine at this scale). */
 function deviationKm(p: LatLon, a: LatLon, b: LatLon): number {
   const kx = 111.32 * Math.cos((a.lat * Math.PI) / 180);
-  const ax = 0, ay = 0;
-  const bx = (b.lon - a.lon) * kx, by = (b.lat - a.lat) * 111.32;
-  const px = (p.lon - a.lon) * kx, py = (p.lat - a.lat) * 111.32;
+  const ax = 0,
+    ay = 0;
+  const bx = (b.lon - a.lon) * kx,
+    by = (b.lat - a.lat) * 111.32;
+  const px = (p.lon - a.lon) * kx,
+    py = (p.lat - a.lat) * 111.32;
   const len2 = bx * bx + by * by;
   const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, (px * bx + py * by) / len2));
-  const dx = px - (ax + t * bx), dy = py - (ay + t * by);
+  const dx = px - (ax + t * bx),
+    dy = py - (ay + t * by);
   return Math.sqrt(dx * dx + dy * dy);
 }
 
@@ -34,7 +38,13 @@ function deviationKm(p: LatLon, a: LatLon, b: LatLon): number {
  * its deviation. Those are the places where a fastest-path router would leave
  * the chosen road.
  */
-function candidates(line: Array<LatLon & { km: number }>, from: number, to: number, out: Array<MapPoint & { deviation: number }>, depth: number): void {
+function candidates(
+  line: Array<LatLon & { km: number }>,
+  from: number,
+  to: number,
+  out: Array<MapPoint & { deviation: number }>,
+  depth: number,
+): void {
   if (to - from < 2 || depth > 4) return;
   let bestIndex = -1;
   let best = 0;
@@ -145,14 +155,25 @@ export function mapsLinks(points: MapPoint[], maxPoints = MAX_POINTS_PER_LINK): 
  * roads, and the loop is split into several links when it needs more points
  * than one link takes.
  */
-export function pinnedMapsLinks(waypoints: Array<LatLon & { label?: string }>, shapes: string[], stops: Array<LatLon & { label: string; km: number }> = []): string[] {
+export function pinnedMapsLinks(
+  waypoints: Array<LatLon & { label?: string }>,
+  shapes: string[],
+  stops: Array<LatLon & { label: string; km: number }> = [],
+): string[] {
   return pinnedMapsParts(waypoints, shapes, stops).map((l) => l.url);
 }
 
 /** Same as pinnedMapsLinks, with where each part starts and ends. */
-export function pinnedMapsParts(waypoints: Array<LatLon & { label?: string }>, shapes: string[], stops: Array<LatLon & { label: string; km: number }> = []): MapsLink[] {
+export function pinnedMapsParts(
+  waypoints: Array<LatLon & { label?: string }>,
+  shapes: string[],
+  stops: Array<LatLon & { label: string; km: number }> = [],
+): MapsLink[] {
   // Allow more points than one link holds, then split: a long loop gets two links rather than fewer pins.
-  const total = Math.max(MAX_POINTS_PER_LINK, Math.ceil((shapes.length + stops.length + 6) / (MAX_POINTS_PER_LINK - 1)) * (MAX_POINTS_PER_LINK - 1) + 1);
+  const total = Math.max(
+    MAX_POINTS_PER_LINK,
+    Math.ceil((shapes.length + stops.length + 6) / (MAX_POINTS_PER_LINK - 1)) * (MAX_POINTS_PER_LINK - 1) + 1,
+  );
   let points = navigationPoints(waypoints, shapes, stops, Math.min(total, 2 * MAX_POINTS_PER_LINK - 1));
   // Splitting at stops can push a part over its budget and spawn a tiny extra
   // link; drop the least useful pass-through points until the loop fits the

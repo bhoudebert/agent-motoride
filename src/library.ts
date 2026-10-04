@@ -1,19 +1,19 @@
 import type { CurrentRide } from "./agent.ts";
 import { centroid, decodePolyline } from "./geometry.ts";
-import { duplicateOf, type RideContext } from "./session.ts";
-import type { NewRide, RideExtras, RideWeather, SavedRide, Store } from "./store.ts";
-import { speedCamerasAlong, stopsAlong, type StopKind } from "./tools/along.ts";
-import { setGeoAnchor } from "./tools/geo.ts";
-import { getDaylight, getWeather } from "./tools/weather.ts";
-import { haversineKm } from "./tools/geo.ts";
-import type { TripComputation } from "./tools/trip.ts";
-import { formatUsage, type RunUsage } from "./usage.ts";
-import { pinnedMapsLinks, pinnedMapsParts, type MapsLink } from "./maps.ts";
-import { formatStopPlan, locateStops, planStops, type StopCandidate } from "./stops.ts";
 import { describeStopsAt, routePointIndex } from "./gpx.ts";
+import { type MapsLink, pinnedMapsParts } from "./maps.ts";
+import { duplicateOf, type RideContext } from "./session.ts";
+import { formatStopPlan, locateStops, planStops, type StopCandidate } from "./stops.ts";
+import type { NewRide, RideExtras, RideWeather, SavedRide, Store } from "./store.ts";
+import { type StopKind, speedCamerasAlong, stopsAlong } from "./tools/along.ts";
+import { haversineKm, setGeoAnchor } from "./tools/geo.ts";
+import type { TripComputation } from "./tools/trip.ts";
+import { getDaylight, getWeather } from "./tools/weather.ts";
+import { formatUsage, type RunUsage } from "./usage.ts";
 
 const fmtMinutes = (minutes: number) => `${Math.floor(minutes / 60)}h${String(minutes % 60).padStart(2, "0")}`;
-const stars = (rating: number | null) => (rating === null ? "unrated" : rating === 0 ? "✗ never again" : `${"★".repeat(rating)}${"☆".repeat(5 - rating)}`);
+const stars = (rating: number | null) =>
+  rating === null ? "unrated" : rating === 0 ? "✗ never again" : `${"★".repeat(rating)}${"☆".repeat(5 - rating)}`;
 
 /** The stored figures derived from a routed trip. */
 export function tripFigures(trip: TripComputation, cells: string[]) {
@@ -43,7 +43,9 @@ export function tripFigures(trip: TripComputation, cells: string[]) {
 export class DuplicateRideError extends Error {
   readonly duplicate: { rideId: number; name: string; overlapPct: number };
   constructor(duplicate: { rideId: number; name: string; overlapPct: number }) {
-    super(`This ride is ${duplicate.overlapPct}% the same roads as saved ride #${duplicate.rideId} "${duplicate.name}". Not saved. Rate or edit that ride instead, or force the save if it is meant as a copy.`);
+    super(
+      `This ride is ${duplicate.overlapPct}% the same roads as saved ride #${duplicate.rideId} "${duplicate.name}". Not saved. Rate or edit that ride instead, or force the save if it is meant as a copy.`,
+    );
     this.duplicate = duplicate;
   }
 }
@@ -94,9 +96,14 @@ function formatRoadMix(ride: SavedRide): string | null {
   } | null;
   if (!s?.limit30OrLess || !s.limit31to50) return null;
   const open = s.openRoadPct ?? Number((100 - s.limit30OrLess.pct - s.limit31to50.pct).toFixed(1));
-  const untagged = s.untaggedOpenRoad ? ` (${s.untaggedOpenRoad.pct}% with no tagged limit, legal default assumed)` : "";
+  const untagged = s.untaggedOpenRoad
+    ? ` (${s.untaggedOpenRoad.pct}% with no tagged limit, legal default assumed)`
+    : "";
   const motorway = ride.preferences.avoidMotorways ? "" : "  (motorways were allowed)";
-  const fast = s.timeOnRoads70PlusPct === undefined ? "" : `  |  ${s.timeOnRoads70PlusPct}% of time on 70+ roads (${s.timeAbove70EstimatedPct}% at 70+ estimated)`;
+  const fast =
+    s.timeOnRoads70PlusPct === undefined
+      ? ""
+      : `  |  ${s.timeOnRoads70PlusPct}% of time on 70+ roads (${s.timeAbove70EstimatedPct}% at 70+ estimated)`;
   return `Road mix: ${open}% open road${untagged}${motorway}${fast}  |  ${s.limit31to50.pct}% in 31-50 zones  |  ${s.limit30OrLess.pct}% in zones of 30 or less  |  motorway ${s.motorwayKm ?? 0} km`;
 }
 
@@ -162,14 +169,20 @@ export function parseRating(args: string[]): { rating: number; notes: string | n
 }
 
 const DAY = 24 * 3_600_000;
-const geometryKey = (shapes: string[]) => `${shapes.join("").length}:${shapes.map((sh) => sh.slice(0, 24) + sh.slice(-24)).join("|")}`;
+const geometryKey = (shapes: string[]) =>
+  `${shapes.join("").length}:${shapes.map((sh) => sh.slice(0, 24) + sh.slice(-24)).join("|")}`;
 
 /**
  * Fuel, café, bakery and restaurant candidates along a route, cached 30 days
  * by the route geometry: the slow map lookup happens once per route, and a
  * stop plan can be rebuilt instantly after a profile change.
  */
-export async function stopCandidatesFor(store: Store, shapes: string[], legs: Parameters<typeof stopsAlong>[1], radiusM = 400) {
+export async function stopCandidatesFor(
+  store: Store,
+  shapes: string[],
+  legs: Parameters<typeof stopsAlong>[1],
+  radiusM = 400,
+) {
   const kinds: StopKind[] = ["fuel", "cafe", "bakery", "restaurant"];
   const key = `stopCandidates@6|${radiusM}|${geometryKey(shapes)}`;
   type Lists = Record<string, { stops: StopCandidate[] }>;
@@ -189,18 +202,41 @@ export async function replanStops(store: Store, ride: SavedRide): Promise<RideEx
   if (!ride.shapes) return null;
   await setGeoAnchor(ride.home);
   const legs = ride.legs.map((leg) => ({
-    from: leg.from, to: leg.to, fromCoords: leg.fromCoords, toCoords: leg.toCoords, distanceKm: leg.distanceKm,
-    ridingMinutes: leg.ridingMinutes, ridingTime: "", avgSpeedKmh: 0, routerMinutes: 0, usesMotorway: false, mainRoads: leg.mainRoads,
+    from: leg.from,
+    to: leg.to,
+    fromCoords: leg.fromCoords,
+    toCoords: leg.toCoords,
+    distanceKm: leg.distanceKm,
+    ridingMinutes: leg.ridingMinutes,
+    ridingTime: "",
+    avgSpeedKmh: 0,
+    routerMinutes: 0,
+    usesMotorway: false,
+    mainRoads: leg.mainRoads,
   }));
   const candidates = await stopCandidatesFor(store, ride.shapes, legs);
-  const stopPlan = await locateStops(planStops(legs, candidates, store.getProfile(), ride.departure ?? "09:00", undefined, ride.rideDate));
+  const stopPlan = await locateStops(
+    planStops(legs, candidates, store.getProfile(), ride.departure ?? "09:00", undefined, ride.rideDate),
+  );
   const extras: RideExtras = {
     gatheredAt: ride.extras?.gatheredAt ?? new Date().toISOString(),
     daylight: ride.extras?.daylight ?? null,
     cameras: ride.extras?.cameras ?? [],
     stops: {
-      fuel: candidates.fuel.slice(0, 10).map((s) => ({ kmAlongRoute: s.kmAlongRoute, leg: s.leg, name: s.name, openingHours: s.openingHours, detourM: s.detourM })),
-      cafe: candidates.cafe.slice(0, 10).map((s) => ({ kmAlongRoute: s.kmAlongRoute, leg: s.leg, name: s.name, openingHours: s.openingHours, detourM: s.detourM })),
+      fuel: candidates.fuel.slice(0, 10).map((s) => ({
+        kmAlongRoute: s.kmAlongRoute,
+        leg: s.leg,
+        name: s.name,
+        openingHours: s.openingHours,
+        detourM: s.detourM,
+      })),
+      cafe: candidates.cafe.slice(0, 10).map((s) => ({
+        kmAlongRoute: s.kmAlongRoute,
+        leg: s.leg,
+        name: s.name,
+        openingHours: s.openingHours,
+        detourM: s.detourM,
+      })),
     },
     errors: { ...(ride.extras?.errors ?? {}) },
     weather: ride.extras?.weather ?? null,
@@ -221,11 +257,20 @@ export async function enrichRide(store: Store, ride: SavedRide): Promise<RideExt
   if (!shapes) return null;
   await setGeoAnchor(ride.home);
   const legs = ride.legs.map((leg) => ({
-    from: leg.from, to: leg.to, fromCoords: leg.fromCoords, toCoords: leg.toCoords, distanceKm: leg.distanceKm,
-    ridingMinutes: leg.ridingMinutes, ridingTime: "", avgSpeedKmh: 0, routerMinutes: 0, usesMotorway: false, mainRoads: leg.mainRoads,
+    from: leg.from,
+    to: leg.to,
+    fromCoords: leg.fromCoords,
+    toCoords: leg.toCoords,
+    distanceKm: leg.distanceKm,
+    ridingMinutes: leg.ridingMinutes,
+    ridingTime: "",
+    avgSpeedKmh: 0,
+    routerMinutes: 0,
+    usesMotorway: false,
+    mainRoads: leg.mainRoads,
   }));
   const errors: Record<string, string> = {};
-  const settle = async <T,>(name: string, fn: () => Promise<T>): Promise<T | null> => {
+  const settle = async <T>(name: string, fn: () => Promise<T>): Promise<T | null> => {
     try {
       return await fn();
     } catch (error) {
@@ -235,29 +280,64 @@ export async function enrichRide(store: Store, ride: SavedRide): Promise<RideExt
   };
   // Cameras and stops both go to the OpenStreetMap query server, one at a time
   // (the server rejects parallel requests from one client), so they run in sequence.
-  const daylight = ride.rideDate ? await settle("daylight", () => getDaylight({ location: ride.home, date: ride.rideDate! })) : null;
+  const daylight = ride.rideDate
+    ? await settle("daylight", () => getDaylight({ location: ride.home, date: ride.rideDate! }))
+    : null;
   const weather = ride.rideDate ? await settle("weather", () => rideWeather(ride, shapes)) : null;
   const cameras = await settle("cameras", () => speedCamerasAlong(shapes, legs));
   const candidates = await settle("stops", () => stopCandidatesFor(store, shapes, legs));
-  const stopPlan = candidates ? await locateStops(planStops(legs, candidates, store.getProfile(), ride.departure ?? "09:00", undefined, ride.rideDate)) : null;
+  const stopPlan = candidates
+    ? await locateStops(
+        planStops(legs, candidates, store.getProfile(), ride.departure ?? "09:00", undefined, ride.rideDate),
+      )
+    : null;
   // The view lists the shortlist of fuel and cafés; the plan holds the chosen ones.
-  const stops = candidates && { fuel: { stops: candidates.fuel.slice(0, 10) }, cafe: { stops: candidates.cafe.slice(0, 10) } };
+  const stops = candidates && {
+    fuel: { stops: candidates.fuel.slice(0, 10) },
+    cafe: { stops: candidates.cafe.slice(0, 10) },
+  };
   // A lookup that failed keeps what the last successful one found.
   const previous = ride.extras;
   const extras: RideExtras = {
     gatheredAt: new Date().toISOString(),
     daylight: daylight
-      ? { sunrise: daylight.sunrise, sunset: daylight.sunset, firstLight: daylight.firstLight, lastLight: daylight.lastLight, daylightHours: daylight.daylightHours }
-      : errors.daylight ? previous?.daylight ?? null : null,
+      ? {
+          sunrise: daylight.sunrise,
+          sunset: daylight.sunset,
+          firstLight: daylight.firstLight,
+          lastLight: daylight.lastLight,
+          daylightHours: daylight.daylightHours,
+        }
+      : errors.daylight
+        ? (previous?.daylight ?? null)
+        : null,
     cameras: cameras
-      ? cameras.cameras.map((c) => ({ kmAlongRoute: c.kmAlongRoute, leg: c.leg, limitKmh: c.limitKmh, direction: c.direction, coords: c.coords }))
-      : previous?.cameras ?? [],
-    stops: stops === null ? previous?.stops ?? {} : Object.fromEntries(
-      Object.entries(stops).map(([key, value]) => [key, value.stops.map((s) => ({ kmAlongRoute: s.kmAlongRoute, leg: s.leg, name: s.name, openingHours: s.openingHours, detourM: s.detourM }))]),
-    ),
+      ? cameras.cameras.map((c) => ({
+          kmAlongRoute: c.kmAlongRoute,
+          leg: c.leg,
+          limitKmh: c.limitKmh,
+          direction: c.direction,
+          coords: c.coords,
+        }))
+      : (previous?.cameras ?? []),
+    stops:
+      stops === null
+        ? (previous?.stops ?? {})
+        : Object.fromEntries(
+            Object.entries(stops).map(([key, value]) => [
+              key,
+              value.stops.map((s) => ({
+                kmAlongRoute: s.kmAlongRoute,
+                leg: s.leg,
+                name: s.name,
+                openingHours: s.openingHours,
+                detourM: s.detourM,
+              })),
+            ]),
+          ),
     errors,
     // A date beyond the forecast range keeps the last forecast gathered, if any.
-    weather: weather ?? (errors.weather ? previous?.weather ?? null : null),
+    weather: weather ?? (errors.weather ? (previous?.weather ?? null) : null),
     stopPlan: stopPlan ?? previous?.stopPlan ?? null,
   };
   store.setExtras(ride.id, extras);
@@ -270,7 +350,9 @@ export function formatExtras(ride: SavedRide): string[] {
   if (!x) return ["Daylight, cameras and stops: not gathered yet (npm run rides -- refresh " + ride.id + ")"];
   const lines: string[] = [];
   if (x.daylight) {
-    lines.push(`Daylight on ${ride.rideDate}: sunrise ${x.daylight.sunrise}, sunset ${x.daylight.sunset}, usable light ${x.daylight.firstLight} to ${x.daylight.lastLight} (${x.daylight.daylightHours} h)`);
+    lines.push(
+      `Daylight on ${ride.rideDate}: sunrise ${x.daylight.sunrise}, sunset ${x.daylight.sunset}, usable light ${x.daylight.firstLight} to ${x.daylight.lastLight} (${x.daylight.daylightHours} h)`,
+    );
   }
   lines.push(...formatWeather(x.weather, ride.rideDate));
   if (x.stopPlan) {
@@ -285,13 +367,22 @@ export function formatExtras(ride: SavedRide): string[] {
   );
   for (const [kind, value] of Object.entries(x.stops)) {
     // Older stored rides keep { stops: [...] } per kind instead of a bare array.
-    const stops = Array.isArray(value) ? value : (value as { stops?: typeof value }).stops ?? [];
+    const stops = Array.isArray(value) ? value : ((value as { stops?: typeof value }).stops ?? []);
     if (!Array.isArray(stops) || stops.length === 0) continue;
-    lines.push(`${kind[0]!.toUpperCase()}${kind.slice(1)} stops: ${stops.map((s) => `${s.name} (km ${s.kmAlongRoute}${s.openingHours ? `, ${s.openingHours}` : ""})`).join("; ")}`);
+    lines.push(
+      `${kind[0]!.toUpperCase()}${kind.slice(1)} stops: ${stops.map((s) => `${s.name} (km ${s.kmAlongRoute}${s.openingHours ? `, ${s.openingHours}` : ""})`).join("; ")}`,
+    );
   }
   for (const [name, reason] of Object.entries(x.errors ?? {})) {
-    const kept = name === "cameras" ? x.cameras.length > 0 : name === "stops" ? Object.keys(x.stops).length > 0 : x.daylight !== null;
-    lines.push(`${name[0]!.toUpperCase()}${name.slice(1)}: last lookup failed (${reason.split(".")[0]})${kept ? ", showing the previous result" : ""}. Run: npm run rides -- refresh ${ride.id}`);
+    const kept =
+      name === "cameras"
+        ? x.cameras.length > 0
+        : name === "stops"
+          ? Object.keys(x.stops).length > 0
+          : x.daylight !== null;
+    lines.push(
+      `${name[0]!.toUpperCase()}${name.slice(1)}: last lookup failed (${reason.split(".")[0]})${kept ? ", showing the previous result" : ""}. Run: npm run rides -- refresh ${ride.id}`,
+    );
   }
   return lines;
 }
@@ -327,32 +418,61 @@ async function rideWeather(ride: SavedRide, shapes: string[]): Promise<RideWeath
   };
   const samples = [
     { label: "start", ...at(0), from: startHour, to: startHour + 1 },
-    { label: "one third", ...at(1 / 3), from: startHour + Math.round((endHour - startHour) / 3) - 1, to: startHour + Math.round((endHour - startHour) / 3) + 1 },
-    { label: "two thirds", ...at(2 / 3), from: startHour + Math.round((2 * (endHour - startHour)) / 3) - 1, to: startHour + Math.round((2 * (endHour - startHour)) / 3) + 1 },
+    {
+      label: "one third",
+      ...at(1 / 3),
+      from: startHour + Math.round((endHour - startHour) / 3) - 1,
+      to: startHour + Math.round((endHour - startHour) / 3) + 1,
+    },
+    {
+      label: "two thirds",
+      ...at(2 / 3),
+      from: startHour + Math.round((2 * (endHour - startHour)) / 3) - 1,
+      to: startHour + Math.round((2 * (endHour - startHour)) / 3) + 1,
+    },
     { label: "finish", ...at(1), from: endHour - 1, to: endHour },
   ];
   const points: RideWeather["points"] = [];
   for (const sample of samples) {
-    const w = await getWeather({ location: `${sample.point.lat},${sample.point.lon}`, date, fromHour: Math.max(0, sample.from), toHour: Math.min(23, sample.to) });
+    const w = await getWeather({
+      location: `${sample.point.lat},${sample.point.lon}`,
+      date,
+      fromHour: Math.max(0, sample.from),
+      toHour: Math.min(23, sample.to),
+    });
     const skies = [...new Set(w.hours.map((h) => h.sky))].join(", ");
     points.push({ label: sample.label, kmAlongRoute: sample.km, ...w.summary, sky: skies });
   }
-  return { forecastDate: date, gatheredAt: new Date().toISOString(), window: `${String(startHour).padStart(2, "0")}:00-${String(endHour).padStart(2, "0")}:00`, points };
+  return {
+    forecastDate: date,
+    gatheredAt: new Date().toISOString(),
+    window: `${String(startHour).padStart(2, "0")}:00-${String(endHour).padStart(2, "0")}:00`,
+    points,
+  };
 }
 
 /** One line per sampled point of the stored forecast. */
 export function formatWeather(weather: RideWeather | null | undefined, rideDate: string | null): string[] {
-  if (!weather) return rideDate ? ["Weather: no forecast stored (date beyond the 16-day range at the last refresh)"] : [];
+  if (!weather)
+    return rideDate ? ["Weather: no forecast stored (date beyond the 16-day range at the last refresh)"] : [];
   const age = Math.round((Date.now() - Date.parse(weather.gatheredAt)) / 3_600_000);
-  const lines = [`Weather for ${weather.forecastDate}, ${weather.window}, forecast as of ${weather.gatheredAt.slice(0, 16).replace("T", " ")} (${age} h ago):`];
+  const lines = [
+    `Weather for ${weather.forecastDate}, ${weather.window}, forecast as of ${weather.gatheredAt.slice(0, 16).replace("T", " ")} (${age} h ago):`,
+  ];
   for (const p of weather.points) {
-    lines.push(`  ${p.label.padEnd(10)} km ${String(p.kmAlongRoute).padStart(3)}  ${p.dry ? "dry" : "RAIN RISK"}, rain ${p.maxRainProbPct}% / ${p.totalRainMm} mm, ${p.minTempC}-${p.maxTempC} °C, gusts ${p.maxGustKmh} km/h, ${p.sky}`);
+    lines.push(
+      `  ${p.label.padEnd(10)} km ${String(p.kmAlongRoute).padStart(3)}  ${p.dry ? "dry" : "RAIN RISK"}, rain ${p.maxRainProbPct}% / ${p.totalRainMm} mm, ${p.minTempC}-${p.maxTempC} °C, gusts ${p.maxGustKmh} km/h, ${p.sky}`,
+    );
   }
   return lines;
 }
 
 /** Points of a saved ride for the map links: waypoints, and the planned stops when any. */
-export function rideNavigation(ride: SavedRide): { links: string[]; parts: MapsLink[]; stops: Array<{ lat: number; lon: number; label: string; km: number }> } {
+export function rideNavigation(ride: SavedRide): {
+  links: string[];
+  parts: MapsLink[];
+  stops: Array<{ lat: number; lon: number; label: string; km: number }>;
+} {
   const waypoints = [ride.legs[0], ...ride.legs].flatMap((leg, i) => {
     if (!leg) return [];
     const [lat = 0, lon = 0] = (i === 0 ? leg.fromCoords : leg.toCoords).split(",").map(Number);
@@ -375,7 +495,12 @@ export function describeParts(parts: MapsLink[], ride: SavedRide): string[] {
   };
   return parts.slice(0, -1).map((part, i) => {
     const to = part.to;
-    const where = to.kind === "stop" ? to.label : to.kind === "waypoint" ? legName(to) : `a pass-through point at km ${to.km.toFixed(0)}`;
+    const where =
+      to.kind === "stop"
+        ? to.label
+        : to.kind === "waypoint"
+          ? legName(to)
+          : `a pass-through point at km ${to.km.toFixed(0)}`;
     return `  part ${i + 1} ends at km ${to.km.toFixed(0)}, ${where}: open part ${i + 2} there`;
   });
 }
@@ -386,7 +511,9 @@ function navigationLines(ride: SavedRide): string[] {
   return [
     ...links.map((link, i) => `Map part ${i + 1}/${links.length}: ${link}`),
     ...describeParts(parts, ride),
-    stops.length ? `(links carry the ${stops.length} planned stops and pass-through points that keep Google on the chosen roads)` : "(pass-through points keep Google on the chosen roads)",
+    stops.length
+      ? `(links carry the ${stops.length} planned stops and pass-through points that keep Google on the chosen roads)`
+      : "(pass-through points keep Google on the chosen roads)",
   ];
 }
 

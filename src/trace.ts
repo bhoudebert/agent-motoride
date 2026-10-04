@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- trace payloads are untyped JSON read back from SQLite */
 import type { SavedRun } from "./store.ts";
 import { formatUsage } from "./usage.ts";
 
@@ -21,7 +22,9 @@ function summariseTool(name: string, payload: any): string {
   const o = payload?.output ?? {};
   switch (name) {
     case "searchRoads":
-      return `${o.roadsConsidered ?? "?"} roads, area median curviness ${o.areaMedianCurviness ?? "?"}, top: ${(o.roads ?? [])
+      return `${o.roadsConsidered ?? "?"} roads, area median curviness ${o.areaMedianCurviness ?? "?"}, top: ${(
+        o.roads ?? []
+      )
         .slice(0, 3)
         .map((r: any) => `${r.ref} (${r.curvinessDegPerKm})`)
         .join(", ")}`;
@@ -38,17 +41,29 @@ function summariseTool(name: string, payload: any): string {
     case "getDaylight":
       return `${o.location}: sunrise ${o.sunrise}, sunset ${o.sunset}, last light ${o.lastLight}`;
     case "getSpeedCameras":
-      return `${o.count} fixed camera(s)${o.count ? `: ${o.cameras.slice(0, 4).map((c: any) => `km ${c.kmAlongRoute}${c.limitKmh ? ` @${c.limitKmh}` : ""}`).join(", ")}` : ""}`;
+      return `${o.count} fixed camera(s)${
+        o.count
+          ? `: ${o.cameras
+              .slice(0, 4)
+              .map((c: any) => `km ${c.kmAlongRoute}${c.limitKmh ? ` @${c.limitKmh}` : ""}`)
+              .join(", ")}`
+          : ""
+      }`;
     case "findStops":
       return Object.entries(o)
         .filter(([k]) => k !== "totalKm")
         .map(([k, v]: [string, any]) => `${k} ${v.found} found`)
         .join(", ");
     case "getTraffic":
-      return o.available === false ? "no traffic source" : `delay ${o.trafficDelayMinutes} min, ${o.travelMinutes} min with traffic`;
+      return o.available === false
+        ? "no traffic source"
+        : `delay ${o.trafficDelayMinutes} min, ${o.travelMinutes} min with traffic`;
     case "scoutAreas":
       return `${(o.reports ?? []).length} report(s): ${(o.reports ?? [])
-        .map((r: any) => `${r.area} ${r.found ? `${r.routeId ?? "?"} ${r.distanceKm} km open ${r.openRoadPct}%` : "nothing"}`)
+        .map(
+          (r: any) =>
+            `${r.area} ${r.found ? `${r.routeId ?? "?"} ${r.distanceKm} km open ${r.openRoadPct}%` : "nothing"}`,
+        )
         .join("; ")}${o.notes?.length ? ` | ${o.notes.join(" ")}` : ""}`;
     default:
       return clip(JSON.stringify(o), 120);
@@ -77,7 +92,11 @@ export function formatTrace(run: SavedRun, events: Event[], full = false): strin
         text = `you      ${clip(String(p).replace(/\s+/g, " "), 140)}`;
         break;
       case "model": {
-        const tools = p.tools?.length ? `calls ${p.tools.join(", ")}` : p.stopReason === "end_turn" ? "final answer" : p.stopReason;
+        const tools = p.tools?.length
+          ? `calls ${p.tools.join(", ")}`
+          : p.stopReason === "end_turn"
+            ? "final answer"
+            : p.stopReason;
         text = `model    ${tools}  [${k(p.tokens.in + p.tokens.cacheWrite)} in, ${k(p.tokens.cacheRead)} cached, ${k(p.tokens.out)} out]${p.text && p.stopReason !== "end_turn" ? `  "${clip(p.text.replace(/\s+/g, " "), 80)}"` : ""}`;
         break;
       }
@@ -103,14 +122,22 @@ export function formatTrace(run: SavedRun, events: Event[], full = false): strin
         text = `${e.kind} ${e.name}`;
     }
     lines.push(`${when}  ${scope}  ${text}`);
-    if (full) lines.push(JSON.stringify(e.payload, null, 1).split("\n").map((l) => `${" ".repeat(scopeWidth + 11)}${l}`).join("\n"));
+    if (full)
+      lines.push(
+        JSON.stringify(e.payload, null, 1)
+          .split("\n")
+          .map((l) => `${" ".repeat(scopeWidth + 11)}${l}`)
+          .join("\n"),
+      );
   }
 
   const scouts = new Set(events.filter((e) => e.scope.startsWith("scout:")).map((e) => e.scope)).size;
   lines.push("", `Usage: ${formatUsage(run.usage)}`);
   if (scouts) lines.push(`Scouts: ${scouts}`);
   for (const [name, stat] of [...toolStats.entries()].sort((a, b) => b[1].ms - a[1].ms)) {
-    lines.push(`  ${name.padEnd(15)} ${String(stat.calls).padStart(3)} calls  ${secs(stat.ms).padStart(7)} total${stat.failed ? `  ${stat.failed} failed` : ""}`);
+    lines.push(
+      `  ${name.padEnd(15)} ${String(stat.calls).padStart(3)} calls  ${secs(stat.ms).padStart(7)} total${stat.failed ? `  ${stat.failed} failed` : ""}`,
+    );
   }
   if (run.error) lines.push(`Ended with error: ${run.error}`);
   return lines.join("\n");

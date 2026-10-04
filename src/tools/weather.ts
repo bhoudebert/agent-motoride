@@ -20,12 +20,22 @@ export function sunTimes(lat: number, lon: number, date: string, utcOffsetSecond
   const gamma = ((2 * Math.PI) / 365) * (dayOfYear - 1 + (12 - 12) / 24);
   const eqTime =
     229.18 *
-    (0.000075 + 0.001868 * Math.cos(gamma) - 0.032077 * Math.sin(gamma) - 0.014615 * Math.cos(2 * gamma) - 0.040849 * Math.sin(2 * gamma));
+    (0.000075 +
+      0.001868 * Math.cos(gamma) -
+      0.032077 * Math.sin(gamma) -
+      0.014615 * Math.cos(2 * gamma) -
+      0.040849 * Math.sin(2 * gamma));
   const decl =
-    0.006918 - 0.399912 * Math.cos(gamma) + 0.070257 * Math.sin(gamma) - 0.006758 * Math.cos(2 * gamma) +
-    0.000907 * Math.sin(2 * gamma) - 0.002697 * Math.cos(3 * gamma) + 0.00148 * Math.sin(3 * gamma);
+    0.006918 -
+    0.399912 * Math.cos(gamma) +
+    0.070257 * Math.sin(gamma) -
+    0.006758 * Math.cos(2 * gamma) +
+    0.000907 * Math.sin(2 * gamma) -
+    0.002697 * Math.cos(3 * gamma) +
+    0.00148 * Math.sin(3 * gamma);
   const hourAngle = (zenithDeg: number) => {
-    const cosH = Math.cos(toRad(zenithDeg)) / (Math.cos(toRad(lat)) * Math.cos(decl)) - Math.tan(toRad(lat)) * Math.tan(decl);
+    const cosH =
+      Math.cos(toRad(zenithDeg)) / (Math.cos(toRad(lat)) * Math.cos(decl)) - Math.tan(toRad(lat)) * Math.tan(decl);
     if (cosH > 1 || cosH < -1) return null; // polar day or night
     return toDeg(Math.acos(cosH));
   };
@@ -55,10 +65,18 @@ interface TimezoneResponse {
 /** UTC offset of a named timezone on a given day, so winter and summer time both come out right. */
 export function utcOffsetSecondsOn(timezone: string, date: string): number {
   const noonUtc = new Date(`${date}T12:00:00Z`);
-  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: timezone, hour: "numeric", minute: "numeric", hour12: false, day: "numeric" }).formatToParts(noonUtc);
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: timezone,
+    hour: "numeric",
+    minute: "numeric",
+    hour12: false,
+    day: "numeric",
+  }).formatToParts(noonUtc);
   const get = (type: string) => Number(parts.find((p) => p.type === type)?.value);
   const dayShift = get("day") - noonUtc.getUTCDate();
-  return ((dayShift === 0 ? 0 : dayShift > 0 || dayShift < -1 ? 24 : -24) + get("hour") - 12) * 3600 + get("minute") * 60;
+  return (
+    ((dayShift === 0 ? 0 : dayShift > 0 || dayShift < -1 ? 24 : -24) + get("hour") - 12) * 3600 + get("minute") * 60
+  );
 }
 
 /** Daylight for a place and day, any date; the timezone comes from Open-Meteo. */

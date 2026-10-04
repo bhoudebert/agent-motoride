@@ -27,14 +27,14 @@ over the Model Context Protocol.
 The planning model can come from two places. The tools, the library, the
 exports and the data are the same in both.
 
-| | API mode | MCP mode |
-|---|---|---|
-| What runs the agent | This app, through the Anthropic API | Claude Code or Codex CLI (any MCP client), using this app as a tool server |
-| What you pay with | An Anthropic API key, per token | Your Claude Code or Codex plan; scouts still use the key if set |
-| How you talk to it | A terminal app with a menu and a `refine>` prompt | Slash commands in Claude Code, e.g. `/mcp__ride__plan-ride ...` |
-| Planning guidance | A real system prompt, schema-validated final answer | The same instructions sent as the prompt's text; free-text answer |
-| Model and effort | `RIDE_MODEL`, `RIDE_EFFORT` in `.env` | The MCP client's own model |
-| Best for | Full control, benchmarks, scripted runs | Daily use on a subscription, chatting about rides, and the phone through Remote Control |
+|                     | API mode                                            | MCP mode                                                                                |
+| ------------------- | --------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| What runs the agent | This app, through the Anthropic API                 | Claude Code or Codex CLI (any MCP client), using this app as a tool server              |
+| What you pay with   | An Anthropic API key, per token                     | Your Claude Code or Codex plan; scouts still use the key if set                         |
+| How you talk to it  | A terminal app with a menu and a `refine>` prompt   | Slash commands in Claude Code, e.g. `/mcp__ride__plan-ride ...`                         |
+| Planning guidance   | A real system prompt, schema-validated final answer | The same instructions sent as the prompt's text; free-text answer                       |
+| Model and effort    | `RIDE_MODEL`, `RIDE_EFFORT` in `.env`               | The MCP client's own model                                                              |
+| Best for            | Full control, benchmarks, scripted runs             | Daily use on a subscription, chatting about rides, and the phone through Remote Control |
 
 Start with the one that matches what you have: an API key, Claude Code or
 Codex.
@@ -95,14 +95,27 @@ Details for each mode: [Usage](#usage) for the terminal app, [MCP mode](#mcp-mod
 - Internet access to the public data services listed under [Tools](#tools).
 - Optional: a TomTom API key (free tier at <https://developer.tomtom.com/>) for traffic checks.
 
+## Project conventions
+
+|                     |                                                                                                        |
+| ------------------- | ------------------------------------------------------------------------------------------------------ |
+| Quality gate        | `npm run quality`: typecheck, lint, format check, unit tests. Runs in CI on every pull request         |
+| Formatting and lint | ESLint (`eslint.config.js`) and Prettier (`.prettierrc.json`); `npm run lint:fix` and `npm run format` |
+| Commits             | Conventional Commits, enforced by a commit-msg hook and in CI; `feat`/`fix` drive versions             |
+| Hooks               | installed by `npm install`: lint-staged on pre-commit, commitlint on commit-msg                        |
+| Releases            | release-please maintains a release PR with changelog and version; merging it tags the release          |
+| Dependencies        | Dependabot, weekly, grouped dev tooling                                                                |
+| Specs               | `openspec/`, updated before behaviour changes                                                          |
+| Contributing        | `CONTRIBUTING.md`; security notes in `SECURITY.md`; MIT licence                                        |
+
 ## Documentation map
 
-| Where | What |
-|---|---|
-| This README | How to install, use and configure both modes; how it works; benchmark; troubleshooting |
-| `openspec/project.md` | Project context: purpose, stack, conventions, constraints |
-| `openspec/specs/<capability>/spec.md` | What the system does, as requirements with scenarios, one file per capability |
-| `.env.example` | Every setting with its default |
+| Where                                 | What                                                                                   |
+| ------------------------------------- | -------------------------------------------------------------------------------------- |
+| This README                           | How to install, use and configure both modes; how it works; benchmark; troubleshooting |
+| `openspec/project.md`                 | Project context: purpose, stack, conventions, constraints                              |
+| `openspec/specs/<capability>/spec.md` | What the system does, as requirements with scenarios, one file per capability          |
+| `.env.example`                        | Every setting with its default                                                         |
 
 ## Setup
 
@@ -113,16 +126,16 @@ cp .env.example .env
 
 Then edit `.env`:
 
-| Variable | Required | Purpose |
-|---|---|---|
-| `ANTHROPIC_API_KEY` | API mode | Anthropic API key. In MCP mode only needed for scouts |
-| `RIDE_HOME` | no | Default start and end point, e.g. `Grenoble`. Overridden by `--from` |
-| `TOMTOM_API_KEY` | no | Enables `getTraffic`. Without it the agent reports traffic as not checked |
-| `RIDE_ALLOW_MOTORWAYS` | no | `1` to permit motorways. Default: never used |
-| `RIDE_MAX_30_PCT` | no | Target max % of distance in zones of 30 km/h or less. Default `3` |
-| `RIDE_MAX_50_PCT` | no | Target max % of distance in 31-50 km/h zones. Default `20` |
-| `RIDE_MODEL` | no | Model ID, default `claude-opus-5-5` |
-| `RIDE_EFFORT` | no | Reasoning effort: `low`, `medium`, `high`, `xhigh`, `max`. Default `high` |
+| Variable               | Required | Purpose                                                                   |
+| ---------------------- | -------- | ------------------------------------------------------------------------- |
+| `ANTHROPIC_API_KEY`    | API mode | Anthropic API key. In MCP mode only needed for scouts                     |
+| `RIDE_HOME`            | no       | Default start and end point, e.g. `Grenoble`. Overridden by `--from`      |
+| `TOMTOM_API_KEY`       | no       | Enables `getTraffic`. Without it the agent reports traffic as not checked |
+| `RIDE_ALLOW_MOTORWAYS` | no       | `1` to permit motorways. Default: never used                              |
+| `RIDE_MAX_30_PCT`      | no       | Target max % of distance in zones of 30 km/h or less. Default `3`         |
+| `RIDE_MAX_50_PCT`      | no       | Target max % of distance in 31-50 km/h zones. Default `20`                |
+| `RIDE_MODEL`           | no       | Model ID, default `claude-opus-5-5`                                       |
+| `RIDE_EFFORT`          | no       | Reasoning effort: `low`, `medium`, `high`, `xhigh`, `max`. Default `high` |
 
 `.env` is git-ignored. Never commit it.
 
@@ -215,11 +228,11 @@ affects.
 
 Leaving is always explicit:
 
-| Action | Effect |
-|---|---|
-| `/back` or Ctrl-D | Leave this ride and return to the start menu. In the menu, Ctrl-D steps back one level and quits only from the top |
-| `/quit`, `exit` or Ctrl-C | Quit the program |
-| Enter on an empty line | Nothing |
+| Action                    | Effect                                                                                                             |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `/back` or Ctrl-D         | Leave this ride and return to the start menu. In the menu, Ctrl-D steps back one level and quits only from the top |
+| `/quit`, `exit` or Ctrl-C | Quit the program                                                                                                   |
+| Enter on an empty line    | Nothing                                                                                                            |
 
 Leaving with an itinerary that is not saved asks once for confirmation: `/save`
 it, or repeat the command to discard it.
@@ -247,24 +260,24 @@ path with `RIDE_DB`). Nothing is saved unless you ask.
 
 At the `refine>` prompt:
 
-| Command | Effect |
-|---|---|
-| `/save [name]` | Save the current itinerary. Without a name, the agent's own short title is used. Saving again after a change creates a new version linked to the previous one; nothing is overwritten |
-| `/list` | Saved rides |
-| `/show [id\|name]` | Legs, main roads, map link and full itinerary of a saved ride. No argument: the ride loaded or saved in this session |
-| `/gpx [file]` | Export the itinerary on screen, or the loaded ride, as a GPX file |
-| `/md [file]` | Markdown document of the saved ride of this session |
-| `/qr` | QR code of the Google Maps link, to scan with the phone |
-| `/share` | Page for the phone on the local Wi-Fi: map link, itinerary, GPX download, with its QR code |
-| `/rate <0-5> [note]` | Rate the ride saved or loaded in this session; 0 means never again |
-| `/motorways on\|off` | Permit or forbid motorways from now on |
-| `/settings` | Show motorways state, slow-zone targets, traffic check, model and effort, bike profile |
-| `/bike [range=.. reserve=.. pause=.. stint=.. lunch=..]` | Show or set the bike profile used to plan stops |
-| `/usage` | Model, tokens, time and estimated cost of this session so far |
-| `/trace` | Replay this session's steps so far |
-| `/back` | Return to the start menu (also Ctrl-D) |
-| `/quit` | Quit the program |
-| `/help` | Command list |
+| Command                                                  | Effect                                                                                                                                                                                |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/save [name]`                                           | Save the current itinerary. Without a name, the agent's own short title is used. Saving again after a change creates a new version linked to the previous one; nothing is overwritten |
+| `/list`                                                  | Saved rides                                                                                                                                                                           |
+| `/show [id\|name]`                                       | Legs, main roads, map link and full itinerary of a saved ride. No argument: the ride loaded or saved in this session                                                                  |
+| `/gpx [file]`                                            | Export the itinerary on screen, or the loaded ride, as a GPX file                                                                                                                     |
+| `/md [file]`                                             | Markdown document of the saved ride of this session                                                                                                                                   |
+| `/qr`                                                    | QR code of the Google Maps link, to scan with the phone                                                                                                                               |
+| `/share`                                                 | Page for the phone on the local Wi-Fi: map link, itinerary, GPX download, with its QR code                                                                                            |
+| `/rate <0-5> [note]`                                     | Rate the ride saved or loaded in this session; 0 means never again                                                                                                                    |
+| `/motorways on\|off`                                     | Permit or forbid motorways from now on                                                                                                                                                |
+| `/settings`                                              | Show motorways state, slow-zone targets, traffic check, model and effort, bike profile                                                                                                |
+| `/bike [range=.. reserve=.. pause=.. stint=.. lunch=..]` | Show or set the bike profile used to plan stops                                                                                                                                       |
+| `/usage`                                                 | Model, tokens, time and estimated cost of this session so far                                                                                                                         |
+| `/trace`                                                 | Replay this session's steps so far                                                                                                                                                    |
+| `/back`                                                  | Return to the start menu (also Ctrl-D)                                                                                                                                                |
+| `/quit`                                                  | Quit the program                                                                                                                                                                      |
+| `/help`                                                  | Command list                                                                                                                                                                          |
 
 Without the prompt: `npm run ride -- --once --save-as "Vercors loop" "..."`.
 
@@ -315,11 +328,11 @@ opening a saved ride.
 The file is standard GPX 1.1 and holds the ride three ways, so any app finds
 what it reads:
 
-| In the file | What it is | Used by |
-|---|---|---|
-| Track | The exact road line from the router, one segment per leg | Apps that follow a line |
-| Route | The loop's stops, the planned fuel and pause stops as named stages, and pass-through points taken from the exact line where an app would otherwise cut away (40 points by default) | Apps that compute their own path between points: Liberty Rider, Garmin, TomTom |
-| Waypoints | The stops and the planned stops as named markers, with their time | Shown as markers |
+| In the file | What it is                                                                                                                                                                         | Used by                                                                        |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Track       | The exact road line from the router, one segment per leg                                                                                                                           | Apps that follow a line                                                        |
+| Route       | The loop's stops, the planned fuel and pause stops as named stages, and pass-through points taken from the exact line where an app would otherwise cut away (40 points by default) | Apps that compute their own path between points: Liberty Rider, Garmin, TomTom |
+| Waypoints   | The stops and the planned stops as named markers, with their time                                                                                                                  | Shown as markers                                                               |
 
 Import it in a motorcycle or outdoor navigation app (Liberty Rider, Kurviger,
 Calimoto, OsmAnd, Scenic) or a Garmin or TomTom unit. An app that follows the
@@ -373,13 +386,13 @@ npm run rides -- bike                                   # show
 npm run rides -- bike range=250 reserve=40 pause=75 stint=90 lunch=yes
 ```
 
-| Setting | Default | Used for |
-|---|---|---|
-| `range` | 250 km | Realistic range on a full tank |
-| `reserve` | 40 km | Fuel before range minus reserve, so the tank never runs into reserve |
-| `pause` | 75 min | A café or bakery stop after this much riding since the last stop |
-| `stint` | 90 min | Warning when no stop can be placed within this stretch |
-| `lunch` | yes | A restaurant where the ride crosses 12:30, when it spans midday |
+| Setting   | Default | Used for                                                             |
+| --------- | ------- | -------------------------------------------------------------------- |
+| `range`   | 250 km  | Realistic range on a full tank                                       |
+| `reserve` | 40 km   | Fuel before range minus reserve, so the tank never runs into reserve |
+| `pause`   | 75 min  | A café or bakery stop after this much riding since the last stop     |
+| `stint`   | 90 min  | Warning when no stop can be placed within this stretch               |
+| `lunch`   | yes     | A restaurant where the ride crosses 12:30, when it spans midday      |
 
 Also `/bike` at the prompt, and the same fields in `rideSettings` in MCP mode.
 "I leave with half a tank" in the request shifts the first fuel stop.
@@ -470,9 +483,9 @@ free sources:
 
 Every routed trip reports two readings of the rider's own yardstick:
 
-| Figure | Meaning |
-|---|---|
-| time on 70+ roads | share of riding time on roads limited to 70 km/h or more |
+| Figure                | Meaning                                                                                                                        |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| time on 70+ roads     | share of riding time on roads limited to 70 km/h or more                                                                       |
 | time at 70+ estimated | share of riding time at an estimated 70 or more, which needs limits of 80 and up since bends and junctions take a few km/h off |
 
 Both appear in the itinerary, in the saved-ride view ("Road mix" line) and in
@@ -526,15 +539,15 @@ ride for the coming weekend.
 Tool results are cached in the same file so repeated planning does not hit the
 public servers again:
 
-| Lookup | Kept for | Why |
-|---|---|---|
-| Road search | 30 days | Roads rarely change, and this is the slowest call |
-| Routed trip | 7 days | Stable, but closures and map edits happen |
-| Fixed cameras, stops along a route | 30 days | Keyed by the route line, so a refresh or a replan is instant |
-| Daylight | 1 year | Astronomy does not change |
-| Place names for coordinates | 1 year | Neither do village names |
-| Weather | 1 hour | Only to avoid repeat calls within one session |
-| Traffic | never | Must be live |
+| Lookup                             | Kept for | Why                                                          |
+| ---------------------------------- | -------- | ------------------------------------------------------------ |
+| Road search                        | 30 days  | Roads rarely change, and this is the slowest call            |
+| Routed trip                        | 7 days   | Stable, but closures and map edits happen                    |
+| Fixed cameras, stops along a route | 30 days  | Keyed by the route line, so a refresh or a replan is instant |
+| Daylight                           | 1 year   | Astronomy does not change                                    |
+| Place names for coordinates        | 1 year   | Neither do village names                                     |
+| Weather                            | 1 hour   | Only to avoid repeat calls within one session                |
+| Traffic                            | never    | Must be live                                                 |
 
 A cached lookup shows as `(from cache)` in the trace. `npm run rides --
 clear-cache` empties it.
@@ -543,10 +556,10 @@ clear-cache` empties it.
 
 Model and effort are set in `.env`:
 
-| Setting | Values | Notes |
-|---|---|---|
-| `RIDE_MODEL` | `claude-opus-5-5` (default), `claude-sonnet-5-5`, `claude-haiku-4-5` | Roughly $4/$20, $2/$10 and $1/$5 per million input/output tokens |
-| `RIDE_EFFORT` | `low`, `medium`, `high` (default), `xhigh`, `max` | How much the model thinks and how many tool rounds it makes. Haiku ignores it and uses a fixed thinking budget |
+| Setting       | Values                                                               | Notes                                                                                                          |
+| ------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `RIDE_MODEL`  | `claude-opus-5-5` (default), `claude-sonnet-5-5`, `claude-haiku-4-5` | Roughly $4/$20, $2/$10 and $1/$5 per million input/output tokens                                               |
+| `RIDE_EFFORT` | `low`, `medium`, `high` (default), `xhigh`, `max`                    | How much the model thinks and how many tool rounds it makes. Haiku ignores it and uses a fixed thinking budget |
 
 The settings line at session start shows which model and effort are in use, and
 `/usage` shows what the session has consumed so far.
@@ -586,13 +599,13 @@ library, from the same start point:
 > winding roads, avoid motorways, avoid 30 km/h roads, limit 50 km/h towns as
 > much as possible, most of the time riding over 70 km/h.
 
-| Setup | Cost | Time | Model calls | Tool calls | Ride | Open road | 50 zones | 30 zones |
-|---|---|---|---|---|---|---|---|---|
-| Opus 5.5, high | $0.40 | 272 s | 12 | 20 | 164 km, 2h44 | 77.2% | 22.1% | 0.8% |
-| Sonnet 5.5, high | $0.17 | 230 s | 10 | 16 | 156 km, 2h39 | 76.3% | 21.9% | 1.8% |
-| Sonnet 5.5, medium (run A) | $0.08 | 37 s | 6 | 8 | 151 km, 2h39 | 77.8% | 19.1% | 3.1% |
-| Sonnet 5.5, medium (run B) | $0.11 | 58 s | 6 | 10 | 134 km, 2h24 | 66.8% | 32.0% | 1.2% |
-| Haiku 4.5 | $0.12 | 342 s | 17 | 22 | 201 km, 3h24 | 72.8% | 25.5% | 1.7% |
+| Setup                      | Cost  | Time  | Model calls | Tool calls | Ride         | Open road | 50 zones | 30 zones |
+| -------------------------- | ----- | ----- | ----------- | ---------- | ------------ | --------- | -------- | -------- |
+| Opus 5.5, high             | $0.40 | 272 s | 12          | 20         | 164 km, 2h44 | 77.2%     | 22.1%    | 0.8%     |
+| Sonnet 5.5, high           | $0.17 | 230 s | 10          | 16         | 156 km, 2h39 | 76.3%     | 21.9%    | 1.8%     |
+| Sonnet 5.5, medium (run A) | $0.08 | 37 s  | 6           | 8          | 151 km, 2h39 | 77.8%     | 19.1%    | 3.1%     |
+| Sonnet 5.5, medium (run B) | $0.11 | 58 s  | 6           | 10         | 134 km, 2h24 | 66.8%     | 32.0%    | 1.2%     |
+| Haiku 4.5                  | $0.12 | 342 s | 17          | 22         | 201 km, 3h24 | 72.8%     | 25.5%    | 1.7%     |
 
 Targets were at most 20% of the distance in 50 zones and 3% in 30 zones, with a
 hard limit of 3 hours of riding.
@@ -619,11 +632,11 @@ hard limit of 3 hours of riding.
 
 ### Recommended settings
 
-| Situation | `RIDE_MODEL` | `RIDE_EFFORT` | Expect |
-|---|---|---|---|
-| Everyday use | `claude-sonnet-5-5` | `medium` | About $0.10 and under a minute for a new ride. Check the result |
-| You want it right first time | `claude-sonnet-5-5` | `high` | About $0.17 and 4 minutes |
-| Editing or questioning a saved ride | `claude-sonnet-5-5` | `medium` | A few cents |
+| Situation                           | `RIDE_MODEL`        | `RIDE_EFFORT` | Expect                                                          |
+| ----------------------------------- | ------------------- | ------------- | --------------------------------------------------------------- |
+| Everyday use                        | `claude-sonnet-5-5` | `medium`      | About $0.10 and under a minute for a new ride. Check the result |
+| You want it right first time        | `claude-sonnet-5-5` | `high`        | About $0.17 and 4 minutes                                       |
+| Editing or questioning a saved ride | `claude-sonnet-5-5` | `medium`      | A few cents                                                     |
 
 With `medium`, look at the open-road and 50 zone shares of the itinerary before
 accepting it. When they are poor, ask for better at the `refine>` prompt ("too
@@ -717,11 +730,11 @@ ride 7", "save it". From inside a running session, `/rc` does the same.
 
 Where the session runs is your choice:
 
-| Machine | Notes |
-|---|---|
-| Your computer | Zero setup; must stay awake while you are out |
+| Machine                                           | Notes                                                                               |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Your computer                                     | Zero setup; must stay awake while you are out                                       |
 | A small always-on box at home (Raspberry Pi, NAS) | Clone the project there with `.env` and the database; the library lives on that box |
-| A VPS | Same, and the laptop is free; the library lives on the VPS |
+| A VPS                                             | Same, and the laptop is free; the library lives on the VPS                          |
 
 Requirements, from the Claude Code documentation: a Pro, Max, Team or
 Enterprise plan signed in with `/login` (an API key alone does not qualify);
@@ -778,14 +791,14 @@ never to the shell; add "using the ride tools" if it still reaches for a
 terminal. `/mcp` in Codex shows the server as `ride: connected (19 tools)`.
 What differs from Claude Code:
 
-| | Claude Code | Codex |
-|---|---|---|
-| Tools | all | all |
-| Server instructions (the planning method) | received | received |
-| Slash commands (`plan-ride`, `today`, ...) | yes | no: Codex does not expose MCP prompts. The model fetches the same guidance through the `planningGuide` tool, which the instructions tell it to call for a new ride |
-| Server discovery | from the repo's `.mcp.json` | this project uses a user-level `~/.codex/config.toml` entry, registered once per host |
-| Approval of tool calls | once per server | per call unless `default_tools_approval_mode` is set |
-| What pays | your Claude plan | your Codex or ChatGPT plan; scouts still need the Anthropic key or `RIDE_SCOUTS=0` |
+|                                            | Claude Code                 | Codex                                                                                                                                                              |
+| ------------------------------------------ | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Tools                                      | all                         | all                                                                                                                                                                |
+| Server instructions (the planning method)  | received                    | received                                                                                                                                                           |
+| Slash commands (`plan-ride`, `today`, ...) | yes                         | no: Codex does not expose MCP prompts. The model fetches the same guidance through the `planningGuide` tool, which the instructions tell it to call for a new ride |
+| Server discovery                           | from the repo's `.mcp.json` | this project uses a user-level `~/.codex/config.toml` entry, registered once per host                                                                              |
+| Approval of tool calls                     | once per server             | per call unless `default_tools_approval_mode` is set                                                                                                               |
+| What pays                                  | your Claude plan            | your Codex or ChatGPT plan; scouts still need the Anthropic key or `RIDE_SCOUTS=0`                                                                                 |
 
 Everything else (library, duplicates, exports, traces in `rides runs`) is the
 same server, so it behaves the same.
@@ -874,44 +887,44 @@ Official documentation: [Remote connections](https://learn.chatgpt.com/docs/remo
 [Codex developer commands](https://learn.chatgpt.com/docs/developer-commands),
 and [MCP configuration](https://learn.chatgpt.com/docs/extend/mcp).
 
-| | Claude Code Remote Control | Codex remote control |
-|---|---|---|
-| Phone side | Claude app or claude.ai | ChatGPT app |
-| Host | any machine running `claude remote-control`, Linux included | Mac or Windows desktop app; SSH development hosts are supported behind it; CLI daemon is experimental |
-| Our server | `.mcp.json` in the project, found automatically | registered once in the host's `~/.codex/config.toml` |
-| Slash commands | yes | no: plain words and `planningGuide` |
+|                | Claude Code Remote Control                                  | Codex remote control                                                                                  |
+| -------------- | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Phone side     | Claude app or claude.ai                                     | ChatGPT app                                                                                           |
+| Host           | any machine running `claude remote-control`, Linux included | Mac or Windows desktop app; SSH development hosts are supported behind it; CLI daemon is experimental |
+| Our server     | `.mcp.json` in the project, found automatically             | registered once in the host's `~/.codex/config.toml`                                                  |
+| Slash commands | yes                                                         | no: plain words and `planningGuide`                                                                   |
 
 ### What the server exposes
 
-| Tool | Purpose |
-|---|---|
-| `rideSettings` | Show or set the start point, motorway permission, slow-zone targets, repeat allowance. Required before anything else unless `RIDE_HOME` is set |
-| `listSavedRides`, `getWeather`, `searchRoads`, `calculateTrip`, `getTraffic` | The planner's tools, unchanged |
-| `scoutAreas` | Parallel scouts. They are model sessions of their own, so they need `ANTHROPIC_API_KEY` and bill it; `RIDE_SCOUTS=0` turns them off and the client's model explores by itself |
-| `saveRide` | Save an itinerary to the library, from a route id of this session |
-| `exportGpx` | GPX file from a route id or a saved ride |
-| `showRide` | Full view of one saved ride, as in the CLI: road mix, daylight, cameras, stops, legs, itinerary |
-| `rideBriefing` | Ride-day briefing: weather now, daylight, traffic, stops checked against opening hours, go or no-go |
-| `planningGuide` | The planning guidance as text, for clients that do not expose prompts (Codex) |
-| `refreshRide` | Same as `npm run rides -- refresh`: recompute figures, weather, cameras, stops and stop plan, no replanning; `stopsOnly` rebuilds just the stop plan |
-| `exportMarkdown` | The ride's standard Markdown document, written to a file |
-| `listRides` | The library, one line per ride |
-| `getDaylight`, `getSpeedCameras`, `findStops` | Daylight, fixed cameras and stops along a routed trip, as in the CLI |
-| prompts | Slash commands in Claude Code, see below |
+| Tool                                                                         | Purpose                                                                                                                                                                       |
+| ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `rideSettings`                                                               | Show or set the start point, motorway permission, slow-zone targets, repeat allowance. Required before anything else unless `RIDE_HOME` is set                                |
+| `listSavedRides`, `getWeather`, `searchRoads`, `calculateTrip`, `getTraffic` | The planner's tools, unchanged                                                                                                                                                |
+| `scoutAreas`                                                                 | Parallel scouts. They are model sessions of their own, so they need `ANTHROPIC_API_KEY` and bill it; `RIDE_SCOUTS=0` turns them off and the client's model explores by itself |
+| `saveRide`                                                                   | Save an itinerary to the library, from a route id of this session                                                                                                             |
+| `exportGpx`                                                                  | GPX file from a route id or a saved ride                                                                                                                                      |
+| `showRide`                                                                   | Full view of one saved ride, as in the CLI: road mix, daylight, cameras, stops, legs, itinerary                                                                               |
+| `rideBriefing`                                                               | Ride-day briefing: weather now, daylight, traffic, stops checked against opening hours, go or no-go                                                                           |
+| `planningGuide`                                                              | The planning guidance as text, for clients that do not expose prompts (Codex)                                                                                                 |
+| `refreshRide`                                                                | Same as `npm run rides -- refresh`: recompute figures, weather, cameras, stops and stop plan, no replanning; `stopsOnly` rebuilds just the stop plan                          |
+| `exportMarkdown`                                                             | The ride's standard Markdown document, written to a file                                                                                                                      |
+| `listRides`                                                                  | The library, one line per ride                                                                                                                                                |
+| `getDaylight`, `getSpeedCameras`, `findStops`                                | Daylight, fixed cameras and stops along a routed trip, as in the CLI                                                                                                          |
+| prompts                                                                      | Slash commands in Claude Code, see below                                                                                                                                      |
 
-| Slash command | Does |
-|---|---|
-| `/mcp__ride__plan-ride <request>` | Plan a new leisure ride with the full planning instructions |
-| `/mcp__ride__commute <destination> <when> [from]` | Practical trip, motorways permitted, traffic checked |
-| `/mcp__ride__edit-ride <id\|name> <change>` | Load a saved ride and apply a change, or ask about it |
-| `/mcp__ride__save-ride [name]` | Save the itinerary on the table |
-| `/mcp__ride__export-gpx [id\|name]` | GPX file of the current or a saved ride |
-| `/mcp__ride__show-ride <id\|name>` | Everything stored about one ride |
-| `/mcp__ride__today [id\|name]` | Ride-day briefing with a go or no-go |
-| `/mcp__ride__refresh <id\|name>` | Recompute a ride without changing it |
-| `/mcp__ride__export-md <id\|name> [file]` | Markdown document of a ride, written and shown |
-| `/mcp__ride__list-rides` | The library |
-| `/mcp__ride__help` | What the server can do, no tool call |
+| Slash command                                     | Does                                                        |
+| ------------------------------------------------- | ----------------------------------------------------------- |
+| `/mcp__ride__plan-ride <request>`                 | Plan a new leisure ride with the full planning instructions |
+| `/mcp__ride__commute <destination> <when> [from]` | Practical trip, motorways permitted, traffic checked        |
+| `/mcp__ride__edit-ride <id\|name> <change>`       | Load a saved ride and apply a change, or ask about it       |
+| `/mcp__ride__save-ride [name]`                    | Save the itinerary on the table                             |
+| `/mcp__ride__export-gpx [id\|name]`               | GPX file of the current or a saved ride                     |
+| `/mcp__ride__show-ride <id\|name>`                | Everything stored about one ride                            |
+| `/mcp__ride__today [id\|name]`                    | Ride-day briefing with a go or no-go                        |
+| `/mcp__ride__refresh <id\|name>`                  | Recompute a ride without changing it                        |
+| `/mcp__ride__export-md <id\|name> [file]`         | Markdown document of a ride, written and shown              |
+| `/mcp__ride__list-rides`                          | The library                                                 |
+| `/mcp__ride__help`                                | What the server can do, no tool call                        |
 
 Every tool call is traced like a built-in session: `npm run rides -- runs` shows
 an `mcp-client` run, `npm run rides -- trace <id>` replays it. In those rows the
@@ -960,12 +973,12 @@ prints the `plan-ride` prompt exactly as the server serves it.
 The goal is as much riding as possible on open road: outside towns and
 villages, never on motorways.
 
-| Preference | Default | How it is applied |
-|---|---|---|
-| No motorways | on | Enforced in code: while motorways are forbidden, every routing call excludes them, whatever the model asks. The result reports `usesMotorway` and `motorwayKm` so a leak is visible |
-| Open road | maximise | Every routed trip reports `openRoadPct`, the share of distance outside built-up areas and off motorways. Among loops that meet your hard constraints, the agent prefers the highest |
-| 30 km/h zones | aim for at most 3% | Measured per route, with the longest such stretches by road name. The agent moves waypoints to bypass them and reroutes |
-| 50 km/h zones | aim for at most 20% | Same mechanism, for 31-50 km/h |
+| Preference    | Default             | How it is applied                                                                                                                                                                   |
+| ------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No motorways  | on                  | Enforced in code: while motorways are forbidden, every routing call excludes them, whatever the model asks. The result reports `usesMotorway` and `motorwayKm` so a leak is visible |
+| Open road     | maximise            | Every routed trip reports `openRoadPct`, the share of distance outside built-up areas and off motorways. Among loops that meet your hard constraints, the agent prefers the highest |
+| 30 km/h zones | aim for at most 3%  | Measured per route, with the longest such stretches by road name. The agent moves waypoints to bypass them and reroutes                                                             |
+| 50 km/h zones | aim for at most 20% | Same mechanism, for 31-50 km/h                                                                                                                                                      |
 
 Slow zones cannot be avoided completely: every ride leaves a town and crosses
 villages. The percentages are targets to minimise toward, not pass/fail limits,
@@ -983,11 +996,11 @@ The saved-ride view shows how much of the open road rests on that assumption.
 
 Motorways are forbidden by default. Three ways to permit them:
 
-| Where | How |
-|---|---|
-| Command line | `--allow-motorways`, or `RIDE_ALLOW_MOTORWAYS=1` in `.env` to make it the default |
-| Start menu | Answer `y` to "Allow motorways?" when planning a new ride |
-| During a session | `/motorways on`, and `/motorways off` to forbid them again |
+| Where            | How                                                                               |
+| ---------------- | --------------------------------------------------------------------------------- |
+| Command line     | `--allow-motorways`, or `RIDE_ALLOW_MOTORWAYS=1` in `.env` to make it the default |
+| Start menu       | Answer `y` to "Allow motorways?" when planning a new ride                         |
+| During a session | `/motorways on`, and `/motorways off` to forbid them again                        |
 
 ```bash
 npm run ride -- --allow-motorways --from "Avenue de Bretagne, Lille" \
@@ -1033,18 +1046,21 @@ your real times differ consistently, adjust `bendFactor` in `src/tools/trip.ts`.
 
 ## Scripts
 
-| Command | What it does |
-|---|---|
-| `npm run ride -- ...` | Run the agent |
-| `npm run rides -- ...` | List, show, rate, export, replay and delete saved rides and runs |
-| `npm run mcp` | MCP server on stdio, for Claude Code or another MCP client |
-| `npm run mcp:smoke` | Protocol-level check of the MCP server, no model involved |
-| `npm run codex:register` | Register the server in Codex CLI's user config (once per machine) |
-| `node scripts/mcp-prompt.ts "<request>"` | Print the `plan-ride` prompt exactly as the server serves it |
-| `npm run smoke` | Call each tool once against the live APIs, without calling Claude. Use it to check connectivity and keys |
-| `npm run check` | Environment check for both modes: credentials, model, start point, every data service, database state. No model call |
-| `npm test` | Unit tests: opening hours, stop planning, map links, geometry, store, and the planner against fake services (no network, no model) |
-| `npm run typecheck` | Type-check with `tsc --noEmit` |
+| Command                                  | What it does                                                                                                                       |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run ride -- ...`                    | Run the agent                                                                                                                      |
+| `npm run rides -- ...`                   | List, show, rate, export, replay and delete saved rides and runs                                                                   |
+| `npm run mcp`                            | MCP server on stdio, for Claude Code or another MCP client                                                                         |
+| `npm run mcp:smoke`                      | Protocol-level check of the MCP server, no model involved                                                                          |
+| `npm run codex:register`                 | Register the server in Codex CLI's user config (once per machine)                                                                  |
+| `node scripts/mcp-prompt.ts "<request>"` | Print the `plan-ride` prompt exactly as the server serves it                                                                       |
+| `npm run smoke`                          | Call each tool once against the live APIs, without calling Claude. Use it to check connectivity and keys                           |
+| `npm run check`                          | Environment check for both modes: credentials, model, start point, every data service, database state. No model call               |
+| `npm test`                               | Unit tests: opening hours, stop planning, map links, geometry, store, and the planner against fake services (no network, no model) |
+| `npm run typecheck`                      | Type-check with `tsc --noEmit`                                                                                                     |
+| `npm run lint`, `npm run lint:fix`       | ESLint                                                                                                                             |
+| `npm run format`, `npm run format:check` | Prettier                                                                                                                           |
+| `npm run quality`                        | Typecheck, lint, format check and tests together: the CI gate                                                                      |
 
 ## How it works
 
@@ -1097,10 +1113,10 @@ that off.
 
 ### Scouts
 
-| Setting | Default | Meaning |
-|---|---|---|
-| `RIDE_SCOUT_MODEL` | `claude-sonnet-5-5` | Model each scout runs on |
-| `RIDE_SCOUT_EFFORT` | `low` | Scouts do narrow, well-briefed work; low effort is enough |
+| Setting             | Default             | Meaning                                                   |
+| ------------------- | ------------------- | --------------------------------------------------------- |
+| `RIDE_SCOUT_MODEL`  | `claude-sonnet-5-5` | Model each scout runs on                                  |
+| `RIDE_SCOUT_EFFORT` | `low`               | Scouts do narrow, well-briefed work; low effort is enough |
 
 At most four scouts per call, each capped at 14 tool rounds. Their tokens count
 in the session's usage and cost. Road searches are serialised across scouts so
@@ -1126,17 +1142,17 @@ that the planner ignored.
 
 ## Tools
 
-| Tool | Input | Returns | Source | Key |
-|---|---|---|---|---|
-| `getWeather` | `location`, `date`, `fromHour?`, `toHour?` | Hourly temperature, rain probability and amount, wind, gusts, sky, plus a day summary with a `dry` flag | [Open-Meteo](https://open-meteo.com/), up to 16 days ahead | none |
-| `searchRoads` | `location`, `radiusKm?` (5 to 40, default 25), `minLengthKm?`, `limit?` | Paved secondary and tertiary roads ranked by curviness, with end coordinates usable as waypoints, and named mountain passes | OpenStreetMap via [Overpass](https://overpass-api.de/) | none |
-| `calculateTrip` | `waypoints`, `roundTrip?`, `avoidMotorways?` | Routed distance, estimated riding time and average speed per leg and in total, motorway and toll flags, open-road share and speed-limit profile (km and % at 30 or less, 31-50, above 50, untagged open road), share of riding time on roads limited to 70 or more and at an estimated 70 or more, main roads per leg, comparison with saved rides, plain map link and navigation links with pass-through points | [Valhalla](https://valhalla1.openstreetmap.de/), motorcycle profile | none |
-| `getDaylight` | `location`, `date` | Sunrise, sunset, first and last light, daylight hours, any date | Computed locally (NOAA solar equations), timezone from Open-Meteo | none |
-| `getSpeedCameras` | `routeId` | Fixed speed cameras on or beside the routed trip: km mark, leg, limit, direction | OpenStreetMap via Overpass | none |
-| `planStops` | `routeId`, `departure`, `fuelAtStartKm?` | The chosen fuel, pause and lunch stops with arrival times, return time with breaks, warnings, and navigation links including the stops | Stops from OpenStreetMap, choice from the bike profile | none |
-| `findStops` | `routeId`, `kinds?`, `radiusM?`, `limitPerKind?` | Fuel stations, cafés, restaurants, bakeries within a short detour, spread along the route, with opening hours when mapped | OpenStreetMap via Overpass | none |
-| `listSavedRides` | `location?`, `radiusKm?` | Saved rides near a place with ratings, notes and legs | local SQLite file | none |
-| `getTraffic` | `waypoints`, `departAt`, `roundTrip?` | Travel time, free-flow time and traffic delay for that departure | TomTom Routing | `TOMTOM_API_KEY` |
+| Tool              | Input                                                                   | Returns                                                                                                                                                                                                                                                                                                                                                                                                          | Source                                                              | Key              |
+| ----------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ---------------- |
+| `getWeather`      | `location`, `date`, `fromHour?`, `toHour?`                              | Hourly temperature, rain probability and amount, wind, gusts, sky, plus a day summary with a `dry` flag                                                                                                                                                                                                                                                                                                          | [Open-Meteo](https://open-meteo.com/), up to 16 days ahead          | none             |
+| `searchRoads`     | `location`, `radiusKm?` (5 to 40, default 25), `minLengthKm?`, `limit?` | Paved secondary and tertiary roads ranked by curviness, with end coordinates usable as waypoints, and named mountain passes                                                                                                                                                                                                                                                                                      | OpenStreetMap via [Overpass](https://overpass-api.de/)              | none             |
+| `calculateTrip`   | `waypoints`, `roundTrip?`, `avoidMotorways?`                            | Routed distance, estimated riding time and average speed per leg and in total, motorway and toll flags, open-road share and speed-limit profile (km and % at 30 or less, 31-50, above 50, untagged open road), share of riding time on roads limited to 70 or more and at an estimated 70 or more, main roads per leg, comparison with saved rides, plain map link and navigation links with pass-through points | [Valhalla](https://valhalla1.openstreetmap.de/), motorcycle profile | none             |
+| `getDaylight`     | `location`, `date`                                                      | Sunrise, sunset, first and last light, daylight hours, any date                                                                                                                                                                                                                                                                                                                                                  | Computed locally (NOAA solar equations), timezone from Open-Meteo   | none             |
+| `getSpeedCameras` | `routeId`                                                               | Fixed speed cameras on or beside the routed trip: km mark, leg, limit, direction                                                                                                                                                                                                                                                                                                                                 | OpenStreetMap via Overpass                                          | none             |
+| `planStops`       | `routeId`, `departure`, `fuelAtStartKm?`                                | The chosen fuel, pause and lunch stops with arrival times, return time with breaks, warnings, and navigation links including the stops                                                                                                                                                                                                                                                                           | Stops from OpenStreetMap, choice from the bike profile              | none             |
+| `findStops`       | `routeId`, `kinds?`, `radiusM?`, `limitPerKind?`                        | Fuel stations, cafés, restaurants, bakeries within a short detour, spread along the route, with opening hours when mapped                                                                                                                                                                                                                                                                                        | OpenStreetMap via Overpass                                          | none             |
+| `listSavedRides`  | `location?`, `radiusKm?`                                                | Saved rides near a place with ratings, notes and legs                                                                                                                                                                                                                                                                                                                                                            | local SQLite file                                                   | none             |
+| `getTraffic`      | `waypoints`, `departAt`, `roundTrip?`                                   | Travel time, free-flow time and traffic delay for that departure                                                                                                                                                                                                                                                                                                                                                 | TomTom Routing                                                      | `TOMTOM_API_KEY` |
 
 Notes:
 
@@ -1215,25 +1231,25 @@ keeps a later port to Rust or Java, or a second provider, contained.
 
 ## Troubleshooting
 
-| Symptom | Cause and fix |
-|---|---|
-| `No Claude credentials...` | `.env` missing or `ANTHROPIC_API_KEY` empty |
-| `Claude API rejected the credentials` | Key invalid or revoked |
-| `Claude API rate limit hit` | Wait a minute, or lower `RIDE_EFFORT` |
-| `No start point...` | Pass `--from` or set `RIDE_HOME` |
-| Agent says "traffic not checked" | Expected without `TOMTOM_API_KEY`. Add the key to `.env` to enable traffic |
-| Agent says the road search failed on a first try | Public Overpass servers are shared and sometimes overloaded. The tool retries five times across three public instances (main, OSM France, the main service's second entry point), which can take up to a minute, and the model retries too. Usually harmless |
-| `searchRoads` fails with "unavailable right now" | All Overpass attempts failed. Retry later |
-| Speed-limit share reported as unverified | The Valhalla speed lookup failed for that route. Distance and time are still valid |
-| Cameras or stops "last lookup failed" in a ride view | The OpenStreetMap query service was unavailable; the previous result is kept. `npm run rides -- refresh <id>` retries |
-| Camera or stop lookups take minutes | The public query service is shared and often slow. Routes are queried in chunks and dense ones are split; results are cached 30 days per route |
-| Connection refused by overpass-api.de | The main instance blocks an address temporarily after heavy use; the app falls back on the OSM France instance. It lifts by itself |
-| HTTP 403 "only available to white-listed usages" | That instance filters by User-Agent; the app sends a contact-style one (`src/http.ts`). Keep that format if you change it |
-| Claude Code still shows old behaviour after a code change | The server process is the old one; quit and relaunch Claude Code, then check `npm run rides -- runs` for a new row |
-| A stop is "route point 22 of 40" in Liberty Rider | Stages are unnamed there; the ride view gives the stop's name, road and village, and its km mark |
-| `Place not found` | None of the three geocoders knows the text. Check spelling, write it as `"street, town"`, or use `"lat,lon"` |
-| `Stopped after 40 tool rounds` | The model did not converge. Loosen the constraints or rerun |
-| `.env not found. Continuing without it.` | Informational only, printed by Node when no `.env` exists |
+| Symptom                                                   | Cause and fix                                                                                                                                                                                                                                                |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `No Claude credentials...`                                | `.env` missing or `ANTHROPIC_API_KEY` empty                                                                                                                                                                                                                  |
+| `Claude API rejected the credentials`                     | Key invalid or revoked                                                                                                                                                                                                                                       |
+| `Claude API rate limit hit`                               | Wait a minute, or lower `RIDE_EFFORT`                                                                                                                                                                                                                        |
+| `No start point...`                                       | Pass `--from` or set `RIDE_HOME`                                                                                                                                                                                                                             |
+| Agent says "traffic not checked"                          | Expected without `TOMTOM_API_KEY`. Add the key to `.env` to enable traffic                                                                                                                                                                                   |
+| Agent says the road search failed on a first try          | Public Overpass servers are shared and sometimes overloaded. The tool retries five times across three public instances (main, OSM France, the main service's second entry point), which can take up to a minute, and the model retries too. Usually harmless |
+| `searchRoads` fails with "unavailable right now"          | All Overpass attempts failed. Retry later                                                                                                                                                                                                                    |
+| Speed-limit share reported as unverified                  | The Valhalla speed lookup failed for that route. Distance and time are still valid                                                                                                                                                                           |
+| Cameras or stops "last lookup failed" in a ride view      | The OpenStreetMap query service was unavailable; the previous result is kept. `npm run rides -- refresh <id>` retries                                                                                                                                        |
+| Camera or stop lookups take minutes                       | The public query service is shared and often slow. Routes are queried in chunks and dense ones are split; results are cached 30 days per route                                                                                                               |
+| Connection refused by overpass-api.de                     | The main instance blocks an address temporarily after heavy use; the app falls back on the OSM France instance. It lifts by itself                                                                                                                           |
+| HTTP 403 "only available to white-listed usages"          | That instance filters by User-Agent; the app sends a contact-style one (`src/http.ts`). Keep that format if you change it                                                                                                                                    |
+| Claude Code still shows old behaviour after a code change | The server process is the old one; quit and relaunch Claude Code, then check `npm run rides -- runs` for a new row                                                                                                                                           |
+| A stop is "route point 22 of 40" in Liberty Rider         | Stages are unnamed there; the ride view gives the stop's name, road and village, and its km mark                                                                                                                                                             |
+| `Place not found`                                         | None of the three geocoders knows the text. Check spelling, write it as `"street, town"`, or use `"lat,lon"`                                                                                                                                                 |
+| `Stopped after 40 tool rounds`                            | The model did not converge. Loosen the constraints or rerun                                                                                                                                                                                                  |
+| `.env not found. Continuing without it.`                  | Informational only, printed by Node when no `.env` exists                                                                                                                                                                                                    |
 
 Run `npm run smoke` to tell a data-service problem from a Claude API problem.
 

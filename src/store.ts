@@ -3,7 +3,7 @@ import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import type { RidePreferences } from "./preferences.ts";
-import { DEFAULT_PROFILE, type BikeProfile } from "./profile.ts";
+import { type BikeProfile, DEFAULT_PROFILE } from "./profile.ts";
 import type { StopPlan } from "./stops.ts";
 import type { RunUsage } from "./usage.ts";
 
@@ -51,9 +51,24 @@ export interface NewRide {
 
 export interface RideExtras {
   gatheredAt: string;
-  daylight: { sunrise: string | null; sunset: string | null; firstLight: string | null; lastLight: string | null; daylightHours: number } | null;
-  cameras: Array<{ kmAlongRoute: number; leg: number; limitKmh: number | string | null; direction: string | null; coords: string }>;
-  stops: Record<string, Array<{ kmAlongRoute: number; leg: number; name: string; openingHours: string | null; detourM: number }>>;
+  daylight: {
+    sunrise: string | null;
+    sunset: string | null;
+    firstLight: string | null;
+    lastLight: string | null;
+    daylightHours: number;
+  } | null;
+  cameras: Array<{
+    kmAlongRoute: number;
+    leg: number;
+    limitKmh: number | string | null;
+    direction: string | null;
+    coords: string;
+  }>;
+  stops: Record<
+    string,
+    Array<{ kmAlongRoute: number; leg: number; name: string; openingHours: string | null; detourM: number }>
+  >;
   /** Lookups that failed, by name, with the reason; a refresh retries them. */
   errors: Record<string, string>;
   /** Forecast for the ride date at a few points of the route, when the date was within forecast range. */
@@ -276,8 +291,16 @@ export class Store {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
-        new Date().toISOString(), run.home, run.request, run.usage.model, run.usage.effort, JSON.stringify(run.usage),
-        run.costUsd, run.result && JSON.stringify(run.result), run.rideId, run.error,
+        new Date().toISOString(),
+        run.home,
+        run.request,
+        run.usage.model,
+        run.usage.effort,
+        JSON.stringify(run.usage),
+        run.costUsd,
+        run.result && JSON.stringify(run.result),
+        run.rideId,
+        run.error,
       );
     return Number(lastInsertRowid);
   }
@@ -285,18 +308,42 @@ export class Store {
   updateRun(id: number, run: RunRecord): void {
     this.#db
       .prepare("UPDATE runs SET request = ?, usage = ?, cost_usd = ?, result = ?, ride_id = ?, error = ? WHERE id = ?")
-      .run(run.request, JSON.stringify(run.usage), run.costUsd, run.result && JSON.stringify(run.result), run.rideId, run.error, id);
+      .run(
+        run.request,
+        JSON.stringify(run.usage),
+        run.costUsd,
+        run.result && JSON.stringify(run.result),
+        run.rideId,
+        run.error,
+        id,
+      );
   }
 
   addTrace(runId: number, event: { scope: string; kind: string; name: string; ms?: number; payload: unknown }): void {
     this.#db
       .prepare("INSERT INTO trace (run_id, at, scope, kind, name, ms, payload) VALUES (?, ?, ?, ?, ?, ?, ?)")
-      .run(runId, new Date().toISOString(), event.scope, event.kind, event.name, event.ms ?? null, JSON.stringify(event.payload ?? null));
+      .run(
+        runId,
+        new Date().toISOString(),
+        event.scope,
+        event.kind,
+        event.name,
+        event.ms ?? null,
+        JSON.stringify(event.payload ?? null),
+      );
   }
 
-  listTrace(runId: number): Array<{ id: number; at: string; scope: string; kind: string; name: string; ms: number | null; payload: unknown }> {
+  listTrace(
+    runId: number,
+  ): Array<{ id: number; at: string; scope: string; kind: string; name: string; ms: number | null; payload: unknown }> {
     const rows = this.#db.prepare("SELECT * FROM trace WHERE run_id = ? ORDER BY id").all(runId) as unknown as Array<{
-      id: number; at: string; scope: string; kind: string; name: string; ms: number | null; payload: string;
+      id: number;
+      at: string;
+      scope: string;
+      kind: string;
+      name: string;
+      ms: number | null;
+      payload: string;
     }>;
     return rows.map((row) => ({ ...row, payload: JSON.parse(row.payload) }));
   }
@@ -330,11 +377,27 @@ export class Store {
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
-          ride.name, new Date().toISOString(), ride.parentId, ride.home, ride.rideDate, ride.departure,
-          ride.distanceKm, ride.ridingMinutes, JSON.stringify(ride.waypoints), ride.roundTrip ? 1 : 0,
-          JSON.stringify(ride.speedLimits), JSON.stringify(ride.preferences), ride.request, ride.itinerary,
-          ride.mapsUrl, JSON.stringify(ride.cells), ride.centerLat, ride.centerLon,
-          ride.usage && JSON.stringify(ride.usage), ride.shapes && JSON.stringify(ride.shapes), ride.extras && JSON.stringify(ride.extras),
+          ride.name,
+          new Date().toISOString(),
+          ride.parentId,
+          ride.home,
+          ride.rideDate,
+          ride.departure,
+          ride.distanceKm,
+          ride.ridingMinutes,
+          JSON.stringify(ride.waypoints),
+          ride.roundTrip ? 1 : 0,
+          JSON.stringify(ride.speedLimits),
+          JSON.stringify(ride.preferences),
+          ride.request,
+          ride.itinerary,
+          ride.mapsUrl,
+          JSON.stringify(ride.cells),
+          ride.centerLat,
+          ride.centerLon,
+          ride.usage && JSON.stringify(ride.usage),
+          ride.shapes && JSON.stringify(ride.shapes),
+          ride.extras && JSON.stringify(ride.extras),
         );
       const id = Number(lastInsertRowid);
       const insertLeg = this.#db.prepare(
@@ -342,7 +405,17 @@ export class Store {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       );
       for (const leg of ride.legs) {
-        insertLeg.run(id, leg.seq, leg.from, leg.to, leg.fromCoords, leg.toCoords, leg.distanceKm, leg.ridingMinutes, JSON.stringify(leg.mainRoads));
+        insertLeg.run(
+          id,
+          leg.seq,
+          leg.from,
+          leg.to,
+          leg.fromCoords,
+          leg.toCoords,
+          leg.distanceKm,
+          leg.ridingMinutes,
+          JSON.stringify(leg.mainRoads),
+        );
       }
       this.#db.exec("COMMIT");
       return id;
@@ -405,7 +478,8 @@ export class Store {
   findRide(idOrName: string): SavedRide | undefined {
     const key = idOrName.trim().replace(/^#/, "");
     if (/^\d+$/.test(key)) {
-      const row = this.#db.prepare("SELECT * FROM rides WHERE id = ?").get(Number(key)) as unknown as RideRow | undefined;
+      const row = this.#db.prepare("SELECT * FROM rides WHERE id = ?").get(Number(key)) as unknown as
+        RideRow | undefined;
       return row && this.#hydrate(row);
     }
     const exact = this.#db
@@ -416,7 +490,9 @@ export class Store {
       .prepare("SELECT * FROM rides WHERE instr(lower(name), lower(?)) > 0 ORDER BY id DESC")
       .all(key) as unknown as RideRow[];
     if (partial.length > 1) {
-      throw new Error(`"${idOrName}" matches several rides: ${partial.map((r) => `#${r.id} ${r.name}`).join(", ")}. Use the id.`);
+      throw new Error(
+        `"${idOrName}" matches several rides: ${partial.map((r) => `#${r.id} ${r.name}`).join(", ")}. Use the id.`,
+      );
     }
     return partial[0] && this.#hydrate(partial[0]);
   }
@@ -438,7 +514,18 @@ export class Store {
   /** Replace a ride's computed figures after re-routing it. Ratings and notes are kept. */
   refreshRide(
     id: number,
-    data: Pick<NewRide, "distanceKm" | "ridingMinutes" | "speedLimits" | "mapsUrl" | "cells" | "shapes" | "centerLat" | "centerLon" | "legs">,
+    data: Pick<
+      NewRide,
+      | "distanceKm"
+      | "ridingMinutes"
+      | "speedLimits"
+      | "mapsUrl"
+      | "cells"
+      | "shapes"
+      | "centerLat"
+      | "centerLon"
+      | "legs"
+    >,
   ): void {
     this.#db.exec("BEGIN");
     try {
@@ -447,13 +534,33 @@ export class Store {
           `UPDATE rides SET distance_km = ?, riding_minutes = ?, speed_limits = ?, maps_url = ?, cells = ?, shapes = ?, center_lat = ?, center_lon = ?
            WHERE id = ?`,
         )
-        .run(data.distanceKm, data.ridingMinutes, JSON.stringify(data.speedLimits), data.mapsUrl, JSON.stringify(data.cells), data.shapes && JSON.stringify(data.shapes), data.centerLat, data.centerLon, id);
+        .run(
+          data.distanceKm,
+          data.ridingMinutes,
+          JSON.stringify(data.speedLimits),
+          data.mapsUrl,
+          JSON.stringify(data.cells),
+          data.shapes && JSON.stringify(data.shapes),
+          data.centerLat,
+          data.centerLon,
+          id,
+        );
       const update = this.#db.prepare(
         `UPDATE segments SET from_label = ?, to_label = ?, from_coords = ?, to_coords = ?, distance_km = ?, riding_minutes = ?, main_roads = ?
          WHERE ride_id = ? AND seq = ?`,
       );
       for (const leg of data.legs) {
-        update.run(leg.from, leg.to, leg.fromCoords, leg.toCoords, leg.distanceKm, leg.ridingMinutes, JSON.stringify(leg.mainRoads), id, leg.seq);
+        update.run(
+          leg.from,
+          leg.to,
+          leg.fromCoords,
+          leg.toCoords,
+          leg.distanceKm,
+          leg.ridingMinutes,
+          JSON.stringify(leg.mainRoads),
+          id,
+          leg.seq,
+        );
       }
       this.#db.exec("COMMIT");
     } catch (error) {
@@ -468,7 +575,9 @@ export class Store {
 
   /** Attach the exact route line to a ride saved without one. */
   setRouteLine(id: number, shapes: string[], cells: string[]): void {
-    this.#db.prepare("UPDATE rides SET shapes = ?, cells = ? WHERE id = ?").run(JSON.stringify(shapes), JSON.stringify(cells), id);
+    this.#db
+      .prepare("UPDATE rides SET shapes = ?, cells = ? WHERE id = ?")
+      .run(JSON.stringify(shapes), JSON.stringify(cells), id);
   }
 
   deleteRide(id: number): boolean {

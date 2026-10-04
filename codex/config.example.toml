@@ -1,0 +1,30 @@
+# agentRide as an MCP server for Codex CLI.
+#
+# Codex reads MCP servers from ~/.codex/config.toml only (no project-level file,
+# verified on 0.160). Add this block there, or run `npm run codex:register`,
+# which runs the equivalent command with absolute paths:
+#
+#   codex mcp add ride \
+#     --env RIDE_DB=/abs/path/agentRide/data/agentride.db \
+#     --env RIDE_SCOUTS=0 \
+#     -- node --env-file-if-exists=/abs/path/agentRide/.env /abs/path/agentRide/src/mcp.ts
+#
+# Then start codex anywhere and ask for a ride in plain words.
+
+[mcp_servers.ride]
+command = "node"
+# Absolute paths: Codex may start the server from any directory.
+args = ["--env-file-if-exists=/abs/path/agentRide/.env", "/abs/path/agentRide/src/mcp.ts"]
+
+# Let the ride tools run without a confirmation for each call. Alternatives:
+#   "writes": lookups run freely, saves and setting changes ask first (uses the tools' read-only annotations)
+#   "prompt": ask for every call
+default_tools_approval_mode = "approve"
+
+[mcp_servers.ride.env]
+# Where the library lives; default is data/agentride.db inside the project.
+# RIDE_DB = "/abs/path/agentRide/data/agentride.db"
+# Start point, if not in .env
+# RIDE_HOME = "Grenoble"
+# Scouts run on the Anthropic API key from .env; set to "0" to plan on Codex alone, at no extra cost.
+RIDE_SCOUTS = "0"

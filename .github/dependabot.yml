@@ -1,0 +1,26 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      dev-tooling:
+        patterns:
+          [
+            "eslint",
+            "@eslint/*",
+            "typescript-eslint",
+            "eslint-config-prettier",
+            "prettier",
+            "globals",
+            "@commitlint/*",
+            "lint-staged",
+            "simple-git-hooks",
+            "typescript",
+            "@types/*",
+          ]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

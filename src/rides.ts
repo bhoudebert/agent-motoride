@@ -1,16 +1,17 @@
 // Manage the saved-ride library without starting a planning session.
+
+import { pickRideForToday, rideBriefing } from "./briefing.ts";
 import { routeCells } from "./geometry.ts";
 import { describeStopsAt, exportSavedRide, savedRideGpx } from "./gpx.ts";
-import { printQr, startShareServer } from "./share.ts";
 import { enrichRide, formatRideDetail, formatRideList, parseRating, replanStops, tripFigures } from "./library.ts";
-import { formatStopPlan } from "./stops.ts";
-import { describeProfile, parseProfileArgs } from "./profile.ts";
-import { Store } from "./store.ts";
-import { pickRideForToday, rideBriefing } from "./briefing.ts";
 import { formatRideMarkdown, writeRideMarkdown } from "./markdown.ts";
-import { formatTrace } from "./trace.ts";
+import { describeProfile, parseProfileArgs } from "./profile.ts";
+import { printQr, startShareServer } from "./share.ts";
+import { formatStopPlan } from "./stops.ts";
+import { Store } from "./store.ts";
 import { setGeoAnchor } from "./tools/geo.ts";
 import { computeTrip } from "./tools/trip.ts";
+import { formatTrace } from "./trace.ts";
 
 const USAGE = `Usage: npm run rides -- <command>
 
@@ -87,8 +88,13 @@ try {
       const maxPoints = pinsAt >= 0 ? Number(args[pinsAt + 1]) : undefined;
       const file = args.slice(1).find((a, i) => !a.startsWith("--") && args[i] !== "--pins");
       const { path, rerouted, stopsAt } = await exportSavedRide(store, target, file, maxPoints);
-      console.log(`GPX written: ${path}${rerouted ? "\n(Route line was not stored for this ride; it was routed again from its waypoints.)" : ""}`);
-      if (stopsAt.length) console.log(`Planned stops in the route point list (as an app numbers the stages):\n${describeStopsAt(stopsAt).join("\n")}`);
+      console.log(
+        `GPX written: ${path}${rerouted ? "\n(Route line was not stored for this ride; it was routed again from its waypoints.)" : ""}`,
+      );
+      if (stopsAt.length)
+        console.log(
+          `Planned stops in the route point list (as an app numbers the stages):\n${describeStopsAt(stopsAt).join("\n")}`,
+        );
       break;
     }
     case "trace": {
@@ -123,7 +129,29 @@ try {
     case "runs": {
       const runs = store.listRuns();
       const csv = args.includes("--csv");
-      const header = ["run", "date", "model", "effort", "turns", "calls", "tools", "in", "cache", "out", "secs", "cost", "km", "ride_min", "open%", "70+t%", "50%", "30%", "ride", "status", "request"];
+      const header = [
+        "run",
+        "date",
+        "model",
+        "effort",
+        "turns",
+        "calls",
+        "tools",
+        "in",
+        "cache",
+        "out",
+        "secs",
+        "cost",
+        "km",
+        "ride_min",
+        "open%",
+        "70+t%",
+        "50%",
+        "30%",
+        "ride",
+        "status",
+        "request",
+      ];
       const rows = runs.map((run) => {
         const u = run.usage;
         return [
@@ -157,9 +185,12 @@ try {
         console.log("No planning runs logged yet.");
       } else {
         const widths = header.map((h, i) => Math.max(h.length, ...rows.map((row) => row[i]!.length)));
-        const line = (row: string[]) => row.map((cell, i) => (i === row.length - 1 ? cell : cell.padEnd(widths[i]!))).join("  ");
+        const line = (row: string[]) =>
+          row.map((cell, i) => (i === row.length - 1 ? cell : cell.padEnd(widths[i]!))).join("  ");
         console.log([line(header), ...rows.map(line)].join("\n"));
-        console.log("\nin = input tokens billed at or above full rate; cache = tokens read from cache; cost = estimate in USD from list prices; 70+t% = share of riding time on roads limited to 70 or more.\nmcp-client rows: tokens and cost are the scouts' only (the client's model is not visible); km and shares are from the saved ride, else the last routed trip.");
+        console.log(
+          "\nin = input tokens billed at or above full rate; cache = tokens read from cache; cost = estimate in USD from list prices; 70+t% = share of riding time on roads limited to 70 or more.\nmcp-client rows: tokens and cost are the scouts' only (the client's model is not visible); km and shares are from the saved ride, else the last routed trip.",
+        );
       }
       break;
     }
@@ -185,15 +216,20 @@ try {
           avoidMotorways: target.preferences.avoidMotorways,
         });
         if (trip.result.legs.length !== target.legs.length) {
-          throw new Error(`Ride #${target.id} now routes into ${trip.result.legs.length} legs instead of ${target.legs.length}; not updated.`);
+          throw new Error(
+            `Ride #${target.id} now routes into ${trip.result.legs.length} legs instead of ${target.legs.length}; not updated.`,
+          );
         }
         store.refreshRide(target.id, tripFigures(trip, routeCells(trip.shapes)));
         const extras = await enrichRide(store, store.findRide(String(target.id))!);
-        for (const [name, reason] of Object.entries(extras?.errors ?? {})) console.error(`  ${name}: ${reason.split(".")[0]}`);
+        for (const [name, reason] of Object.entries(extras?.errors ?? {}))
+          console.error(`  ${name}: ${reason.split(".")[0]}`);
         const fmt = (m: number) => `${Math.floor(m / 60)}h${String(m % 60).padStart(2, "0")}`;
         console.log(
           `Refreshed #${target.id} "${target.name}": ${target.distanceKm} km, ${fmt(target.ridingMinutes)} -> ${trip.result.totalDistanceKm} km, ${fmt(trip.result.totalRidingMinutes)}.` +
-            (trip.complete ? "" : " Speed-limit data was unavailable, so the time is the router's pessimistic one; run refresh again later."),
+            (trip.complete
+              ? ""
+              : " Speed-limit data was unavailable, so the time is the router's pessimistic one; run refresh again later."),
         );
       }
       break;

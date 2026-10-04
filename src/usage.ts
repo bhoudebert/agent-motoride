@@ -22,7 +22,18 @@ export interface RunUsage {
 }
 
 export function emptyUsage(model: string, effort: string): RunUsage {
-  return { model, effort, turns: 0, modelCalls: 0, toolCalls: 0, inputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, outputTokens: 0, seconds: 0 };
+  return {
+    model,
+    effort,
+    turns: 0,
+    modelCalls: 0,
+    toolCalls: 0,
+    inputTokens: 0,
+    cacheWriteTokens: 0,
+    cacheReadTokens: 0,
+    outputTokens: 0,
+    seconds: 0,
+  };
 }
 
 // USD per million tokens: input, output, cache read, cache write (5-minute cache).
@@ -57,7 +68,8 @@ export function estimateCostUsd(usage: RunUsage): number | null {
 }
 
 const k = (tokens: number) => (tokens >= 1000 ? `${(tokens / 1000).toFixed(1)}k` : String(tokens));
-const duration = (seconds: number) => `${Math.floor(seconds / 60)}m${String(Math.round(seconds % 60)).padStart(2, "0")}`;
+const duration = (seconds: number) =>
+  `${Math.floor(seconds / 60)}m${String(Math.round(seconds % 60)).padStart(2, "0")}`;
 
 export function formatUsage(usage: RunUsage): string {
   const cost = estimateCostUsd(usage);
@@ -85,7 +97,10 @@ export function describeResponse(message: Anthropic.Beta.BetaMessage) {
   return {
     stopReason: message.stop_reason,
     tools: message.content.flatMap((b) => (b.type === "tool_use" ? [b.name] : [])),
-    text: message.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("\n").slice(0, 2000),
+    text: message.content
+      .flatMap((b) => (b.type === "text" ? [b.text] : []))
+      .join("\n")
+      .slice(0, 2000),
     tokens: {
       in: message.usage.input_tokens,
       cacheWrite: message.usage.cache_creation_input_tokens ?? 0,
@@ -94,4 +109,3 @@ export function describeResponse(message: Anthropic.Beta.BetaMessage) {
     },
   };
 }
-

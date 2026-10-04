@@ -2,15 +2,23 @@ import { createInterface } from "node:readline/promises";
 import { parseArgs } from "node:util";
 import Anthropic from "@anthropic-ai/sdk";
 import { openRide, type RideSession } from "./agent.ts";
-import { DuplicateRideError, enrichRide, formatRideDetail, formatRideList, parseRating, rideNavigation, saveCurrentRide } from "./library.ts";
-import { pinnedMapsLinks } from "./maps.ts";
 import { exportSavedRide, savedRideGpx, writeGpx } from "./gpx.ts";
+import {
+  DuplicateRideError,
+  enrichRide,
+  formatRideDetail,
+  formatRideList,
+  parseRating,
+  rideNavigation,
+  saveCurrentRide,
+} from "./library.ts";
+import { pinnedMapsLinks } from "./maps.ts";
 import { writeRideMarkdown } from "./markdown.ts";
-import { printQr, startShareServer, type Shared } from "./share.ts";
 import { DEFAULT_PREFERENCES, preferencesFromEnv } from "./preferences.ts";
 import { describeProfile, parseProfileArgs } from "./profile.ts";
+import { printQr, type Shared, startShareServer } from "./share.ts";
+import { type SavedRide, Store } from "./store.ts";
 import { usePersistentGeoCache } from "./tools/geo.ts";
-import { Store, type SavedRide } from "./store.ts";
 import { formatTrace } from "./trace.ts";
 import { estimateCostUsd, formatUsage, isKnownModel } from "./usage.ts";
 
@@ -86,7 +94,10 @@ if (values.help || (!hasRequest && !interactive)) {
 const motorwayDefault = () => Boolean(values["allow-motorways"] ?? !preferencesFromEnv().avoidMotorways);
 
 /** One line stating the settings a session runs with, so nothing is implicit. */
-function describeSettings(home: string, preferences: { avoidMotorways: boolean; max30Pct: number; max50Pct: number }): string {
+function describeSettings(
+  home: string,
+  preferences: { avoidMotorways: boolean; max30Pct: number; max50Pct: number },
+): string {
   return [
     `Start: ${home}`,
     `motorways: ${preferences.avoidMotorways ? "FORBIDDEN" : "PERMITTED"}`,
@@ -234,7 +245,11 @@ async function plan(
   const fromEnv = preferencesFromEnv();
   const preferences = {
     // Explicit choice first (menu answer or flag), then a saved ride's own setting, then the env default.
-    avoidMotorways: !(allowMotorways ?? values["allow-motorways"] ?? ((baseRide && !baseRide.preferences.avoidMotorways) || !fromEnv.avoidMotorways)),
+    avoidMotorways: !(
+      allowMotorways ??
+      values["allow-motorways"] ??
+      ((baseRide && !baseRide.preferences.avoidMotorways) || !fromEnv.avoidMotorways)
+    ),
     max30Pct: percent("--max-30-pct", values["max-30-pct"], fromEnv.max30Pct),
     max50Pct: percent("--max-50-pct", values["max-50-pct"], fromEnv.max50Pct),
   };
@@ -266,7 +281,13 @@ async function plan(
   const logRun = (error: string | null) => {
     const trip = session.current()?.route.trip.result;
     const limits = trip?.speedLimits as
-      | { openRoadPct?: number; limit31to50?: { pct: number }; limit30OrLess?: { pct: number }; motorwayKm?: number; timeOnRoads70PlusPct?: number }
+      | {
+          openRoadPct?: number;
+          limit31to50?: { pct: number };
+          limit30OrLess?: { pct: number };
+          motorwayKm?: number;
+          timeOnRoads70PlusPct?: number;
+        }
       | undefined;
     const usage = session.usage();
     const record = {
@@ -293,7 +314,9 @@ async function plan(
   const send = session.send;
   session.send = async (text: string) => {
     requests.push(text.replace(/^\[Setting changed[^\]]*\]\n/, ""));
-    console.error(`\x1b[2m(run #${session.context.runId}; replay later with: npm run rides -- trace ${session.context.runId})\x1b[0m`);
+    console.error(
+      `\x1b[2m(run #${session.context.runId}; replay later with: npm run rides -- trace ${session.context.runId})\x1b[0m`,
+    );
     try {
       await send(text);
       logRun(null);
@@ -347,7 +370,9 @@ async function plan(
     const version = savedId ? ` (new version of #${savedId})` : "";
     savedId = id;
     savedItinerary = ride.itinerary;
-    console.log(`Saved as #${id} "${store.findRide(String(id))!.name}"${version}, ${ride.route.trip.result.totalDistanceKm} km.`);
+    console.log(
+      `Saved as #${id} "${store.findRide(String(id))!.name}"${version}, ${ride.route.trip.result.totalDistanceKm} km.`,
+    );
     // Daylight, cameras and stops for the ride view; cached lookups, so quick after a plan.
     void enrichRide(store, store.findRide(String(id))!).catch(() => undefined);
   };
@@ -356,7 +381,15 @@ async function plan(
 
   // Refine loop: only when a person is at the terminal.
   if (!values.once && interactive) {
-    return refineLoop(session, requests, save, () => savedId, hasUnsaved, () => logRun(null), request === null);
+    return refineLoop(
+      session,
+      requests,
+      save,
+      () => savedId,
+      hasUnsaved,
+      () => logRun(null),
+      request === null,
+    );
   }
   return "quit";
 }
@@ -390,12 +423,16 @@ async function startMenu(): Promise<
 
   while (true) {
     const rides = store.listRides();
-    console.log(`\nagentRide   (motorways ${motorwayDefault() ? "permitted" : "forbidden"} by default)\n  1. Plan a new ride\n  2. Open a saved ride (${rides.length} saved)\n  q. Quit`);
+    console.log(
+      `\nagentRide   (motorways ${motorwayDefault() ? "permitted" : "forbidden"} by default)\n  1. Plan a new ride\n  2. Open a saved ride (${rides.length} saved)\n  q. Quit`,
+    );
     const choice = await ask("\n> ");
     if (typeof choice === "symbol" || ["q", "quit", "exit"].includes(choice.toLowerCase())) return undefined;
 
     if (choice === "1") {
-      const prompt = await ask('\nWhat ride do you want? (e.g. "this Saturday, no rain, under 250 km, winding roads"; b to go back)\n> ');
+      const prompt = await ask(
+        '\nWhat ride do you want? (e.g. "this Saturday, no rain, under 250 km, winding roads"; b to go back)\n> ',
+      );
       if (prompt === QUIT) return undefined;
       if (prompt === BACK || !prompt || isCancel(prompt)) continue;
       const defaultHome = values.from ?? process.env.RIDE_HOME;
@@ -441,7 +478,9 @@ async function startMenu(): Promise<
       console.log(`\n${formatRideDetail(ride)}`);
 
       while (true) {
-        const action = await ask("\n[e] edit: open the prompt on this ride  [g] export GPX  [r] rate it  [b] back  [q] quit\n> ");
+        const action = await ask(
+          "\n[e] edit: open the prompt on this ride  [g] export GPX  [r] rate it  [b] back  [q] quit\n> ",
+        );
         if (action === QUIT) return undefined;
         if (action === BACK) break;
         const key = action.toLowerCase();
@@ -501,7 +540,13 @@ async function sharedRide(session: RideSession, savedId: number | null): Promise
       name: current.title,
       mapsUrl: pinnedMapsLinks(waypoints, trip.shapes, stops)[0]!,
       itinerary: current.itinerary,
-      gpx: { name: current.title, description: `${trip.result.totalDistanceKm} km, about ${trip.result.totalRidingTime} riding.`, legs: trip.result.legs, shapes: trip.shapes, stops },
+      gpx: {
+        name: current.title,
+        description: `${trip.result.totalDistanceKm} km, about ${trip.result.totalRidingTime} riding.`,
+        legs: trip.result.legs,
+        shapes: trip.shapes,
+        stops,
+      },
     };
     return lastShared;
   }
@@ -539,7 +584,9 @@ async function refineLoop(
   const mayLeave = (how: string) => {
     if (!hasUnsaved() || warnedUnsaved) return true;
     warnedUnsaved = true;
-    console.log(`This itinerary is not saved and leaving discards it. /save to keep it, or ${how} again to leave anyway.`);
+    console.log(
+      `This itinerary is not saved and leaving discards it. /save to keep it, or ${how} again to leave anyway.`,
+    );
     return false;
   };
 
@@ -595,14 +642,18 @@ async function refineLoop(
             const preferences = session.context.preferences;
             const wanted = args[0]?.toLowerCase();
             if (wanted !== "on" && wanted !== "off") {
-              console.log(`Motorways are ${preferences.avoidMotorways ? "forbidden" : "permitted"}. Use /motorways on or /motorways off.`);
+              console.log(
+                `Motorways are ${preferences.avoidMotorways ? "forbidden" : "permitted"}. Use /motorways on or /motorways off.`,
+              );
               break;
             }
             preferences.avoidMotorways = wanted === "off";
             pendingNote = preferences.avoidMotorways
               ? "[Setting changed by the rider: motorways are now forbidden. Any trip must be routed without them.]"
               : "[Setting changed by the rider: motorways are now permitted. For a leisure ride, only to reach the riding area; for a practical trip, use them freely.]";
-            console.log(`Motorways ${preferences.avoidMotorways ? "forbidden" : "permitted"} from now on. Ask for the change you want, e.g. "route it with motorways".`);
+            console.log(
+              `Motorways ${preferences.avoidMotorways ? "forbidden" : "permitted"} from now on. Ask for the change you want, e.g. "route it with motorways".`,
+            );
             break;
           }
           case "settings":
@@ -612,7 +663,8 @@ async function refineLoop(
           case "bike": {
             const profile = args.length ? store.setProfile(parseProfileArgs(args)) : store.getProfile();
             console.log(`Bike profile: ${describeProfile(profile)}`);
-            if (args.length) pendingNote = `[Setting changed by the rider: bike profile is now ${describeProfile(profile)}. Plan stops again if an itinerary is on the table.]`;
+            if (args.length)
+              pendingNote = `[Setting changed by the rider: bike profile is now ${describeProfile(profile)}. Plan stops again if an itinerary is on the table.]`;
             break;
           }
           case "usage":
@@ -657,7 +709,9 @@ async function refineLoop(
               shareServer = started.server;
               shareUrl = started.url;
             }
-            console.log(`Scan with the phone (same Wi-Fi): ${shareUrl}\nThe page follows the current itinerary and stays up until you quit.`);
+            console.log(
+              `Scan with the phone (same Wi-Fi): ${shareUrl}\nThe page follows the current itinerary and stays up until you quit.`,
+            );
             await printQr(shareUrl);
             break;
           }

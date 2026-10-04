@@ -5,21 +5,29 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { SYSTEM_CORE, describeSituation } from "./agent.ts";
-import { exportSavedRide, writeGpx } from "./gpx.ts";
-import { DuplicateRideError, enrichRide, formatRideDetail, formatRideList, replanStops, saveCurrentRide, tripFigures } from "./library.ts";
-import { formatStopPlan } from "./stops.ts";
-import { routeCells } from "./geometry.ts";
+import { describeSituation, SYSTEM_CORE } from "./agent.ts";
 import { pickRideForToday, rideBriefing } from "./briefing.ts";
-import { computeTrip } from "./tools/trip.ts";
-import { SCOUT_MODEL } from "./model.ts";
+import { routeCells } from "./geometry.ts";
+import { exportSavedRide, writeGpx } from "./gpx.ts";
+import {
+  DuplicateRideError,
+  enrichRide,
+  formatRideDetail,
+  formatRideList,
+  replanStops,
+  saveCurrentRide,
+  tripFigures,
+} from "./library.ts";
 import { formatRideMarkdown, writeRideMarkdown } from "./markdown.ts";
+import { SCOUT_MODEL } from "./model.ts";
 import { preferencesFromEnv } from "./preferences.ts";
 import { describeProfile } from "./profile.ts";
 import type { RideContext } from "./session.ts";
+import { formatStopPlan } from "./stops.ts";
 import { Store } from "./store.ts";
 import { setGeoAnchor, usePersistentGeoCache } from "./tools/geo.ts";
 import { createToolDefinitions } from "./tools/index.ts";
+import { computeTrip } from "./tools/trip.ts";
 import { emptyUsage, estimateCostUsd } from "./usage.ts";
 
 const store = new Store();
@@ -29,7 +37,15 @@ usePersistentGeoCache({
   set: (key, value) => store.cacheSet(key, "reverseGeocode", value, 365 * 24 * 3_600_000),
 });
 const usage = emptyUsage("mcp-client", "n/a");
-const runId = store.startRun({ home: process.env.RIDE_HOME ?? "", request: "mcp session", usage, costUsd: null, result: null, rideId: null, error: null });
+const runId = store.startRun({
+  home: process.env.RIDE_HOME ?? "",
+  request: "mcp session",
+  usage,
+  costUsd: null,
+  result: null,
+  rideId: null,
+  error: null,
+});
 
 const context: RideContext = {
   store,
@@ -58,7 +74,13 @@ function syncRun(): void {
   const route = lastRouteId ? context.routes.get(lastRouteId) : undefined;
   const trip = route?.trip.result;
   const limits = trip?.speedLimits as
-    | { openRoadPct?: number; limit31to50?: { pct: number }; limit30OrLess?: { pct: number }; motorwayKm?: number; timeOnRoads70PlusPct?: number }
+    | {
+        openRoadPct?: number;
+        limit31to50?: { pct: number };
+        limit30OrLess?: { pct: number };
+        motorwayKm?: number;
+        timeOnRoads70PlusPct?: number;
+      }
     | undefined;
   store.updateRun(runId, {
     home: homeInput,
@@ -98,14 +120,20 @@ const INSTRUCTIONS = `agentRide plans one-day motorcycle rides and keeps the rid
 For a new leisure ride: call listSavedRides, then scoutAreas with 2-4 areas (or searchRoads and calculateTrip yourself if scouts are unavailable), pick the best candidate, then finish it: getDaylight, getWeather along the loop for the riding hours, getSpeedCameras, planStops with the date and departure, getTraffic for the departure. Present the itinerary in plain text (never JSON) with legs named by towns, the figures from the tools, the stops with times, the navigation links from planStops, and end with one line "Route: <routeId>". Save only when the rider asks, with saveRide. For an edit or a question about a saved ride, work from its data (showRide) without replanning. For a practical trip (commute), route point to point, motorways if permitted, with traffic.`;
 
 const server = new McpServer({ name: "agentRide", version: "0.1.0" }, { instructions: INSTRUCTIONS });
-const text = (value: unknown) => ({ content: [{ type: "text" as const, text: typeof value === "string" ? value : JSON.stringify(value) }] });
+const text = (value: unknown) => ({
+  content: [{ type: "text" as const, text: typeof value === "string" ? value : JSON.stringify(value) }],
+});
 
 // The ride tools, shared with the API planner. Each call is traced and counted.
 for (const tool of createToolDefinitions(context, { scouts: true })) {
   server.registerTool(
     tool.name,
     // Lookups only: a client in "writes" approval mode lets these run without asking.
-    { description: tool.description, inputSchema: tool.inputSchema, annotations: { readOnlyHint: true, openWorldHint: true } },
+    {
+      description: tool.description,
+      inputSchema: tool.inputSchema,
+      annotations: { readOnlyHint: true, openWorldHint: true },
+    },
     async (args: unknown) => {
       if (!context.home.label) throw new Error("No start point yet: call rideSettings with the rider's home first.");
       usage.toolCalls++;
@@ -161,7 +189,10 @@ server.registerTool(
       departure: z.string().nullable().describe("HH:MM or null"),
       itinerary: z.string().describe("The itinerary text as presented to the rider"),
       request: z.string().describe("What the rider asked for, in one line"),
-      force: z.boolean().optional().describe("Save even if it duplicates a saved ride; only on the rider's explicit wish"),
+      force: z
+        .boolean()
+        .optional()
+        .describe("Save even if it duplicates a saved ride; only on the rider's explicit wish"),
     }),
   },
   async (args) => {
@@ -175,7 +206,10 @@ server.registerTool(
         { name: args.name, request: args.request, parentId: lastSavedId, home: homeInput, usage, force: args.force },
       );
     } catch (error) {
-      if (error instanceof DuplicateRideError) return text(`Not saved: ${error.message} Tell the rider, and only call saveRide again with force if they want the copy.`);
+      if (error instanceof DuplicateRideError)
+        return text(
+          `Not saved: ${error.message} Tell the rider, and only call saveRide again with force if they want the copy.`,
+        );
       throw error;
     }
     lastSavedId = id;
@@ -189,7 +223,8 @@ server.registerTool(
 server.registerTool(
   "exportGpx",
   {
-    description: "Write a ride as a GPX file for a GPS app: either a routeId from this session or the id of a saved ride. Returns the file path.",
+    description:
+      "Write a ride as a GPX file for a GPS app: either a routeId from this session or the id of a saved ride. Returns the file path.",
     inputSchema: z.object({
       routeId: z.string().optional(),
       rideId: z.number().int().optional(),
@@ -228,7 +263,10 @@ server.registerTool(
       "Recompute a saved ride without changing it: route the same waypoints again with the ride's own motorway setting, update distance, times, road mix and leg names, then re-gather daylight, weather, fixed cameras and stops, and rebuild the stop plan from the current bike profile. Deterministic, no planning involved; takes a minute or two. Use it when the rider says refresh, update or recompute a ride; with stopsOnly when only the stops or the bike profile changed. Returns the refreshed view, or the new stop plan.",
     inputSchema: z.object({
       ride: z.string().describe("Saved ride id or name"),
-      stopsOnly: z.boolean().optional().describe("Only rebuild the stop plan from the current bike profile; instant when the stops are cached"),
+      stopsOnly: z
+        .boolean()
+        .optional()
+        .describe("Only rebuild the stop plan from the current bike profile; instant when the stops are cached"),
     }),
   },
   async (args) => {
@@ -240,12 +278,21 @@ server.registerTool(
       return text(formatStopPlan(extras.stopPlan, target.departure ?? "09:00", target.ridingMinutes).join("\n"));
     }
     await setGeoAnchor(target.home);
-    const trip = await computeTrip({ waypoints: target.waypoints, roundTrip: target.roundTrip, avoidMotorways: target.preferences.avoidMotorways });
-    if (trip.result.legs.length !== target.legs.length) throw new Error(`Ride #${target.id} now routes into ${trip.result.legs.length} legs instead of ${target.legs.length}; not updated.`);
+    const trip = await computeTrip({
+      waypoints: target.waypoints,
+      roundTrip: target.roundTrip,
+      avoidMotorways: target.preferences.avoidMotorways,
+    });
+    if (trip.result.legs.length !== target.legs.length)
+      throw new Error(
+        `Ride #${target.id} now routes into ${trip.result.legs.length} legs instead of ${target.legs.length}; not updated.`,
+      );
     store.refreshRide(target.id, tripFigures(trip, routeCells(trip.shapes)));
     const extras = await enrichRide(store, store.findRide(String(target.id))!);
     const failed = Object.entries(extras?.errors ?? {}).map(([name, reason]) => `${name}: ${reason.split(".")[0]}`);
-    return text(`${failed.length ? `Some lookups failed and kept their previous result: ${failed.join("; ")}\n\n` : ""}${formatRideDetail(store.findRide(String(target.id))!)}`);
+    return text(
+      `${failed.length ? `Some lookups failed and kept their previous result: ${failed.join("; ")}\n\n` : ""}${formatRideDetail(store.findRide(String(target.id))!)}`,
+    );
   },
 );
 
@@ -254,7 +301,9 @@ server.registerTool(
   {
     description:
       "Ride-day briefing for a saved ride: forecast along the route now, daylight and return time, traffic at departure, the stops re-planned and checked against opening hours at arrival, fixed cameras, and a go, caution or no-go verdict with reasons. Deterministic; show it as returned. Without a ride, takes the next dated ride.",
-    inputSchema: z.object({ ride: z.string().optional().describe("Saved ride id or name; default the next dated ride") }),
+    inputSchema: z.object({
+      ride: z.string().optional().describe("Saved ride id or name; default the next dated ride"),
+    }),
   },
   async (args) => {
     const today = new Date().toISOString().slice(0, 10);
@@ -294,18 +343,26 @@ server.registerTool(
     const ride = store.findRide(args.ride);
     if (!ride) throw new Error(`No saved ride matches "${args.ride}". Call listRides.`);
     const path = writeRideMarkdown(ride, args.file);
-    return text(args.includeContent ? `Markdown written: ${path}\n\n${formatRideMarkdown(ride)}` : `Markdown written: ${path}`);
+    return text(
+      args.includeContent ? `Markdown written: ${path}\n\n${formatRideMarkdown(ride)}` : `Markdown written: ${path}`,
+    );
   },
 );
 
 server.registerTool(
   "listRides",
-  { description: "The rider's saved rides, one line each (id, name, distance, time, date, rating).", inputSchema: z.object({}), annotations: { readOnlyHint: true } },
+  {
+    description: "The rider's saved rides, one line each (id, name, distance, time, date, rating).",
+    inputSchema: z.object({}),
+    annotations: { readOnlyHint: true },
+  },
   async () => text(formatRideList(store.listRides())),
 );
 
 const RULES = `Use the agentRide tools for every lookup, never shell commands or web search. The settings below are the rider's defaults; when the request changes one (motorways allowed, other targets, repeats allowed), apply it with rideSettings before planning. Answer in plain text as laid out above, never JSON. End an itinerary with one line "Route: <routeId>" naming the routed trip it describes, so the ride can be saved later. Save only when the rider asks, with saveRide and that routeId.`;
-const userMessage = (text: string) => ({ messages: [{ role: "user" as const, content: { type: "text" as const, text } }] });
+const userMessage = (text: string) => ({
+  messages: [{ role: "user" as const, content: { type: "text" as const, text } }],
+});
 /** Guidance for working on a saved ride: its data plus the rules for edits and questions. */
 const editText = (saved: ReturnType<typeof store.findRide> & object, change: string) => {
   const data = {
@@ -317,7 +374,17 @@ const editText = (saved: ReturnType<typeof store.findRide> & object, change: str
     ridingMinutes: saved.ridingMinutes,
     waypoints: saved.waypoints,
     roundTrip: saved.roundTrip,
-    legs: saved.legs.map((l) => ({ leg: l.seq, from: l.from, to: l.to, fromCoords: l.fromCoords, toCoords: l.toCoords, distanceKm: l.distanceKm, mainRoads: l.mainRoads, rating: l.rating, notes: l.notes })),
+    legs: saved.legs.map((l) => ({
+      leg: l.seq,
+      from: l.from,
+      to: l.to,
+      fromCoords: l.fromCoords,
+      toCoords: l.toCoords,
+      distanceKm: l.distanceKm,
+      mainRoads: l.mainRoads,
+      rating: l.rating,
+      notes: l.notes,
+    })),
     rating: saved.rating,
     notes: saved.notes,
     originalRequest: saved.request,
@@ -326,7 +393,8 @@ const editText = (saved: ReturnType<typeof store.findRide> & object, change: str
     `${change}\n\nThis concerns saved ride #${saved.id} "${saved.name}". Work from its waypoints rather than searching for a new area. If the message asks for a change or a new date, route the ride again with calculateTrip, check the weather for that day, and apply the change, keeping everything else. If it is only a question, answer it from this data and the tools. Overlap with this ride is expected; use rideSettings to allow repeats if the duplicate check objects.\n${JSON.stringify(data)}`,
   );
 };
-const planText = (request: string) => `${SYSTEM_CORE}\n\n${RULES}\n\n---\n\nRider's request: ${request}\n\n${settingsText()}`;
+const planText = (request: string) =>
+  `${SYSTEM_CORE}\n\n${RULES}\n\n---\n\nRider's request: ${request}\n\n${settingsText()}`;
 
 // Clients without prompt support (Codex) cannot use the slash commands below;
 // this tool hands them the same text on request.
@@ -375,7 +443,8 @@ server.registerPrompt(
   "commute",
   {
     title: "Plan a practical trip",
-    description: "Point to point, quickest sensible route, motorways permitted, with weather and traffic for the departure.",
+    description:
+      "Point to point, quickest sensible route, motorways permitted, with weather and traffic for the departure.",
     argsSchema: {
       destination: z.string().describe("Where to, e.g. Rue de la Loi, Brussels"),
       when: z.string().describe("Day and time, e.g. Monday 08:00, or 'arrive by 9:00 Monday'"),
@@ -396,7 +465,10 @@ server.registerPrompt(
   {
     title: "Edit a saved ride",
     description: "Load a saved ride and apply a change: new date, longer, skip a town, or just a question about it.",
-    argsSchema: { ride: z.string().describe("Saved ride id or name"), change: z.string().describe("What to change or ask") },
+    argsSchema: {
+      ride: z.string().describe("Saved ride id or name"),
+      change: z.string().describe("What to change or ask"),
+    },
   },
   ({ ride, change }) => {
     const saved = store.findRide(ride);
@@ -411,38 +483,85 @@ server.registerPrompt(
 
 server.registerPrompt(
   "save-ride",
-  { title: "Save the current itinerary", description: "Store the itinerary on the table in the library, under a name.", argsSchema: { name: z.string().optional().describe("Ride name, default the itinerary's own") } },
-  ({ name }) => userMessage(`Save the itinerary currently on the table with saveRide: routeId from its "Route:" line${name ? `, name "${name}"` : ""}, the ride date and departure it states, the itinerary text as shown, and the request it answered. Then confirm the saved id. If no itinerary is on the table, say so.`),
+  {
+    title: "Save the current itinerary",
+    description: "Store the itinerary on the table in the library, under a name.",
+    argsSchema: { name: z.string().optional().describe("Ride name, default the itinerary's own") },
+  },
+  ({ name }) =>
+    userMessage(
+      `Save the itinerary currently on the table with saveRide: routeId from its "Route:" line${name ? `, name "${name}"` : ""}, the ride date and departure it states, the itinerary text as shown, and the request it answered. Then confirm the saved id. If no itinerary is on the table, say so.`,
+    ),
 );
 
 server.registerPrompt(
   "export-gpx",
-  { title: "Export GPX", description: "GPX file of the current itinerary or of a saved ride, for a GPS app.", argsSchema: { ride: z.string().optional().describe("Saved ride id or name; default the itinerary on the table") } },
-  ({ ride }) => userMessage(ride ? `Export saved ride "${ride}" as GPX with exportGpx (find its id with listRides if needed) and give the file path.` : `Export the itinerary on the table as GPX with exportGpx, using the routeId from its "Route:" line, and give the file path.`),
+  {
+    title: "Export GPX",
+    description: "GPX file of the current itinerary or of a saved ride, for a GPS app.",
+    argsSchema: { ride: z.string().optional().describe("Saved ride id or name; default the itinerary on the table") },
+  },
+  ({ ride }) =>
+    userMessage(
+      ride
+        ? `Export saved ride "${ride}" as GPX with exportGpx (find its id with listRides if needed) and give the file path.`
+        : `Export the itinerary on the table as GPX with exportGpx, using the routeId from its "Route:" line, and give the file path.`,
+    ),
 );
 
 server.registerPrompt(
   "show-ride",
-  { title: "Show a saved ride", description: "Everything stored about one ride: figures, daylight, cameras, stops, legs, itinerary.", argsSchema: { ride: z.string().describe("Saved ride id or name") } },
-  ({ ride }) => userMessage(`Call showRide for "${ride}" and show the result to the rider exactly as returned, in a code block, without reformatting or summarising it.`),
+  {
+    title: "Show a saved ride",
+    description: "Everything stored about one ride: figures, daylight, cameras, stops, legs, itinerary.",
+    argsSchema: { ride: z.string().describe("Saved ride id or name") },
+  },
+  ({ ride }) =>
+    userMessage(
+      `Call showRide for "${ride}" and show the result to the rider exactly as returned, in a code block, without reformatting or summarising it.`,
+    ),
 );
 
 server.registerPrompt(
   "export-md",
-  { title: "Export a ride as Markdown", description: "The ride's standard Markdown document, written to a file and shown.", argsSchema: { ride: z.string().describe("Saved ride id or name"), file: z.string().optional().describe("Destination path") } },
-  ({ ride, file }) => userMessage(`Call exportMarkdown for "${ride}"${file ? ` with file "${file}"` : ""} and includeContent true. Tell the rider the path, then show the document exactly as returned, without reformatting.`),
+  {
+    title: "Export a ride as Markdown",
+    description: "The ride's standard Markdown document, written to a file and shown.",
+    argsSchema: {
+      ride: z.string().describe("Saved ride id or name"),
+      file: z.string().optional().describe("Destination path"),
+    },
+  },
+  ({ ride, file }) =>
+    userMessage(
+      `Call exportMarkdown for "${ride}"${file ? ` with file "${file}"` : ""} and includeContent true. Tell the rider the path, then show the document exactly as returned, without reformatting.`,
+    ),
 );
 
 server.registerPrompt(
   "today",
-  { title: "Ride-day briefing", description: "Weather now, daylight, traffic, stops checked against opening hours, go or no-go for a saved ride.", argsSchema: { ride: z.string().optional().describe("Saved ride id or name; default the next dated ride") } },
-  ({ ride }) => userMessage(`Call rideBriefing${ride ? ` for "${ride}"` : ""} and show the result exactly as returned, in a code block. Then, in one or two sentences, say what you would do about any NO-GO or caution lines (a later departure, a different stop, another day), without calling other tools unless the rider asks.`),
+  {
+    title: "Ride-day briefing",
+    description: "Weather now, daylight, traffic, stops checked against opening hours, go or no-go for a saved ride.",
+    argsSchema: { ride: z.string().optional().describe("Saved ride id or name; default the next dated ride") },
+  },
+  ({ ride }) =>
+    userMessage(
+      `Call rideBriefing${ride ? ` for "${ride}"` : ""} and show the result exactly as returned, in a code block. Then, in one or two sentences, say what you would do about any NO-GO or caution lines (a later departure, a different stop, another day), without calling other tools unless the rider asks.`,
+    ),
 );
 
 server.registerPrompt(
   "refresh",
-  { title: "Refresh a saved ride", description: "Recompute a ride's figures, weather, cameras, stops and stop plan, without changing the ride.", argsSchema: { ride: z.string().describe("Saved ride id or name") } },
-  ({ ride }) => userMessage(`Call refreshRide for "${ride}" and show the result exactly as returned, in a code block. Do not ask questions first and do not replan anything: a refresh keeps the ride as it is.`),
+  {
+    title: "Refresh a saved ride",
+    description: "Recompute a ride's figures, weather, cameras, stops and stop plan, without changing the ride.",
+    argsSchema: { ride: z.string().describe("Saved ride id or name") },
+  },
+  ({ ride }) =>
+    userMessage(
+      `Call refreshRide for "${ride}" and show the result exactly as returned, in a code block. Do not ask questions first and do not replan anything: a refresh keeps the ride as it is.`,
+    ),
 );
 
 server.registerPrompt(
@@ -453,7 +572,11 @@ server.registerPrompt(
 
 server.registerPrompt(
   "help",
-  { title: "What the ride server can do", description: "Commands and tools of agentRide, no tool call.", argsSchema: {} },
+  {
+    title: "What the ride server can do",
+    description: "Commands and tools of agentRide, no tool call.",
+    argsSchema: {},
+  },
   () =>
     userMessage(`Show the rider this text as is, without calling any tool:
 

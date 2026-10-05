@@ -15,13 +15,15 @@ npm run check           # environment and data services
 2. Behaviour change: update the spec first, `openspec/specs/<capability>/spec.md`
    (requirements with scenarios). New capability: new folder plus a line in
    `openspec/README.md`.
-3. Code with tests. Deterministic parts get unit tests under `test/`; the
+3. Architectural choice (new dependency, data store, mode, model default,
+   cross-cutting rule): add a record in `docs/adr/` from `template.md`.
+4. Code with tests. Deterministic parts get unit tests under `test/`; the
    planner loop is tested against the fake services in `test/helpers/`. Never
    let a test reach the real model API.
-4. `npm run quality` (typecheck, lint, format check, tests with coverage thresholds) must pass. The pre-commit hook
+5. `npm run quality` (typecheck, lint, format check, tests with coverage thresholds) must pass. The pre-commit hook
    formats and lints staged files; the commit-msg hook enforces Conventional
    Commits.
-5. Open a pull request with the template filled in: what was verified, what
+6. Open a pull request with the template filled in: what was verified, what
    was not. The **PR title follows the commit convention too**: squash merges
    turn it into the commit on `main`, which release automation reads. CI runs
    typecheck, lint, format check, tests, commitlint and the title check. The

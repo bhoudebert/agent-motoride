@@ -142,6 +142,7 @@ speed-camera information. Full text in `NOTICE.md`.
 | This README                           | How to install, use and configure both modes; how it works; benchmark; troubleshooting |
 | `openspec/project.md`                 | Project context: purpose, stack, conventions, constraints                              |
 | `openspec/specs/<capability>/spec.md` | What the system does, as requirements with scenarios, one file per capability          |
+| `docs/adr/`                           | Architecture decision records: why the system is shaped the way it is                  |
 | `.env.example`                        | Every setting with its default                                                         |
 
 ## Setup
@@ -1087,7 +1088,8 @@ your real times differ consistently, adjust `bendFactor` in `src/tools/trip.ts`.
 | `npm run typecheck`                      | Type-check with `tsc --noEmit`                                                                                                     |
 | `npm run lint`, `npm run lint:fix`       | ESLint                                                                                                                             |
 | `npm run format`, `npm run format:check` | Prettier                                                                                                                           |
-| `npm run quality`                        | Typecheck, lint, format check and tests together: the CI gate                                                                      |
+| `npm run quality`                        | Typecheck, lint, format check and tests with coverage thresholds: the CI gate                                                      |
+| `npm run test:coverage`                  | Tests plus a coverage report; fails below 80% lines, 80% functions, 65% branches                                                   |
 
 ## How it works
 

@@ -21,8 +21,9 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "quality": "npm run typecheck && npm run lint && npm run format:check && npm test",
-    "prepare": "simple-git-hooks"
+    "quality": "npm run typecheck && npm run lint && npm run format:check && npm run test:coverage",
+    "prepare": "simple-git-hooks",
+    "test:coverage": "node --test --experimental-test-coverage --test-coverage-exclude='test/**' --test-coverage-exclude='scripts/**' --test-coverage-lines=80 --test-coverage-functions=80 --test-coverage-branches=65 'test/**/*.test.ts'"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

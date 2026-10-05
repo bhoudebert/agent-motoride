@@ -20,12 +20,14 @@ behaviour as requirements with scenarios.
    concern per commit. Full rules and examples: `CONTRIBUTING.md`, section
    "Commits". The commit-msg hook and CI reject anything else.
 3. **Spec first when behaviour changes.** Update or add the requirement in
-   `openspec/specs/...` in the same PR, before or with the code.
+   `openspec/specs/...` in the same PR, before or with the code. A significant
+   architectural choice gets a decision record in `docs/adr/` (read the
+   existing ones before changing something they cover).
 4. **Tests with the code.** Deterministic logic gets unit tests in `test/`;
    the planner loop is tested against `test/helpers/fakeServices.ts`. Tests
    never reach the real model API or spend money.
 5. **Quality gate before pushing:** `npm run quality` (typecheck, lint, format
-   check, tests) must pass. `npm run lint:fix` and `npm run format` fix most
+   check, tests with coverage thresholds) must pass. `npm run lint:fix` and `npm run format` fix most
    findings.
 6. **Docs with the change.** README when usage changes; `ROADMAP.md` when an
    idea is done or added.

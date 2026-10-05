@@ -32,7 +32,15 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run format:check
-      - run: npm test
+      - name: Tests with coverage thresholds (lines 80, functions 80, branches 65)
+        run: set -o pipefail; npm run test:coverage | tee coverage.txt
+      - name: Coverage in the job summary
+        if: always()
+        run: |
+          echo '### Coverage' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          sed -n '/start of coverage report/,/end of coverage report/p' coverage.txt | sed 's/^ℹ //' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
       - name: Commit messages follow Conventional Commits
         if: github.event_name == 'pull_request'
         run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose

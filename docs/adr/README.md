@@ -18,3 +18,4 @@ not rewritten.
 | [0009](0009-default-model.md)                    | Sonnet as the default planner model                                              | accepted |
 | [0010](0010-tooling.md)                          | TypeScript 7 native compiler beside the TypeScript 6 API; ESLint and Prettier    | accepted |
 | [0011](0011-commits-and-releases.md)             | Conventional Commits, squash merges, automated releases                          | accepted |
+| [0012](0012-rate-roads-from-notes-and-tracks.md) | Rate road stretches from time-stamped notes and recorded tracks                  | accepted |

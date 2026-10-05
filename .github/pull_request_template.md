@@ -1,3 +1,5 @@
+<!-- Title: Conventional Commits, e.g. "feat(stops): prefer places open at arrival". The title becomes the commit on main. -->
+
 ## Summary
 
 <!-- What changes and why, in a few lines. -->

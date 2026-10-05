@@ -1,20 +1,24 @@
 <!-- Title: Conventional Commits, e.g. "feat(stops): prefer places open at arrival". The title becomes the commit on main. -->
+<!-- The path every change follows: docs/EVOLVING.md -->
 
 ## Summary
 
 <!-- What changes and why, in a few lines. -->
 
-## Spec
+## Decision and spec
 
-<!-- Which openspec/specs/<capability>/spec.md requirement this adds or changes, or "no behaviour change". -->
+<!-- ADR added or "none needed" (docs/adr/). Spec requirement added or changed (openspec/specs/...), or "no behaviour change". -->
 
 ## Verified
 
 <!-- What was run: npm run quality, smoke tests, a real planning run (trace id), a real device. State what was NOT verified. -->
 
-## Checklist
+## Checklist (docs/EVOLVING.md)
 
-- [ ] `npm run quality` passes locally
-- [ ] Spec updated when behaviour changed
-- [ ] README updated when usage changed
-- [ ] Commits follow Conventional Commits
+- [ ] ADR when the shape of the system changes
+- [ ] Spec updated first when behaviour changes
+- [ ] Reachable in every mode (MCP tool/prompt, API planner, CLI) or the spec says why not
+- [ ] Tests with the code; `npm run quality` passes
+- [ ] README updated; roadmap updated
+- [ ] Site and diagram updated when a rider would notice the feature
+- [ ] Commits and PR title follow Conventional Commits

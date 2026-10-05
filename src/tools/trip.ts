@@ -1,4 +1,4 @@
-import { decodePolyline } from "../geometry.ts";
+import { decodePolyline, encodePolyline, type LatLon } from "../geometry.ts";
 import { fetchJson } from "../http.ts";
 import { pinnedMapsLinks } from "../maps.ts";
 import { bearingDeg, describeCoords, fmtCoords, haversineKm, type Point, resolvePoint } from "./geo.ts";
@@ -170,6 +170,29 @@ function traceAttributes(shape: string, shapeMatch: "edge_walk" | "map_snap") {
       },
     }),
   });
+}
+
+/**
+ * The named roads a line of points runs on, longest first, by matching it to
+ * the road network: a recorded track, or a stretch of a planned route.
+ * Points are thinned to about one every 30 m, which the matcher needs, not more.
+ */
+export async function roadsAlong(points: LatLon[]): Promise<Array<{ name: string; km: number }>> {
+  const thinned: LatLon[] = [];
+  for (const p of points) {
+    const last = thinned.at(-1);
+    if (!last || haversineKm(last, p) >= 0.03) thinned.push(p);
+  }
+  if (thinned.length < 2) return [];
+  const step = Math.ceil(thinned.length / 400);
+  const sample = thinned.filter((_, i) => i % step === 0 || i === thinned.length - 1);
+  const response = await traceAttributes(encodePolyline(sample), "map_snap");
+  const byName = new Map<string, number>();
+  for (const edge of response.edges) {
+    const name = edge.names?.[0];
+    if (name) byName.set(name, (byName.get(name) ?? 0) + edge.length);
+  }
+  return [...byName].map(([name, km]) => ({ name, km: round1(km) })).sort((a, b) => b.km - a.km);
 }
 
 /**

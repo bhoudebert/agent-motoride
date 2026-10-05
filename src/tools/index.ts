@@ -147,7 +147,7 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
     {
       name: "listSavedRides",
       description:
-        "The rider's library of saved rides near a place, with rating (1-5, null if not ridden yet), notes, waypoints and legs. Each leg has coordinates usable directly as calculateTrip waypoints, its main roads, and its own rating when the rider gave one. Call it once at the start: legs rated 4-5 are proven building blocks, rides or legs rated 1-2 are roads to stay away from, and anything already saved is ground the rider has covered.",
+        "The rider's library of saved rides near a place, with rating (1-5, null if not ridden yet), notes, waypoints and legs. Each leg has coordinates usable directly as calculateTrip waypoints, its main roads, and its own rating when the rider gave one. roadRatings are stretches the rider rated after riding them. Call it once at the start: legs and stretches rated 4-5 are proven building blocks, those rated 0-1 are roads to stay away from, and anything already saved is ground the rider has covered.",
       inputSchema: z.object({
         location: location.optional().describe("Centre of the search, default the rider's start point"),
         radiusKm: z.number().min(10).max(500).optional().describe("Default 150"),
@@ -193,7 +193,11 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
               notes: leg.notes,
             })),
           }));
-        return { centre: centre.label, radiusKm, count: rides.length, rides };
+        // Stretches rated after riding them, from the rider's notes: 0-1 avoid, 4-5 seek out.
+        const roadRatings = store
+          .listRoadRatings()
+          .map((r) => ({ road: r.road, rating: r.rating, why: r.reason, approximate: r.approximate }));
+        return { centre: centre.label, radiusKm, count: rides.length, rides, roadRatings };
       }),
     },
     {

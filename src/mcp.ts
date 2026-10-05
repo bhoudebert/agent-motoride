@@ -8,6 +8,16 @@ import { z } from "zod";
 import { describeSituation, SYSTEM_CORE } from "./agent.ts";
 import { pickRideForToday, rideBriefing } from "./briefing.ts";
 import { routeCells } from "./geometry.ts";
+import {
+  addRideNote,
+  applyReview,
+  clockAt,
+  formatReview,
+  pendingNotesSummary,
+  readTrack,
+  reviewRide,
+  rideToReview,
+} from "./feedback.ts";
 import { exportSavedRide, writeGpx } from "./gpx.ts";
 import {
   DuplicateRideError,
@@ -110,14 +120,16 @@ async function setHome(location: string): Promise<string> {
   return point.label;
 }
 
-const settingsText = () =>
-  `${describeSituation(homeInput, context.home.label ? context.home : undefined, context.preferences)}\nBike: ${describeProfile(store.getProfile())}.\nSaved rides: ${store.listRides().length}. Trace run id: ${runId}.`;
+const settingsText = () => {
+  const pending = pendingNotesSummary(store);
+  return `${describeSituation(homeInput, context.home.label ? context.home : undefined, context.preferences)}\nBike: ${describeProfile(store.getProfile())}.\nSaved rides: ${store.listRides().length}. Trace run id: ${runId}.${pending ? `\n${pending}: offer to review them (reviewRide).` : ""}`;
+};
 
 // Server instructions reach the client's system prompt at connection time, so
 // the method applies even when the rider types in plain words instead of using
 // the plan-ride command. Kept to the essentials; the command carries the rest.
 const INSTRUCTIONS = `agentMotoride plans one-day motorcycle rides and keeps the rider's library of saved rides. Anything the rider says about rides, trips, loops, routes, the library, stops, cameras, weather for a ride, or a ride-day briefing is a request for this server's tools: showRide, listRides, rideBriefing, refreshRide, exportGpx, exportMarkdown, planningGuide and the planning tools. Never run shell commands, scripts or web searches for these, and never look for a "ride" program: "ride show 7" or "/ride plan ..." typed by the rider means "use the ride tools" (here: showRide for ride 7). If your client does not expose this server's prompts, call planningGuide with the rider's request before planning a new ride, and follow it.
-For a new leisure ride: call listSavedRides, then scoutAreas with 2-4 areas (or searchRoads and calculateTrip yourself if scouts are unavailable), pick the best candidate, then finish it: getDaylight, getWeather along the loop for the riding hours, getSpeedCameras, checkConditions (crosswind, low sun) with the date and departure, planStops with the date and departure, getTraffic for the departure. Present the itinerary in plain text (never JSON) with legs named by towns, the figures from the tools, the stops with times, the navigation links from planStops, and end with one line "Route: <routeId>". Save only when the rider asks, with saveRide. For an edit or a question about a saved ride, work from its data (showRide) without replanning. For a practical trip (commute), route point to point, motorways if permitted, with traffic.`;
+For a new leisure ride: call listSavedRides, then scoutAreas with 2-4 areas (or searchRoads and calculateTrip yourself if scouts are unavailable), pick the best candidate, then finish it: getDaylight, getWeather along the loop for the riding hours, getSpeedCameras, checkConditions (crosswind, low sun) with the date and departure, planStops with the date and departure, getTraffic for the departure. Present the itinerary in plain text (never JSON) with legs named by towns, the figures from the tools, the stops with times, the navigation links from planStops, and end with one line "Route: <routeId>". Save only when the rider asks, with saveRide. During a ride, a remark about the road ("last 10 min awesome", "cobbles, never again") is a note: call addRideNote at once with the rider's words, and a rating 0-5 only when they gave one. After the ride, reviewRide places the notes on the recorded track (gpxPath) or on the plan, shows detours and pace, and proposes ratings; apply them with reviewRide and decisions only once the rider confirms. For an edit or a question about a saved ride, work from its data (showRide) without replanning. For a practical trip (commute), route point to point, motorways if permitted, with traffic.`;
 
 const server = new McpServer({ name: "agentMotoride", version: "0.1.0" }, { instructions: INSTRUCTIONS });
 const text = (value: unknown) => ({
@@ -350,6 +362,58 @@ server.registerTool(
 );
 
 server.registerTool(
+  "addRideNote",
+  {
+    description:
+      'During a ride: keep a note about the road just ridden, timed now, e.g. "last 10 min awesome" or "cobbles, never again". The note covers the minutes before it (default 10) and is placed on the road after the ride by reviewRide. Call it as soon as the rider says something about the road, with their words; no planning, no questions. Without a ride, it goes to the ride dated today, else the last saved one.',
+    inputSchema: z.object({
+      text: z.string().min(1).describe("The rider's words"),
+      rating: z.number().int().min(0).max(5).optional().describe("Only if the rider gave one: 0 never again, 5 loved"),
+      minutesBack: z.number().int().min(1).max(120).optional().describe("Minutes the note covers, default 10"),
+      ride: z.string().optional().describe("Saved ride id or name; default today's ride"),
+    }),
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  },
+  async (args) => {
+    const { note, ride } = addRideNote(store, args);
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const end = Date.parse(note.createdAt);
+    return text(
+      `Noted #${note.id} on ride #${ride.id} "${ride.name}", ${clockAt(end - note.minutesBack * 60_000, timezone)}-${clockAt(end, timezone)}. It will be reviewed after the ride.`,
+    );
+  },
+);
+
+server.registerTool(
+  "reviewRide",
+  {
+    description:
+      "After a ride: place its pending notes on the road. With gpxPath (a track recorded by any app, as a GPX file on this machine), each note lands on the road actually ridden, detours of 2 km or more from the plan are listed, and the moving pace is compared with the plan; without it, notes are placed on the plan by elapsed time (approximate). Returns the stretches with a proposed rating each. Show the review as returned and ask the rider to confirm or change the ratings; then call again with decisions to store them. Stored road ratings steer future planning (0-1 avoided, 4-5 preferred).",
+    inputSchema: z.object({
+      ride: z.string().optional().describe("Saved ride id or name; default the ride of the latest pending note"),
+      gpxPath: z.string().optional().describe("Path of the recorded track on this machine"),
+      decisions: z
+        .array(
+          z.object({
+            noteId: z.number().int(),
+            rating: z.number().int().min(0).max(5).optional().describe("Omit to keep the proposed rating"),
+            dismiss: z.boolean().optional().describe("Drop the note without rating a road"),
+          }),
+        )
+        .optional()
+        .describe("The rider's confirmed ratings, after a first call without decisions"),
+    }),
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+  },
+  async (args) => {
+    if (args.decisions) return text(applyReview(store, args.decisions).join("\n"));
+    const ride = rideToReview(store, args.ride);
+    const review = await reviewRide(store, ride, { track: args.gpxPath ? readTrack(args.gpxPath) : undefined });
+    return text(formatReview(review));
+  },
+);
+
+server.registerTool(
   "listRides",
   {
     description: "The rider's saved rides, one line each (id, name, distance, time, date, rating).",
@@ -565,6 +629,35 @@ server.registerPrompt(
 );
 
 server.registerPrompt(
+  "note",
+  {
+    title: "Note about the road just ridden",
+    description: 'During the ride: "last 10 min awesome", "cobbles, never again". Reviewed after the ride.',
+    argsSchema: { text: z.string().describe("What you want to remember about the last minutes") },
+  },
+  ({ text: note }) =>
+    userMessage(
+      `Call addRideNote with text "${note}" (a rating 0-5 only if these words give one explicitly) and confirm in one line. Nothing else.`,
+    ),
+);
+
+server.registerPrompt(
+  "review",
+  {
+    title: "Review a ride you rode",
+    description: "Place your ride notes on the road ridden (recorded GPX track) or on the plan, then confirm ratings.",
+    argsSchema: {
+      gpxPath: z.string().optional().describe("Recorded track, GPX file on this machine"),
+      ride: z.string().optional().describe("Saved ride id or name; default the ride with pending notes"),
+    },
+  },
+  ({ gpxPath, ride }) =>
+    userMessage(
+      `Call reviewRide${ride ? ` for ride "${ride}"` : ""}${gpxPath ? ` with gpxPath "${gpxPath}"` : " without a track"} and show the result exactly as returned, in a code block. Then ask me to confirm the proposed ratings, change any, or dismiss notes. When I answer, call reviewRide again with the decisions and show what was stored.`,
+    ),
+);
+
+server.registerPrompt(
   "list-rides",
   { title: "List saved rides", description: "The rider's library, one line per ride.", argsSchema: {} },
   () => userMessage("Call listRides and show the result as is."),
@@ -591,10 +684,12 @@ agentMotoride commands (slash commands):
   /mcp__ride__today [id|name]            ride-day briefing: weather now, daylight, traffic, stops open or not, go/no-go
   /mcp__ride__refresh <id|name>          recompute a ride: figures, weather, cameras, stops, stop plan (no replanning)
   /mcp__ride__list-rides                 the library
+  /mcp__ride__note <text>                during the ride: a note about the last 10 minutes ("awesome", "never again")
+  /mcp__ride__review [gpxPath] [ride]    after the ride: notes placed on the recorded track, detours, pace, confirm ratings
   /mcp__ride__help                       this text
 
 Things to say in plain words: "allow motorways", "no repeats of saved rides", "aim for 10% in 50 zones" (settings), "where are the speed cameras", "find a fuel stop and a café", "when does the sun set".
-Outside Claude Code: npm run rides -- list | show | rate | export | qr | share | trace | runs.
+Outside Claude Code: npm run rides -- list | show | rate | note | review | export | qr | share | trace | runs.
 
 Current settings:
 ${settingsText()}`),

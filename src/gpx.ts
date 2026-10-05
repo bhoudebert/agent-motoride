@@ -114,6 +114,7 @@ export function buildGpx(input: GpxInput): string {
   <metadata>
     <name>${xml(input.name)}</name>
     <desc>${xml(input.description)}</desc>
+    <copyright author="OpenStreetMap contributors"><license>https://www.openstreetmap.org/copyright</license></copyright>
     <time>${new Date().toISOString()}</time>
   </metadata>
 ${waypoints.join("\n")}

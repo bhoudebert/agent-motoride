@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>agentRide · one sentence in, a ride you can follow out</title>
+<meta name="description" content="An agentic motorcycle ride planner: an AI agent with real road, weather and stop data plans a loop you can ride, within your limits.">
+<meta property="og:title" content="agentRide">
+<meta property="og:description" content="One sentence in, a ride you can follow out. An agentic motorcycle ride planner.">
+<meta property="og:image" content="how-it-works.png">
+<style>
+  :root { --bg:#0f172a; --panel:#1e293b; --card:#f8fafc; --ink:#0f172a; --muted:#94a3b8; --text:#e2e8f0; --accent:#f97316; --blue:#3b82f6; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:17px/1.6 "Noto Sans", Inter, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  a { color:#fb923c; }
+  .wrap { max-width:1080px; margin:0 auto; padding:0 24px; }
+  header { padding:72px 0 32px; }
+  h1 { font-size:56px; margin:0; letter-spacing:-1px; color:#f8fafc; }
+  .tag { font-size:24px; color:#cbd5e1; margin:8px 0 24px; }
+  .bar { width:140px; height:5px; border-radius:3px; background:linear-gradient(90deg,#f97316,#fb923c); }
+  .cta { margin-top:28px; display:flex; gap:12px; flex-wrap:wrap; }
+  .btn { display:inline-block; padding:12px 20px; border-radius:10px; text-decoration:none; font-weight:600; }
+  .btn.primary { background:var(--accent); color:#fff; }
+  .btn.ghost { border:1px solid #334155; color:var(--text); }
+  section { padding:48px 0; }
+  h2 { font-size:30px; color:#f8fafc; margin:0 0 8px; }
+  .lead { color:var(--muted); margin:0 0 28px; max-width:760px; }
+  .diagram img { width:100%; height:auto; border-radius:16px; border:1px solid #334155; }
+  .grid { display:grid; gap:20px; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); }
+  .card { background:var(--panel); border:1px solid #334155; border-radius:16px; padding:22px; }
+  .card h3 { margin:0 0 6px; color:#f8fafc; font-size:19px; }
+  .card p { margin:0; color:var(--muted); font-size:15px; }
+  .kicker { color:var(--accent); font-size:12px; font-weight:700; letter-spacing:2px; text-transform:uppercase; }
+  .ride { background:var(--card); color:var(--ink); border-radius:18px; padding:28px; }
+  .ride .ask { font-style:italic; font-size:19px; margin:4px 0 20px; color:#334155; }
+  .stats { display:flex; flex-wrap:wrap; gap:12px; margin:0 0 20px; }
+  .stat { background:#fff7ed; border:1px solid #fed7aa; border-radius:10px; padding:10px 14px; }
+  .stat b { display:block; font-size:22px; color:#0f172a; }
+  .stat span { font-size:13px; color:#64748b; }
+  table { width:100%; border-collapse:collapse; font-size:15px; }
+  th, td { text-align:left; padding:8px 6px; border-bottom:1px solid #e2e8f0; vertical-align:top; }
+  th { font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:1px; }
+  td.num { white-space:nowrap; }
+  .roads { color:#64748b; font-size:13px; }
+  .two { display:grid; gap:24px; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); margin-top:24px; }
+  .two h4 { margin:0 0 8px; font-size:15px; }
+  .two ul { margin:0; padding-left:18px; font-size:15px; }
+  .note { font-size:13px; color:#64748b; margin-top:16px; }
+  pre { background:#0b1220; border:1px solid #334155; border-radius:12px; padding:18px; overflow-x:auto; font-size:14px; color:#e2e8f0; }
+  footer { padding:40px 0 60px; color:#64748b; font-size:13px; border-top:1px solid #1e293b; margin-top:24px; }
+  @media (max-width:600px){ h1{font-size:40px} .tag{font-size:19px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>agentRide</h1>
+  <p class="tag">One sentence in, a ride you can follow out.</p>
+  <div class="bar"></div>
+  <p class="lead" style="margin-top:24px">An AI agent plans a one-day motorcycle loop from real data: roads and bends, speed limits, weather, daylight, traffic, cameras, fuel and coffee stops. The code enforces your rules. Every figure comes from a tool, nothing is invented.</p>
+  <div class="cta">
+    <a class="btn primary" href="https://github.com/bhoudebert/agent-motoride#readme">Get started</a>
+    <a class="btn ghost" href="https://github.com/bhoudebert/agent-motoride">Source on GitHub</a>
+  </div>
+</header>
+
+<section class="diagram">
+  <div class="kicker">How it works</div>
+  <h2>Ask, decide, check, ride</h2>
+  <p class="lead">The planner sends scouts to explore regions in parallel, compares their loops on the numbers, and finishes the best one with weather, daylight, cameras, stops and traffic.</p>
+  <img src="how-it-works.png" alt="The rider asks; the agent decides with a planner and scouts; tools provide roads, routing, weather, traffic, cameras and stops; the code enforces the rules; the library learns; the rider gets the itinerary and files.">
+</section>
+
+<section>
+  <div class="kicker">A real plan</div>
+  <h2>What comes back</h2>
+  <p class="lead">An actual itinerary produced by the planner, start point generalised.</p>
+  <div class="ride">
+    <div class="kicker">The request</div>
+    <p class="ask">“Sunday, leave at 9, no rain, under 220 km and 3 hours of riding, as many bends as this region allows, back before 14:00.”</p>
+    <div class="kicker">Avesnois loop · from near Lille · Sunday 11 October</div>
+    <div class="stats" style="margin-top:12px">
+      <div class="stat"><b>167.6 km</b><span>distance</span></div>
+      <div class="stat"><b>2h55</b><span>riding, estimated</span></div>
+      <div class="stat"><b>79.5%</b><span>open road</span></div>
+      <div class="stat"><b>67%</b><span>of time on 70+ roads</span></div>
+      <div class="stat"><b>0 km</b><span>motorway</span></div>
+      <div class="stat"><b>12:25</b><span>back, with breaks</span></div>
+    </div>
+    <table>
+      <tr><th>#</th><th>Leg</th><th>Distance</th><th>Time</th></tr>
+      <tr><td>1</td><td>Start → Sommaing<div class="roads">D 40, D 957, D 40 A, D 13</div></td><td class="num">41.6 km</td><td class="num">0h44</td></tr>
+      <tr><td>2</td><td>Sommaing → Vieux-Mesnil<div class="roads">D 942, D 114, D 154, D 107</div></td><td class="num">30.4 km</td><td class="num">0h31</td></tr>
+      <tr><td>3</td><td>Vieux-Mesnil → Beaufort<div class="roads">D 307, D 959</div></td><td class="num">12.2 km</td><td class="num">0h12</td></tr>
+      <tr><td>4</td><td>Beaufort → Sebourg<div class="roads">D 307, D 961, D 2649, D 107</div></td><td class="num">33.9 km</td><td class="num">0h33</td></tr>
+      <tr><td>5</td><td>Sebourg → Start<div class="roads">D 954, D 50 A, D 955, D 938</div></td><td class="num">49.4 km</td><td class="num">0h56</td></tr>
+    </table>
+    <div class="two">
+      <div>
+        <h4>Stop plan</h4>
+        <ul>
+          <li>10:06 · km 63 · pause at Le Saule, Chaussée Brunehaut</li>
+          <li>11:32 · km 133 · pause at Croque en Bouche, Condé-sur-l'Escaut</li>
+          <li>No fuel stop needed: inside the bike's range</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Day and weather</h4>
+        <ul>
+          <li>Sunrise 08:01, sunset 19:06</li>
+          <li>Dry start, 10 to 15 °C, gusts up to 30 km/h</li>
+          <li>Light rain risk late in the loop, about 26%</li>
+        </ul>
+      </div>
+    </div>
+    <p class="note">Plus two Google Maps links pinned to the chosen roads and split at the first pause, a GPX for Liberty Rider or Garmin, and a Markdown copy. Weather shown as forecast a week ahead.</p>
+  </div>
+</section>
+
+<section>
+  <div class="kicker">Use it your way</div>
+  <h2>Three ways to run it</h2>
+  <div class="grid">
+    <div class="card"><h3>API mode</h3><p>A terminal app with a menu and a refine prompt, on your Anthropic API key. Full control, schema-validated answers, cost per run.</p></div>
+    <div class="card"><h3>MCP mode</h3><p>Claude Code or Codex use the same tools on your existing subscription. Slash commands in Claude Code, plain words in Codex.</p></div>
+    <div class="card"><h3>From your phone</h3><p>Drive a Claude Code session on your computer or a VPS from the Claude app. Nothing to install on the phone.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="kicker">Under the hood</div>
+  <h2>Built like a product</h2>
+  <div class="grid">
+    <div class="card"><h3>Agent + tools</h3><p>A tool-use loop with parallel scouts over deterministic tools: OpenStreetMap, Valhalla routing, Open-Meteo, TomTom.</p></div>
+    <div class="card"><h3>Rules in code</h3><p>No motorways unless allowed, no duplicate rides, roads rated “never again” avoided, route ids validated.</p></div>
+    <div class="card"><h3>A library that learns</h3><p>Saved rides with versions and ratings, cached lookups, a ride-day briefing with a go or no-go.</p></div>
+    <div class="card"><h3>Observable</h3><p>Every session traced and costed, replayable step by step; models benchmarked on cost and ride quality.</p></div>
+    <div class="card"><h3>Engineered</h3><p>Specs per capability, unit tests with simulated services, CI, CodeQL, release automation. TypeScript and SQLite.</p></div>
+    <div class="card"><h3>Portable</h3><p>The tools are a Model Context Protocol server: any MCP client can plan rides with them, today Claude Code and Codex.</p></div>
+    <div class="card"><h3>Open source</h3><p>MIT licence, contributions welcome. Data attributions and disclaimers in the notice.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="kicker">Try it</div>
+  <h2>Quick start</h2>
+<pre>git clone https://github.com/bhoudebert/agent-motoride && cd agent-motoride
+npm install
+cp .env.example .env      # set RIDE_HOME; ANTHROPIC_API_KEY for API mode
+npm run check             # what is set up, what answers
+npm run ride              # API mode   ·   or start `claude` here for MCP mode</pre>
+  <p class="lead">Full documentation in the <a href="https://github.com/bhoudebert/agent-motoride#readme">README</a>.</p>
+</section>
+
+<footer>
+  MIT licence · Road data © OpenStreetMap contributors (ODbL) · Weather data by Open-Meteo.com (CC BY 4.0).<br>
+  A planning aid, not a navigation system: estimates from public data. Check conditions and obey the road.
+  Product names belong to their owners; this project is independent and not affiliated with any of them.
+</footer>
+
+</div>
+</body>
+</html>

@@ -159,6 +159,7 @@ function traceAttributes(shape: string, shapeMatch: "edge_walk" | "map_snap") {
           "edge.road_class",
           "edge.density",
           "edge.names",
+          "edge.surface",
           "edge.begin_shape_index",
           "edge.end_shape_index",
           "shape",

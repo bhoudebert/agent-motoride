@@ -97,6 +97,16 @@ export function installFakeServices(): FakeApi {
     }
     if (url.host === "valhalla1.openstreetmap.de" && url.pathname === "/trace_attributes") {
       // Two edges per leg: an 80 road in the country, a 50 street in a village.
+      // Like the real router, an "include" filter returns only the requested edge attributes.
+      const requested = body.filters?.action === "include" ? new Set<string>(body.filters.attributes) : undefined;
+      const keep = (edge: Record<string, unknown>) =>
+        requested
+          ? Object.fromEntries(
+              Object.entries(edge).filter(([key]) =>
+                key === "end_node" ? requested.has("node.admin_index") : requested.has(`edge.${key}`),
+              ),
+            )
+          : edge;
       return json({
         shape: body.encoded_polyline,
         admins: [{ country_code: "FR", state_code: "HDF" }],
@@ -123,7 +133,7 @@ export function installFakeServices(): FakeApi {
             end_shape_index: 39,
             end_node: { admin_index: 0 },
           },
-        ],
+        ].map(keep),
       });
     }
     if (url.host === "photon.komoot.io")

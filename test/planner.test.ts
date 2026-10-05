@@ -35,7 +35,7 @@ test("planner: routes, presents a scout's route, saves it; usage and trace are k
         JSON.stringify({
           area: "Flandre",
           found: true,
-          routeId: "r1",
+          routeId: "flandre-r1",
           waypoints: ["Lille", "Cassel", "Mont des Cats"],
           distanceKm: 135,
           ridingMinutes: 110,
@@ -50,7 +50,7 @@ test("planner: routes, presents a scout's route, saves it; usage and trace are k
       finalText(
         JSON.stringify({
           message: "Itinerary text",
-          ride: { routeId: "r1", rideDate: "2026-10-10", departure: "09:00", name: "Flandre loop" },
+          ride: { routeId: "flandre-r1", rideDate: "2026-10-10", departure: "09:00", name: "Flandre loop" },
         }),
       ),
     ];
@@ -58,7 +58,7 @@ test("planner: routes, presents a scout's route, saves it; usage and trace are k
     await session.send("ride saturday");
     const current = session.current();
     assert.ok(current, "an itinerary is on the table");
-    assert.equal(current!.route.id, "r1");
+    assert.equal(current!.route.id, "flandre-r1", "scout routes are numbered per area");
     assert.equal(current!.title, "Flandre loop");
     assert.equal(current!.route.trip.result.legs.length, 3);
     // Scout tokens count in the session's usage.

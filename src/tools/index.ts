@@ -3,7 +3,7 @@ import { z } from "zod";
 import { stopCandidatesFor } from "../library.ts";
 import { pinnedMapsLinks } from "../maps.ts";
 import { scoutAreas } from "../scouts.ts";
-import { type RideContext, ratedOverlap, registerRoute, savedRideOverlap } from "../session.ts";
+import { nextRouteId, type RideContext, ratedOverlap, registerRoute, savedRideOverlap } from "../session.ts";
 import { analyseConditions, windAlong } from "../conditions.ts";
 import { locateStops, planStops } from "../stops.ts";
 import { type StopKind, speedCamerasAlong, stopsAlong } from "./along.ts";
@@ -241,12 +241,13 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
           ),
       }),
       run: trace("calculateTrip", async (input: CalculateTripInput) => {
+        const id = nextRouteId(context, scope);
         const trip = await cachedTrip({
           waypoints: input.waypoints,
           roundTrip: input.roundTrip ?? false,
           avoidMotorways: !mayUseMotorways(input.avoidMotorways),
         });
-        const route = registerRoute(context, trip);
+        const route = registerRoute(context, trip, id);
         return {
           routeId: route.id,
           motorwaysPermitted: !context.preferences.avoidMotorways,

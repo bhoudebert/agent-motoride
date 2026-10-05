@@ -215,6 +215,14 @@ export function usePersistentGeoCache(cache: typeof persistentCache): void {
   persistentCache = cache;
 }
 
+/** Forget every place resolved so far and the start-point anchor: a fresh process, for evals and tests. */
+export function resetGeoState(): void {
+  cache.clear();
+  reverseCache.clear();
+  anchor = undefined;
+  persistentCache = undefined;
+}
+
 /**
  * A rider-readable name for a point given as coordinates: a pass or place name
  * when the point is one, otherwise the road and the nearest village,

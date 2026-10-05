@@ -29,7 +29,7 @@ export function installFakeServices(): FakeApi {
     const raw = init?.body ? String(init.body) : "";
     const body = raw.startsWith("{") ? JSON.parse(raw) : null;
 
-    if (url.host.endsWith("anthropic.com")) {
+    if (url.hostname === "api.anthropic.com") {
       api.requests.push(body);
       const reply = api.script.shift();
       if (!reply)

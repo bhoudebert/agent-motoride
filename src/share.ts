@@ -31,7 +31,12 @@ export interface Shared {
   itinerary: string;
 }
 
-const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+/** Escape text for HTML content and quoted attributes. */
+export const escapeHtml = (t: string) =>
+  t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+const esc = escapeHtml;
+/** Only web links become buttons: a "javascript:" URL in stored data must not. */
+const isWebLink = (url: string) => /^https?:\/\//i.test(url);
 
 /**
  * A tiny web server on the local network: one page with the map link, the
@@ -59,7 +64,13 @@ export function startShareServer(
     res.end(`<!doctype html><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(shared.name)}</title>
 <body style="font: 16px/1.5 system-ui, sans-serif; margin: 1.5rem; max-width: 40rem">
 <h1 style="font-size:1.4rem">${esc(shared.name)}</h1>
-<p>${(shared.mapsUrls ?? [shared.mapsUrl]).map((url, i, all) => `<a href="${esc(url)}" style="display:inline-block;margin:.2rem .4rem .2rem 0;padding:.8rem 1.2rem;background:#1a73e8;color:#fff;border-radius:.5rem;text-decoration:none">Google Maps${all.length > 1 ? ` part ${i + 1}` : ""}</a>`).join("")}
+<p>${(shared.mapsUrls ?? [shared.mapsUrl])
+      .filter(isWebLink)
+      .map(
+        (url, i, all) =>
+          `<a href="${esc(url)}" style="display:inline-block;margin:.2rem .4rem .2rem 0;padding:.8rem 1.2rem;background:#1a73e8;color:#fff;border-radius:.5rem;text-decoration:none">Google Maps${all.length > 1 ? ` part ${i + 1}` : ""}</a>`,
+      )
+      .join("")}
 &nbsp; <a href="/ride.gpx" style="display:inline-block;padding:.8rem 1.2rem;background:#444;color:#fff;border-radius:.5rem;text-decoration:none">Download GPX</a></p>
 <pre style="white-space:pre-wrap;background:#f4f4f4;padding:1rem;border-radius:.5rem">${esc(shared.itinerary)}</pre>
 </body>`);

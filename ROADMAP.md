@@ -55,7 +55,11 @@ with a navigation app (Liberty Rider, Google Maps) on the phone.
 - **Constraint checker loop**: code verifies the itinerary against the request
   and sends violations back; the agent retries by itself.
 - **Scouts per request** in MCP mode ("use scouts") without editing `.env`.
-- **Evaluation harness**: fixed request set, scored from the runs table.
+- **Evaluation harness**: done (cases, code graders, record and replay, injection
+  case; README "Evaluating the agent"). Next: an LLM judge with a rubric for
+  what code cannot grade, checked against the rider's own ratings; a runner
+  through Claude Code headless (`claude -p` with the MCP server) so live evals
+  run on the subscription; more cases (edits, follow-ups, Codex).
 
 ## Smaller items
 

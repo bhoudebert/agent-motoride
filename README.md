@@ -1088,7 +1088,8 @@ your real times differ consistently, adjust `bendFactor` in `src/tools/trip.ts`.
 | `npm run typecheck`                      | Type-check with `tsc --noEmit`                                                                                                     |
 | `npm run lint`, `npm run lint:fix`       | ESLint                                                                                                                             |
 | `npm run format`, `npm run format:check` | Prettier                                                                                                                           |
-| `npm run quality`                        | Typecheck, lint, format check and tests together: the CI gate                                                                      |
+| `npm run quality`                        | Typecheck, lint, format check and tests with coverage thresholds: the CI gate                                                      |
+| `npm run test:coverage`                  | Tests plus a coverage report; fails below 80% lines, 80% functions, 65% branches                                                   |
 
 ## How it works
 

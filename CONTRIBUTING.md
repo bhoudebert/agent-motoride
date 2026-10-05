@@ -20,7 +20,7 @@ npm run check           # environment and data services
 4. Code with tests. Deterministic parts get unit tests under `test/`; the
    planner loop is tested against the fake services in `test/helpers/`. Never
    let a test reach the real model API.
-5. `npm run quality` (typecheck, lint, format check, tests) must pass. The pre-commit hook
+5. `npm run quality` (typecheck, lint, format check, tests with coverage thresholds) must pass. The pre-commit hook
    formats and lints staged files; the commit-msg hook enforces Conventional
    Commits.
 6. Open a pull request with the template filled in: what was verified, what

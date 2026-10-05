@@ -7,6 +7,8 @@ export interface FakeApi {
   script: unknown[];
   /** Request bodies received by the Claude API. */
   requests: any[];
+  /** Elements returned by every Overpass query (cameras, stops, roads). */
+  overpass: unknown[];
 }
 
 const PLACES: Record<string, { lat: number; lon: number; name: string }> = {
@@ -20,10 +22,12 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 
 export function installFakeServices(): FakeApi {
-  const api: FakeApi = { script: [], requests: [] };
+  const api: FakeApi = { script: [], requests: [], overpass: [] };
   globalThis.fetch = (async (input: any, init: any) => {
     const url = new URL(String(input instanceof Request ? input.url : input));
-    const body = init?.body ? JSON.parse(String(init.body)) : null;
+    // Overpass bodies are form-encoded; every other service sends JSON.
+    const raw = init?.body ? String(init.body) : "";
+    const body = raw.startsWith("{") ? JSON.parse(raw) : null;
 
     if (url.host.endsWith("anthropic.com")) {
       api.requests.push(body);
@@ -128,7 +132,7 @@ export function installFakeServices(): FakeApi {
           },
         ],
       });
-    if (url.host.includes("overpass")) return json({ elements: [] });
+    if (url.host.includes("overpass")) return json({ elements: api.overpass });
     if (url.host === "nominatim.openstreetmap.org") return json([]);
     throw new Error(`fake services: unexpected call to ${url.host}${url.pathname}`);
   }) as typeof fetch;

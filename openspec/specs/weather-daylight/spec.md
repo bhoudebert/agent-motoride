@@ -27,3 +27,17 @@ On save and refresh, when the ride date is within forecast range, the forecast S
 ### Requirement: Traffic
 
 `getTraffic` SHALL return travel time, free-flow time and delay for a departure time when `TOMTOM_API_KEY` is set, and SHALL otherwise report that no source is configured so the planner says "not checked" rather than guessing. Traffic SHALL be a final check on the chosen loop, not a selection criterion.
+
+### Requirement: Crosswind and low sun along the route
+
+For a routed trip, a date and a departure time, the system SHALL sample the route every few kilometres with its heading and estimated time of passage and report:
+
+- crosswind: the gust component across the direction of travel, from the forecast wind speed, gusts and direction at the nearest forecast point and hour; stretches at 35 km/h or more are flagged, at 50 km/h or more as strong;
+- low sun: stretches where the sun is between 0 and 15 degrees above the horizon and within 30 degrees of the direction of travel at the time of passage.
+
+Results SHALL appear in the ride-day briefing and on saved rides when the date is within forecast range; glare SHALL be computed for any date.
+
+#### Scenario: Low sun ahead on the way home
+
+- **WHEN** the last leg heads west at 18:40 in October
+- **THEN** the stretch is reported with its time and the sun's elevation

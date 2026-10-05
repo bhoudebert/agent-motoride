@@ -22,8 +22,10 @@ npm run check           # environment and data services
    formats and lints staged files; the commit-msg hook enforces Conventional
    Commits.
 5. Open a pull request with the template filled in: what was verified, what
-   was not. CI runs typecheck, lint, tests and commitlint. The maintainer
-   reviews and merges.
+   was not. The **PR title follows the commit convention too**: squash merges
+   turn it into the commit on `main`, which release automation reads. CI runs
+   typecheck, lint, format check, tests, commitlint and the title check. The
+   maintainer reviews and merges.
 
 ## Commits
 

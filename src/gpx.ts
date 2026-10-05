@@ -110,7 +110,7 @@ export function buildGpx(input: GpxInput): string {
   });
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1" creator="agentRide" xmlns="http://www.topografix.com/GPX/1/1">
+<gpx version="1.1" creator="agentMotoride" xmlns="http://www.topografix.com/GPX/1/1">
   <metadata>
     <name>${xml(input.name)}</name>
     <desc>${xml(input.description)}</desc>
@@ -174,7 +174,7 @@ export async function savedRideGpx(store: Store, ride: SavedRide): Promise<{ gpx
     rerouted,
     gpx: {
       name: ride.name,
-      description: `${ride.distanceKm} km, about ${hours} riding. Planned with agentRide from ${ride.home}.`,
+      description: `${ride.distanceKm} km, about ${hours} riding. Planned with agentMotoride from ${ride.home}.`,
       legs,
       shapes,
       stops,

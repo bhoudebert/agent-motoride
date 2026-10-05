@@ -1,4 +1,4 @@
-// Registers agentRide as an MCP server in the user's Codex config, with
+// Registers agentMotoride as an MCP server in the user's Codex config, with
 // absolute paths, and prints the approval line Codex still needs.
 // Codex has no project-local MCP config, so this is done once per machine.
 import { spawnSync } from "node:child_process";

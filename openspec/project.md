@@ -2,7 +2,7 @@
 
 ## Purpose
 
-agentRide plans one-day motorcycle rides from a one-sentence request. A model
+agentMotoride plans one-day motorcycle rides from a one-sentence request. A model
 (Claude, or the model of an MCP client such as Claude Code) decides where to
 look and what to propose; deterministic tools provide roads, routing, speed
 limits, riding time, weather, daylight, cameras, stops, a library of saved rides

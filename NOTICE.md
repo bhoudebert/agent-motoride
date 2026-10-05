@@ -2,7 +2,7 @@
 
 ## Licence
 
-agentRide is open source under the MIT licence (see `LICENSE`). It is provided
+agentMotoride is open source under the MIT licence (see `LICENSE`). It is provided
 "as is", without warranty of any kind.
 
 ## Data and services
@@ -34,7 +34,7 @@ affiliated with, endorsed by, or sponsored by any of them.
 
 ## Safety
 
-agentRide is a planning aid, not a navigation system and not a source of
+agentMotoride is a planning aid, not a navigation system and not a source of
 truth about the road. Riding times are estimates; speed limits, cameras, stops,
 opening hours and forecasts come from public data that can be wrong, outdated
 or incomplete, and conditions change. Always obey the road signs and the law,

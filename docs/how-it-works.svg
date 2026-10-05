@@ -22,7 +22,7 @@
   <rect width="1600" height="900" fill="url(#bg)"/>
 
   <!-- Title -->
-  <text x="80" y="84" font-size="44" font-weight="700" fill="#1c1d1a">agentRide</text>
+  <text x="80" y="84" font-size="44" font-weight="700" fill="#1c1d1a">agentMotoride</text>
   <text x="80" y="122" font-size="22" fill="#4a4b44">One sentence in, a ride you can follow out.</text>
   <rect x="80" y="136" width="140" height="5" rx="2.5" fill="url(#accent)"/>
 

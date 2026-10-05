@@ -194,7 +194,7 @@ export function formatRideMarkdown(ride: SavedRide): string {
   );
   push(
     `---`,
-    `Exported by agentRide on ${new Date().toISOString().slice(0, 10)}. Waypoints: ${ride.waypoints.join(" → ")}${ride.roundTrip ? " → back to start" : ""}.`,
+    `Exported by agentMotoride on ${new Date().toISOString().slice(0, 10)}. Waypoints: ${ride.waypoints.join(" → ")}${ride.roundTrip ? " → back to start" : ""}.`,
     ``,
     `Road data © OpenStreetMap contributors (ODbL). Weather data by Open-Meteo.com (CC BY 4.0). Estimates, not measurements: check conditions and obey the road.`,
   );

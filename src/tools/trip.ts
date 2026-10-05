@@ -27,6 +27,7 @@ interface TraceEdge {
   road_class?: string;
   density?: number;
   names?: string[];
+  surface?: string;
   begin_shape_index?: number;
   end_shape_index?: number;
   end_node?: { admin_index?: number };
@@ -191,6 +192,13 @@ async function profileLegs(legShapes: string[]) {
   const zones30 = new Map<string, number>();
   const zones50 = new Map<string, number>();
   const assumedLimits = new Map<number, number>();
+  // Rough paved (cobbles, setts) and unpaved stretches, by road and leg.
+  const ROUGH = new Set(["paved_rough"]);
+  const UNPAVED = new Set(["compacted", "gravel", "dirt", "path", "impassable"]);
+  let kmRough = 0;
+  let kmUnpaved = 0;
+  const badSurface = new Map<string, { road: string; leg: number; surface: string; km: number }>();
+  let legIndex = 0;
   const legRoads: string[][] = [];
   const legSeconds: number[] = [];
   // The rider's own yardstick: riding time at an estimated 70 km/h or more.
@@ -200,6 +208,7 @@ async function profileLegs(legShapes: string[]) {
   let kmLimit70Plus = 0;
 
   for (const legShape of legShapes) {
+    legIndex++;
     // Exact edge matching is fastest but occasionally fails on a valid route
     // shape; map-snapping the same shape is the tolerant fallback.
     let data: TraceAttributesResponse;
@@ -221,6 +230,15 @@ async function profileLegs(legShapes: string[]) {
       const label = edge.names?.find((n) => /^[A-Z]{1,2} ?\d/.test(n)) ?? edge.names?.[0];
       if (label) roadKm.set(label, (roadKm.get(label) ?? 0) + km);
       if (roadClass === "motorway") kmMotorway += km;
+      if (edge.surface && (ROUGH.has(edge.surface) || UNPAVED.has(edge.surface))) {
+        if (ROUGH.has(edge.surface)) kmRough += km;
+        else kmUnpaved += km;
+        const road = edge.names?.join(" / ") ?? "unnamed road";
+        const key = `${legIndex}|${road}|${edge.surface}`;
+        const entry = badSurface.get(key) ?? { road, leg: legIndex, surface: edge.surface, km: 0 };
+        entry.km += km;
+        badSurface.set(key, entry);
+      }
 
       const posted = edge.speed_limit && edge.speed_limit > 0 ? edge.speed_limit : undefined;
       const builtUp = (edge.density ?? 0) >= BUILT_UP_DENSITY;
@@ -294,6 +312,18 @@ async function profileLegs(legShapes: string[]) {
       motorwayKm: round1(kmMotorway),
       longest30Zones: longest(zones30),
       longest50Zones: longest(zones50),
+      surface: {
+        roughPavedKm: round1(kmRough),
+        unpavedKm: round1(kmUnpaved),
+        stretches: [...badSurface.values()]
+          .sort((a, b) => b.km - a.km)
+          .slice(0, 6)
+          .map((s) => ({
+            ...s,
+            km: Number(s.km.toFixed(2)),
+            surface: s.surface === "paved_rough" ? "cobbles or setts" : s.surface,
+          })),
+      },
     },
   };
 }

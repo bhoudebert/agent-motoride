@@ -1,4 +1,4 @@
-import { formatWeather, replanStops, rideWeatherFor } from "./library.ts";
+import { formatSurface, formatWeather, replanStops, rideConditions, rideWeatherFor } from "./library.ts";
 import { formatStopPlan } from "./stops.ts";
 import type { SavedRide, Store } from "./store.ts";
 import { getTraffic } from "./tools/traffic.ts";
@@ -99,6 +99,31 @@ export async function rideBriefing(store: Store, ride: SavedRide, today: string)
     } catch (error) {
       cautions.push(`Weather could not be fetched (${error instanceof Error ? error.message.slice(0, 80) : error}).`);
     }
+  }
+
+  // Crosswind and low sun along the route.
+  if (ride.shapes) {
+    try {
+      const c = await rideConditions({ ...ride, rideDate: date, departure });
+      if (c) {
+        lines.push("", ...c.summary.map((l) => `Conditions: ${l}`));
+        for (const s of c.crosswind)
+          (s.value >= 50 ? problems : cautions).push(
+            `${s.value >= 50 ? "Strong crosswind" : "Crosswind"} on leg ${s.leg} around ${s.at}: ${s.detail}.`,
+          );
+        for (const g of c.glare)
+          cautions.push(`Low sun ahead on leg ${g.leg} around ${g.at}, km ${g.fromKm}-${g.toKm}.`);
+      }
+    } catch (error) {
+      cautions.push(
+        `Wind and sun could not be checked (${error instanceof Error ? error.message.slice(0, 80) : error}).`,
+      );
+    }
+  }
+  const surface = formatSurface(ride);
+  if (surface) {
+    lines.push("", surface);
+    if (!surface.endsWith("all the way")) cautions.push(surface);
   }
 
   // Traffic at departure.

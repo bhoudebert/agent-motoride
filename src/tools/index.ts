@@ -4,13 +4,14 @@ import { stopCandidatesFor } from "../library.ts";
 import { pinnedMapsLinks } from "../maps.ts";
 import { scoutAreas } from "../scouts.ts";
 import { type RideContext, ratedOverlap, registerRoute, savedRideOverlap } from "../session.ts";
+import { analyseConditions, windAlong } from "../conditions.ts";
 import { locateStops, planStops } from "../stops.ts";
 import { type StopKind, speedCamerasAlong, stopsAlong } from "./along.ts";
 import { fmtCoords, haversineKm, resolvePoint } from "./geo.ts";
 import { searchRoads } from "./roads.ts";
 import { getTraffic } from "./traffic.ts";
 import { type CalculateTripInput, computeTrip, type TripComputation } from "./trip.ts";
-import { getDaylight, getWeather } from "./weather.ts";
+import { getDaylight, getWeather, utcOffsetSecondsOn } from "./weather.ts";
 
 // Bump when the shape of cached tool results changes, so stale entries are ignored.
 const CACHE_VERSION = 5;
@@ -224,7 +225,7 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
     },
     {
       name: "calculateTrip",
-      description: `Route through waypoints in order with a motorcycle profile. Returns a routeId identifying this exact routed trip, real road distance, and per leg and in total: estimated riding time and average speed (from each road segment's speed limit and bends, without stops or traffic; the router's own pessimistic time is given as routerUpperBoundTime), main roads, and a Google Maps link. speedLimits gives openRoadPct (share of distance outside built-up areas and off motorways, the figure to maximise), km and percent in zones of 30 km/h or less and of 31-50 km/h (untagged streets in built-up areas are counted as 50 zones), above 50, and untagged open road (assumed at the legal default of its country and region), plus the longest 30 and 50 stretches by road name so you can move waypoints to bypass them. savedRides compares the route with the rider's saved rides: a verdict plus the percent of this route that runs on roads of each similar saved ride. ratedRoads tells how much of it runs on roads the rider rated 0-1 (avoid) or 4-5 (loved). Motorways: the result says whether the rider currently permits them (motorwaysPermitted) and whether this trip was routed with them excluded (motorwaysAvoided). When they are not permitted they are excluded whatever you pass; if usesMotorway is still true, no motorway-free route exists between those waypoints and they must be changed. When they are permitted, pass avoidMotorways false to let the router take them where faster. Use it to check every candidate loop; straight-line guesses are not reliable on winding roads.`,
+      description: `Route through waypoints in order with a motorcycle profile. Returns a routeId identifying this exact routed trip, real road distance, and per leg and in total: estimated riding time and average speed (from each road segment's speed limit and bends, without stops or traffic; the router's own pessimistic time is given as routerUpperBoundTime), main roads, and a Google Maps link. speedLimits gives openRoadPct (share of distance outside built-up areas and off motorways, the figure to maximise), km and percent in zones of 30 km/h or less and of 31-50 km/h (untagged streets in built-up areas are counted as 50 zones), above 50, and untagged open road (assumed at the legal default of its country and region), plus the longest 30 and 50 stretches by road name so you can move waypoints to bypass them. savedRides compares the route with the rider's saved rides: a verdict plus the percent of this route that runs on roads of each similar saved ride. ratedRoads tells how much of it runs on roads the rider rated 0-1 (avoid) or 4-5 (loved). speedLimits.surface gives the km on cobbles or setts and on unpaved surfaces, with the stretches by road. Motorways: the result says whether the rider currently permits them (motorwaysPermitted) and whether this trip was routed with them excluded (motorwaysAvoided). When they are not permitted they are excluded whatever you pass; if usesMotorway is still true, no motorway-free route exists between those waypoints and they must be changed. When they are permitted, pass avoidMotorways false to let the router take them where faster. Use it to check every candidate loop; straight-line guesses are not reliable on winding roads.`,
       inputSchema: z.object({
         waypoints,
         roundTrip: z.boolean().optional().describe("Return to the first waypoint at the end, default false"),
@@ -387,6 +388,42 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
           };
         },
       ),
+    },
+    {
+      name: "checkConditions",
+      description:
+        "Crosswind and low-sun glare along a routed trip for a date and departure: stretches where gusts blow 35 km/h or more across the direction of travel (50 or more: strong), and stretches where the sun is low (0-15 degrees) within 30 degrees ahead at the time of passage. Wind needs the date within 16 days; glare works for any date. Call it on the final loop and name any stretch in the itinerary; a long glare stretch on the way home can be a reason to leave earlier.",
+      inputSchema: z.object({
+        routeId: z.string().describe("routeId from calculateTrip"),
+        date: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .describe("Ride date, YYYY-MM-DD"),
+        departure: z
+          .string()
+          .regex(/^\d{1,2}:\d{2}$/)
+          .describe("Departure time, HH:MM"),
+      }),
+      run: trace("checkConditions", async (input: { routeId: string; date: string; departure: string }) => {
+        const route = context.routes.get(input.routeId);
+        if (!route) throw new Error(`Unknown routeId ${input.routeId}; route the loop with calculateTrip first.`);
+        const { trip } = route;
+        let wind: Awaited<ReturnType<typeof windAlong>> | undefined;
+        try {
+          wind = await windAlong(trip.shapes, input.date, getWeather);
+        } catch {
+          // Beyond the forecast range: glare only.
+        }
+        const timezone = wind?.timezone ?? "Europe/Paris";
+        return analyseConditions({
+          shapes: trip.shapes,
+          legMinutes: trip.result.legs.map((l) => l.ridingMinutes),
+          date: input.date,
+          departure: input.departure,
+          utcOffsetSeconds: utcOffsetSecondsOn(timezone, input.date),
+          wind: wind?.points,
+        });
+      }),
     },
     {
       name: "scoutAreas",

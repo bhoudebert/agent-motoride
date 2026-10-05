@@ -115,6 +115,7 @@ interface ForecastResponse {
     precipitation: number[];
     wind_speed_10m: number[];
     wind_gusts_10m: number[];
+    wind_direction_10m: number[];
     weather_code: number[];
   };
 }
@@ -144,7 +145,7 @@ export async function getWeather(input: WeatherInput) {
   url.searchParams.set("longitude", String(point.lon));
   url.searchParams.set(
     "hourly",
-    "temperature_2m,precipitation_probability,precipitation,wind_speed_10m,wind_gusts_10m,weather_code",
+    "temperature_2m,precipitation_probability,precipitation,wind_speed_10m,wind_gusts_10m,wind_direction_10m,weather_code",
   );
   url.searchParams.set("start_date", input.date);
   url.searchParams.set("end_date", input.date);
@@ -160,6 +161,8 @@ export async function getWeather(input: WeatherInput) {
       rainMm: h.precipitation[i]!,
       windKmh: h.wind_speed_10m[i]!,
       gustKmh: h.wind_gusts_10m[i]!,
+      // Direction the wind blows from, degrees clockwise from north.
+      windFromDeg: h.wind_direction_10m?.[i] ?? null,
       sky: describeCode(h.weather_code[i]!),
     }))
     .filter((row) => row.hour >= fromHour && row.hour <= toHour);

@@ -1,5 +1,12 @@
 # agentRide
 
+[![CI](https://github.com/bhoudebert/agent-motoride/actions/workflows/ci.yml/badge.svg)](https://github.com/bhoudebert/agent-motoride/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/bhoudebert/agent-motoride/actions/workflows/codeql.yml/badge.svg)](https://github.com/bhoudebert/agent-motoride/actions/workflows/codeql.yml)
+[![Release](https://img.shields.io/github/v/release/bhoudebert/agent-motoride?display_name=tag&sort=semver)](https://github.com/bhoudebert/agent-motoride/releases)
+[![Node 24](https://img.shields.io/badge/node-%E2%89%A524-339933?logo=node.js&logoColor=white)](.nvmrc)
+[![Licence MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
+[![Conventional Commits](https://img.shields.io/badge/commits-conventional-fe5196?logo=conventionalcommits&logoColor=white)](CONTRIBUTING.md)
+
 A motorcycle ride planner driven by an AI agent. You say what you want in one
 sentence:
 

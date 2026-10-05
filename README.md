@@ -22,6 +22,8 @@ sub-agents ("scouts"), schema-validated answers, a replayable trace of every
 step, cost accounting and a benchmark of models, and the same tools exposed
 over the Model Context Protocol.
 
+![How agentRide works: the rider asks, the agent decides with scouts, the tools know, the code enforces, the library learns, the rider gets the itinerary and files](docs/how-it-works.png)
+
 ## Two ways to run it
 
 The planning model can come from two places. The tools, the library, the

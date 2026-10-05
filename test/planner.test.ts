@@ -188,3 +188,23 @@ test("routed trips report cobbles and unpaved stretches by road", async () => {
     store.close();
   }
 });
+
+test("planner: a tool called again and again with the same input answers from the first result", async () => {
+  const restore = quiet();
+  const store = new Store(":memory:");
+  try {
+    const daylight = toolUse("getDaylight", { location: "Lille", date: "2026-10-10" });
+    api.script = [daylight, daylight, daylight, finalText(JSON.stringify({ message: "Sunset 19:09", ride: null }))];
+    const session = await openRide({ home: "Lille", store });
+    await session.send("when is sunset?");
+    const results = api.requests.slice(1).map((r) => JSON.parse(r.messages.at(-1).content[0].content));
+    assert.equal(results[0].sunset, results[1].sunset, "second identical call still looked up");
+    assert.equal(results[1].repeatedCall, undefined);
+    assert.equal(results[2].repeatedCall, 3);
+    assert.match(results[2].note, /do not call getDaylight with this input again/);
+    assert.equal(results[2].result.sunset, results[0].sunset);
+  } finally {
+    restore();
+    store.close();
+  }
+});

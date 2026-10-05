@@ -46,6 +46,8 @@ export interface RideContext {
   trace: (event: TraceEvent) => void;
   /** Stop plans made this session, by route id, so links and GPX can carry the stops. */
   stopPlans: Map<string, StopPlan>;
+  /** Tool calls made so far, by scope, tool and input, to stop a model repeating one. */
+  calls?: Map<string, { count: number; result: string }>;
   /** Last route number used, per id prefix; see nextRouteId. */
   routeSeq?: Map<string, number>;
   /** Roads the rider rated, computed once per session from the library. */

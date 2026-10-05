@@ -4,6 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import type { RidePreferences } from "./preferences.ts";
 import { type BikeProfile, DEFAULT_PROFILE } from "./profile.ts";
+import type { RideConditions } from "./conditions.ts";
 import type { StopPlan } from "./stops.ts";
 import type { RunUsage } from "./usage.ts";
 
@@ -85,6 +86,8 @@ export interface RideExtras {
   weather?: RideWeather | null;
   /** Fuel, pause and lunch stops chosen from the bike profile. */
   stopPlan?: StopPlan | null;
+  /** Crosswind and low-sun stretches for the ride date. */
+  conditions?: RideConditions | null;
 }
 
 export interface RideWeather {

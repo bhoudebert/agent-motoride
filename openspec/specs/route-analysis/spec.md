@@ -45,3 +45,12 @@ Each leg SHALL carry from and to labels (place names, never bare coordinates), c
 ### Requirement: Duplicate verdict
 
 Every routed trip SHALL be compared with saved rides and carry a verdict: new, similar (40% or more shared cells), duplicate (70% or more, rejected unless repeats are allowed), or variant of the ride the session evolves.
+
+### Requirement: Road surface
+
+Every routed trip SHALL report the distance on rough paved surfaces (cobblestones, setts) and on unpaved surfaces (compacted, gravel, dirt, path), with the longest such stretches by road name and leg, from the router's per-segment surface data. The planner SHALL avoid such stretches when an alternative exists and SHALL name them in the itinerary otherwise.
+
+#### Scenario: Cobbled stretch
+
+- **WHEN** a loop crosses 1.2 km of setts on a village road
+- **THEN** the result lists 1.2 km rough paved with the road name and leg

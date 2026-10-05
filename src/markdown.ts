@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describeParts, gpxStopsAt, rideNavigation } from "./library.ts";
+import { describeParts, formatSurface, gpxStopsAt, rideNavigation } from "./library.ts";
 import type { SavedRide } from "./store.ts";
 import { formatUsage } from "./usage.ts";
 
@@ -89,6 +89,11 @@ export function formatRideMarkdown(ride: SavedRide): string {
     push(`- 31-50 zones: ${s.limit31to50.pct}%`, `- Zones of 30 or less: ${s.limit30OrLess?.pct ?? "?"}%`, "");
   }
 
+  const surface = formatSurface(ride);
+  if (surface) push(`- ${surface}`, "");
+  if (ride.extras?.conditions) {
+    push("## Wind and sun", "", ...ride.extras.conditions.summary.map((l) => `- ${l}`), "");
+  }
   push("## Legs", "", "| # | From | To | km | Time | Avg | Main roads | Rating |", "|---|---|---|---|---|---|---|---|");
   for (const leg of ride.legs) {
     const rating = leg.rating === null ? "" : `${leg.rating}/5${leg.notes ? ` (${leg.notes})` : ""}`;

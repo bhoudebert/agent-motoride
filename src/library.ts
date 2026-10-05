@@ -3,12 +3,13 @@ import { centroid, decodePolyline } from "./geometry.ts";
 import { describeStopsAt, routePointIndex } from "./gpx.ts";
 import { type MapsLink, pinnedMapsParts } from "./maps.ts";
 import { duplicateOf, type RideContext } from "./session.ts";
+import { analyseConditions, windAlong, type RideConditions } from "./conditions.ts";
 import { formatStopPlan, locateStops, planStops, type StopCandidate } from "./stops.ts";
 import type { NewRide, RideExtras, RideWeather, SavedRide, Store } from "./store.ts";
 import { type StopKind, speedCamerasAlong, stopsAlong } from "./tools/along.ts";
 import { haversineKm, setGeoAnchor } from "./tools/geo.ts";
 import type { TripComputation } from "./tools/trip.ts";
-import { getDaylight, getWeather } from "./tools/weather.ts";
+import { getDaylight, getWeather, utcOffsetSecondsOn } from "./tools/weather.ts";
 import { formatUsage, type RunUsage } from "./usage.ts";
 
 const fmtMinutes = (minutes: number) => `${Math.floor(minutes / 60)}h${String(minutes % 60).padStart(2, "0")}`;
@@ -147,6 +148,7 @@ export function formatRideDetail(ride: SavedRide): string {
     `Request: ${ride.request}`,
     ...navigationLines(ride),
     formatRoadMix(ride),
+    formatSurface(ride),
     ride.usage ? `Planned with: ${formatUsage(ride.usage)}` : null,
     ...formatExtras(ride),
     "",
@@ -284,6 +286,7 @@ export async function enrichRide(store: Store, ride: SavedRide): Promise<RideExt
     ? await settle("daylight", () => getDaylight({ location: ride.home, date: ride.rideDate! }))
     : null;
   const weather = ride.rideDate ? await settle("weather", () => rideWeather(ride, shapes)) : null;
+  const conditions = ride.rideDate ? await settle("conditions", () => rideConditions(ride)) : null;
   const cameras = await settle("cameras", () => speedCamerasAlong(shapes, legs));
   const candidates = await settle("stops", () => stopCandidatesFor(store, shapes, legs));
   const stopPlan = candidates
@@ -339,6 +342,7 @@ export async function enrichRide(store: Store, ride: SavedRide): Promise<RideExt
     // A date beyond the forecast range keeps the last forecast gathered, if any.
     weather: weather ?? (errors.weather ? (previous?.weather ?? null) : null),
     stopPlan: stopPlan ?? previous?.stopPlan ?? null,
+    conditions: conditions ?? previous?.conditions ?? null,
   };
   store.setExtras(ride.id, extras);
   return extras;
@@ -355,6 +359,7 @@ export function formatExtras(ride: SavedRide): string[] {
     );
   }
   lines.push(...formatWeather(x.weather, ride.rideDate));
+  if (x.conditions) lines.push(...x.conditions.summary.map((l) => `Conditions: ${l}`));
   if (x.stopPlan) {
     lines.push(...formatStopPlan(x.stopPlan, ride.departure ?? "09:00", ride.ridingMinutes));
     const at = gpxStopsAt(ride);
@@ -525,4 +530,39 @@ export function gpxStopsAt(ride: SavedRide) {
     return { lat, lon, label: `${s.kind}: ${s.name} (${s.eta})`, km: s.kmAlongRoute };
   });
   return routePointIndex({ name: ride.name, description: "", legs: ride.legs, shapes: ride.shapes, stops });
+}
+
+/** Crosswind (when the date is in forecast range) and low sun for a saved ride. */
+export async function rideConditions(ride: SavedRide): Promise<RideConditions | null> {
+  if (!ride.shapes || !ride.rideDate) return null;
+  const daysAhead = (Date.parse(ride.rideDate) - Date.now()) / 86_400_000;
+  const wind = daysAhead <= 15 && daysAhead >= -1 ? await windAlong(ride.shapes, ride.rideDate, getWeather) : undefined;
+  return analyseConditions({
+    shapes: ride.shapes,
+    legMinutes: ride.legs.map((l) => l.ridingMinutes),
+    date: ride.rideDate,
+    departure: ride.departure ?? "09:00",
+    utcOffsetSeconds: utcOffsetSecondsOn(wind?.timezone ?? "Europe/Paris", ride.rideDate),
+    wind: wind?.points,
+  });
+}
+
+/** Surface line for the ride view, from the stored speed profile. */
+export function formatSurface(ride: SavedRide): string | null {
+  const surface = (
+    ride.speedLimits as {
+      surface?: {
+        roughPavedKm: number;
+        unpavedKm: number;
+        stretches: Array<{ road: string; leg: number; surface: string; km: number }>;
+      };
+    } | null
+  )?.surface;
+  if (!surface) return null;
+  if (!surface.roughPavedKm && !surface.unpavedKm) return "Surface: paved all the way";
+  const worst = surface.stretches
+    .slice(0, 3)
+    .map((s) => `${s.road} (leg ${s.leg}, ${s.km} km ${s.surface})`)
+    .join("; ");
+  return `Surface: ${surface.roughPavedKm} km cobbles or setts, ${surface.unpavedKm} km unpaved: ${worst}`;
 }

@@ -167,3 +167,24 @@ test("saving a duplicate of a saved ride is refused unless forced; rated roads a
     store.close();
   }
 });
+
+test("routed trips report cobbles and unpaved stretches by road", async () => {
+  const restore = quiet();
+  const store = new Store(":memory:");
+  try {
+    api.script = [
+      toolUse("calculateTrip", { waypoints: ["Lille", "Cassel"], roundTrip: true }),
+      finalText(JSON.stringify({ message: "x", ride: null })),
+    ];
+    const session = await openRide({ home: "Lille", store });
+    await session.send("go");
+    const result = JSON.parse(api.requests.at(-1).messages.at(-1).content[0].content);
+    assert.ok(result.speedLimits.surface.roughPavedKm > 0);
+    assert.equal(result.speedLimits.surface.unpavedKm, 0);
+    assert.equal(result.speedLimits.surface.stretches[0].surface, "cobbles or setts");
+    assert.equal(result.speedLimits.surface.stretches[0].road, "Rue de la Gare");
+  } finally {
+    restore();
+    store.close();
+  }
+});

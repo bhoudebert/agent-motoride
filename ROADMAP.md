@@ -25,12 +25,6 @@ with a navigation app (Liberty Rider, Google Maps) on the phone.
 
 ## Rider safety and comfort, from data already at hand
 
-- **Crosswind exposure per leg**: wind direction and gusts from the forecast
-  against each leg's heading; warn on exposed open stretches.
-- **Low sun glare**: sun azimuth at the time of each leg against its heading;
-  warn where the rider heads into a low sun.
-- **Surface check along the route**: cobblestones (Belgian pavé), sett, gravel
-  on the routed line, from OpenStreetMap surface tags. Warn or reroute.
 - **Rain in the next two hours** (nowcast) in the ride-day briefing.
 - **Temperature at altitude** on passes, from elevation.
 

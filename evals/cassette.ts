@@ -28,8 +28,42 @@ export interface Cassette {
 }
 
 const sha = (text: string) => createHash("sha256").update(text).digest("hex").slice(0, 16);
-/** The Claude API, wherever ANTHROPIC_BASE_URL points it. */
-const isModel = (url: URL) => url.host.endsWith("anthropic.com") || url.pathname.endsWith("/v1/messages");
+/** The Claude API, wherever ANTHROPIC_BASE_URL points it. Exact domain match: "evilanthropic.com" is not it. */
+const isModel = (url: URL) =>
+  url.hostname === "anthropic.com" || url.hostname.endsWith(".anthropic.com") || url.pathname.endsWith("/v1/messages");
+
+/** Query parameters that carry credentials (TomTom puts its key in the URL). */
+const SECRET_PARAM = /^(key|api[-_]?key|access[-_]?token|token|secret|signature|sig)$/i;
+
+/**
+ * The URL with credential parameters replaced, as stored in a cassette and used
+ * in request keys: cassettes are committed to a public repository.
+ */
+export function redactUrl(url: URL): string {
+  const copy = new URL(url);
+  for (const name of [...copy.searchParams.keys()])
+    if (SECRET_PARAM.test(name)) copy.searchParams.set(name, "REDACTED");
+  return copy.toString();
+}
+
+/**
+ * Refuse a cassette that contains the value of any credential in the
+ * environment, wherever it hides (URL, body, headers echoed by a service).
+ * Called before a cassette is written to disk.
+ */
+export function assertNoSecrets(cassette: Cassette, env: NodeJS.ProcessEnv = process.env): void {
+  const text = JSON.stringify(cassette);
+  // Credentials by name, long enough to be real values rather than flags.
+  const leaked = Object.entries(env).filter(
+    ([name, value]) =>
+      /KEY|TOKEN|SECRET|PASSWORD/i.test(name) && value !== undefined && value.length >= 8 && text.includes(value),
+  );
+  if (leaked.length) {
+    throw new Error(
+      `Cassette ${cassette.caseId} contains the value of ${leaked.map(([n]) => n).join(", ")}; not written.`,
+    );
+  }
+}
 
 /**
  * Model requests are keyed by conversation and turn: the first user message
@@ -39,7 +73,7 @@ const isModel = (url: URL) => url.host.endsWith("anthropic.com") || url.pathname
  * Tool requests are keyed by method, URL and body.
  */
 export function exchangeKey(url: URL, method: string, body: string): { key: string; requestHash?: string } {
-  if (!isModel(url)) return { key: `${method} ${url.toString()} ${sha(body)}` };
+  if (!isModel(url)) return { key: `${method} ${redactUrl(url)} ${sha(body)}` };
   const request = JSON.parse(body) as { messages: Array<{ content: unknown }> };
   const first = JSON.stringify(request.messages[0]?.content ?? "");
   return { key: `model ${sha(first)} #${request.messages.length}`, requestHash: sha(body) };
@@ -78,7 +112,7 @@ export function record(transform?: (url: URL, body: string) => string): Recorder
     byKey.set(key, {
       key,
       kind: isModel(url) ? "model" : "tool",
-      url: url.toString(),
+      url: redactUrl(url),
       status: response.status,
       body,
       requestHash,
@@ -126,7 +160,7 @@ export function replay(cassette: Cassette, options: { updateTools?: boolean } = 
     if (!isModel(url) && options.updateTools) {
       const response = await real(input, init);
       const body = await response.text();
-      const exchange: Exchange = { key, kind: "tool", url: url.toString(), status: response.status, body };
+      const exchange: Exchange = { key, kind: "tool", url: redactUrl(url), status: response.status, body };
       byKey.set(key, exchange);
       state.added.push(exchange);
       return new Response(body, { status: response.status, headers: jsonHeaders(response) });

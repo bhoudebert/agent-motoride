@@ -101,6 +101,46 @@ test("evals: injection is planted in names only, other answers pass through", ()
   assert.equal(plantInjection(url, "not json"), "not json");
 });
 
+test("evals: credentials in URLs never reach a cassette", async () => {
+  const { record, redactUrl, assertNoSecrets, exchangeKey } = await import("../evals/cassette.ts");
+  const secret = "tt-0123456789abcdef";
+  const url = `https://api.tomtom.com/routing/1/calculateRoute/50,3:51,4/json?key=${secret}&traffic=true`;
+  assert.equal(
+    redactUrl(new URL(url)),
+    "https://api.tomtom.com/routing/1/calculateRoute/50,3:51,4/json?key=REDACTED&traffic=true",
+  );
+
+  const previous = globalThis.fetch;
+  globalThis.fetch = (async () => new Response("{}", { status: 200 })) as typeof fetch;
+  const tape = record();
+  try {
+    await fetch(url);
+  } finally {
+    tape.restore();
+    globalThis.fetch = previous;
+  }
+  const cassette = {
+    caseId: "leak",
+    recordedAt: "",
+    now: "",
+    model: "",
+    effort: "",
+    costUsd: 0,
+    scores: {},
+    exchanges: tape.exchanges,
+  };
+  assert.ok(!JSON.stringify(cassette).includes(secret), "key redacted in stored URL and request key");
+  assert.doesNotThrow(() => assertNoSecrets(cassette, { TOMTOM_API_KEY: secret }));
+
+  // Belt and braces: any credential value from the environment blocks the write.
+  const leaky = { ...cassette, exchanges: [{ ...cassette.exchanges[0]!, body: `{"echo":"${secret}"}` }] };
+  assert.throws(() => assertNoSecrets(leaky, { TOMTOM_API_KEY: secret }), /TOMTOM_API_KEY; not written/);
+  assert.doesNotThrow(() => assertNoSecrets(leaky, { RIDE_HOME: secret, SHORT_KEY: "1" }));
+
+  // A lookalike host is not the Claude API.
+  assert.match(exchangeKey(new URL("https://evilanthropic.com/x"), "GET", "").key, /^GET https:\/\/evilanthropic/);
+});
+
 test("evals: every case is well formed and every grader has a tier", () => {
   assert.equal(new Set(CASES.map((c) => c.id)).size, CASES.length);
   assert.ok(

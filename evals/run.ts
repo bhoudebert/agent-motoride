@@ -5,7 +5,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import type { Cassette } from "./cassette.ts";
+import { assertNoSecrets, type Cassette } from "./cassette.ts";
 import { CASES } from "./cases.ts";
 import { tierOf } from "./graders.ts";
 
@@ -68,8 +68,10 @@ for (const c of cases) {
   if (values.record) {
     spent += run.costUsd;
     mkdirSync(DIR, { recursive: true });
+    assertNoSecrets(run.cassette);
     writeFileSync(fileOf(c.id), `${JSON.stringify(run.cassette, null, 1)}\n`);
   } else if (run.added.length) {
+    assertNoSecrets(run.cassette);
     writeFileSync(fileOf(c.id), `${JSON.stringify(run.cassette, null, 1)}\n`);
   }
   if (ruleFailures.length || regressed.length || (!values["update-tools"] && run.misses.length)) failed = true;

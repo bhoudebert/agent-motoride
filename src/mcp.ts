@@ -116,10 +116,10 @@ const settingsText = () =>
 // Server instructions reach the client's system prompt at connection time, so
 // the method applies even when the rider types in plain words instead of using
 // the plan-ride command. Kept to the essentials; the command carries the rest.
-const INSTRUCTIONS = `agentRide plans one-day motorcycle rides and keeps the rider's library of saved rides. Anything the rider says about rides, trips, loops, routes, the library, stops, cameras, weather for a ride, or a ride-day briefing is a request for this server's tools: showRide, listRides, rideBriefing, refreshRide, exportGpx, exportMarkdown, planningGuide and the planning tools. Never run shell commands, scripts or web searches for these, and never look for a "ride" program: "ride show 7" or "/ride plan ..." typed by the rider means "use the ride tools" (here: showRide for ride 7). If your client does not expose this server's prompts, call planningGuide with the rider's request before planning a new ride, and follow it.
+const INSTRUCTIONS = `agentMotoride plans one-day motorcycle rides and keeps the rider's library of saved rides. Anything the rider says about rides, trips, loops, routes, the library, stops, cameras, weather for a ride, or a ride-day briefing is a request for this server's tools: showRide, listRides, rideBriefing, refreshRide, exportGpx, exportMarkdown, planningGuide and the planning tools. Never run shell commands, scripts or web searches for these, and never look for a "ride" program: "ride show 7" or "/ride plan ..." typed by the rider means "use the ride tools" (here: showRide for ride 7). If your client does not expose this server's prompts, call planningGuide with the rider's request before planning a new ride, and follow it.
 For a new leisure ride: call listSavedRides, then scoutAreas with 2-4 areas (or searchRoads and calculateTrip yourself if scouts are unavailable), pick the best candidate, then finish it: getDaylight, getWeather along the loop for the riding hours, getSpeedCameras, planStops with the date and departure, getTraffic for the departure. Present the itinerary in plain text (never JSON) with legs named by towns, the figures from the tools, the stops with times, the navigation links from planStops, and end with one line "Route: <routeId>". Save only when the rider asks, with saveRide. For an edit or a question about a saved ride, work from its data (showRide) without replanning. For a practical trip (commute), route point to point, motorways if permitted, with traffic.`;
 
-const server = new McpServer({ name: "agentRide", version: "0.1.0" }, { instructions: INSTRUCTIONS });
+const server = new McpServer({ name: "agentMotoride", version: "0.1.0" }, { instructions: INSTRUCTIONS });
 const text = (value: unknown) => ({
   content: [{ type: "text" as const, text: typeof value === "string" ? value : JSON.stringify(value) }],
 });
@@ -245,7 +245,7 @@ server.registerTool(
     const path = writeGpx(
       {
         name: args.name ?? `Ride ${route.id}`,
-        description: `${trip.result.totalDistanceKm} km, about ${trip.result.totalRidingTime} riding. Planned with agentRide.`,
+        description: `${trip.result.totalDistanceKm} km, about ${trip.result.totalRidingTime} riding. Planned with agentMotoride.`,
         legs: trip.result.legs,
         shapes: trip.shapes,
       },
@@ -359,7 +359,7 @@ server.registerTool(
   async () => text(formatRideList(store.listRides())),
 );
 
-const RULES = `Use the agentRide tools for every lookup, never shell commands or web search. The settings below are the rider's defaults; when the request changes one (motorways allowed, other targets, repeats allowed), apply it with rideSettings before planning. Answer in plain text as laid out above, never JSON. End an itinerary with one line "Route: <routeId>" naming the routed trip it describes, so the ride can be saved later. Save only when the rider asks, with saveRide and that routeId.`;
+const RULES = `Use the agentMotoride tools for every lookup, never shell commands or web search. The settings below are the rider's defaults; when the request changes one (motorways allowed, other targets, repeats allowed), apply it with rideSettings before planning. Answer in plain text as laid out above, never JSON. End an itinerary with one line "Route: <routeId>" naming the routed trip it describes, so the ride can be saved later. Save only when the rider asks, with saveRide and that routeId.`;
 const userMessage = (text: string) => ({
   messages: [{ role: "user" as const, content: { type: "text" as const, text } }],
 });
@@ -428,7 +428,7 @@ server.registerPrompt(
   "plan-ride",
   {
     title: "Plan a motorcycle ride",
-    description: "Plan a one-day ride with the agentRide tools: what the rider wants, in one sentence.",
+    description: "Plan a one-day ride with the agentMotoride tools: what the rider wants, in one sentence.",
     argsSchema: { request: z.string().describe("e.g. this Saturday, no rain, under 250 km, winding roads") },
   },
   ({ request }) => {
@@ -574,13 +574,13 @@ server.registerPrompt(
   "help",
   {
     title: "What the ride server can do",
-    description: "Commands and tools of agentRide, no tool call.",
+    description: "Commands and tools of agentMotoride, no tool call.",
     argsSchema: {},
   },
   () =>
     userMessage(`Show the rider this text as is, without calling any tool:
 
-agentRide commands (slash commands):
+agentMotoride commands (slash commands):
   /mcp__ride__plan-ride <request>        plan a new leisure ride (scouts, weather, roads, slow zones, cameras, stops)
   /mcp__ride__commute <destination> <when> [from]   practical trip, motorways permitted, traffic checked
   /mcp__ride__edit-ride <id|name> <change>          change or question a saved ride
@@ -608,4 +608,4 @@ if (process.env.RIDE_HOME) {
   }
 }
 await server.connect(new StdioServerTransport());
-process.stderr.write(`agentRide MCP server ready (start: ${context.home.label || "not set"}, run #${runId})\n`);
+process.stderr.write(`agentMotoride MCP server ready (start: ${context.home.label || "not set"}, run #${runId})\n`);

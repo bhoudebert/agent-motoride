@@ -1,4 +1,4 @@
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, renameSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
@@ -7,7 +7,17 @@ import { type BikeProfile, DEFAULT_PROFILE } from "./profile.ts";
 import type { StopPlan } from "./stops.ts";
 import type { RunUsage } from "./usage.ts";
 
-const DEFAULT_DB = resolve(dirname(fileURLToPath(import.meta.url)), "..", "data", "agentride.db");
+const DATA_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..", "data");
+const DEFAULT_DB = resolve(DATA_DIR, "agentmotoride.db");
+
+/** Libraries created before the rename live in data/agentride.db: move them once. */
+function migrateLegacyDb(): void {
+  const legacy = resolve(DATA_DIR, "agentride.db");
+  if (!existsSync(legacy) || existsSync(DEFAULT_DB)) return;
+  for (const suffix of ["", "-wal", "-shm"]) {
+    if (existsSync(legacy + suffix)) renameSync(legacy + suffix, DEFAULT_DB + suffix);
+  }
+}
 
 export interface SavedLeg {
   seq: number;
@@ -271,6 +281,7 @@ export class Store {
   readonly #db: DatabaseSync;
 
   constructor(path = process.env.RIDE_DB || DEFAULT_DB) {
+    if (path === DEFAULT_DB) migrateLegacyDb();
     this.path = path;
     if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
     this.#db = new DatabaseSync(path);

@@ -5,7 +5,7 @@ Read this before changing anything. It applies to people and to coding agents
 
 ## What this is
 
-agentRide: an agentic motorcycle ride planner. `README.md` explains the product
+agentMotoride: an agentic motorcycle ride planner. `README.md` explains the product
 and the two modes (API and MCP). `openspec/project.md` holds the conventions
 and the domain vocabulary; `openspec/specs/<capability>/spec.md` describe the
 behaviour as requirements with scenarios.

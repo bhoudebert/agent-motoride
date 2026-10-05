@@ -1,4 +1,4 @@
-# agentRide
+# agentMotoride
 
 [![CI](https://github.com/bhoudebert/agent-motoride/actions/workflows/ci.yml/badge.svg)](https://github.com/bhoudebert/agent-motoride/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/bhoudebert/agent-motoride/actions/workflows/codeql.yml/badge.svg)](https://github.com/bhoudebert/agent-motoride/actions/workflows/codeql.yml)
@@ -29,7 +29,7 @@ sub-agents ("scouts"), schema-validated answers, a replayable trace of every
 step, cost accounting and a benchmark of models, and the same tools exposed
 over the Model Context Protocol.
 
-![How agentRide works: the rider asks, the agent decides with scouts, the tools know, the code enforces, the library learns, the rider gets the itinerary and files](docs/how-it-works.png)
+![How agentMotoride works: the rider asks, the agent decides with scouts, the tools know, the code enforces, the library learns, the rider gets the itinerary and files](docs/how-it-works.png)
 
 ## Two ways to run it
 
@@ -181,7 +181,7 @@ npm run ride -- [options] "..."   # plan directly
 The start menu offers:
 
 ```
-agentRide
+agentMotoride
   1. Plan a new ride
   2. Open a saved ride (3 saved)
   q. Quit
@@ -280,7 +280,7 @@ you compute it from current pricing.
 
 ## Saved rides
 
-Rides are kept in a SQLite file, `data/agentride.db` (git-ignored; override the
+Rides are kept in a SQLite file, `data/agentmotoride.db` (git-ignored; override the
 path with `RIDE_DB`). Nothing is saved unless you ask.
 
 ### Saving
@@ -724,7 +724,7 @@ offers the server automatically (approve it when asked). To use it from
 anywhere:
 
 ```bash
-claude mcp add --scope user ride -- node --env-file-if-exists=/abs/path/agentRide/.env /abs/path/agentRide/src/mcp.ts
+claude mcp add --scope user ride -- node --env-file-if-exists=/abs/path/agent-motoride/.env /abs/path/agent-motoride/src/mcp.ts
 ```
 
 Then, in Claude Code:
@@ -747,7 +747,7 @@ hosting of the server on the internet: a remote prompt on top of everything in
 this README.
 
 ```bash
-cd agentRide
+cd agent-motoride
 claude remote-control        # prints a URL and a QR code
 ```
 
@@ -1099,7 +1099,7 @@ CLI (src/index.ts)
             │                      ├─ searchRoads ─> OpenStreetMap / Overpass
             │                      ├─ calculateTrip ─> Valhalla
             │                      └─ getWeather ─> Open-Meteo
-            ├─ listSavedRides ─> SQLite (data/agentride.db)
+            ├─ listSavedRides ─> SQLite (data/agentmotoride.db)
             ├─ getWeather     ─> Open-Meteo
             ├─ searchRoads    ─> OpenStreetMap / Overpass
             ├─ calculateTrip  ─> Valhalla

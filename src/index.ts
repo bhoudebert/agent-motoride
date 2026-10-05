@@ -424,7 +424,7 @@ async function startMenu(): Promise<
   while (true) {
     const rides = store.listRides();
     console.log(
-      `\nagentRide   (motorways ${motorwayDefault() ? "permitted" : "forbidden"} by default)\n  1. Plan a new ride\n  2. Open a saved ride (${rides.length} saved)\n  q. Quit`,
+      `\nagentMotoride   (motorways ${motorwayDefault() ? "permitted" : "forbidden"} by default)\n  1. Plan a new ride\n  2. Open a saved ride (${rides.length} saved)\n  q. Quit`,
     );
     const choice = await ask("\n> ");
     if (typeof choice === "symbol" || ["q", "quit", "exit"].includes(choice.toLowerCase())) return undefined;
@@ -728,7 +728,7 @@ async function refineLoop(
               const path = writeGpx(
                 {
                   name: current.title,
-                  description: `${trip.result.totalDistanceKm} km, about ${trip.result.totalRidingTime} riding. Planned with agentRide.`,
+                  description: `${trip.result.totalDistanceKm} km, about ${trip.result.totalRidingTime} riding. Planned with agentMotoride.`,
                   legs: trip.result.legs,
                   shapes: trip.shapes,
                   stops: planned,

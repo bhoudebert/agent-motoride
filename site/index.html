@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>agentMotoride: a motorcycle ride planner that checks its facts</title>
+<meta name="description" content="Describe the ride in one sentence. An agent with real road, weather and stop data plans a loop you can follow, inside your limits.">
+<meta property="og:title" content="agentMotoride">
+<meta property="og:description" content="One sentence in. A ride you can follow out.">
+<meta property="og:image" content="how-it-works.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f3eee4;
+    --paper-2: #ebe4d6;
+    --ink: #1c1d1a;
+    --ink-2: #4a4b44;
+    --rule: #cfc6b4;
+    --moss: #24382d;
+    --moss-2: #31503f;
+    --signal: #e6b422;
+    --rust: #a8432a;
+    --serif: "Instrument Serif", Georgia, "Times New Roman", serif;
+    --sans: "Space Grotesk", "Helvetica Neue", Arial, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 17px/1.6 var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; }
+  .wrap { max-width: 1160px; margin: 0 auto; padding: 0 28px; }
+
+  /* Nav */
+  nav { display: flex; justify-content: space-between; align-items: baseline; padding: 26px 0; border-bottom: 1px solid var(--rule); }
+  .mark { font-family: var(--serif); font-size: 28px; letter-spacing: -0.5px; text-decoration: none; }
+  .mark i { color: var(--rust); }
+  nav ul { list-style: none; display: flex; gap: 28px; margin: 0; padding: 0; font-size: 15px; }
+  nav a { text-decoration: none; border-bottom: 1px solid transparent; }
+  nav a:hover { border-color: var(--ink); }
+
+  /* Hero */
+  .hero {
+    position: relative;
+    display: grid; grid-template-columns: 1.25fr 0.75fr; gap: 56px;
+    padding: 84px 0 96px;
+  }
+  .hero::before {
+    /* faint contour lines, a nod to the topographic map */
+    content: ""; position: absolute; inset: 0 -28px; z-index: -1; opacity: 0.55;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600' viewBox='0 0 600 600'%3E%3Cg fill='none' stroke='%23d6cdb9' stroke-width='1'%3E%3Cpath d='M-50 420 C100 360 180 470 320 400 S520 300 650 360'/%3E%3Cpath d='M-50 460 C110 400 190 510 330 440 S530 340 650 400'/%3E%3Cpath d='M-50 500 C120 440 200 550 340 480 S540 380 650 440'/%3E%3Cpath d='M-50 140 C80 90 210 190 330 130 S510 40 650 100'/%3E%3Cpath d='M-50 180 C90 130 220 230 340 170 S520 80 650 140'/%3E%3Cpath d='M-50 220 C100 170 230 270 350 210 S530 120 650 180'/%3E%3C/g%3E%3C/svg%3E");
+  }
+  h1 {
+    font-family: var(--serif); font-weight: 400;
+    font-size: clamp(52px, 7.4vw, 104px); line-height: 0.95; letter-spacing: -2px;
+    margin: 0 0 30px;
+  }
+  h1 em { font-style: italic; color: var(--moss-2); }
+  .intro { font-size: 20px; color: var(--ink-2); max-width: 560px; margin: 0 0 36px; }
+  .actions { display: flex; gap: 14px; flex-wrap: wrap; }
+  .btn { display: inline-flex; align-items: center; gap: 10px; padding: 14px 22px; font-weight: 600; text-decoration: none; border: 1.5px solid var(--ink); }
+  .btn.solid { background: var(--ink); color: var(--paper); }
+  .btn.solid:hover { background: var(--moss); border-color: var(--moss); }
+  .btn.line:hover { background: var(--paper-2); }
+  .btn .arr { font-family: var(--mono); }
+
+  /* The note: what the rider typed, and the answer in figures */
+  .note {
+    align-self: end;
+    background: #fbf8f1; border: 1px solid var(--rule);
+    padding: 28px 28px 22px; transform: rotate(-1.2deg);
+    box-shadow: 6px 8px 0 var(--paper-2);
+  }
+  .note .label { font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
+  .note blockquote { font-family: var(--serif); font-style: italic; font-size: 25px; line-height: 1.25; margin: 8px 0 22px; }
+  .figs { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px dashed var(--rule); }
+  .figs div { padding: 12px 0 6px; border-bottom: 1px dashed var(--rule); }
+  .figs div:nth-child(odd) { padding-right: 12px; border-right: 1px dashed var(--rule); }
+  .figs div:nth-child(even) { padding-left: 14px; }
+  .figs b { display: block; font-family: var(--mono); font-size: 22px; font-weight: 600; }
+  .figs span { font-size: 13px; color: var(--ink-2); }
+
+  /* Section heads */
+  section { padding: 88px 0; border-top: 1px solid var(--rule); }
+  .head { display: grid; grid-template-columns: 200px 1fr; gap: 40px; margin-bottom: 48px; }
+  .num { font-family: var(--mono); font-size: 13px; color: var(--rust); padding-top: 14px; }
+  h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(38px, 4.6vw, 60px); line-height: 1; letter-spacing: -1px; margin: 0 0 14px; }
+  .head p { margin: 0; max-width: 640px; color: var(--ink-2); font-size: 18px; }
+
+  /* Roadbook */
+  .roadbook { background: #fbf8f1; border: 1.5px solid var(--ink); }
+  .rb-top { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 14px 20px; background: var(--ink); color: var(--paper); font-family: var(--mono); font-size: 13px; }
+  .rb-row { display: grid; grid-template-columns: 120px 110px 1fr 140px; border-top: 1px solid var(--rule); }
+  .rb-row > div { padding: 18px 20px; }
+  .rb-row > div + div { border-left: 1px solid var(--rule); }
+  .km { font-family: var(--mono); font-size: 26px; font-weight: 600; }
+  .km small { display: block; font-size: 12px; font-weight: 400; color: var(--ink-2); }
+  .tulip svg { display: block; width: 64px; height: 64px; }
+  .where b { font-size: 18px; }
+  .where div { font-family: var(--mono); font-size: 13px; color: var(--ink-2); margin-top: 4px; }
+  .rb-row .side { font-family: var(--mono); font-size: 13px; color: var(--ink-2); }
+  .stop { background: color-mix(in srgb, var(--signal) 18%, #fbf8f1); }
+  .stop .where b::before { content: "■ "; color: var(--signal); }
+  .rb-foot { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1.5px solid var(--ink); }
+  .rb-foot div { padding: 18px 20px; font-size: 15px; }
+  .rb-foot div + div { border-left: 1px solid var(--rule); }
+  .rb-foot b { display: block; font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--rust); margin-bottom: 4px; }
+  .caption { font-size: 14px; color: var(--ink-2); margin-top: 16px; }
+
+  /* How it thinks */
+  .steps { display: grid; grid-template-columns: repeat(4, 1fr); counter-reset: s; }
+  .steps div { padding: 0 24px 0 0; }
+  .steps div + div { padding-left: 24px; border-left: 1px solid var(--rule); }
+  .steps h3 { font-family: var(--serif); font-weight: 400; font-size: 28px; margin: 0 0 8px; }
+  .steps h3::before { counter-increment: s; content: counter(s, decimal-leading-zero); display: block; font-family: var(--mono); font-size: 12px; color: var(--rust); margin-bottom: 10px; }
+  .steps p { margin: 0; color: var(--ink-2); font-size: 16px; }
+  figure { margin: 56px 0 0; }
+  figure img { width: 100%; height: auto; display: block; border: 1.5px solid var(--ink); }
+  figcaption { font-size: 14px; color: var(--ink-2); margin-top: 10px; }
+
+  /* Ways to run */
+  .ways { display: grid; grid-template-columns: repeat(3, 1fr); border: 1.5px solid var(--ink); }
+  .ways div { padding: 30px 28px; }
+  .ways div + div { border-left: 1.5px solid var(--ink); }
+  .ways h3 { font-family: var(--serif); font-weight: 400; font-size: 32px; margin: 0 0 10px; }
+  .ways p { margin: 0 0 16px; color: var(--ink-2); }
+  .ways code { font-family: var(--mono); font-size: 13px; background: var(--paper-2); padding: 3px 7px; }
+  .ways .hi { background: var(--moss); color: var(--paper); }
+  .ways .hi p { color: #c9d4c8; }
+  .ways .hi code { background: var(--moss-2); color: var(--paper); }
+
+  /* Under the hood */
+  dl { display: grid; grid-template-columns: 1fr 1fr; gap: 0 56px; margin: 0; }
+  dl div { padding: 22px 0; border-bottom: 1px solid var(--rule); display: grid; grid-template-columns: 170px 1fr; gap: 20px; }
+  dt { font-weight: 600; }
+  dd { margin: 0; color: var(--ink-2); }
+
+  /* Quick start */
+  .term { background: var(--moss); color: #e9efe6; padding: 30px 34px; font-family: var(--mono); font-size: 14.5px; line-height: 1.9; overflow-x: auto; }
+  .term .p { color: var(--signal); user-select: none; }
+  .term .c { color: #8fa596; }
+
+  footer { border-top: 1.5px solid var(--ink); padding: 34px 0 60px; font-size: 14px; color: var(--ink-2); display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+  footer .mark { font-size: 24px; color: var(--ink); }
+
+  @media (max-width: 900px) {
+    .hero { grid-template-columns: 1fr; padding: 56px 0 72px; }
+    .note { transform: none; }
+    .head { grid-template-columns: 1fr; gap: 6px; }
+    .steps, .ways, dl, footer, .rb-foot { grid-template-columns: 1fr; }
+    .steps div + div, .ways div + div, .rb-foot div + div { border-left: 0; padding-left: 0; }
+    .steps div + div { border-top: 1px solid var(--rule); padding-top: 24px; margin-top: 24px; }
+    .ways div + div, .rb-foot div + div { border-top: 1px solid var(--rule); }
+    .rb-row { grid-template-columns: 90px 1fr; }
+    .rb-row .tulip, .rb-row .side { display: none; }
+    dl div { grid-template-columns: 1fr; gap: 4px; }
+    nav ul { gap: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav>
+  <a class="mark" href="#">agent<i>Motoride</i></a>
+  <ul>
+    <li><a href="#roadbook">Example</a></li>
+    <li><a href="#how">How it works</a></li>
+    <li><a href="#run">Run it</a></li>
+    <li><a href="https://github.com/bhoudebert/agent-motoride">GitHub</a></li>
+  </ul>
+</nav>
+
+<header class="hero">
+  <div>
+    <h1>One sentence in.<br><em>A ride you can follow out.</em></h1>
+    <p class="intro">A motorcycle ride planner run by an AI agent that checks its facts. It reads real roads, speed limits, weather, daylight, traffic, cameras and stops, keeps to your rules, and hands you a loop ready for the phone.</p>
+    <div class="actions">
+      <a class="btn solid" href="https://github.com/bhoudebert/agent-motoride#readme">Get started <span class="arr">→</span></a>
+      <a class="btn line" href="#roadbook">See a real plan</a>
+    </div>
+  </div>
+  <aside class="note">
+    <div class="label">what the rider typed</div>
+    <blockquote>“Sunday, leave at nine, no rain, under 220 km, as many bends as the region allows, back before two.”</blockquote>
+    <div class="label">what came back</div>
+    <div class="figs">
+      <div><b>167.6 km</b><span>loop through the Avesnois</span></div>
+      <div><b>2h55</b><span>riding, estimated</span></div>
+      <div><b>0 km</b><span>of motorway</span></div>
+      <div><b>12:25</b><span>home, breaks included</span></div>
+    </div>
+  </aside>
+</header>
+
+<section id="roadbook">
+  <div class="head">
+    <div class="num">01 / example</div>
+    <div>
+      <h2>The plan, as a roadbook</h2>
+      <p>A real itinerary from the planner, start point generalised. Every figure comes from a tool: routed distances, estimated times from limits and bends, mapped stops, forecast along the way.</p>
+    </div>
+  </div>
+
+  <div class="roadbook">
+    <div class="rb-top"><span>AVESNOIS LOOP · SUN 11 OCT · DEP 09:00</span><span>79.5% OPEN ROAD · 67% OF TIME ON 70+ ROADS</span></div>
+
+    <div class="rb-row">
+      <div class="km">0.0<small>start</small></div>
+      <div class="tulip"><svg viewBox="0 0 64 64"><circle cx="32" cy="50" r="5" fill="#1c1d1a"/><path d="M32 46 V12" stroke="#1c1d1a" stroke-width="4"/><path d="M24 20 L32 10 L40 20" fill="none" stroke="#1c1d1a" stroke-width="4"/></svg></div>
+      <div class="where"><b>Near Lille → Sommaing</b><div>D 40 · D 957 · D 40A · D 13</div></div>
+      <div class="side">41.6 km<br>0h44</div>
+    </div>
+    <div class="rb-row stop">
+      <div class="km">62.9<small>10:06</small></div>
+      <div class="tulip"><svg viewBox="0 0 64 64"><circle cx="32" cy="50" r="5" fill="#1c1d1a"/><path d="M32 46 V30 L50 18" fill="none" stroke="#1c1d1a" stroke-width="4"/><path d="M41 15 L52 17 L48 27" fill="none" stroke="#1c1d1a" stroke-width="4"/><rect x="10" y="10" width="14" height="14" fill="#e6b422"/></svg></div>
+      <div class="where"><b>Pause · Le Saule</b><div>Chaussée Brunehaut · Vieux-Mesnil direction</div></div>
+      <div class="side">stop plan<br>~15 min</div>
+    </div>
+    <div class="rb-row">
+      <div class="km">72.0<small>leg 3</small></div>
+      <div class="tulip"><svg viewBox="0 0 64 64"><circle cx="32" cy="50" r="5" fill="#1c1d1a"/><path d="M32 46 V32 L14 20" fill="none" stroke="#1c1d1a" stroke-width="4"/><path d="M23 17 L12 19 L16 29" fill="none" stroke="#1c1d1a" stroke-width="4"/></svg></div>
+      <div class="where"><b>Vieux-Mesnil → Beaufort</b><div>D 307 · D 959</div></div>
+      <div class="side">12.2 km<br>0h12</div>
+    </div>
+    <div class="rb-row">
+      <div class="km">84.2<small>leg 4</small></div>
+      <div class="tulip"><svg viewBox="0 0 64 64"><circle cx="32" cy="50" r="5" fill="#1c1d1a"/><path d="M32 46 C32 34 44 34 44 22 C44 16 38 12 32 12" fill="none" stroke="#1c1d1a" stroke-width="4"/><path d="M38 7 L31 12 L38 18" fill="none" stroke="#1c1d1a" stroke-width="4"/></svg></div>
+      <div class="where"><b>Beaufort → Sebourg</b><div>D 307 · D 961 · D 2649 · D 107</div></div>
+      <div class="side">33.9 km<br>0h33</div>
+    </div>
+    <div class="rb-row stop">
+      <div class="km">132.8<small>11:32</small></div>
+      <div class="tulip"><svg viewBox="0 0 64 64"><circle cx="32" cy="50" r="5" fill="#1c1d1a"/><path d="M32 46 V12" stroke="#1c1d1a" stroke-width="4"/><path d="M24 20 L32 10 L40 20" fill="none" stroke="#1c1d1a" stroke-width="4"/><rect x="40" y="34" width="14" height="14" fill="#e6b422"/></svg></div>
+      <div class="where"><b>Pause · Croque en Bouche</b><div>Place Pierre Delcourt · Condé-sur-l'Escaut · 400 m off route</div></div>
+      <div class="side">stop plan<br>~15 min</div>
+    </div>
+    <div class="rb-row">
+      <div class="km">167.6<small>finish</small></div>
+      <div class="tulip"><svg viewBox="0 0 64 64"><path d="M14 14 h12 v12 h-12 z M26 26 h12 v12 h-12 z M38 14 h12 v12 h-12 z M14 38 h12 v12 h-12 z M38 38 h12 v12 h-12 z" fill="#1c1d1a"/></svg></div>
+      <div class="where"><b>Sebourg → home</b><div>D 954 · D 50A · D 955 · D 938</div></div>
+      <div class="side">49.4 km<br>0h56</div>
+    </div>
+
+    <div class="rb-foot">
+      <div><b>DAYLIGHT</b>Sunrise 08:01 · sunset 19:06. Home well before dark.</div>
+      <div><b>WEATHER</b>Dry start, 10–15 °C, gusts to 30 km/h, slight rain risk late.</div>
+      <div><b>FUEL</b>None needed: inside the bike's range. Two 24/7 stations near the finish.</div>
+    </div>
+  </div>
+  <p class="caption">Also delivered: two Google Maps links pinned to these roads and split at the first pause, a GPX for Liberty Rider or Garmin, and a Markdown copy for your notes.</p>
+</section>
+
+<section id="how">
+  <div class="head">
+    <div class="num">02 / how it works</div>
+    <div>
+      <h2>An agent that does the legwork, code that keeps it honest</h2>
+      <p>The model decides where to look and what to propose. Deterministic tools supply every number. The code enforces the rules you set.</p>
+    </div>
+  </div>
+  <div class="steps">
+    <div><h3>Scout</h3><p>Two to four sub-agents explore candidate regions in parallel: winding roads, a routed loop, the forecast.</p></div>
+    <div><h3>Compare</h3><p>The planner weighs the candidates on open road, slow zones, time at speed, weather and your past rides.</p></div>
+    <div><h3>Finish</h3><p>The chosen loop gets daylight, fixed cameras, fuel and coffee stops placed from your bike's range, and traffic at departure.</p></div>
+    <div><h3>Remember</h3><p>Saved rides, ratings and roads marked “never again” shape the next plan. No ride is proposed twice.</p></div>
+  </div>
+  <figure>
+    <img src="how-it-works.png" alt="Architecture: the rider asks, the agent decides with a planner and scouts, tools supply road, routing, weather, traffic, camera and stop data, the code enforces the rules, the library learns, and the rider receives the itinerary and files.">
+    <figcaption>The whole loop on one page.</figcaption>
+  </figure>
+</section>
+
+<section id="run">
+  <div class="head">
+    <div class="num">03 / run it</div>
+    <div>
+      <h2>Three ways in</h2>
+      <p>Same tools, same library, same exports. Pick the one that fits what you already have.</p>
+    </div>
+  </div>
+  <div class="ways">
+    <div>
+      <h3>Terminal</h3>
+      <p>A menu and a refine prompt on your Anthropic API key. Full control, validated answers, cost per run.</p>
+      <code>npm run ride</code>
+    </div>
+    <div>
+      <h3>Claude Code or Codex</h3>
+      <p>The tools plug in as an MCP server. Plan on the subscription you already pay for.</p>
+      <code>/mcp__ride__plan-ride</code>
+    </div>
+    <div class="hi">
+      <h3>From your phone</h3>
+      <p>Leave a Claude Code session running on a computer or a VPS and drive it from the Claude app.</p>
+      <code>claude remote-control</code>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="head">
+    <div class="num">04 / under the hood</div>
+    <div>
+      <h2>Built like something you would rely on</h2>
+    </div>
+  </div>
+  <dl>
+    <div><dt>Data</dt><dd>OpenStreetMap roads and limits, Valhalla routing, Open-Meteo forecasts, TomTom traffic.</dd></div>
+    <div><dt>Time model</dt><dd>Riding time from speed limits and road curvature, not the router's guess.</dd></div>
+    <div><dt>Rules in code</dt><dd>No motorways unless allowed, no duplicates, rated roads respected, route ids validated.</dd></div>
+    <div><dt>Ride-day check</dt><dd>One command on the morning: fresh forecast, daylight, traffic, stops open on arrival, go or no-go.</dd></div>
+    <div><dt>Observable</dt><dd>Every session traced and costed, replayable step by step. Models benchmarked on cost and quality.</dd></div>
+    <div><dt>Engineering</dt><dd>Specs per capability, tests with simulated services, CI, CodeQL, release automation. TypeScript, SQLite.</dd></div>
+  </dl>
+</section>
+
+<section>
+  <div class="head">
+    <div class="num">05 / try it</div>
+    <div>
+      <h2>Five minutes to a first plan</h2>
+      <p>Full instructions in the <a href="https://github.com/bhoudebert/agent-motoride#readme">README</a>.</p>
+    </div>
+  </div>
+<pre class="term"><span class="p">$ </span>git clone https://github.com/bhoudebert/agent-motoride && cd agent-motoride
+<span class="p">$ </span>npm install
+<span class="p">$ </span>cp .env.example .env      <span class="c"># RIDE_HOME, and ANTHROPIC_API_KEY for the terminal mode</span>
+<span class="p">$ </span>npm run check             <span class="c"># what is ready, what answers</span>
+<span class="p">$ </span>npm run ride              <span class="c"># or open `claude` in this folder</span></pre>
+</section>
+
+<footer>
+  <div><a class="mark" href="#">agent<i>Motoride</i></a><br>Open source, MIT licence. Independent project, not affiliated with any of the services or brands it works with.</div>
+  <div>Road data © OpenStreetMap contributors (ODbL). Weather data by Open-Meteo.com (CC BY 4.0).<br>A planning aid, not a navigation system: estimates from public data. Check conditions and obey the road.</div>
+</footer>
+
+</div>
+</body>
+</html>

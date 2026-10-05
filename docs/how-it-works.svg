@@ -1,101 +1,101 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" font-family="Noto Sans, Inter, Liberation Sans, DejaVu Sans, sans-serif">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#0f172a"/>
-      <stop offset="1" stop-color="#1e293b"/>
+      <stop offset="0" stop-color="#f3eee4"/>
+      <stop offset="1" stop-color="#ebe4d6"/>
     </linearGradient>
     <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#f97316"/>
-      <stop offset="1" stop-color="#fb923c"/>
+      <stop offset="0" stop-color="#a8432a"/>
+      <stop offset="1" stop-color="#a8432a"/>
     </linearGradient>
     <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
-      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.35"/>
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.10"/>
     </filter>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
-      <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/>
+      <path d="M0,0 L10,5 L0,10 z" fill="#4a4b44"/>
     </marker>
     <marker id="arrowAccent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
-      <path d="M0,0 L10,5 L0,10 z" fill="#fb923c"/>
+      <path d="M0,0 L10,5 L0,10 z" fill="#a8432a"/>
     </marker>
   </defs>
 
   <rect width="1600" height="900" fill="url(#bg)"/>
 
   <!-- Title -->
-  <text x="80" y="84" font-size="44" font-weight="700" fill="#f8fafc">agentRide</text>
-  <text x="80" y="122" font-size="22" fill="#cbd5e1">One sentence in, a ride you can follow out.</text>
+  <text x="80" y="84" font-size="44" font-weight="700" fill="#1c1d1a">agentRide</text>
+  <text x="80" y="122" font-size="22" fill="#4a4b44">One sentence in, a ride you can follow out.</text>
   <rect x="80" y="136" width="140" height="5" rx="2.5" fill="url(#accent)"/>
 
   <!-- 1. Request -->
   <g filter="url(#shadow)">
-    <rect x="80" y="190" width="300" height="150" rx="18" fill="#f8fafc"/>
+    <rect x="80" y="190" width="300" height="150" rx="4" fill="#fbf8f1" stroke="#1c1d1a" stroke-width="1.5"/>
   </g>
-  <text x="104" y="226" font-size="13" font-weight="700" fill="#f97316" letter-spacing="2">1 · THE RIDER ASKS</text>
+  <text x="104" y="226" font-size="13" font-weight="700" fill="#a8432a" letter-spacing="2">1 · THE RIDER ASKS</text>
   <text x="104" y="262" font-size="19" fill="#0f172a" font-style="italic">“Saturday, no rain, under</text>
   <text x="104" y="288" font-size="19" fill="#0f172a" font-style="italic">250 km, winding roads,</text>
   <text x="104" y="314" font-size="19" fill="#0f172a" font-style="italic">back before 14:00”</text>
 
   <!-- arrow 1 -> 2 -->
-  <path d="M380,265 L470,265" stroke="#94a3b8" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M380,265 L470,265" stroke="#4a4b44" stroke-width="3" marker-end="url(#arrow)"/>
 
   <!-- 2. Agent -->
   <g filter="url(#shadow)">
-    <rect x="472" y="150" width="400" height="230" rx="18" fill="#1e3a5f" stroke="#3b82f6" stroke-width="2"/>
+    <rect x="472" y="150" width="400" height="230" rx="4" fill="#24382d" stroke="#24382d" stroke-width="2"/>
   </g>
-  <text x="496" y="186" font-size="13" font-weight="700" fill="#fb923c" letter-spacing="2">2 · THE AGENT DECIDES</text>
-  <text x="496" y="222" font-size="20" font-weight="700" fill="#f8fafc">Planner</text>
-  <text x="496" y="248" font-size="15" fill="#cbd5e1">chooses areas, builds loops, checks them</text>
-  <text x="496" y="270" font-size="15" fill="#cbd5e1">against your limits, writes the itinerary</text>
-  <rect x="496" y="290" width="352" height="1" fill="#334155"/>
-  <text x="496" y="318" font-size="20" font-weight="700" fill="#f8fafc">Scouts</text>
-  <text x="496" y="344" font-size="15" fill="#cbd5e1">2–4 sub-agents explore regions in parallel</text>
-  <text x="496" y="366" font-size="15" fill="#cbd5e1">and report candidates with the numbers</text>
+  <text x="496" y="186" font-size="13" font-weight="700" fill="#e6b422" letter-spacing="2">2 · THE AGENT DECIDES</text>
+  <text x="496" y="222" font-size="20" font-weight="700" fill="#f3eee4">Planner</text>
+  <text x="496" y="248" font-size="15" fill="#c9d4c8">chooses areas, builds loops, checks them</text>
+  <text x="496" y="270" font-size="15" fill="#c9d4c8">against your limits, writes the itinerary</text>
+  <rect x="496" y="290" width="352" height="1" fill="#31503f"/>
+  <text x="496" y="318" font-size="20" font-weight="700" fill="#f3eee4">Scouts</text>
+  <text x="496" y="344" font-size="15" fill="#c9d4c8">2–4 sub-agents explore regions in parallel</text>
+  <text x="496" y="366" font-size="15" fill="#c9d4c8">and report candidates with the numbers</text>
 
   <!-- arrows 2 <-> 3 (tools) -->
-  <path d="M872,265 L960,265" stroke="#fb923c" stroke-width="3" marker-end="url(#arrowAccent)" marker-start="url(#arrowAccent)"/>
-  <text x="916" y="250" font-size="12" fill="#fb923c" text-anchor="middle">tool calls</text>
+  <path d="M872,265 L960,265" stroke="#a8432a" stroke-width="3" marker-end="url(#arrowAccent)" marker-start="url(#arrowAccent)"/>
+  <text x="916" y="250" font-size="12" fill="#a8432a" text-anchor="middle">tool calls</text>
 
   <!-- 3. Tools -->
   <g filter="url(#shadow)">
-    <rect x="962" y="150" width="558" height="230" rx="18" fill="#f8fafc"/>
+    <rect x="962" y="150" width="558" height="230" rx="4" fill="#fbf8f1" stroke="#1c1d1a" stroke-width="1.5"/>
   </g>
-  <text x="986" y="186" font-size="13" font-weight="700" fill="#f97316" letter-spacing="2">3 · THE TOOLS KNOW</text>
+  <text x="986" y="186" font-size="13" font-weight="700" fill="#a8432a" letter-spacing="2">3 · THE TOOLS KNOW</text>
   <g font-size="15" fill="#0f172a">
     <g transform="translate(986,212)">
-      <rect width="250" height="34" rx="8" fill="#fff7ed" stroke="#fed7aa"/>
-      <text x="12" y="23" font-weight="600">Roads &amp; bends</text><text x="238" y="23" fill="#64748b" font-size="12" text-anchor="end">OpenStreetMap</text>
+      <rect width="250" height="34" rx="8" fill="#f3eee4" stroke="#cfc6b4"/>
+      <text x="12" y="23" font-weight="600">Roads &amp; bends</text><text x="238" y="23" fill="#4a4b44" font-size="12" text-anchor="end">OpenStreetMap</text>
     </g>
     <g transform="translate(1248,212)">
-      <rect width="250" height="34" rx="8" fill="#fff7ed" stroke="#fed7aa"/>
-      <text x="12" y="23" font-weight="600">Routing &amp; limits</text><text x="238" y="23" fill="#64748b" font-size="12" text-anchor="end">Valhalla</text>
+      <rect width="250" height="34" rx="8" fill="#f3eee4" stroke="#cfc6b4"/>
+      <text x="12" y="23" font-weight="600">Routing &amp; limits</text><text x="238" y="23" fill="#4a4b44" font-size="12" text-anchor="end">Valhalla</text>
     </g>
     <g transform="translate(986,254)">
-      <rect width="250" height="34" rx="8" fill="#fff7ed" stroke="#fed7aa"/>
-      <text x="12" y="23" font-weight="600">Weather &amp; daylight</text><text x="238" y="23" fill="#64748b" font-size="12" text-anchor="end">Open-Meteo</text>
+      <rect width="250" height="34" rx="8" fill="#f3eee4" stroke="#cfc6b4"/>
+      <text x="12" y="23" font-weight="600">Weather &amp; daylight</text><text x="238" y="23" fill="#4a4b44" font-size="12" text-anchor="end">Open-Meteo</text>
     </g>
     <g transform="translate(1248,254)">
-      <rect width="250" height="34" rx="8" fill="#fff7ed" stroke="#fed7aa"/>
-      <text x="12" y="23" font-weight="600">Traffic</text><text x="238" y="23" fill="#64748b" font-size="12" text-anchor="end">TomTom</text>
+      <rect width="250" height="34" rx="8" fill="#f3eee4" stroke="#cfc6b4"/>
+      <text x="12" y="23" font-weight="600">Traffic</text><text x="238" y="23" fill="#4a4b44" font-size="12" text-anchor="end">TomTom</text>
     </g>
     <g transform="translate(986,296)">
-      <rect width="250" height="34" rx="8" fill="#fff7ed" stroke="#fed7aa"/>
-      <text x="12" y="23" font-weight="600">Cameras &amp; stops</text><text x="238" y="23" fill="#64748b" font-size="12" text-anchor="end">OpenStreetMap</text>
+      <rect width="250" height="34" rx="8" fill="#f3eee4" stroke="#cfc6b4"/>
+      <text x="12" y="23" font-weight="600">Cameras &amp; stops</text><text x="238" y="23" fill="#4a4b44" font-size="12" text-anchor="end">OpenStreetMap</text>
     </g>
     <g transform="translate(1248,296)">
-      <rect width="250" height="34" rx="8" fill="#fff7ed" stroke="#fed7aa"/>
-      <text x="12" y="23" font-weight="600">Riding-time model</text><text x="238" y="23" fill="#64748b" font-size="12" text-anchor="end">limits × bends</text>
+      <rect width="250" height="34" rx="8" fill="#f3eee4" stroke="#cfc6b4"/>
+      <text x="12" y="23" font-weight="600">Riding-time model</text><text x="238" y="23" fill="#4a4b44" font-size="12" text-anchor="end">limits × bends</text>
     </g>
   </g>
-  <text x="986" y="362" font-size="13" fill="#64748b">Every figure in the itinerary comes from a tool result. Nothing is invented.</text>
+  <text x="986" y="362" font-size="13" fill="#4a4b44">Every figure in the itinerary comes from a tool result. Nothing is invented.</text>
 
   <!-- arrow 2 -> 4 (down) -->
-  <path d="M672,380 L672,440" stroke="#94a3b8" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M672,380 L672,440" stroke="#4a4b44" stroke-width="3" marker-end="url(#arrow)"/>
 
   <!-- 4. Code enforces -->
   <g filter="url(#shadow)">
-    <rect x="472" y="442" width="400" height="150" rx="18" fill="#f8fafc"/>
+    <rect x="472" y="442" width="400" height="150" rx="4" fill="#fbf8f1" stroke="#1c1d1a" stroke-width="1.5"/>
   </g>
-  <text x="496" y="478" font-size="13" font-weight="700" fill="#f97316" letter-spacing="2">4 · THE CODE ENFORCES</text>
+  <text x="496" y="478" font-size="13" font-weight="700" fill="#a8432a" letter-spacing="2">4 · THE CODE ENFORCES</text>
   <g font-size="15" fill="#0f172a">
     <text x="496" y="510">✓ No motorways unless you say so</text>
     <text x="496" y="536">✓ No ride that repeats a saved one</text>
@@ -104,62 +104,62 @@
 
   <!-- 5. Library (left bottom) -->
   <g filter="url(#shadow)">
-    <rect x="80" y="442" width="300" height="150" rx="18" fill="#f8fafc"/>
+    <rect x="80" y="442" width="300" height="150" rx="4" fill="#fbf8f1" stroke="#1c1d1a" stroke-width="1.5"/>
   </g>
-  <text x="104" y="478" font-size="13" font-weight="700" fill="#f97316" letter-spacing="2">5 · THE LIBRARY LEARNS</text>
+  <text x="104" y="478" font-size="13" font-weight="700" fill="#a8432a" letter-spacing="2">5 · THE LIBRARY LEARNS</text>
   <g font-size="15" fill="#0f172a">
     <text x="104" y="510">Saved rides, versions, ratings</text>
     <text x="104" y="536">Every session traced and costed</text>
-    <text x="104" y="562">Lookups cached, models benchmarked</text>
+    <text x="104" y="562">Lookups cached, models compared</text>
   </g>
   <!-- arrows library <-> code -->
-  <path d="M380,517 L470,517" stroke="#94a3b8" stroke-width="3" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+  <path d="M380,517 L470,517" stroke="#4a4b44" stroke-width="3" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
 
   <!-- arrow 4 -> 6 -->
-  <path d="M872,517 L960,517" stroke="#fb923c" stroke-width="3" marker-end="url(#arrowAccent)"/>
+  <path d="M872,517 L960,517" stroke="#a8432a" stroke-width="3" marker-end="url(#arrowAccent)"/>
 
   <!-- 6. Outputs -->
   <g filter="url(#shadow)">
-    <rect x="962" y="412" width="558" height="210" rx="18" fill="#1e3a5f" stroke="#3b82f6" stroke-width="2"/>
+    <rect x="962" y="412" width="558" height="210" rx="4" fill="#24382d" stroke="#24382d" stroke-width="2"/>
   </g>
-  <text x="986" y="448" font-size="13" font-weight="700" fill="#fb923c" letter-spacing="2">6 · THE RIDER GETS</text>
-  <g font-size="15" fill="#f8fafc">
+  <text x="986" y="448" font-size="13" font-weight="700" fill="#e6b422" letter-spacing="2">6 · THE RIDER GETS</text>
+  <g font-size="15" fill="#f3eee4">
     <text x="986" y="482" font-weight="700">The itinerary</text>
-    <text x="986" y="504" fill="#cbd5e1">legs by town and road · riding time · open-road share</text>
-    <text x="986" y="524" fill="#cbd5e1">weather along the way · sunrise and sunset · fixed cameras</text>
-    <text x="986" y="544" fill="#cbd5e1">fuel and coffee stops with times · traffic at departure</text>
+    <text x="986" y="504" fill="#c9d4c8">legs by town and road · riding time · open-road share</text>
+    <text x="986" y="524" fill="#c9d4c8">weather along the way · sunrise and sunset · fixed cameras</text>
+    <text x="986" y="544" fill="#c9d4c8">fuel and coffee stops with times · traffic at departure</text>
     <text x="986" y="578" font-weight="700">On the phone</text>
-    <text x="986" y="600" fill="#cbd5e1">Google Maps links pinned to the chosen roads · GPX · Markdown · QR</text>
+    <text x="986" y="600" fill="#c9d4c8">Google Maps links pinned to the chosen roads · GPX · Markdown · QR</text>
   </g>
 
   <!-- Footer: runs on -->
-  <rect x="80" y="660" width="1440" height="1" fill="#334155"/>
-  <text x="80" y="706" font-size="13" font-weight="700" fill="#94a3b8" letter-spacing="2">RUNS ON</text>
+  
+  <text x="80" y="706" font-size="13" font-weight="700" fill="#a8432a" letter-spacing="2">RUNS ON</text>
   <g font-size="15">
     <g transform="translate(80,728)">
-      <rect width="330" height="90" rx="14" fill="#0b1220" stroke="#334155"/>
-      <text x="18" y="34" font-weight="700" fill="#f8fafc">API mode</text>
-      <text x="18" y="58" fill="#94a3b8">Terminal app, Anthropic API,</text>
-      <text x="18" y="78" fill="#94a3b8">full control and benchmarks</text>
+      <rect width="330" height="90" rx="4" fill="#fbf8f1" stroke="#1c1d1a"/>
+      <text x="18" y="34" font-weight="700" fill="#1c1d1a">API mode</text>
+      <text x="18" y="58" fill="#4a4b44">Terminal app, Anthropic API,</text>
+      <text x="18" y="78" fill="#4a4b44">full control and benchmarks</text>
     </g>
     <g transform="translate(430,728)">
-      <rect width="330" height="90" rx="14" fill="#0b1220" stroke="#334155"/>
-      <text x="18" y="34" font-weight="700" fill="#f8fafc">MCP mode</text>
-      <text x="18" y="58" fill="#94a3b8">Claude Code or Codex use the</text>
-      <text x="18" y="78" fill="#94a3b8">same tools on your subscription</text>
+      <rect width="330" height="90" rx="4" fill="#fbf8f1" stroke="#1c1d1a"/>
+      <text x="18" y="34" font-weight="700" fill="#1c1d1a">MCP mode</text>
+      <text x="18" y="58" fill="#4a4b44">Claude Code or Codex use the</text>
+      <text x="18" y="78" fill="#4a4b44">same tools on your subscription</text>
     </g>
     <g transform="translate(780,728)">
-      <rect width="330" height="90" rx="14" fill="#0b1220" stroke="#334155"/>
-      <text x="18" y="34" font-weight="700" fill="#f8fafc">From your phone</text>
-      <text x="18" y="58" fill="#94a3b8">Remote-controlled session,</text>
-      <text x="18" y="78" fill="#94a3b8">nothing to install</text>
+      <rect width="330" height="90" rx="4" fill="#fbf8f1" stroke="#1c1d1a"/>
+      <text x="18" y="34" font-weight="700" fill="#1c1d1a">From your phone</text>
+      <text x="18" y="58" fill="#4a4b44">Remote-controlled session,</text>
+      <text x="18" y="78" fill="#4a4b44">nothing to install</text>
     </g>
     <g transform="translate(1130,728)">
-      <rect width="390" height="90" rx="14" fill="#0b1220" stroke="#334155"/>
-      <text x="18" y="34" font-weight="700" fill="#f8fafc">Built like a product</text>
-      <text x="18" y="58" fill="#94a3b8">Specs, tests, CI, releases,</text>
-      <text x="18" y="78" fill="#94a3b8">traces of every decision · TypeScript · SQLite</text>
+      <rect width="390" height="90" rx="4" fill="#fbf8f1" stroke="#1c1d1a"/>
+      <text x="18" y="34" font-weight="700" fill="#1c1d1a">Built like a product</text>
+      <text x="18" y="58" fill="#4a4b44">Specs, tests, CI, releases,</text>
+      <text x="18" y="78" fill="#4a4b44">traces of every decision · TypeScript · SQLite</text>
     </g>
   </g>
-  <text x="1520" y="868" font-size="12" fill="#475569" text-anchor="end">github.com/bhoudebert/agent-motoride</text>
+  <text x="1520" y="868" font-size="12" fill="#4a4b44" text-anchor="end">github.com/bhoudebert/agent-motoride</text>
 </svg>

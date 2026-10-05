@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { finalText, installFakeServices, toolUse } from "./helpers/fakeServices.ts";
 
@@ -8,6 +9,7 @@ process.env.ANTHROPIC_API_KEY = "test-key";
 delete process.env.ANTHROPIC_BASE_URL;
 const api = installFakeServices();
 const { runCase, regressions, plantInjection } = await import("../evals/harness.ts");
+const { readCassette } = await import("../evals/cassette.ts");
 const { CASES, INJECTION } = await import("../evals/cases.ts");
 const { grade, GRADERS } = await import("../evals/graders.ts");
 type EvalCase = (typeof CASES)[number];
@@ -164,10 +166,10 @@ test("evals: every case is well formed and every grader has a tier", () => {
 
 // Recorded cassettes (npm run eval -- --record): replayed on every test run, offline and free.
 const dir = new URL("../evals/cassettes/", import.meta.url);
-const cassettes = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".json")) : [];
+const cassettes = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".json.gz")) : [];
 for (const file of cassettes) {
   test(`evals: recorded case ${file} replays without breaking a rule or regressing`, async () => {
-    const cassette = JSON.parse(readFileSync(new URL(file, dir), "utf8"));
+    const cassette = readCassette(fileURLToPath(new URL(file, dir)));
     const c = CASES.find((k) => k.id === cassette.caseId);
     assert.ok(c, `cassette for unknown case ${cassette.caseId}`);
     const run = await runCase(c, { cassette });

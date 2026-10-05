@@ -1,7 +1,7 @@
 // Run one eval case through the API planner, live (recording) or from a cassette.
 import { openRide } from "../src/agent.ts";
 import { saveCurrentRide } from "../src/library.ts";
-import { EFFORT, MODEL } from "../src/model.ts";
+import { EFFORT, MODEL, SCOUT_EFFORT, SCOUT_MODEL } from "../src/model.ts";
 import { DEFAULT_PREFERENCES } from "../src/preferences.ts";
 import { duplicateOf, ratedOverlap, registerRoute } from "../src/session.ts";
 import { Store } from "../src/store.ts";
@@ -63,11 +63,21 @@ export async function runCase(
   options: { cassette?: Cassette; updateTools?: boolean; verbose?: boolean } = {},
 ): Promise<CaseRun> {
   const replaying = options.cassette !== undefined;
+  // Optional services shape tool results: replay with the ones the recording had.
+  // Credentials are redacted from recorded requests, so a placeholder key matches.
+  const trafficKey = process.env.TOMTOM_API_KEY;
+  if (replaying) {
+    if (options.cassette!.traffic) process.env.TOMTOM_API_KEY = "replay-redacted";
+    else delete process.env.TOMTOM_API_KEY;
+  }
   const now = replaying ? new Date(options.cassette!.now) : new Date();
   resetGeoState();
   const store = new Store(":memory:");
   const tape = replaying
-    ? replay(options.cassette!, { updateTools: options.updateTools })
+    ? replay(options.cassette!, {
+        updateTools: options.updateTools,
+        transform: c.inject ? plantInjection : undefined,
+      })
     : record(c.inject ? plantInjection : undefined);
   const unmute = options.verbose ? () => undefined : silence();
   const preferences = { ...DEFAULT_PREFERENCES, ...c.preferences };
@@ -113,9 +123,12 @@ export async function runCase(
     const scores = grade(c, outcome);
     const usage = session.usage();
     const costUsd = estimateCostUsd(usage) ?? 0;
-    const exchanges = replaying
-      ? [...options.cassette!.exchanges, ...("added" in tape ? tape.added : [])]
-      : (tape as ReturnType<typeof record>).exchanges;
+    // A refresh keeps what this replay used plus what it fetched; anything else is a leftover.
+    const exchanges = !replaying
+      ? (tape as ReturnType<typeof record>).exchanges
+      : "used" in tape && options.updateTools
+        ? [...options.cassette!.exchanges.filter((e) => tape.used.has(e.key)), ...tape.added]
+        : options.cassette!.exchanges;
     const cassette: Cassette = replaying
       ? { ...options.cassette!, exchanges }
       : {
@@ -124,6 +137,9 @@ export async function runCase(
           now: now.toISOString(),
           model: MODEL,
           effort: EFFORT,
+          scoutModel: SCOUT_MODEL,
+          scoutEffort: SCOUT_EFFORT,
+          traffic: Boolean(process.env.TOMTOM_API_KEY),
           costUsd: Number(costUsd.toFixed(4)),
           scores,
           exchanges,
@@ -139,6 +155,8 @@ export async function runCase(
       added: "added" in tape ? tape.added : [],
     };
   } finally {
+    if (trafficKey === undefined) delete process.env.TOMTOM_API_KEY;
+    else process.env.TOMTOM_API_KEY = trafficKey;
     unmute();
     tape.restore();
     store.close();

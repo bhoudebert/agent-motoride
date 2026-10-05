@@ -1,11 +1,11 @@
 // npm run eval                          replay every recorded case: no network, no cost (what CI runs)
 // npm run eval -- --update-tools        replay, fetching missing map/weather answers live (free) into the cassettes
 // npm run eval -- --record [ids] [--budget 3]   run cases live on the Claude API and record them (billed)
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { assertNoSecrets, type Cassette } from "./cassette.ts";
+import { type Cassette, readCassette, writeCassette } from "./cassette.ts";
 import { CASES } from "./cases.ts";
 import { tierOf } from "./graders.ts";
 
@@ -20,7 +20,7 @@ const { values, positionals } = parseArgs({
 });
 
 const DIR = resolve(dirname(fileURLToPath(import.meta.url)), "cassettes");
-const fileOf = (id: string) => resolve(DIR, `${id}.json`);
+const fileOf = (id: string) => resolve(DIR, `${id}.json.gz`);
 const cases = positionals.length ? CASES.filter((c) => positionals.includes(c.id)) : CASES;
 const unknown = positionals.filter((id) => !CASES.some((c) => c.id === id));
 if (unknown.length) {
@@ -35,6 +35,23 @@ if (!values.record) {
   delete process.env.ANTHROPIC_BASE_URL;
 } else if (!process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_AUTH_TOKEN) {
   throw new Error("Recording runs the cases on the Claude API: set ANTHROPIC_API_KEY in .env.");
+}
+// Cases measure the product as shipped: scouts on, whatever the local .env says.
+process.env.RIDE_SCOUTS = "1";
+if (!values.record) {
+  // Replay with the settings the cassettes were recorded with, not the local .env:
+  // they are part of every model request. The planner reads them once, at import.
+  const recorded = cases.filter((c) => existsSync(fileOf(c.id))).map((c) => readCassette(fileOf(c.id)));
+  const first = recorded[0];
+  if (first) {
+    process.env.RIDE_MODEL = first.model;
+    process.env.RIDE_EFFORT = first.effort;
+    if (first.scoutModel) process.env.RIDE_SCOUT_MODEL = first.scoutModel;
+    if (first.scoutEffort) process.env.RIDE_SCOUT_EFFORT = first.scoutEffort;
+    if (recorded.some((r) => r.model !== first.model || r.effort !== first.effort)) {
+      console.error("Cassettes were recorded with different models; replay those separately for an exact replay.");
+    }
+  }
 }
 // After the credentials are settled: the planner reads them when it starts a session.
 const { regressions, runCase } = await import("./harness.ts");
@@ -51,7 +68,7 @@ for (const c of cases) {
       rows.push(`${c.id.padEnd(22)} not recorded`);
       continue;
     }
-    cassette = JSON.parse(readFileSync(fileOf(c.id), "utf8")) as Cassette;
+    cassette = readCassette(fileOf(c.id));
   } else if (spent >= budget) {
     rows.push(`${c.id.padEnd(22)} skipped: budget of $${budget} reached`);
     continue;
@@ -68,11 +85,9 @@ for (const c of cases) {
   if (values.record) {
     spent += run.costUsd;
     mkdirSync(DIR, { recursive: true });
-    assertNoSecrets(run.cassette);
-    writeFileSync(fileOf(c.id), `${JSON.stringify(run.cassette, null, 1)}\n`);
+    writeCassette(fileOf(c.id), run.cassette);
   } else if (run.added.length) {
-    assertNoSecrets(run.cassette);
-    writeFileSync(fileOf(c.id), `${JSON.stringify(run.cassette, null, 1)}\n`);
+    writeCassette(fileOf(c.id), run.cassette);
   }
   if (ruleFailures.length || regressed.length || (!values["update-tools"] && run.misses.length)) failed = true;
 

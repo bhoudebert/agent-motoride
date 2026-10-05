@@ -2,6 +2,8 @@
 // replies and the public map, routing and weather services. A replayed session
 // makes no network call and costs nothing, so it can run in CI.
 import { createHash } from "node:crypto";
+import { readFileSync, writeFileSync } from "node:fs";
+import { gunzipSync, gzipSync } from "node:zlib";
 
 export interface Exchange {
   key: string;
@@ -21,6 +23,10 @@ export interface Cassette {
   now: string;
   model: string;
   effort: string;
+  scoutModel?: string;
+  scoutEffort?: string;
+  /** Traffic was available (TOMTOM_API_KEY set) when recorded; its key itself is never stored. */
+  traffic?: boolean;
   costUsd: number;
   /** Grader results at recording time; a replay must not do worse. */
   scores: Record<string, boolean>;
@@ -136,6 +142,8 @@ export interface Replayer {
   drift: string[];
   /** Tool answers fetched live because of `updateTools`; added to the cassette by the caller. */
   added: Exchange[];
+  /** Keys served from the cassette, so a refresh can drop answers no longer asked for. */
+  used: Set<string>;
   restore(): void;
 }
 
@@ -144,22 +152,34 @@ export interface Replayer {
  * missing tool answers when `updateTools` is set: public services are free,
  * so refreshing them costs nothing, unlike a new model call.
  */
-export function replay(cassette: Cassette, options: { updateTools?: boolean } = {}): Replayer {
+export function replay(
+  cassette: Cassette,
+  options: { updateTools?: boolean; transform?: (url: URL, body: string) => string } = {},
+): Replayer {
   const real = globalThis.fetch;
   const byKey = new Map(cassette.exchanges.map((e) => [e.key, e]));
-  const state: Replayer = { misses: [], drift: [], added: [], restore: () => (globalThis.fetch = real) };
+  const state: Replayer = {
+    misses: [],
+    drift: [],
+    added: [],
+    used: new Set(),
+    restore: () => (globalThis.fetch = real),
+  };
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(input instanceof Request ? input.url : String(input));
     const sent = bodyText(init);
     const { key, requestHash } = exchangeKey(url, init?.method ?? "GET", sent);
     const hit = byKey.get(key);
     if (hit) {
+      state.used.add(key);
       if (requestHash && hit.requestHash && requestHash !== hit.requestHash) state.drift.push(key);
       return new Response(hit.body, { status: hit.status, headers: { "content-type": "application/json" } });
     }
     if (!isModel(url) && options.updateTools) {
       const response = await real(input, init);
-      const body = await response.text();
+      let body = await response.text();
+      // Same treatment as at recording, e.g. the planted text of an injection case.
+      if (response.ok && options.transform) body = options.transform(url, body);
       const exchange: Exchange = { key, kind: "tool", url: redactUrl(url), status: response.status, body };
       byKey.set(key, exchange);
       state.added.push(exchange);
@@ -173,4 +193,15 @@ export function replay(cassette: Cassette, options: { updateTools?: boolean } = 
     });
   }) as typeof fetch;
   return state;
+}
+
+/** Cassettes are gzipped JSON: map data compresses about seven times. */
+export function readCassette(path: string): Cassette {
+  return JSON.parse(gunzipSync(readFileSync(path)).toString("utf8")) as Cassette;
+}
+
+/** Write a cassette, after checking it holds no credential from the environment. */
+export function writeCassette(path: string, cassette: Cassette): void {
+  assertNoSecrets(cassette);
+  writeFileSync(path, gzipSync(JSON.stringify(cassette), { level: 9 }));
 }

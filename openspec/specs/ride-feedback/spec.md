@@ -10,8 +10,8 @@ ratings that steer every later plan.
 
 ### Requirement: Notes during the ride
 
-The system SHALL accept a note on a saved ride from every mode (MCP tool, API
-planner tool, CLI): free text, an optional rating from 0 (never again) to 5,
+The system SHALL accept a note on a saved ride from every mode (MCP tool and
+prompt, `rides` command, refine prompt command): free text, an optional rating from 0 (never again) to 5,
 and a look-back window in minutes (default 10). The note SHALL be stored with
 the time it was given. Without an explicit ride, the note SHALL attach to the
 ride dated today, else to the most recently saved ride.
@@ -19,11 +19,13 @@ ride dated today, else to the most recently saved ride.
 #### Scenario: Quick note at a stop
 
 - **WHEN** the rider says "the last 10 minutes were awesome" at 10:42
-- **THEN** a note with rating 5, window 10:32-10:42, is stored on today's ride
+- **THEN** a note with window 10:32-10:42 is stored on today's ride
+- **AND** the review proposes rating 5, read from "awesome"
 
 ### Requirement: Review with a recorded track
 
-Given a saved ride and a GPX track with timestamps, the review SHALL:
+Given a saved ride and a GPX track with timestamps (a file on the machine that
+runs the session), the review SHALL:
 
 - place each pending note on the stretch of the track ridden during its window
   and name the road by map-matching that stretch;
@@ -32,7 +34,9 @@ Given a saved ride and a GPX track with timestamps, the review SHALL:
 - report the rider's moving pace against the plan's estimated pace;
 - propose the note's rating for each placed stretch and, once confirmed, store
   a road rating (road name, grid cells, rating, note, ride) and mark the note
-  resolved.
+  reviewed. A rating the rider gave in the note wins; otherwise one is read
+  from its words ("never again" 0, "awesome" 5), or the rider is asked. The
+  rider may dismiss a note instead.
 
 #### Scenario: Detour
 
@@ -42,7 +46,8 @@ Given a saved ride and a GPX track with timestamps, the review SHALL:
 ### Requirement: Review without a track
 
 Without a track, the review SHALL place notes on the planned route by elapsed
-time since departure and mark them approximate.
+time since departure, at the plan's pace without stops, and mark them
+approximate. A note outside the planned riding time is reported, not placed.
 
 ### Requirement: Road ratings steer planning
 

@@ -2,6 +2,7 @@ import { createInterface } from "node:readline/promises";
 import { parseArgs } from "node:util";
 import Anthropic from "@anthropic-ai/sdk";
 import { openRide, type RideSession } from "./agent.ts";
+import { addRideNote, pendingNotesSummary } from "./feedback.ts";
 import { exportSavedRide, savedRideGpx, writeGpx } from "./gpx.ts";
 import {
   DuplicateRideError,
@@ -43,7 +44,7 @@ Options:
 At the "refine>" prompt, type a change in plain words, or a command:
 ${refineHelp()}
 
-Saved rides are managed with: npm run rides -- list | show | rate | rate-leg | delete
+Saved rides are managed with: npm run rides -- list | show | rate | rate-leg | note | review | delete
 Env equivalents: RIDE_ALLOW_MOTORWAYS=1, RIDE_MAX_30_PCT, RIDE_MAX_50_PCT.
 Needs ANTHROPIC_API_KEY (see .env.example).`;
 
@@ -56,6 +57,7 @@ function refineHelp(): string {
   /qr                   QR code of the Google Maps link, to scan with the phone
   /share                Page for the phone on the local Wi-Fi (map link, itinerary, GPX download) with its QR code
   /rate <1-5> [note]    Rate the ride saved or loaded in this session
+  /note <text> [--rating 0-5] [--back N]  During the ride: note about the last N minutes (default 10), reviewed after the ride
   /motorways on|off     Permit or forbid motorways from now on (default off)
   /settings             Show current settings: motorways, slow-zone targets, traffic
   /bike [range=250 ...] Show or set the bike profile (range, reserve, pause, stint, lunch) used for stops
@@ -423,9 +425,11 @@ async function startMenu(): Promise<
 
   while (true) {
     const rides = store.listRides();
+    const pending = pendingNotesSummary(store);
     console.log(
       `\nagentMotoride   (motorways ${motorwayDefault() ? "permitted" : "forbidden"} by default)\n  1. Plan a new ride\n  2. Open a saved ride (${rides.length} saved)\n  q. Quit`,
     );
+    if (pending) console.log(`\n${pending}: npm run rides -- review [track.gpx]`);
     const choice = await ask("\n> ");
     if (typeof choice === "symbol" || ["q", "quit", "exit"].includes(choice.toLowerCase())) return undefined;
 
@@ -636,6 +640,28 @@ async function refineLoop(
             const { rating, notes } = parseRating(args);
             store.rateRide(id, rating, notes);
             console.log(`Rated #${id} ${rating}/5.`);
+            break;
+          }
+          case "note": {
+            const flag = (name: string) => {
+              const at = args.indexOf(name);
+              return at >= 0 ? args.splice(at, 2)[1] : undefined;
+            };
+            const rating = flag("--rating");
+            const back = flag("--back");
+            const text = args.join(" ").trim();
+            if (!text) {
+              console.log("Usage: /note <text> [--rating 0-5] [--back N], e.g. /note last 10 min awesome --rating 5");
+              break;
+            }
+            const id = savedId();
+            const { ride } = addRideNote(store, {
+              ride: id === null ? undefined : String(id),
+              text,
+              rating: rating === undefined ? null : Number(rating),
+              minutesBack: back === undefined ? undefined : Number(back),
+            });
+            console.log(`Noted on #${ride.id} "${ride.name}". Review it after the ride: npm run rides -- review`);
             break;
           }
           case "motorways": {

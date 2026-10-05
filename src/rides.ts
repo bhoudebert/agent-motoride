@@ -1,6 +1,17 @@
 // Manage the saved-ride library without starting a planning session.
 
+import { createInterface } from "node:readline/promises";
 import { pickRideForToday, rideBriefing } from "./briefing.ts";
+import {
+  addRideNote,
+  applyReview,
+  clockAt,
+  formatReview,
+  type ReviewDecision,
+  readTrack,
+  reviewRide,
+  rideToReview,
+} from "./feedback.ts";
 import { routeCells } from "./geometry.ts";
 import { describeStopsAt, exportSavedRide, savedRideGpx } from "./gpx.ts";
 import { enrichRide, formatRideDetail, formatRideList, parseRating, replanStops, tripFigures } from "./library.ts";
@@ -21,6 +32,11 @@ const USAGE = `Usage: npm run rides -- <command>
   export-md <id|name> [file.md]         Write the ride as a Markdown document (default: exports/ in the project)
   rate <id|name> <1-5> [note]           Rate a ride after riding it
   rate-leg <id|name> <leg> <1-5> [note] Rate one leg of a ride
+  note "<text>" [--rating 0-5] [--back N] [--ride id|name]
+                                        During the ride: a note about the last N minutes (default 10), on today's ride
+  notes [--all]                         Notes waiting for review (--all: reviewed and dismissed ones too)
+  review [id|name] [track.gpx] [--yes]  After the ride: place the notes on the recorded track (or on the plan without one),
+                                        show detours and pace, then confirm a rating per road stretch (--yes: accept all proposals)
   export <id|name> [file.gpx] [--pins N]  Write the ride as a GPX file (default: exports/ in the project); --pins caps the route points
   qr <id|name>                          QR code of the ride's Google Maps link
   share <id|name>                       Serve the ride to the phone on the local Wi-Fi (QR code), until Ctrl-C
@@ -32,8 +48,8 @@ const USAGE = `Usage: npm run rides -- <command>
   delete <id|name>                      Remove a ride and its legs
   clear-cache                           Drop cached road, route and weather lookups
 
-Ratings steer later planning: legs and rides rated 4-5 are reused as building
-blocks, those rated 1-2 are avoided.`;
+Ratings steer later planning: legs, rides and road stretches rated 4-5 are
+reused as building blocks, those rated 0-1 are avoided.`;
 
 const [command, ...args] = process.argv.slice(2);
 const store = new Store();
@@ -80,6 +96,68 @@ try {
         throw new Error(`Ride #${target.id} has no leg ${args[1] ?? ""}; it has legs 1 to ${target.legs.length}.`);
       }
       console.log(`Rated leg ${seq} of #${target.id} "${target.name}" ${rating}/5.`);
+      break;
+    }
+    case "note": {
+      const flag = (name: string) => {
+        const at = args.indexOf(name);
+        return at >= 0 ? args.splice(at, 2)[1] : undefined;
+      };
+      const rating = flag("--rating");
+      const back = flag("--back");
+      const rideName = flag("--ride");
+      const text = args.join(" ").trim();
+      if (!text) throw new Error('What about it? e.g. npm run rides -- note "last 10 min awesome" --rating 5');
+      const { note, ride: target } = addRideNote(store, {
+        ride: rideName,
+        text,
+        rating: rating === undefined ? null : Number(rating),
+        minutesBack: back === undefined ? undefined : Number(back),
+      });
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const end = Date.parse(note.createdAt);
+      console.log(
+        `Noted on #${target.id} "${target.name}": ${clockAt(end - note.minutesBack * 60_000, timezone)}-${clockAt(end, timezone)} "${note.text}". Review it after the ride: npm run rides -- review`,
+      );
+      break;
+    }
+    case "notes": {
+      const notes = store.listNotes({ all: args.includes("--all") });
+      if (!notes.length) console.log("No notes waiting for review.");
+      for (const note of notes) {
+        console.log(
+          `#${note.id}  ride #${note.rideId}  ${note.createdAt.slice(0, 16).replace("T", " ")} UTC  last ${note.minutesBack} min  ${note.rating ?? "-"}  ${note.status}  "${note.text}"`,
+        );
+      }
+      break;
+    }
+    case "review": {
+      const trackFile = args.find((a) => a.toLowerCase().endsWith(".gpx"));
+      const rideName = args.find((a) => a !== trackFile && !a.startsWith("--"));
+      const target = rideToReview(store, rideName);
+      const review = await reviewRide(store, target, { track: trackFile ? readTrack(trackFile) : undefined });
+      console.log(formatReview(review));
+      const placed = review.notes.filter((n) => n.placement);
+      if (!placed.length) break;
+      let decisions: ReviewDecision[];
+      if (args.includes("--yes")) decisions = placed.map((n) => ({ noteId: n.note.id }));
+      else if (!process.stdin.isTTY) {
+        console.log("\nRun again in a terminal to confirm each rating, or with --yes to accept the proposals.");
+        break;
+      } else {
+        const rl = createInterface({ input: process.stdin, output: process.stdout });
+        decisions = [];
+        console.log("\nRating per note: Enter keeps the proposal, 0-5 sets it, s skips for now, d dismisses the note.");
+        for (const { note, placement } of placed) {
+          const proposal = placement!.proposedRating;
+          const answer = (await rl.question(`#${note.id} "${note.text}" [${proposal ?? "?"}]: `)).trim().toLowerCase();
+          if (answer === "s" || (answer === "" && proposal === null)) continue;
+          if (answer === "d") decisions.push({ noteId: note.id, dismiss: true });
+          else decisions.push({ noteId: note.id, rating: answer === "" ? undefined : Number(answer) });
+        }
+        rl.close();
+      }
+      for (const line of applyReview(store, decisions)) console.log(line);
       break;
     }
     case "export": {

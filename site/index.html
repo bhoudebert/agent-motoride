@@ -114,6 +114,28 @@
   .rb-foot b { display: block; font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--rust); margin-bottom: 4px; }
   .caption { font-size: 14px; color: var(--ink-2); margin-top: 16px; }
 
+  /* After the ride: notes and the review */
+  .logbook { display: grid; grid-template-columns: 0.8fr 1.2fr; gap: 48px; align-items: start; }
+  .slips { display: grid; gap: 18px; }
+  .slip { background: #fbf8f1; border: 1px solid var(--rule); padding: 16px 20px; box-shadow: 5px 6px 0 var(--paper-2); }
+  .slip:nth-child(odd) { transform: rotate(-1deg); }
+  .slip:nth-child(even) { transform: rotate(0.8deg); margin-left: 28px; }
+  .slip .label { font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
+  .slip q { display: block; font-family: var(--serif); font-style: italic; font-size: 24px; line-height: 1.2; margin-top: 4px; }
+  .ledger { border: 1.5px solid var(--ink); background: #fbf8f1; }
+  .ledger .rb-top { justify-content: flex-start; }
+  .lg-row { display: grid; grid-template-columns: 110px 1fr 120px; border-top: 1px solid var(--rule); }
+  .lg-row > div { padding: 16px 18px; }
+  .lg-row > div + div { border-left: 1px solid var(--rule); }
+  .lg-row .t { font-family: var(--mono); font-size: 13px; color: var(--ink-2); }
+  .lg-row b { font-size: 17px; }
+  .lg-row .where div { font-family: var(--mono); font-size: 13px; color: var(--ink-2); margin-top: 4px; }
+  .rate { font-family: var(--mono); font-size: 13px; }
+  .rate .sq { letter-spacing: 2px; color: var(--signal); font-size: 15px; }
+  .rate.never { color: var(--rust); font-weight: 600; }
+  .lg-row.detour { background: color-mix(in srgb, var(--signal) 14%, #fbf8f1); }
+  .lg-foot { border-top: 1.5px solid var(--ink); padding: 14px 18px; font-family: var(--mono); font-size: 13px; color: var(--ink-2); }
+
   /* How it thinks */
   .steps { display: grid; grid-template-columns: repeat(4, 1fr); counter-reset: s; }
   .steps div { padding: 0 24px 0 0; }
@@ -160,6 +182,10 @@
     .ways div + div, .rb-foot div + div { border-top: 1px solid var(--rule); }
     .rb-row { grid-template-columns: 90px 1fr; }
     .rb-row .tulip, .rb-row .side { display: none; }
+    .logbook { grid-template-columns: 1fr; gap: 32px; }
+    .slip:nth-child(even) { margin-left: 0; }
+    .lg-row { grid-template-columns: 80px 1fr; }
+    .lg-row .rate { grid-column: 2; border-left: 0 !important; padding-top: 0; }
     dl div { grid-template-columns: 1fr; gap: 4px; }
     nav ul { gap: 16px; }
   }
@@ -172,6 +198,7 @@
   <a class="mark" href="#">agent<i>Motoride</i></a>
   <ul>
     <li><a href="#roadbook">Example</a></li>
+    <li><a href="#after">After the ride</a></li>
     <li><a href="#how">How it works</a></li>
     <li><a href="#run">Run it</a></li>
     <li><a href="https://github.com/bhoudebert/agent-motoride">GitHub</a></li>
@@ -258,9 +285,46 @@
   <p class="caption">Also delivered: two Google Maps links pinned to these roads and split at the first pause, a GPX for Liberty Rider or Garmin, and a Markdown copy for your notes.</p>
 </section>
 
+<section id="after">
+  <div class="head">
+    <div class="num">02 / after the ride</div>
+    <div>
+      <h2>Say it on the road. It remembers for you.</h2>
+      <p>At a stop, a few words from the phone: what was great, what never again. Back home, the track from whatever app recorded the ride puts each note on the road you actually rode, detours included, and turns it into a rating every later plan follows.</p>
+    </div>
+  </div>
+  <div class="logbook">
+    <div class="slips">
+      <div class="slip"><span class="label">09:40 · at a stop</span><q>last 10 minutes awesome</q></div>
+      <div class="slip"><span class="label">10:31 · fuel</span><q>cobbles, never again</q></div>
+      <div class="slip"><span class="label">11:12 · coffee</span><q>took the valley road, worth it</q></div>
+    </div>
+    <div class="ledger">
+      <div class="rb-top"><span>REVIEW · RECORDED TRACK · 171 KM · 60 KM/H MOVING</span></div>
+      <div class="lg-row">
+        <div class="t">09:30–09:40</div>
+        <div class="where"><b>D 40</b><div>10 km · on the plan</div></div>
+        <div class="rate"><span class="sq">■■■■■</span><br>loved</div>
+      </div>
+      <div class="lg-row">
+        <div class="t">10:27–10:31</div>
+        <div class="where"><b>Setts through the village</b><div>2 km · on the plan</div></div>
+        <div class="rate never">✕ 0<br>avoid</div>
+      </div>
+      <div class="lg-row detour">
+        <div class="t">11:00–11:12</div>
+        <div class="where"><b>Detour · valley road</b><div>6 km off the plan · found by the track</div></div>
+        <div class="rate"><span class="sq">■■■■</span>□<br>rated</div>
+      </div>
+      <div class="lg-foot">Confirm with Enter. Rated stretches steer every next loop.</div>
+    </div>
+  </div>
+  <p class="caption">From Claude Code or Codex in plain words, <code>/mcp__ride__note</code> and <code>/mcp__ride__review</code>, or <code>npm run rides -- note</code> and <code>review</code> in a terminal. No track? Notes are placed on the plan by time, marked approximate.</p>
+</section>
+
 <section id="how">
   <div class="head">
-    <div class="num">02 / how it works</div>
+    <div class="num">03 / how it works</div>
     <div>
       <h2>An agent that does the legwork, code that keeps it honest</h2>
       <p>The model decides where to look and what to propose. Deterministic tools supply every number. The code enforces the rules you set.</p>
@@ -270,7 +334,7 @@
     <div><h3>Scout</h3><p>Two to four sub-agents explore candidate regions in parallel: winding roads, a routed loop, the forecast.</p></div>
     <div><h3>Compare</h3><p>The planner weighs the candidates on open road, slow zones, time at speed, weather and your past rides.</p></div>
     <div><h3>Finish</h3><p>The chosen loop gets daylight, fixed cameras, fuel and coffee stops placed from your bike's range, and traffic at departure.</p></div>
-    <div><h3>Remember</h3><p>Saved rides, ratings and roads marked “never again” shape the next plan. No ride is proposed twice.</p></div>
+    <div><h3>Remember</h3><p>Saved rides, ratings and the roads you rated from the saddle shape the next plan. No ride is proposed twice.</p></div>
   </div>
   <figure>
     <img src="how-it-works.png" alt="Architecture: the rider asks, the agent decides with a planner and scouts, tools supply road, routing, weather, traffic, camera and stop data, the code enforces the rules, the library learns, and the rider receives the itinerary and files.">
@@ -280,7 +344,7 @@
 
 <section id="run">
   <div class="head">
-    <div class="num">03 / run it</div>
+    <div class="num">04 / run it</div>
     <div>
       <h2>Three ways in</h2>
       <p>Same tools, same library, same exports. Pick the one that fits what you already have.</p>
@@ -307,7 +371,7 @@
 
 <section>
   <div class="head">
-    <div class="num">04 / under the hood</div>
+    <div class="num">05 / under the hood</div>
     <div>
       <h2>Built like something you would rely on</h2>
     </div>
@@ -324,7 +388,7 @@
 
 <section>
   <div class="head">
-    <div class="num">05 / try it</div>
+    <div class="num">06 / try it</div>
     <div>
       <h2>Five minutes to a first plan</h2>
       <p>Full instructions in the <a href="https://github.com/bhoudebert/agent-motoride#readme">README</a>.</p>

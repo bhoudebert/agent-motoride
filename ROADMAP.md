@@ -5,10 +5,10 @@ with a navigation app (Liberty Rider, Google Maps) on the phone.
 
 ## Learn from what was actually ridden
 
-- **Import recorded tracks** (GPX from Liberty Rider or any app). Match the
-  recording to the planned ride: where the rider left the planned roads, real
-  speed per segment, real stop times. Auto-rate legs that were ridden as planned
-  ("done", "skipped", "diverted").
+- **Recorded tracks**: notes during the ride and a review against the
+  recorded GPX (placement on the road ridden, detours, pace, road ratings) are
+  done, see README "Rating what you rode". Next: mark legs ridden as planned,
+  skipped or diverted, and real stop times.
 - **Calibrate the time estimate from recordings**: fit the bend factor and the
   town cap to the rider's own pace instead of guesses. Report "your estimate
   runs 6% slow on 70-roads".
@@ -43,8 +43,11 @@ with a navigation app (Liberty Rider, Google Maps) on the phone.
   gives a remote prompt with no bot and no API cost; kept for a path that does
   not depend on a Claude plan.
 - **Files to the phone when away from home**: Remote Control shows text; GPX
-  and Markdown stay on the machine. A small upload step (private share link)
-  would complete the remote use.
+  and Markdown stay on the machine. Paused: it needs a truly private
+  destination (the rider's own storage); public or unlisted links such as
+  gists are not acceptable for ride files and home addresses. The same gap
+  applies the other way: a track recorded on the phone has to reach the
+  machine for a review.
 - **Weekly auto-plan**: Friday evening, best weekend day, sent to the phone.
 
 ## Agent quality
@@ -57,7 +60,6 @@ with a navigation app (Liberty Rider, Google Maps) on the phone.
 ## Smaller items
 
 - Rain-free window finder over the next 16 days for a saved ride.
-- Rating prompt after a ride date.
 - Points of interest and elevation per leg.
 - Background cameras and stops after the itinerary.
 - Named bike profiles; database backup command; calendar (ICS) file.

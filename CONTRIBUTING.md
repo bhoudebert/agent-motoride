@@ -11,6 +11,9 @@ npm run check           # environment and data services
 
 ## Workflow
 
+The path every feature follows, from idea to release, is described in
+`docs/EVOLVING.md`. In short:
+
 1. Branch from `main`: `feat/...`, `fix/...`, `docs/...`, `chore/...`.
 2. Behaviour change: update the spec first, `openspec/specs/<capability>/spec.md`
    (requirements with scenarios). New capability: new folder plus a line in

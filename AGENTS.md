@@ -12,6 +12,9 @@ behaviour as requirements with scenarios.
 
 ## Rules
 
+The full path every feature follows, from idea to release, is in
+`docs/EVOLVING.md`. The rules below are its short form.
+
 1. **Branch, then pull request.** Never commit to `main`. Branch names:
    `feat/...`, `fix/...`, `docs/...`, `build/...`, `ci/...`, `chore/...`.
 2. **Conventional Commits, strictly.** `<type>(<scope>): <subject>` with the

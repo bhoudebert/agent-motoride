@@ -93,6 +93,7 @@ Details for each mode: [Usage](#usage) for the terminal app, [MCP mode](#mcp-mod
 
 - **An itinerary** built from real data: legs with town names and main roads, distance, estimated riding time and average speed, open-road share, time at 70 km/h or more, slow-zone shares against your targets, daylight, weather by time of day, traffic, fixed cameras, a stop plan with times, navigation links.
 - **A library of saved rides**, versioned, rated, with everything above stored and refreshable, and a rule that keeps new rides from repeating old ones.
+- **Feedback from the road**: say "last 10 minutes awesome" or "cobbles, never again" while riding; after the ride the notes land on the road you actually rode, from any app's recorded track, and become ratings the next plans follow.
 - **Exports**: Google Maps links pinned to the chosen roads, GPX for navigation apps (Liberty Rider, Kurviger, Garmin, TomTom), a Markdown document per ride, a QR code and a phone page on your Wi-Fi.
 - **Accounting**: every run logged with tokens, cost and result; every step replayable; a model benchmark with recommendations.
 
@@ -137,13 +138,14 @@ speed-camera information. Full text in `NOTICE.md`.
 
 ## Documentation map
 
-| Where                                 | What                                                                                   |
-| ------------------------------------- | -------------------------------------------------------------------------------------- |
-| This README                           | How to install, use and configure both modes; how it works; benchmark; troubleshooting |
-| `openspec/project.md`                 | Project context: purpose, stack, conventions, constraints                              |
-| `openspec/specs/<capability>/spec.md` | What the system does, as requirements with scenarios, one file per capability          |
-| `docs/adr/`                           | Architecture decision records: why the system is shaped the way it is                  |
-| `.env.example`                        | Every setting with its default                                                         |
+| Where                                 | What                                                                                              |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| This README                           | How to install, use and configure both modes; how it works; benchmark; troubleshooting            |
+| `openspec/project.md`                 | Project context: purpose, stack, conventions, constraints                                         |
+| `openspec/specs/<capability>/spec.md` | What the system does, as requirements with scenarios, one file per capability                     |
+| `docs/adr/`                           | Architecture decision records: why the system is shaped the way it is                             |
+| `docs/EVOLVING.md`                    | How the app evolves: idea, decision, spec, code in every mode, tests, docs, showcase, PR, release |
+| `.env.example`                        | Every setting with its default                                                                    |
 
 ## Setup
 
@@ -328,6 +330,8 @@ npm run rides -- list
 npm run rides -- show 3
 npm run rides -- rate 3 5 "superb, Col de Rousset empty"
 npm run rides -- rate-leg 3 2 0 "gravel, never again"
+npm run rides -- note "last 10 min awesome"      # during the ride, on today's ride
+npm run rides -- review 3 ~/Downloads/track.gpx  # after the ride: place notes, detours, pace, confirm ratings
 npm run rides -- export 3         # GPX file for a GPS app
 npm run rides -- export-md 3      # Markdown document, the standard full view
 npm run rides -- bike range=250   # bike profile for stop planning
@@ -556,10 +560,66 @@ the runs table (`70+t%`, the first reading).
   routed trip reports the share of its distance on such roads, and a loop with
   10% or more on them is only acceptable when nothing else meets the hard
   limits, which the agent must say. A leg's own rating wins over the ride's.
-  Unrated rides only count for duplicate detection.
+  Road stretches rated from ride notes (see below) count the same way, and the
+  planner sees them in the library. Unrated rides only count for duplicate
+  detection.
 - **Weather is never reused for planning.** A saved ride carries the last
   forecast gathered, for reading; a new plan or an edit always checks the
   forecast afresh for the day in question.
+
+### Rating what you rode
+
+Ratings per ride or per leg are too coarse to say "the D 40 after Maroilles was
+the best part" or "never again on those cobbles", and nobody remembers the
+details by the evening. So the app takes notes while you ride and does the
+remembering.
+
+**During the ride**, at a stop, say it in a few words. From Claude Code or
+Codex on the phone (Remote Control), plain words are enough: "last 10 minutes
+awesome", "cobbles, never again". Or `/mcp__ride__note <text>`, or from a
+terminal:
+
+```bash
+npm run rides -- note "last 10 min awesome"
+npm run rides -- note "cobbles, never again" --back 5   # covers the last 5 minutes
+npm run rides -- note "nice bends" --rating 4 --ride 7
+```
+
+A note covers the minutes before it (10 by default), is timed when you leave
+it, and goes to the ride dated today, else to the last saved ride. In a refine
+session: `/note <text>`.
+
+**After the ride**, export the track from whatever recorded it (Liberty Rider,
+Strava, a Garmin, OsmAnd; any GPX with timestamps) and review:
+
+```bash
+npm run rides -- review 7 ~/Downloads/track.gpx
+```
+
+```
+Review of ride #7 "Avesnois loop"
+Ridden: 171.2 km, 2 h 51 moving, 60 km/h on average (10611 track points).
+Planned: 167.6 km, 2 h 55, 57 km/h.
+Detours from the plan (2 km or more):
+  10:12-10:24  D 962, Maroilles to Le Favril, 6.1 km
+Notes:
+  #2  09:30-09:40  "last 10 min awesome"
+      D 40 / Rue de Monchaux, Marly to Sommaing, 10 km: proposed rating 5
+```
+
+Each note lands on the stretch of the track ridden in its window, so a detour
+you took on a whim is rated, not the planned road you skipped. The road is
+named by map matching. Detours of 2 km or more are listed, and your moving
+pace is compared with the plan's. You confirm each rating (Enter keeps the
+proposal, a digit changes it, `d` dismisses the note, `--yes` accepts all), and
+each one is stored as a rated road stretch: 0-1 avoided, 4-5 sought out by
+every later plan.
+
+No track? `review 7` alone places the notes on the plan by the time elapsed
+since departure, marked approximate. In Claude Code: "review my ride with
+~/Downloads/track.gpx", or `/mcp__ride__review`. The track has to be a file on
+the machine that runs the server. Notes waiting for review are announced when
+the app opens, and in the MCP settings and help.
 
 ### Viewing and editing a saved ride
 
@@ -958,6 +1018,8 @@ and [MCP configuration](https://learn.chatgpt.com/docs/extend/mcp).
 | `refreshRide`                                                                | Same as `npm run rides -- refresh`: recompute figures, weather, cameras, stops and stop plan, no replanning; `stopsOnly` rebuilds just the stop plan                          |
 | `exportMarkdown`                                                             | The ride's standard Markdown document, written to a file                                                                                                                      |
 | `listRides`                                                                  | The library, one line per ride                                                                                                                                                |
+| `addRideNote`                                                                | During a ride: a note about the last minutes, placed on the road after the ride                                                                                               |
+| `reviewRide`                                                                 | After a ride: notes placed on the recorded track (or the plan), detours, pace, proposed ratings; with `decisions`, stores the confirmed road ratings                          |
 | `getDaylight`, `getSpeedCameras`, `findStops`                                | Daylight, fixed cameras and stops along a routed trip, as in the CLI                                                                                                          |
 | `checkConditions`                                                            | Crosswind and low sun along a routed trip                                                                                                                                     |
 | prompts                                                                      | Slash commands in Claude Code, see below                                                                                                                                      |
@@ -974,6 +1036,8 @@ and [MCP configuration](https://learn.chatgpt.com/docs/extend/mcp).
 | `/mcp__ride__refresh <id\|name>`                  | Recompute a ride without changing it                        |
 | `/mcp__ride__export-md <id\|name> [file]`         | Markdown document of a ride, written and shown              |
 | `/mcp__ride__list-rides`                          | The library                                                 |
+| `/mcp__ride__note <text>`                         | During the ride: a note about the last 10 minutes           |
+| `/mcp__ride__review [gpxPath] [ride]`             | After the ride: place the notes, confirm the ratings        |
 | `/mcp__ride__help`                                | What the server can do, no tool call                        |
 
 Every tool call is traced like a built-in session: `npm run rides -- runs` shows

@@ -128,6 +128,51 @@ export interface RunRecord {
   error: string | null;
 }
 
+/** A note left during a ride: what the rider said, about the last few minutes. */
+export interface RideNote {
+  id: number;
+  rideId: number;
+  /** ISO time the note was left: its window ends there. */
+  createdAt: string;
+  text: string;
+  rating: number | null;
+  minutesBack: number;
+  /** pending until reviewed; reviewed once its road was rated or the rider dismissed it. */
+  status: "pending" | "reviewed" | "dismissed";
+  /** Where a review placed the note, kept until the rider confirms it. */
+  placement: NotePlacement | null;
+}
+
+export interface NotePlacement {
+  /** Main roads of the stretch, e.g. "D 938 / D 17". */
+  road: string;
+  /** Start and end of the stretch, in words. */
+  from: string;
+  to: string;
+  /** Local clock times of the stretch, e.g. "10:32-10:42". */
+  window: string;
+  km: number;
+  cells: string[];
+  /** Placed from the plan and elapsed time instead of a recorded track. */
+  approximate: boolean;
+  /** The note's own rating, else one read from its words; null when the rider must say. */
+  proposedRating: number | null;
+}
+
+/** A rating for a stretch of road, from a reviewed note. Steers future planning like a leg rating. */
+export interface RoadRating {
+  id: number;
+  rideId: number | null;
+  noteId: number | null;
+  createdAt: string;
+  road: string;
+  rating: number;
+  reason: string | null;
+  /** Placed from the plan and elapsed time, not from a recorded track. */
+  approximate: boolean;
+  cells: string[];
+}
+
 export interface SavedRun extends RunRecord {
   id: number;
   startedAt: string;
@@ -259,6 +304,28 @@ CREATE INDEX IF NOT EXISTS trace_run ON trace(run_id, id);
 CREATE TABLE IF NOT EXISTS profile (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS ride_notes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ride_id INTEGER NOT NULL REFERENCES rides(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL,
+  text TEXT NOT NULL,
+  rating INTEGER,
+  minutes_back INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  placement TEXT
+);
+CREATE INDEX IF NOT EXISTS ride_notes_ride ON ride_notes(ride_id, id);
+CREATE TABLE IF NOT EXISTS road_ratings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ride_id INTEGER REFERENCES rides(id) ON DELETE SET NULL,
+  note_id INTEGER REFERENCES ride_notes(id) ON DELETE SET NULL,
+  created_at TEXT NOT NULL,
+  road TEXT NOT NULL,
+  rating INTEGER NOT NULL,
+  reason TEXT,
+  approximate INTEGER NOT NULL,
+  cells TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS tool_cache (
   key TEXT PRIMARY KEY,
@@ -596,6 +663,105 @@ export class Store {
 
   deleteRide(id: number): boolean {
     return this.#db.prepare("DELETE FROM rides WHERE id = ?").run(id).changes > 0;
+  }
+
+  addNote(note: { rideId: number; text: string; rating: number | null; minutesBack: number; at?: Date }): RideNote {
+    const createdAt = (note.at ?? new Date()).toISOString();
+    const { lastInsertRowid } = this.#db
+      .prepare("INSERT INTO ride_notes (ride_id, created_at, text, rating, minutes_back) VALUES (?, ?, ?, ?, ?)")
+      .run(note.rideId, createdAt, note.text, note.rating, note.minutesBack);
+    return {
+      id: Number(lastInsertRowid),
+      rideId: note.rideId,
+      createdAt,
+      text: note.text,
+      rating: note.rating,
+      minutesBack: note.minutesBack,
+      status: "pending",
+      placement: null,
+    };
+  }
+
+  /** Notes, oldest first; pending ones only unless all is set. */
+  listNotes(options: { rideId?: number; all?: boolean } = {}): RideNote[] {
+    const rows = this.#db
+      .prepare(
+        `SELECT * FROM ride_notes WHERE (? IS NULL OR ride_id = ?) AND (? OR status = 'pending') ORDER BY created_at, id`,
+      )
+      .all(options.rideId ?? null, options.rideId ?? null, options.all ? 1 : 0) as Array<{
+      id: number;
+      ride_id: number;
+      created_at: string;
+      text: string;
+      rating: number | null;
+      minutes_back: number;
+      status: RideNote["status"];
+      placement: string | null;
+    }>;
+    return rows.map((row) => ({
+      id: row.id,
+      rideId: row.ride_id,
+      createdAt: row.created_at,
+      text: row.text,
+      rating: row.rating,
+      minutesBack: row.minutes_back,
+      status: row.status,
+      placement: row.placement ? JSON.parse(row.placement) : null,
+    }));
+  }
+
+  setNotePlacement(id: number, placement: NotePlacement | null): void {
+    this.#db
+      .prepare("UPDATE ride_notes SET placement = ? WHERE id = ?")
+      .run(placement && JSON.stringify(placement), id);
+  }
+
+  setNoteStatus(id: number, status: RideNote["status"]): boolean {
+    return this.#db.prepare("UPDATE ride_notes SET status = ? WHERE id = ?").run(status, id).changes > 0;
+  }
+
+  addRoadRating(rating: Omit<RoadRating, "id" | "createdAt">): number {
+    const { lastInsertRowid } = this.#db
+      .prepare(
+        `INSERT INTO road_ratings (ride_id, note_id, created_at, road, rating, reason, approximate, cells)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        rating.rideId,
+        rating.noteId,
+        new Date().toISOString(),
+        rating.road,
+        rating.rating,
+        rating.reason,
+        rating.approximate ? 1 : 0,
+        JSON.stringify(rating.cells),
+      );
+    return Number(lastInsertRowid);
+  }
+
+  listRoadRatings(): RoadRating[] {
+    const rows = this.#db.prepare("SELECT * FROM road_ratings ORDER BY id").all() as Array<{
+      id: number;
+      ride_id: number | null;
+      note_id: number | null;
+      created_at: string;
+      road: string;
+      rating: number;
+      reason: string | null;
+      approximate: number;
+      cells: string;
+    }>;
+    return rows.map((row) => ({
+      id: row.id,
+      rideId: row.ride_id,
+      noteId: row.note_id,
+      createdAt: row.created_at,
+      road: row.road,
+      rating: row.rating,
+      reason: row.reason,
+      approximate: row.approximate === 1,
+      cells: JSON.parse(row.cells),
+    }));
   }
 
   /** The bike profile: stored values over the defaults. */

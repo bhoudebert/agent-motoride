@@ -51,7 +51,7 @@ export interface RideContext {
 }
 
 export interface RatedRoads {
-  /** Cells of rides or legs rated 0 or 1: never again. */
+  /** Cells of rides, legs or road stretches rated 0 or 1: never again. */
   avoid: Set<string>;
   avoidFrom: string[];
   /** Cells of rides or legs rated 4 or 5. */
@@ -59,7 +59,10 @@ export interface RatedRoads {
   lovedFrom: string[];
 }
 
-/** Rating 0 or 1 means avoid, 4 or 5 means loved; a leg's own rating wins over the ride's. */
+/**
+ * Rating 0 or 1 means avoid, 4 or 5 means loved; a leg's own rating wins over the ride's.
+ * Road stretches rated from ride notes count the same way.
+ */
 export function ratedRoads(context: RideContext): RatedRoads {
   if (context.ratedRoads) return context.ratedRoads;
   const avoid = new Set<string>();
@@ -80,6 +83,15 @@ export function ratedRoads(context: RideContext): RatedRoads {
         `#${ride.id} leg ${leg.seq} (${leg.from} -> ${leg.to}, rated ${rating})`,
       );
     });
+  }
+  // Stretches rated from notes after a ride, on the road actually ridden.
+  for (const road of context.store.listRoadRatings()) {
+    const target = road.rating <= 1 ? avoid : road.rating >= 4 ? loved : null;
+    if (!target) continue;
+    for (const cell of road.cells) target.add(cell);
+    (road.rating <= 1 ? avoidFrom : lovedFrom).push(
+      `${road.road} (rated ${road.rating}${road.reason ? `: "${road.reason}"` : ""})`,
+    );
   }
   context.ratedRoads = { avoid, avoidFrom, loved, lovedFrom };
   return context.ratedRoads;

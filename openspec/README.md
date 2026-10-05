@@ -18,3 +18,4 @@ change is folded into the specs.
 | mcp-server       | Tools and slash commands for Claude Code and other MCP clients                            |
 | observability    | Runs, usage, cost, trace replay, benchmarking                                             |
 | cli              | Start menu, refine prompt, commands, library management                                   |
+| ride-feedback    | Notes during the ride, review with a recorded track, road ratings                         |

@@ -111,6 +111,23 @@ Details for each mode: [Usage](#usage) for the terminal app, [MCP mode](#mcp-mod
 | Specs               | `openspec/`, updated before behaviour changes                                                                                                                                                                                                                               |
 | Contributing        | `CONTRIBUTING.md`; security notes in `SECURITY.md`; MIT licence                                                                                                                                                                                                             |
 
+## Licence, data and disclaimer
+
+Open source under the MIT licence. The planner relies on public data and
+services with their own licences, in particular OpenStreetMap (© OpenStreetMap
+contributors, ODbL) and Open-Meteo (CC BY 4.0); see `NOTICE.md` for the full
+list, the attribution each requires, and the usage policies of the public
+instances.
+
+Trademarks and product names mentioned here (Claude, Codex, Google Maps,
+Liberty Rider, TomTom and others) belong to their owners; this project is
+independent and not affiliated with or endorsed by any of them.
+
+The app is a planning aid, not a navigation system: riding times are
+estimates, public data can be wrong or outdated, and the rider is responsible
+for the ride and for complying with the law, including local rules on
+speed-camera information. Full text in `NOTICE.md`.
+
 ## Documentation map
 
 | Where                                 | What                                                                                   |

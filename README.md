@@ -507,6 +507,27 @@ free sources:
   computed locally for any date, so a ride in 2027 gets correct times (winter
   and summer time included). The agent plans departure and return inside it.
 
+### Crosswind, low sun and road surface
+
+- **Crosswind**: the route is sampled every 2 km with its heading and time of
+  passage; the forecast gusts and wind direction at the nearest of four
+  forecast points give the component across the direction of travel. Stretches
+  at 35 km/h or more are flagged, 50 km/h or more as strong. Needs the date
+  within 16 days.
+- **Low sun ahead**: the sun's position at each sample's time of passage; a
+  stretch is flagged when the sun is 0 to 15 degrees above the horizon and
+  within 30 degrees of the heading. Works for any date, so a long glare
+  stretch on the way home can move the departure.
+- **Surface**: every routed trip reports the km on cobbles or setts and on
+  unpaved roads (gravel, dirt, compacted), with the stretches by road and leg,
+  from the router's per-segment surface data. The planner avoids them when it
+  can and names the ones that remain.
+
+The planner runs `checkConditions` on the final loop; the ride view, the
+Markdown document and the ride-day briefing show the results, and the briefing
+turns a strong crosswind into a no-go and glare or rough surface into a
+caution.
+
 ### Time at 70 km/h or more
 
 Every routed trip reports two readings of the rider's own yardstick:
@@ -938,6 +959,7 @@ and [MCP configuration](https://learn.chatgpt.com/docs/extend/mcp).
 | `exportMarkdown`                                                             | The ride's standard Markdown document, written to a file                                                                                                                      |
 | `listRides`                                                                  | The library, one line per ride                                                                                                                                                |
 | `getDaylight`, `getSpeedCameras`, `findStops`                                | Daylight, fixed cameras and stops along a routed trip, as in the CLI                                                                                                          |
+| `checkConditions`                                                            | Crosswind and low sun along a routed trip                                                                                                                                     |
 | prompts                                                                      | Slash commands in Claude Code, see below                                                                                                                                      |
 
 | Slash command                                     | Does                                                        |
@@ -1223,6 +1245,7 @@ src/
   profile.ts        Bike profile (range, reserve, pause, lunch)
   stops.ts          Stop planning from the profile and the candidates along the route
   hours.ts          Reader of OpenStreetMap opening_hours tags
+  conditions.ts     Crosswind and low-sun checks along a route, solar position
   briefing.ts       Ride-day briefing
   check.ts          Environment check (npm run check)
   preferences.ts    Rider preferences and their defaults

@@ -142,6 +142,7 @@ speed-camera information. Full text in `NOTICE.md`.
 | This README                           | How to install, use and configure both modes; how it works; benchmark; troubleshooting |
 | `openspec/project.md`                 | Project context: purpose, stack, conventions, constraints                              |
 | `openspec/specs/<capability>/spec.md` | What the system does, as requirements with scenarios, one file per capability          |
+| `docs/adr/`                           | Architecture decision records: why the system is shaped the way it is                  |
 | `.env.example`                        | Every setting with its default                                                         |
 
 ## Setup

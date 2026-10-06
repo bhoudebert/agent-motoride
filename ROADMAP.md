@@ -56,6 +56,9 @@ with a navigation app (Liberty Rider, Google Maps) on the phone.
   README "Checked by code before you see it"). Next: check "dry" against the
   forecast along the loop, and the return before sunset.
 - **Scouts per request** in MCP mode ("use scouts") without editing `.env`.
+- **MCP**: elicitation for review ratings and duplicate saves, and rides as
+  resources, done (ADR 0017). Scouts on the client's model (sampling) is not
+  possible: unsupported in Claude Code and deprecated in the MCP spec.
 - **Evaluation harness**: done (cases, code graders, record and replay, injection
   case; README "Evaluating the agent"). Next: an LLM judge with a rubric for
   what code cannot grade, checked against the rider's own ratings; a runner

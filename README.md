@@ -1207,6 +1207,29 @@ request is the text given to `plan-ride`, the ride figures come from the saved
 ride (else the last routed trip), and tokens and cost are the scouts' only: the
 client's model is not visible to the server, so its own tokens are not counted.
 
+### Forms and attachments in Claude Code (elicitation, resources)
+
+Two decisions are yours, and in Claude Code they come as a dialog rather than
+a question in the chat:
+
+- **Reviewing a ride**: `reviewRide` shows one form with a rating per note,
+  the proposed rating filled in, and a box to dismiss each note. What you
+  submit is stored; closing the form stores nothing. The model never rates on
+  your behalf.
+- **Saving a repeat**: when a ride is 70% or more the same roads as a saved
+  one, you are asked "save a copy anyway?".
+
+Clients without forms (MCP elicitation) get the previous behaviour: the
+review comes back for the model to confirm with you, and a repeat is refused
+with the instruction to ask.
+
+Saved rides are also published as read-only resources, to attach with `@` in
+the prompt: `@ride:ride://library`, `@ride:ride://ride/7`, `@ride:ride://roads/rated`.
+
+Not possible: running scouts on the client's model (MCP sampling). Claude Code
+does not support it and the 2026-07-28 MCP specification deprecates it, so
+scouts keep using the API key when one is set (ADR 0017).
+
 ### Differences from the built-in planner
 
 - **The client's model plans.** Quality and cost follow that model and its

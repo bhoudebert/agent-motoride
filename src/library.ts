@@ -570,3 +570,25 @@ export function formatSurface(ride: SavedRide): string | null {
     .join("; ");
   return `Surface: ${surface.roughPavedKm} km cobbles or setts, ${surface.unpavedKm} km unpaved: ${worst}`;
 }
+
+/** Everything the rider rated, as the planner weighs it: rides, legs and road stretches. */
+export function formatRatedRoads(store: Store): string {
+  const lines: string[] = [];
+  for (const ride of store.listRides()) {
+    if (ride.rating !== null)
+      lines.push(`ride #${ride.id} "${ride.name}": ${ride.rating}/5${ride.notes ? `, "${ride.notes}"` : ""}`);
+    for (const leg of ride.legs) {
+      if (leg.rating !== null) {
+        lines.push(
+          `ride #${ride.id} leg ${leg.seq} ${leg.from} -> ${leg.to}: ${leg.rating}/5${leg.notes ? `, "${leg.notes}"` : ""}`,
+        );
+      }
+    }
+  }
+  for (const road of store.listRoadRatings()) {
+    lines.push(
+      `${road.road}: ${road.rating}/5${road.reason ? `, "${road.reason}"` : ""}${road.approximate ? " (approximate)" : ""}`,
+    );
+  }
+  return lines.length ? `${lines.join("\n")}\n\n0-1 avoided by later plans, 4-5 sought out.` : "Nothing rated yet.";
+}

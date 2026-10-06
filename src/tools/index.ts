@@ -121,10 +121,28 @@ export interface ToolDefinition {
   name: string;
   description: string;
   inputSchema: z.ZodType;
+  /** The four MCP hints; lookups by default (read-only, non-destructive, idempotent, open-world). */
+  hints?: ToolHints;
   // Method syntax on purpose: each definition's run takes its own input type,
   // and method parameters are checked bivariantly, so the list can mix them.
   run(input: unknown): Promise<string>;
 }
+
+/** MCP tool hints, all four explicit. */
+export interface ToolHints {
+  readOnlyHint: boolean;
+  destructiveHint: boolean;
+  idempotentHint: boolean;
+  openWorldHint: boolean;
+}
+
+/** A lookup: reads, changes nothing, same answer for the same input; openWorld when it calls an outside service. */
+const lookup = (openWorldHint = true): ToolHints => ({
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint,
+});
 
 export interface ToolOptions {
   /** Trace scope: "main" for the planner, "scout:<area>" for a scout. */
@@ -190,6 +208,8 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
   const tools: ToolDefinition[] = [
     {
       name: "listSavedRides",
+      // Reads the local library only.
+      hints: lookup(false),
       description:
         "The rider's library of saved rides near a place, with rating (1-5, null if not ridden yet), notes, waypoints and legs. Each leg has coordinates usable directly as calculateTrip waypoints, its main roads, and its own rating when the rider gave one. roadRatings are stretches the rider rated after riding them. Call it once at the start: legs and stretches rated 4-5 are proven building blocks, those rated 0-1 are roads to stay away from, and anything already saved is ground the rider has covered.",
       inputSchema: z.object({
@@ -526,8 +546,10 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
       run: trace("scoutAreas", (input: Parameters<typeof scoutAreas>[1]) => scoutAreas(context, input)),
     },
   ];
-  return tools.filter((tool) => {
-    if (tool.name === "scoutAreas" && !options.scouts) return false;
-    return !options.only || options.only.includes(tool.name);
-  });
+  return tools
+    .map((tool) => ({ ...tool, hints: tool.hints ?? lookup() }))
+    .filter((tool) => {
+      if (tool.name === "scoutAreas" && !options.scouts) return false;
+      return !options.only || options.only.includes(tool.name);
+    });
 }

@@ -2,17 +2,17 @@
 
 ## 1. Versioned migrations (ADR 0022), behaviour unchanged
 
-- [ ] `src/migrations.ts`: `user_version`, step 1 = today's schema, legacy libraries stamped
-- [ ] Transaction per step, foreign key check, backup with `VACUUM INTO`, refuse newer libraries, busy timeout
-- [ ] Tests: fresh library, version-0 library, applied twice, failure midway leaves the file unchanged, newer refused
-- [ ] Spec: requirement "Library storage" in `saved-rides`
+- [x] `src/migrations.ts`: `user_version`, step 1 = today's schema, legacy libraries stamped
+- [x] Transaction per step, foreign key check, backup with `VACUUM INTO`, refuse newer libraries, busy timeout
+- [x] Tests: fresh library, version-0 library, applied twice, failure midway leaves the file unchanged, newer refused
+- [x] Spec: requirement "Library storage" in `saved-rides`
 
 ## 2. Roadbooks and rides tables, behaviour unchanged
 
-- [ ] Step 2: `roadbooks`, `roadbook_versions`, `rides` (the day); legs, notes, road ratings and runs re-pointed
-- [ ] Data moved as ADR 0023 says; ids kept
-- [ ] Store API split, callers adapted, every existing command still answers the same
-- [ ] Tests: a library with dated and undated rides, chains of copies, notes and ratings migrated as described
+- [x] Step 2: `roadbooks`, `roadbook_versions`, `rides` (the day); legs, notes, road ratings and runs re-pointed
+- [x] Data moved as ADR 0023 says; ids kept
+- [x] Store over the new tables behind the same API; every existing command still answers the same
+- [x] Tests: a library with dated and undated rides, chains of copies, notes and ratings migrated as described
 
 ## 3. Commands and words
 

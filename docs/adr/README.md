@@ -29,4 +29,4 @@ not rewritten.
 | [0020](0020-road-memory-geo-and-keywords.md)                   | Road memory: what the app learnt, retrieved by place and by words                | accepted |
 | [0021](0021-client-subagents-scout-when-api-scouts-are-off.md) | Let the client's subagents scout when API scouts are off                         | accepted |
 | [0022](0022-versioned-schema-migrations.md)                    | Versioned schema migrations, applied in a transaction after a backup             | accepted |
-| [0023](0023-roadbooks-and-rides.md)                            | Split the library into roadbooks (the design) and rides (a roadbook on a day)    | proposed |
+| [0023](0023-roadbooks-and-rides.md)                            | Split the library into roadbooks (the design) and rides (a roadbook on a day)    | accepted |

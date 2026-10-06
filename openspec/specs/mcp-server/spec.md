@@ -56,6 +56,15 @@ The server SHALL work with any MCP client over stdio. The rider SHALL get the sa
 - **WHEN** the rider types "plan me a ride this Saturday, under 250 km" without a slash command
 - **THEN** the model calls `planningGuide` first and plans with the full guidance, as with `/mcp__ride__plan-ride`
 
+### Requirement: Client scouting when API scouts are off
+
+When scouts cannot run (`RIDE_SCOUTS=0` or no API credentials), the server instructions and the planning guidance SHALL say so and SHALL give the client a scout brief: start one subagent per area, in parallel, when the client can, each following the scout method (road memory first, then roads, route, weather) and reporting a route id; otherwise explore the areas itself. `scoutAreas` called anyway SHALL answer with the same guidance. When scouts can run, the guidance SHALL be unchanged. The terminal planner's instructions SHALL NOT change.
+
+#### Scenario: Scouts off in Claude Code
+
+- **WHEN** `.env` sets `RIDE_SCOUTS=0` and the rider asks for a new leisure ride
+- **THEN** the planning guidance asks for parallel subagents with the scout brief, and their routes are presented with route ids of the session
+
 ### Requirement: Run accounting
 
 MCP runs SHALL record the prompt requests, the ride figures from the saved or last routed trip, and the scouts' tokens and cost; the client's own tokens SHALL be reported as unknown.

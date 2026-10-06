@@ -1,6 +1,6 @@
 import { decodePolyline, encodePolyline, type LatLon } from "../geometry.ts";
 import { fetchJson } from "../http.ts";
-import { pinnedMapsLinks } from "../maps.ts";
+import { overviewLink, pinnedMapsLinks } from "../maps.ts";
 import { bearingDeg, describeCoords, fmtCoords, haversineKm, type Point, resolvePoint } from "./geo.ts";
 
 export interface CalculateTripInput {
@@ -401,6 +401,11 @@ export interface TripComputation {
  * profile) and return distance, riding time and the speed-limit profile.
  * Riding time excludes stops.
  */
+/** With several navigation links, one more showing the whole ride (not for navigating). */
+export function overviewWhenSplit(points: Array<{ lat: number; lon: number }>, shapes: string[], parts = 2) {
+  return parts > 1 ? { overviewLink: overviewLink(points, shapes) } : {};
+}
+
 export async function computeTrip(input: CalculateTripInput): Promise<TripComputation> {
   const points = await resolveWaypoints(input.waypoints, input.roundTrip);
   const avoidMotorways = input.avoidMotorways ?? true;
@@ -477,6 +482,7 @@ export async function computeTrip(input: CalculateTripInput): Promise<TripComput
       })),
       mapsUrl: `https://www.google.com/maps/dir/${points.map(fmtCoords).join("/")}`,
       navigationLinks: pinnedMapsLinks(points, shapes),
+      ...overviewWhenSplit(points, shapes, pinnedMapsLinks(points, shapes).length),
     },
   };
 }

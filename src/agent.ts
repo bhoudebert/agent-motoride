@@ -107,7 +107,7 @@ Lay the itinerary out for a terminal, short and scannable, no markdown headings:
 - speed cameras on the loop: km mark, road, limit; or "none mapped"
 - crosswind and low-sun stretches with km and time, and any cobbled or unpaved stretch by road; or "none"
 - stops from the stop plan: time, km mark, kind, name; and the return time with breaks
-- the navigation link(s) from planStops (or navigationLinks from calculateTrip when no stops were planned); say "part 1, part 2" when there are several
+- the navigation link(s) from planStops (or navigationLinks from calculateTrip when no stops were planned); say "part 1, part 2" when there are several, and then give overviewLink as "Whole ride (overview, not for navigation)"
 - one alternative in a sentence, if evaluated
 Keep explanations to the facts the rider needs; put caveats (unverified data, missed targets) in one line each, not paragraphs.
 

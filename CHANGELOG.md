@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.2.0](https://github.com/bhoudebert/agent-motoride/compare/v1.1.0...v1.2.0) (2026-10-06)
+
+
+### Features
+
+* **export:** add a whole-ride overview link when navigation is split in parts ([#32](https://github.com/bhoudebert/agent-motoride/issues/32)) ([0496635](https://github.com/bhoudebert/agent-motoride/commit/049663579916342de47abd13be05974fc8f9d544))
+* **mcp:** ask the rider in forms for review ratings and repeat saves; rides as resources ([#34](https://github.com/bhoudebert/agent-motoride/issues/34)) ([3658b58](https://github.com/bhoudebert/agent-motoride/commit/3658b58f6a780092b225ba5999f57bd8726c727c))
+* **mcp:** plain words get the full planning guidance in every client ([#36](https://github.com/bhoudebert/agent-motoride/issues/36)) ([9f54b7c](https://github.com/bhoudebert/agent-motoride/commit/9f54b7cf71b2cca388a460ea96cc163eff77935c))
+* **planner:** check every itinerary in code, send failures back once ([#27](https://github.com/bhoudebert/agent-motoride/issues/27)) ([e2930b9](https://github.com/bhoudebert/agent-motoride/commit/e2930b97635341de676f1e86e6d2870b50617cbb))
+* **planner:** plan a ride from a photo of a map or a route screenshot ([#30](https://github.com/bhoudebert/agent-motoride/issues/30)) ([afe0192](https://github.com/bhoudebert/agent-motoride/commit/afe019289da22efbb83547d3a3720900a4056bf8))
+* **rides:** import GPX and KML routes as rides of the library ([#31](https://github.com/bhoudebert/agent-motoride/issues/31)) ([1f57f70](https://github.com/bhoudebert/agent-motoride/commit/1f57f70f5b4dfe4dccdbf8ade1b219a0fd279eea))
+* **routing:** report fast expressways apart from motorways, and keep leisure rides off them ([#37](https://github.com/bhoudebert/agent-motoride/issues/37)) ([f9f4e59](https://github.com/bhoudebert/agent-motoride/commit/f9f4e59787f3821ca9a09b68c581b1ab2f2c9397))
+* **trace:** export logged sessions as OpenTelemetry traces ([#29](https://github.com/bhoudebert/agent-motoride/issues/29)) ([8e49b18](https://github.com/bhoudebert/agent-motoride/commit/8e49b1810c2d0582b9b29256694eb752ad073132))
+
+
+### Bug Fixes
+
+* **traffic:** report expected congestion as the delay, not only incidents ([#26](https://github.com/bhoudebert/agent-motoride/issues/26)) ([0abb9ae](https://github.com/bhoudebert/agent-motoride/commit/0abb9aeb6caf0d55f7199e61640c415d03b641c6))
+
 ## [1.1.0](https://github.com/bhoudebert/agent-motoride/compare/v1.0.0...v1.1.0) (2026-10-06)
 
 

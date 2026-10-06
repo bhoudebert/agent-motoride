@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.3.0](https://github.com/bhoudebert/agent-motoride/compare/v1.2.0...v1.3.0) (2026-10-06)
+
+
+### Features
+
+* **export:** a map picture of a saved ride, with its stops and cameras ([#44](https://github.com/bhoudebert/agent-motoride/issues/44)) ([215d9bf](https://github.com/bhoudebert/agent-motoride/commit/215d9bfb67fc64aa2cf562deddc80378d24b461d))
+* **mcp:** all four hints on every tool, every tool tested by name, a maintained QR library ([#41](https://github.com/bhoudebert/agent-motoride/issues/41)) ([c88808b](https://github.com/bhoudebert/agent-motoride/commit/c88808b423b042d665551329b41eb4169d223fbf))
+* **mcp:** rate a saved ride or one of its legs from Claude Code or Codex ([#43](https://github.com/bhoudebert/agent-motoride/issues/43)) ([0174a17](https://github.com/bhoudebert/agent-motoride/commit/0174a17918f8b3e7afba19a6076b13512417ae75))
+* **trust-index:** add m8ven badge ([b3407a4](https://github.com/bhoudebert/agent-motoride/commit/b3407a402427949df6d7c9a3f7c436dc79ee8e90))
+
 ## [1.2.0](https://github.com/bhoudebert/agent-motoride/compare/v1.1.0...v1.2.0) (2026-10-06)
 
 

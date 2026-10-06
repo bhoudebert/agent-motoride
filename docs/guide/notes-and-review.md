@@ -24,7 +24,7 @@ npm run rides -- note "nice bends" --rating 4 --ride 7
 last 10 minutes awesome
 cobbles, never again
 
-(plain words are enough; or /mcp__ride__note <text>)
+(plain words are enough)
 ```
 
 :::
@@ -45,8 +45,6 @@ npm run rides -- review 7 ~/Downloads/track.gpx
 
 ```text [Claude Code / Codex]
 review my ride with ~/Downloads/track.gpx
-
-(or /mcp__ride__review)
 ```
 
 :::

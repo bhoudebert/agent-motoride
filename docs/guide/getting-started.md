@@ -5,12 +5,12 @@ from real road, weather and traffic data, and keeps a library of the rides you
 liked. You talk to it in one of two ways; the tools, the library and the
 exports are the same.
 
-|                    | Terminal                                       | Claude Code or Codex                                           |
-| ------------------ | ---------------------------------------------- | -------------------------------------------------------------- |
-| Who thinks         | This app, with your Anthropic API key          | The model of your Claude Code or Codex plan                    |
-| What you pay with  | The API key, per use (a few cents to a dollar) | Your existing plan; scouts use the API key if one is set       |
-| How you talk to it | A menu, then a `refine>` prompt                | Plain words, or slash commands such as `/mcp__ride__plan-ride` |
-| Best for           | Full control, scripts, cost per ride           | Daily use, chatting about rides, from the phone                |
+|                    | Terminal                                       | Claude Code or Codex                                     |
+| ------------------ | ---------------------------------------------- | -------------------------------------------------------- |
+| Who thinks         | This app, with your Anthropic API key          | The model of your Claude Code or Codex plan              |
+| What you pay with  | The API key, per use (a few cents to a dollar) | Your existing plan; scouts use the API key if one is set |
+| How you talk to it | A menu, then a `refine>` prompt                | Plain words: "plan me a ride on Saturday", "show ride 7" |
+| Best for           | Full control, scripts, cost per ride           | Daily use, chatting about rides, from the phone          |
 
 Every page of this guide shows both, side by side.
 
@@ -71,11 +71,16 @@ What ride do you want?
 ```
 
 ```text [Claude Code / Codex]
-/mcp__ride__plan-ride this Saturday, no rain, under 250 km, winding roads
-
-(or in plain words: "plan me a ride this Saturday, no rain, under 250 km")
+plan me a ride this Saturday, no rain, under 250 km, winding roads
 ```
 
+:::
+
+::: tip Plain words are enough
+In Claude Code and Codex, say what you want as you would to a friend: the
+server tells the model to fetch the full planning guidance first. Slash
+commands such as `/mcp__ride__plan-ride` are shortcuts, nothing more; type
+`/mcp__ride__help` to list them.
 :::
 
 A plan takes one to a few minutes. Then keep talking to it: "shorter", "leave

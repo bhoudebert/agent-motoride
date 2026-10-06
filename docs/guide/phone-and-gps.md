@@ -60,8 +60,6 @@ npm run rides -- export 7 ~/ride.gpx      # or a path you choose
 
 ```text [Claude Code / Codex]
 export ride 7 as GPX
-
-/mcp__ride__export-gpx 7
 ```
 
 :::
@@ -87,9 +85,9 @@ npm run rides -- today 7
 ```
 
 ```text [Claude Code / Codex]
-/mcp__ride__today 7
+briefing for ride 7
 
-(or: "briefing for ride 7")
+(or: "can I ride the Avesnois loop today?")
 ```
 
 :::

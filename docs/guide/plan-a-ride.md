@@ -16,9 +16,9 @@ npm run ride -- --from "Grenoble" "this Saturday, no rain, under 250 km, winding
 ```
 
 ```text [Claude Code / Codex]
-/mcp__ride__plan-ride this Saturday, no rain, under 250 km, winding roads
+plan me a ride this Saturday, no rain, under 250 km, winding roads
 
-(plain words work too: "plan a ride this Saturday from Grenoble, under 250 km")
+(shortcut: /mcp__ride__plan-ride this Saturday, no rain, ...)
 ```
 
 :::
@@ -81,8 +81,8 @@ save it as "Vercors loop"
 :::
 
 Saved rides can be changed later the same way: `npm run ride -- --ride 3
-"next Sunday, 50 km longer"`, or `/mcp__ride__edit-ride 3 next Sunday, 50 km
-longer` in Claude Code.
+"next Sunday, 50 km longer"`, or "make ride 3 50 km longer, next Sunday" in
+Claude Code.
 
 ## Checked before you see it
 

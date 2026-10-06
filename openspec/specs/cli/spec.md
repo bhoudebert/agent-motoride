@@ -9,7 +9,7 @@ settings always visible and no accidental exit.
 
 ### Requirement: Entry points
 
-`npm run ride` with no arguments SHALL open a menu (plan a new ride, open a saved ride, quit); with a request SHALL plan directly; `--ride <id>` without a request SHALL open the prompt on that ride; `--show <id>` SHALL display a ride without any model call.
+`npm run ride` with no arguments SHALL open a menu (plan a new ride, open a roadbook, quit); with a request SHALL plan directly; `--roadbook <id>` (also `--ride`) without a request SHALL open the prompt on that ride; `--show <id>` SHALL display a ride without any model call.
 
 ### Requirement: Refine prompt
 

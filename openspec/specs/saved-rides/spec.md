@@ -1,4 +1,4 @@
-# Saved Rides Specification
+# Roadbooks and Rides Specification (saved-rides)
 
 ## Purpose
 
@@ -41,7 +41,7 @@ Right after a save, and on every `refresh`, the system SHALL gather and store da
 
 ### Requirement: Duplicate avoidance
 
-The planner SHALL read the library at the start; candidates sharing 70% or more of their grid cells with a saved ride SHALL be rejected unless repeats are allowed or the ride is the one being evolved; 40% or more SHALL be mentioned as similar. Saving a candidate that duplicates a saved ride outside the session's lineage SHALL be refused unless explicitly forced.
+The planner SHALL read the library at the start; candidates sharing 70% or more of their grid cells with a roadbook SHALL be rejected unless repeats are allowed or the ride is the one being evolved; 40% or more SHALL be mentioned as similar. Saving a candidate that duplicates a roadbook outside the session's lineage SHALL be refused unless explicitly forced.
 
 #### Scenario: Same request twice
 
@@ -52,9 +52,9 @@ The planner SHALL read the library at the start; candidates sharing 70% or more 
 
 Rides and legs SHALL be rateable 0 to 5 with a note, from the CLI, the prompt, the menu and the `rateRide` MCP tool; 0 means never again. A rating SHALL count for the rest of the session at once, in the rated-roads check of the next routed trip. Legs rated 4 or 5 SHALL be offered as building blocks. Every routed trip SHALL report its share of distance on roads from rides or legs rated 0 or 1 (a leg's rating overriding the ride's); 10% or more SHALL make the loop invalid unless nothing else meets the hard limits, in which case the planner SHALL say so.
 
-### Requirement: Editing a saved ride
+### Requirement: Editing a roadbook
 
-Opening a saved ride SHALL seed the model with its structured data (not the old conversation); a change or new date re-routes and re-checks weather; a question is answered without replanning; overlap with the ride is expected.
+Opening a roadbook SHALL seed the model with its structured data (not the old conversation); a change or new date re-routes and re-checks weather; a question is answered without replanning; overlap with the ride is expected.
 
 ### Requirement: Listing roadbooks and rides
 

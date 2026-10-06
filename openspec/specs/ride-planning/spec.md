@@ -9,16 +9,16 @@ built only from tool results, within the rider's hard limits and preferences.
 
 ### Requirement: Request handling
 
-The planner SHALL accept a free-text request plus a start point, road preferences, today's date and, optionally, a saved ride to work from, and SHALL send nothing to the model until the first message.
+The planner SHALL accept a free-text request plus a start point, road preferences, today's date and, optionally, a roadbook to work from, and SHALL send nothing to the model until the first message.
 
 #### Scenario: New ride
 
 - **WHEN** the rider asks for a leisure ride
 - **THEN** the planner sends the request with the start point, preferences and date, and plans
 
-#### Scenario: Open a saved ride without a request
+#### Scenario: Open a roadbook without a request
 
-- **WHEN** a saved ride is opened for editing
+- **WHEN** a roadbook is opened for editing
 - **THEN** the prompt opens with the ride loaded and no model call is made until the rider types
 
 ### Requirement: Hard limits and targets
@@ -32,7 +32,7 @@ The planner SHALL treat distance caps, riding-time caps and "dry" as hard limits
 
 ### Requirement: Itinerary checked by code
 
-Every itinerary SHALL be checked by code before it is shown: routed distance and riding time against the caps read from the rider's words, no motorway when forbidden, no repeat of a saved ride unless repeats are allowed, less than 10% on roads rated 0-1, the distance stated in the answer equal to the routed one within 1.5 km, and, while motorways are forbidden, less than 25% of fast expressway (roads that are not motorways, limited to 100 km/h or more). In API mode a failed check SHALL be sent back to the planner once, marked as an automatic check, unless the answer already acknowledges the breach; checks still failing after that SHALL be shown to the rider under the itinerary. In MCP mode the checks SHALL be available as the `checkItinerary` tool.
+Every itinerary SHALL be checked by code before it is shown: routed distance and riding time against the caps read from the rider's words, no motorway when forbidden, no repeat of a roadbook unless repeats are allowed, less than 10% on roads rated 0-1, the distance stated in the answer equal to the routed one within 1.5 km, and, while motorways are forbidden, less than 25% of fast expressway (roads that are not motorways, limited to 100 km/h or more). In API mode a failed check SHALL be sent back to the planner once, marked as an automatic check, unless the answer already acknowledges the breach; checks still failing after that SHALL be shown to the rider under the itinerary. In MCP mode the checks SHALL be available as the `checkItinerary` tool.
 
 #### Scenario: Over the cap
 

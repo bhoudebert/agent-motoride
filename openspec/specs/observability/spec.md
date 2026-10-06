@@ -9,7 +9,7 @@ settings on evidence.
 
 ### Requirement: Runs
 
-Every session SHALL have a run row updated after each turn: model, effort, turns, model calls, tool calls, tokens (input, cache writes, cache reads, output), wall time, estimated cost from list prices, the resulting ride's distance, time, open road, 70 km/h share, slow zones, motorway km, linked saved ride, and error. Unsaved and failed runs SHALL be kept.
+Every session SHALL have a run row updated after each turn: model, effort, turns, model calls, tool calls, tokens (input, cache writes, cache reads, output), wall time, estimated cost from list prices, the resulting ride's distance, time, open road, 70 km/h share, slow zones, motorway km, linked roadbook, and error. Unsaved and failed runs SHALL be kept.
 
 ### Requirement: Trace
 

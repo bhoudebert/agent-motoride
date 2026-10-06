@@ -5,7 +5,7 @@
 agentMotoride plans one-day motorcycle rides from a one-sentence request. A model
 (Claude, or the model of an MCP client such as Claude Code) decides where to
 look and what to propose; deterministic tools provide roads, routing, speed
-limits, riding time, weather, daylight, cameras, stops, a library of saved rides
+limits, riding time, weather, daylight, cameras, stops, a library of roadbooks and rides
 and exports. The code enforces the rider's hard rules and verifies what the
 model presents.
 
@@ -29,7 +29,7 @@ model presents.
 
 - One `RideContext` per session: routed trips by id, preferences, usage, trace, stop plans.
 - The model carries only ids (`r3`); the process holds the data behind them.
-- Everything a ride needs after planning is stored on the ride row (`extras`), gathered at save and on `refresh`.
+- What a roadbook needs is stored on it (route line, cameras, stop candidates); what a day needs on its ride (daylight, forecast, stop plan), gathered at save, on `refresh` and when a ride is planned from a roadbook.
 
 ### Testing Strategy
 
@@ -43,6 +43,10 @@ model presents.
 - No attribution trailers in commits or pull requests.
 
 ## Domain Context
+
+- **Roadbook**: a loop or trip as designed and kept: waypoints, legs, route line, road mix, cameras, stop candidates, road and leg ratings. Numbers name roadbooks ("roadbook 7"; riders may say "ride 7").
+- **Ride**: a roadbook on one day: date (or none yet), departure, start, forecast, daylight, stop plan, traffic, status (planned, ridden, cancelled), notes. Named by its roadbook and date ("Saturday's ride"); its id stays internal. "Plan a ride from roadbook 7 on Saturday" adds one, never a copy.
+- **Itinerary**: the text presented to the rider.
 
 - "Open road" is distance outside built-up areas and off motorways; the rider's yardstick is time at 70 km/h or more.
 - Slow-zone shares (30 and 31-50 km/h) are targets to minimise, not pass/fail limits; motorways are forbidden by default and permitted per session.

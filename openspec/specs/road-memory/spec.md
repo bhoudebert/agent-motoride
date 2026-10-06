@@ -10,7 +10,7 @@ before costs fewer scouts and road searches.
 ### Requirement: Memory derived from what is stored
 
 The memory SHALL be derived from the library and the traces, never written by
-hand: saved rides and their legs with ratings and notes, rated road stretches,
+hand: roadbooks and their legs with ratings and notes, rated road stretches,
 scout verdicts per area (area, date, found, open-road and 50-zone shares,
 verdict, location), and the winding roads of each road search (name or ref,
 curviness, length, coordinates of both ends, date). It SHALL be kept current

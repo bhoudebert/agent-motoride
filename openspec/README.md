@@ -11,7 +11,7 @@ change is folded into the specs.
 | route-analysis   | Routing, speed-limit profile, riding-time estimate, open road and 70 km/h readings                        |
 | place-resolution | Geocoding of towns and addresses, reverse geocoding of coordinates                                        |
 | weather-daylight | Forecasts along a route, sunrise and sunset, traffic check                                                |
-| saved-rides      | Library: save, versions, ratings, duplicate detection, refresh, stored extras                             |
+| saved-rides      | Library: roadbooks and rides, save, plan a ride from a roadbook, lists, ratings, duplicates, refresh      |
 | stop-planning    | Bike profile, fuel and pause planning, stop locations                                                     |
 | route-exports    | Navigation links, GPX, Markdown, QR and phone share page                                                  |
 | external-lookups | Robustness and caching of public map services                                                             |

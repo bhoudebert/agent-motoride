@@ -22,4 +22,4 @@ The line SHALL be reduced to waypoints and routed with the rider's motorway sett
 
 ### Requirement: Every mode
 
-`npm run rides -- import <file> [name] [--force]` SHALL import and save without a model, refused like any save when it duplicates a saved ride. The `importRoute` tool SHALL give the planner (API and MCP) a routed trip with a route id, to present, edit, check and save like any other.
+`npm run rides -- import <file> [name] [--force]` SHALL import and save without a model, refused like any save when it duplicates a roadbook. The `importRoute` tool SHALL give the planner (API and MCP) a routed trip with a route id, to present, edit, check and save like any other.

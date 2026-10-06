@@ -52,8 +52,9 @@ with a navigation app (Liberty Rider, Google Maps) on the phone.
 
 ## Agent quality
 
-- **Constraint checker loop**: code verifies the itinerary against the request
-  and sends violations back; the agent retries by itself.
+- **Constraint checker loop**: done (code checks every itinerary, one retry;
+  README "Checked by code before you see it"). Next: check "dry" against the
+  forecast along the loop, and the return before sunset.
 - **Scouts per request** in MCP mode ("use scouts") without editing `.env`.
 - **Evaluation harness**: done (cases, code graders, record and replay, injection
   case; README "Evaluating the agent"). Next: an LLM judge with a rubric for

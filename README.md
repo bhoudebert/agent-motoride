@@ -241,6 +241,26 @@ happen, followed by token usage:
 
 To keep only the itinerary: `npm run ride -- ... --once 2>/dev/null`.
 
+### Checked by code before you see it
+
+Every itinerary is checked by code, not by the model, before it is shown:
+
+- the routed distance and riding time against the caps in your own words
+  ("under 250 km", "<250km", "at most two hours", "2h max"; "about 150 km" is
+  a wish and is not checked);
+- no motorway when they are forbidden, no repeat of a saved ride, less than
+  10% on roads rated 0 or 1;
+- the distance stated in the answer is the routed one.
+
+When a check fails, the planner gets one message marked as an automatic
+check, listing what failed, and answers again: fixed, or saying plainly which
+limit cannot be met. An answer that already owns up to a missed limit ("no
+loop fits under 200 km; closest option 214 km") is shown as is. Anything still
+failing after the retry is printed under the itinerary. A clean itinerary
+costs no extra call. In Claude Code and Codex the same checks are the
+`checkItinerary` tool, which the server asks the client to call before
+presenting a ride.
+
 ### Refining the itinerary
 
 After the itinerary the program stays open on a `refine>` prompt. Type a change
@@ -1074,6 +1094,7 @@ and [MCP configuration](https://learn.chatgpt.com/docs/extend/mcp).
 | `refreshRide`                                                                | Same as `npm run rides -- refresh`: recompute figures, weather, cameras, stops and stop plan, no replanning; `stopsOnly` rebuilds just the stop plan                          |
 | `exportMarkdown`                                                             | The ride's standard Markdown document, written to a file                                                                                                                      |
 | `listRides`                                                                  | The library, one line per ride                                                                                                                                                |
+| `checkItinerary`                                                             | Code check of an itinerary before it is presented: caps from the rider's words, motorways, repeats, rated roads, stated distance                                              |
 | `addRideNote`                                                                | During a ride: a note about the last minutes, placed on the road after the ride                                                                                               |
 | `reviewRide`                                                                 | After a ride: notes placed on the recorded track (or the plan), detours, pace, proposed ratings; with `decisions`, stores the confirmed road ratings                          |
 | `getDaylight`, `getSpeedCameras`, `findStops`                                | Daylight, fixed cameras and stops along a routed trip, as in the CLI                                                                                                          |

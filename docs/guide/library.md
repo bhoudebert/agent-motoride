@@ -61,9 +61,8 @@ npm run rides -- rate-leg 3 2 0 "gravel, never again"
 ```
 
 ```text [Claude Code / Codex]
-Not a tool yet: rate from the terminal, or leave notes during
-the ride and review them afterwards (Notes and review), which rates the
-exact stretches of road instead of whole legs.
+rate ride 3 five, Col de Rousset was empty
+leg 2 of ride 3: never again, gravel
 ```
 
 :::

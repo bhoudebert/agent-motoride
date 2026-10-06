@@ -383,9 +383,44 @@ npm run rides -- runs             # every planning session: model, tokens, cost,
 npm run rides -- refresh 3        # route it again; recompute times, road mix, leg names, daylight, weather, cameras, stops, stop plan
 npm run rides -- refresh 3 --stops  # only rebuild the stop plan (after a bike profile change); instant once cached
 npm run rides -- refresh all
+npm run rides -- import ~/Downloads/route.gpx   # a route someone shared, routed and saved
 npm run rides -- delete 3
 npm run rides -- clear-cache
 ```
+
+### Importing a route someone shared (GPX, KML)
+
+A club's Sunday ride, a friend's Kurviger or Calimoto export, a route from a
+forum: import the file and it becomes a ride of your library like any planned
+one, with the speed-limit profile, open-road share, slow zones, surfaces, legs
+named by town, daylight, cameras and stops.
+
+```bash
+npm run rides -- import ~/Downloads/club-ride.gpx            # name from the file
+npm run rides -- import ~/Downloads/route.kml "Ardennes with Marc"
+```
+
+```
+Avesnois again: imported from ride7.gpx, 167.4 km in the file.
+Routed 165.8 km, 2h54 riding, 99% of the file's line followed (3 routing passes, 8 waypoints).
+1. ... -> Route d'Haveluy near Denain: 28 km, 0h30
+...
+```
+
+No model is involved and it costs nothing. The file's line (GPX track or
+route, KML line) is reduced to waypoints and routed with the motorcycle
+profile. Each leg is compared with the stretch of the file it replaces; where
+the router took another road, a waypoint is added in the middle of that
+stretch and the route is computed again, up to three passes within the
+router's 10 locations. The result says how much of the file it follows. Your
+rules still apply: with motorways forbidden, a motorway in the file is routed
+around, and the fidelity shows it. A file that repeats a saved ride is refused
+like any save (`--force` to keep it anyway).
+
+In a planning session or in Claude Code, say "import ~/Downloads/route.gpx":
+the `importRoute` tool gives the planner a routed trip to present, change
+("same but skip Givet"), check and save. The file has to be on the machine that
+runs the session.
 
 ### Exporting to a GPS app (GPX)
 
@@ -1142,6 +1177,7 @@ and [MCP configuration](https://learn.chatgpt.com/docs/extend/mcp).
 | `refreshRide`                                                                | Same as `npm run rides -- refresh`: recompute figures, weather, cameras, stops and stop plan, no replanning; `stopsOnly` rebuilds just the stop plan                          |
 | `exportMarkdown`                                                             | The ride's standard Markdown document, written to a file                                                                                                                      |
 | `listRides`                                                                  | The library, one line per ride                                                                                                                                                |
+| `importRoute`                                                                | A GPX or KML file turned into a routed trip with a route id, its fidelity to the file and the waypoints used                                                                  |
 | `checkItinerary`                                                             | Code check of an itinerary before it is presented: caps from the rider's words, motorways, repeats, rated roads, stated distance                                              |
 | `addRideNote`                                                                | During a ride: a note about the last minutes, placed on the road after the ride                                                                                               |
 | `reviewRide`                                                                 | After a ride: notes placed on the recorded track (or the plan), detours, pace, proposed ratings; with `decisions`, stores the confirmed road ratings                          |

@@ -66,7 +66,8 @@ with a navigation app (Liberty Rider, Google Maps) on the phone.
   spans during a session, and the MCP server's tool calls as their own service.
 
 - **Rides from an image**: done (`--image`, `/image`, pasted in MCP clients).
-  Next: a GPX or KML file as input the same way.
+  GPX and KML import: done (`rides import`, `importRoute`; README "Importing
+  a route someone shared").
 
 ## Smaller items
 

@@ -6,6 +6,7 @@
 [![Node 24](https://img.shields.io/badge/node-%E2%89%A524-339933?logo=node.js&logoColor=white)](.nvmrc)
 [![Licence MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
 [![Conventional Commits](https://img.shields.io/badge/commits-conventional-fe5196?logo=conventionalcommits&logoColor=white)](CONTRIBUTING.md)
+[![M8ven Score](https://m8ven.ai/badge/mcp/bhoudebert-agent-motoride-1xmac8?variant=verified)](https://m8ven.ai/mcp/bhoudebert-agent-motoride-1xmac8?s=readme)
 
 A motorcycle ride planner driven by an AI agent. You say what you want in one
 sentence:

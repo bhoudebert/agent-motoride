@@ -187,14 +187,12 @@ export interface SavedRide extends Omit<NewRide, "legs"> {
   legs: SavedLeg[];
 }
 
-interface RideRow {
+interface RoadbookRow {
   id: number;
   name: string;
   created_at: string;
-  parent_id: number | null;
+  variant_of: number | null;
   home: string;
-  ride_date: string | null;
-  departure: string | null;
   distance_km: number;
   riding_minutes: number;
   waypoints: string;
@@ -211,7 +209,18 @@ interface RideRow {
   notes: string | null;
   usage: string | null;
   shapes: string | null;
-  extras: string | null;
+  route_extras: string | null;
+}
+
+/** A roadbook on one day (ADR 0023). */
+interface DayRow {
+  id: number;
+  roadbook_id: number;
+  ride_date: string | null;
+  departure: string | null;
+  start: string;
+  status: "planned" | "ridden" | "cancelled";
+  day_extras: string | null;
 }
 
 interface RunRow {
@@ -222,7 +231,7 @@ interface RunRow {
   usage: string;
   cost_usd: number | null;
   result: string | null;
-  ride_id: number | null;
+  roadbook_id: number | null;
   error: string | null;
 }
 
@@ -249,7 +258,34 @@ function normaliseExtras(extras: RideExtras): RideExtras {
   return { ...extras, stops, errors: extras.errors ?? {} };
 }
 
-/** Saved rides, their legs, and a cache of tool results, in one SQLite file. */
+/** Cameras and stop candidates follow the road (roadbook); the rest of the extras belongs to the day (ride). */
+function splitExtras(extras: RideExtras | null): { route: string | null; day: string | null } {
+  if (!extras) return { route: null, day: null };
+  const { cameras, stops, ...day } = extras;
+  return { route: JSON.stringify({ cameras, stops }), day: JSON.stringify(day) };
+}
+
+function joinExtras(route: string | null, day: string | null): RideExtras | null {
+  if (!route && !day) return null;
+  return normaliseExtras({
+    gatheredAt: "",
+    daylight: null,
+    cameras: [],
+    stops: {},
+    errors: {},
+    ...(day ? (JSON.parse(day) as Partial<RideExtras>) : {}),
+    ...(route ? (JSON.parse(route) as Partial<RideExtras>) : {}),
+  });
+}
+
+const pad = (n: number) => String(n).padStart(2, "0");
+const localDay = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+/**
+ * Saved rides, their legs, and a cache of tool results, in one SQLite file.
+ * A saved ride is stored as a roadbook (the design) and its ride (the day);
+ * this API still shows them as one, until the commands learn both (ADR 0023).
+ */
 export class Store {
   readonly path: string;
   readonly #db: DatabaseSync;
@@ -278,7 +314,7 @@ export class Store {
   startRun(run: RunRecord): number {
     const { lastInsertRowid } = this.#db
       .prepare(
-        `INSERT INTO runs (started_at, home, request, model, effort, usage, cost_usd, result, ride_id, error)
+        `INSERT INTO runs (started_at, home, request, model, effort, usage, cost_usd, result, roadbook_id, error)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
@@ -298,7 +334,9 @@ export class Store {
 
   updateRun(id: number, run: RunRecord): void {
     this.#db
-      .prepare("UPDATE runs SET request = ?, usage = ?, cost_usd = ?, result = ?, ride_id = ?, error = ? WHERE id = ?")
+      .prepare(
+        "UPDATE runs SET request = ?, usage = ?, cost_usd = ?, result = ?, roadbook_id = ?, error = ? WHERE id = ?",
+      )
       .run(
         run.request,
         JSON.stringify(run.usage),
@@ -353,7 +391,7 @@ export class Store {
       usage: JSON.parse(row.usage),
       costUsd: row.cost_usd,
       result: row.result ? JSON.parse(row.result) : null,
-      rideId: row.ride_id,
+      rideId: row.roadbook_id,
       error: row.error,
     }));
   }
@@ -361,19 +399,21 @@ export class Store {
   saveRide(ride: NewRide): number {
     this.#db.exec("BEGIN");
     try {
+      const now = new Date().toISOString();
+      const extras = splitExtras(ride.extras);
       const { lastInsertRowid } = this.#db
         .prepare(
-          `INSERT INTO rides (name, created_at, parent_id, home, ride_date, departure, distance_km, riding_minutes,
-             waypoints, round_trip, speed_limits, preferences, request, itinerary, maps_url, cells, center_lat, center_lon, usage, shapes, extras)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO roadbooks (name, created_at, updated_at, variant_of, home, distance_km, riding_minutes, waypoints,
+             round_trip, speed_limits, preferences, request, itinerary, maps_url, cells, center_lat, center_lon, usage,
+             shapes, route_extras)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           ride.name,
-          new Date().toISOString(),
+          now,
+          now,
           ride.parentId,
           ride.home,
-          ride.rideDate,
-          ride.departure,
           ride.distanceKm,
           ride.ridingMinutes,
           JSON.stringify(ride.waypoints),
@@ -388,11 +428,12 @@ export class Store {
           ride.centerLon,
           ride.usage && JSON.stringify(ride.usage),
           ride.shapes && JSON.stringify(ride.shapes),
-          ride.extras && JSON.stringify(ride.extras),
+          extras.route,
         );
       const id = Number(lastInsertRowid);
+      this.#addDay(id, { date: ride.rideDate, departure: ride.departure, start: ride.home, dayExtras: extras.day });
       const insertLeg = this.#db.prepare(
-        `INSERT INTO segments (ride_id, seq, from_label, to_label, from_coords, to_coords, distance_km, riding_minutes, main_roads)
+        `INSERT INTO legs (roadbook_id, seq, from_label, to_label, from_coords, to_coords, distance_km, riding_minutes, main_roads)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       );
       for (const leg of ride.legs) {
@@ -416,18 +457,47 @@ export class Store {
     }
   }
 
-  #hydrate(row: RideRow): SavedRide {
+  #addDay(
+    roadbookId: number,
+    day: { date: string | null; departure: string | null; start: string; dayExtras: string | null; ridden?: boolean },
+  ): number {
+    const { lastInsertRowid } = this.#db
+      .prepare(
+        `INSERT INTO rides (roadbook_id, roadbook_version, created_at, ride_date, departure, start, status, day_extras)
+         SELECT id, version, ?, ?, ?, ?, ?, ? FROM roadbooks WHERE id = ?`,
+      )
+      .run(
+        new Date().toISOString(),
+        day.date,
+        day.departure,
+        day.start,
+        day.ridden ? "ridden" : "planned",
+        day.dayExtras,
+        roadbookId,
+      );
+    return Number(lastInsertRowid);
+  }
+
+  /** The ride shown with a roadbook: the latest planned one, else the latest. */
+  #currentDay(roadbookId: number): DayRow | undefined {
+    return this.#db
+      .prepare("SELECT * FROM rides WHERE roadbook_id = ? ORDER BY status = 'planned' DESC, id DESC LIMIT 1")
+      .get(roadbookId) as unknown as DayRow | undefined;
+  }
+
+  #hydrate(row: RoadbookRow): SavedRide {
     const legs = this.#db
-      .prepare("SELECT * FROM segments WHERE ride_id = ? ORDER BY seq")
+      .prepare("SELECT * FROM legs WHERE roadbook_id = ? ORDER BY seq")
       .all(row.id) as unknown as SegmentRow[];
+    const day = this.#currentDay(row.id);
     return {
       id: row.id,
       name: row.name,
       createdAt: row.created_at,
-      parentId: row.parent_id,
+      parentId: row.variant_of,
       home: row.home,
-      rideDate: row.ride_date,
-      departure: row.departure,
+      rideDate: day?.ride_date ?? null,
+      departure: day?.departure ?? null,
       distanceKm: row.distance_km,
       ridingMinutes: row.riding_minutes,
       waypoints: JSON.parse(row.waypoints),
@@ -442,7 +512,7 @@ export class Store {
       centerLon: row.center_lon,
       usage: row.usage ? JSON.parse(row.usage) : null,
       shapes: row.shapes ? JSON.parse(row.shapes) : null,
-      extras: row.extras ? normaliseExtras(JSON.parse(row.extras)) : null,
+      extras: joinExtras(row.route_extras, day?.day_extras ?? null),
       rating: row.rating,
       notes: row.notes,
       legs: legs.map((leg) => ({
@@ -461,7 +531,7 @@ export class Store {
   }
 
   listRides(): SavedRide[] {
-    const rows = this.#db.prepare("SELECT * FROM rides ORDER BY id").all() as unknown as RideRow[];
+    const rows = this.#db.prepare("SELECT * FROM roadbooks ORDER BY id").all() as unknown as RoadbookRow[];
     return rows.map((row) => this.#hydrate(row));
   }
 
@@ -469,17 +539,17 @@ export class Store {
   findRide(idOrName: string): SavedRide | undefined {
     const key = idOrName.trim().replace(/^#/, "");
     if (/^\d+$/.test(key)) {
-      const row = this.#db.prepare("SELECT * FROM rides WHERE id = ?").get(Number(key)) as unknown as
-        RideRow | undefined;
+      const row = this.#db.prepare("SELECT * FROM roadbooks WHERE id = ?").get(Number(key)) as unknown as
+        RoadbookRow | undefined;
       return row && this.#hydrate(row);
     }
     const exact = this.#db
-      .prepare("SELECT * FROM rides WHERE lower(name) = lower(?) ORDER BY id DESC")
-      .get(key) as unknown as RideRow | undefined;
+      .prepare("SELECT * FROM roadbooks WHERE lower(name) = lower(?) ORDER BY id DESC")
+      .get(key) as unknown as RoadbookRow | undefined;
     if (exact) return this.#hydrate(exact);
     const partial = this.#db
-      .prepare("SELECT * FROM rides WHERE instr(lower(name), lower(?)) > 0 ORDER BY id DESC")
-      .all(key) as unknown as RideRow[];
+      .prepare("SELECT * FROM roadbooks WHERE instr(lower(name), lower(?)) > 0 ORDER BY id DESC")
+      .all(key) as unknown as RoadbookRow[];
     if (partial.length > 1) {
       throw new Error(
         `"${idOrName}" matches several rides: ${partial.map((r) => `#${r.id} ${r.name}`).join(", ")}. Use the id.`,
@@ -490,14 +560,14 @@ export class Store {
 
   rateRide(id: number, rating: number, notes: string | null): boolean {
     const result = this.#db
-      .prepare("UPDATE rides SET rating = ?, notes = coalesce(?, notes) WHERE id = ?")
+      .prepare("UPDATE roadbooks SET rating = ?, notes = coalesce(?, notes) WHERE id = ?")
       .run(rating, notes, id);
     return result.changes > 0;
   }
 
   rateLeg(rideId: number, seq: number, rating: number, notes: string | null): boolean {
     const result = this.#db
-      .prepare("UPDATE segments SET rating = ?, notes = coalesce(?, notes) WHERE ride_id = ? AND seq = ?")
+      .prepare("UPDATE legs SET rating = ?, notes = coalesce(?, notes) WHERE roadbook_id = ? AND seq = ?")
       .run(rating, notes, rideId, seq);
     return result.changes > 0;
   }
@@ -522,7 +592,8 @@ export class Store {
     try {
       this.#db
         .prepare(
-          `UPDATE rides SET distance_km = ?, riding_minutes = ?, speed_limits = ?, maps_url = ?, cells = ?, shapes = ?, center_lat = ?, center_lon = ?
+          `UPDATE roadbooks SET distance_km = ?, riding_minutes = ?, speed_limits = ?, maps_url = ?, cells = ?, shapes = ?,
+             center_lat = ?, center_lon = ?, updated_at = ?
            WHERE id = ?`,
         )
         .run(
@@ -534,11 +605,12 @@ export class Store {
           data.shapes && JSON.stringify(data.shapes),
           data.centerLat,
           data.centerLon,
+          new Date().toISOString(),
           id,
         );
       const update = this.#db.prepare(
-        `UPDATE segments SET from_label = ?, to_label = ?, from_coords = ?, to_coords = ?, distance_km = ?, riding_minutes = ?, main_roads = ?
-         WHERE ride_id = ? AND seq = ?`,
+        `UPDATE legs SET from_label = ?, to_label = ?, from_coords = ?, to_coords = ?, distance_km = ?, riding_minutes = ?, main_roads = ?
+         WHERE roadbook_id = ? AND seq = ?`,
       );
       for (const leg of data.legs) {
         update.run(
@@ -561,25 +633,46 @@ export class Store {
   }
 
   setExtras(id: number, extras: RideExtras): void {
-    this.#db.prepare("UPDATE rides SET extras = ? WHERE id = ?").run(JSON.stringify(extras), id);
+    const { route, day } = splitExtras(extras);
+    const roadbook = this.#db
+      .prepare("UPDATE roadbooks SET route_extras = ? WHERE id = ? RETURNING home")
+      .get(route, id) as { home: string } | undefined;
+    if (!roadbook) return;
+    const current = this.#currentDay(id);
+    if (current) this.#db.prepare("UPDATE rides SET day_extras = ? WHERE id = ?").run(day, current.id);
+    else this.#addDay(id, { date: null, departure: null, start: roadbook.home, dayExtras: day });
   }
 
   /** Attach the exact route line to a ride saved without one. */
   setRouteLine(id: number, shapes: string[], cells: string[]): void {
     this.#db
-      .prepare("UPDATE rides SET shapes = ?, cells = ? WHERE id = ?")
+      .prepare("UPDATE roadbooks SET shapes = ?, cells = ? WHERE id = ?")
       .run(JSON.stringify(shapes), JSON.stringify(cells), id);
   }
 
   deleteRide(id: number): boolean {
-    return this.#db.prepare("DELETE FROM rides WHERE id = ?").run(id).changes > 0;
+    return this.#db.prepare("DELETE FROM roadbooks WHERE id = ?").run(id).changes > 0;
   }
 
   addNote(note: { rideId: number; text: string; rating: number | null; minutesBack: number; at?: Date }): RideNote {
-    const createdAt = (note.at ?? new Date()).toISOString();
+    const at = note.at ?? new Date();
+    const createdAt = at.toISOString();
+    // A note is left while riding: the ride of that day was ridden, even if it was planned for another.
+    const day = localDay(at);
+    const roadbook = this.#db.prepare("SELECT home FROM roadbooks WHERE id = ?").get(note.rideId) as
+      { home: string } | undefined;
+    if (!roadbook) throw new Error(`No saved ride #${note.rideId}.`);
+    const existing = this.#db
+      .prepare("SELECT id FROM rides WHERE roadbook_id = ? AND ride_date = ?")
+      .get(note.rideId, day) as { id: number } | undefined;
+    const ride =
+      existing?.id ?? this.#addDay(note.rideId, { date: day, departure: null, start: roadbook.home, dayExtras: null });
+    this.#db.prepare("UPDATE rides SET status = 'ridden' WHERE id = ?").run(ride);
     const { lastInsertRowid } = this.#db
-      .prepare("INSERT INTO ride_notes (ride_id, created_at, text, rating, minutes_back) VALUES (?, ?, ?, ?, ?)")
-      .run(note.rideId, createdAt, note.text, note.rating, note.minutesBack);
+      .prepare(
+        "INSERT INTO ride_notes (roadbook_id, ride_id, created_at, text, rating, minutes_back) VALUES (?, ?, ?, ?, ?, ?)",
+      )
+      .run(note.rideId, ride, createdAt, note.text, note.rating, note.minutesBack);
     return {
       id: Number(lastInsertRowid),
       rideId: note.rideId,
@@ -596,11 +689,11 @@ export class Store {
   listNotes(options: { rideId?: number; all?: boolean } = {}): RideNote[] {
     const rows = this.#db
       .prepare(
-        `SELECT * FROM ride_notes WHERE (? IS NULL OR ride_id = ?) AND (? OR status = 'pending') ORDER BY created_at, id`,
+        `SELECT * FROM ride_notes WHERE (? IS NULL OR roadbook_id = ?) AND (? OR status = 'pending') ORDER BY created_at, id`,
       )
       .all(options.rideId ?? null, options.rideId ?? null, options.all ? 1 : 0) as Array<{
       id: number;
-      ride_id: number;
+      roadbook_id: number;
       created_at: string;
       text: string;
       rating: number | null;
@@ -610,7 +703,7 @@ export class Store {
     }>;
     return rows.map((row) => ({
       id: row.id,
-      rideId: row.ride_id,
+      rideId: row.roadbook_id,
       createdAt: row.created_at,
       text: row.text,
       rating: row.rating,
@@ -633,7 +726,7 @@ export class Store {
   addRoadRating(rating: Omit<RoadRating, "id" | "createdAt">): number {
     const { lastInsertRowid } = this.#db
       .prepare(
-        `INSERT INTO road_ratings (ride_id, note_id, created_at, road, rating, reason, approximate, cells)
+        `INSERT INTO road_ratings (roadbook_id, note_id, created_at, road, rating, reason, approximate, cells)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
@@ -652,7 +745,7 @@ export class Store {
   listRoadRatings(): RoadRating[] {
     const rows = this.#db.prepare("SELECT * FROM road_ratings ORDER BY id").all() as Array<{
       id: number;
-      ride_id: number | null;
+      roadbook_id: number | null;
       note_id: number | null;
       created_at: string;
       road: string;
@@ -663,7 +756,7 @@ export class Store {
     }>;
     return rows.map((row) => ({
       id: row.id,
-      rideId: row.ride_id,
+      rideId: row.roadbook_id,
       noteId: row.note_id,
       createdAt: row.created_at,
       road: row.road,

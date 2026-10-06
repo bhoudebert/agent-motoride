@@ -199,7 +199,9 @@
     .lg-row { grid-template-columns: 80px 1fr; }
     .lg-row .rate { grid-column: 2; border-left: 0 !important; padding-top: 0; }
     dl div { grid-template-columns: 1fr; gap: 4px; }
-    nav ul { gap: 16px; }
+    /* The menu wraps under the logo instead of running off the screen. */
+    nav { flex-direction: column; align-items: flex-start; gap: 12px; }
+    nav ul { flex-wrap: wrap; gap: 8px 18px; }
   }
 </style>
 </head>
@@ -210,6 +212,7 @@
   <a class="mark" href="#">agent<i>Motoride</i></a>
   <ul>
     <li><a href="#roadbook">Example</a></li>
+    <li><a href="#map">Map</a></li>
     <li><a href="#stages">What it does</a></li>
     <li><a href="#after">After the ride</a></li>
     <li><a href="#how">How it works</a></li>
@@ -297,12 +300,26 @@
       <div><b>FUEL</b>None needed: inside the bike's range. Two 24/7 stations near the finish.</div>
     </div>
   </div>
-  <p class="caption">Also delivered: two Google Maps links pinned to these roads and split at the first pause, a GPX for Liberty Rider or Garmin, and a Markdown copy for your notes.</p>
+  <p class="caption">Also delivered: a map of the whole ride (below), two Google Maps links pinned to these roads and split at the first pause, a GPX for Liberty Rider or Garmin, and a Markdown copy for your notes.</p>
+</section>
+
+<section id="map">
+  <div class="head">
+    <div class="num">02 / the map</div>
+    <div>
+      <h2>The whole ride on one page</h2>
+      <p>Every saved ride draws its own map: the loop leg by leg, the towns in riding order, where you stop and at what time, and every fixed speed camera with its limit. It shows right in Claude Code or Codex, even on the phone, on the Wi-Fi share page and at the top of the Markdown export.</p>
+    </div>
+  </div>
+  <figure>
+    <a href="ride-map.png" title="Open the map at full size"><img src="ride-map.png" width="1200" height="921" loading="lazy" alt="Map of a 131.5 km loop from Namur through the Condroz: the route in two colours by leg, the towns Jenneret, Nandrin and Engis, a coffee stop at 16:12, six fixed speed cameras with their limits of 50, 70 and 90, km marks every 25 km, a scale bar and the ride's figures in a dark header."></a>
+    <figcaption>A real plan from Namur, drawn by the app from the ride's own data: no map background, nothing fetched, the same picture on every machine. Tap it for full size.</figcaption>
+  </figure>
 </section>
 
 <section id="stages">
   <div class="head">
-    <div class="num">02 / what it does</div>
+    <div class="num">03 / what it does</div>
     <div>
       <h2>A ride, start to finish</h2>
       <p>From the idea on Thursday night to the roads you rate on Sunday evening. Everything below works from the terminal and from Claude Code or Codex.</p>
@@ -331,6 +348,7 @@
       <h3><span>3</span> · RIDE DAY</h3>
       <ul>
         <li><b>Morning briefing</b>Fresh forecast, daylight, traffic at departure, stops still open: go, caution or no-go.</li>
+        <li><b>The whole ride on one map</b>The loop, the towns, your stops and every fixed camera with its limit, as a picture.</li>
         <li><b>On the phone</b>Google Maps links that stay on the chosen roads, a whole-ride overview, a page on your Wi-Fi with a QR code.</li>
         <li><b>For the GPS</b>A GPX file for Liberty Rider, Kurviger, Garmin or TomTom, stops included.</li>
         <li><b>Away from the computer</b>Drive it from the Claude or ChatGPT app with remote control.</li>
@@ -342,7 +360,7 @@
         <li><b>Notes from the saddle</b>"Last 10 minutes awesome", "cobbles, never again", said at a stop.</li>
         <li><b>Review with your recorded track</b>Notes land on the road you really rode, detours and pace included.</li>
         <li><b>Better next time</b>Loved roads come back, "never again" roads are avoided, and no ride is proposed twice.</li>
-        <li><b>A library of your rides</b>Saved, rated, refreshed with new weather, exported as Markdown.</li>
+        <li><b>A library of your rides</b>Saved, rated in a word ("rate ride 7 five"), refreshed with new weather, exported as Markdown with its map.</li>
       </ul>
     </div>
   </div>
@@ -350,7 +368,7 @@
 
 <section id="after">
   <div class="head">
-    <div class="num">03 / after the ride</div>
+    <div class="num">04 / after the ride</div>
     <div>
       <h2>Say it on the road. It remembers for you.</h2>
       <p>At a stop, a few words from the phone: what was great, what never again. Back home, the track from whatever app recorded the ride puts each note on the road you actually rode, detours included, and turns it into a rating every later plan follows.</p>
@@ -387,7 +405,7 @@
 
 <section id="how">
   <div class="head">
-    <div class="num">04 / how it works</div>
+    <div class="num">05 / how it works</div>
     <div>
       <h2>An agent that does the legwork, code that keeps it honest</h2>
       <p>The model decides where to look and what to propose. Deterministic tools supply every number. The code enforces the rules you set.</p>
@@ -407,7 +425,7 @@
 
 <section id="run">
   <div class="head">
-    <div class="num">05 / run it</div>
+    <div class="num">06 / run it</div>
     <div>
       <h2>Three ways in</h2>
       <p>Same tools, same library, same exports. Pick the one that fits what you already have.</p>
@@ -434,7 +452,7 @@
 
 <section>
   <div class="head">
-    <div class="num">06 / under the hood</div>
+    <div class="num">07 / under the hood</div>
     <div>
       <h2>Built like something you would rely on</h2>
     </div>
@@ -453,7 +471,7 @@
 
 <section>
   <div class="head">
-    <div class="num">07 / try it</div>
+    <div class="num">08 / try it</div>
     <div>
       <h2>Five minutes to a first plan</h2>
       <p>Full instructions in the <a href="https://github.com/bhoudebert/agent-motoride#readme">README</a>.</p>

@@ -24,6 +24,19 @@ The server SHALL expose prompts that become slash commands: `plan-ride`, `commut
 - **WHEN** the request says motorways are allowed
 - **THEN** the model calls `rideSettings` before planning and the itinerary reports motorway use
 
+### Requirement: Elicitation for the rider's decisions
+
+When the client advertises form elicitation, `reviewRide` SHALL ask the rider in one form for the rating of each placed note (0-5, the proposal filled in) or its dismissal, and apply the answer; `saveRide` SHALL ask whether to save a copy when the ride duplicates a saved one. A declined or cancelled form SHALL change nothing. Without elicitation, the tools SHALL behave as before (review returned for the model to confirm in chat, duplicate refused with the instruction to ask).
+
+#### Scenario: Review confirmed in a form
+
+- **WHEN** the rider reviews a ride with two placed notes in a client with elicitation
+- **THEN** one form shows both notes with their proposed ratings, and the submitted values are stored as road ratings
+
+### Requirement: Resources
+
+The server SHALL publish, as text: `ride://library` (the saved rides, one line each), `ride://ride/{id}` (one saved ride, as `showRide` returns it, listed for every saved ride), and `ride://roads/rated` (road stretches, rides and legs rated, with their ratings).
+
 ### Requirement: Client portability
 
 The server SHALL work with any MCP client over stdio. For clients that do not expose prompts, the planning guidance SHALL be available as the `planningGuide` tool and the server instructions SHALL say so. Every lookup tool SHALL carry a read-only annotation and every tool that writes (settings, save, refresh, exports) SHALL NOT, so clients with annotation-based approval can let lookups run freely.

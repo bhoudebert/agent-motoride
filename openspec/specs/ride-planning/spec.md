@@ -55,7 +55,12 @@ The rider SHALL be able to attach images to a request (`--image`, `/image`; past
 
 ### Requirement: Scouts for new rides
 
-For a new leisure ride the planner SHALL first call `scoutAreas` with two to four areas; each scout SHALL run as its own model session with `searchRoads`, `calculateTrip` and `getWeather` only, in parallel with the others, and report a candidate with a route id known to the session. Scouts SHALL NOT be used for edits, questions or practical trips, and SHALL be unavailable without API credentials or when `RIDE_SCOUTS=0`.
+For a new leisure ride the planner SHALL first call `scoutAreas` with two to four areas; each scout SHALL run as its own model session with `recallArea`, `searchRoads`, `calculateTrip` and `getWeather` only, in parallel with the others, and report a candidate with a route id known to the session. The loop SHALL start and end at the start point the request names (`start`), and at the rider's home when it names none. Scouts SHALL NOT be used for edits, questions or practical trips, and SHALL be unavailable without API credentials or when `RIDE_SCOUTS=0`.
+
+#### Scenario: Request starts elsewhere than home
+
+- **WHEN** the home is Lille and the request asks for a loop from Thuin
+- **THEN** every scout's brief names Thuin as the start and end point, and its loop is routed from there
 
 #### Scenario: Scout failure
 

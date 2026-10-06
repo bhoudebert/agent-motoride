@@ -20,3 +20,4 @@ not rewritten.
 | [0011](0011-commits-and-releases.md)              | Conventional Commits, squash merges, automated releases                          | accepted |
 | [0012](0012-rate-roads-from-notes-and-tracks.md)  | Rate road stretches from time-stamped notes and recorded tracks                  | accepted |
 | [0013](0013-evals-recorded-once-replayed-free.md) | Evaluate the planner on recorded sessions, replayed for free                     | accepted |
+| [0014](0014-code-checks-the-itinerary.md)         | Code checks the itinerary; the planner gets one chance to fix it                 | accepted |

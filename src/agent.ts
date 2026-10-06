@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { checkItinerary, correctionMessage, parseLimits, type RequestLimits } from "./checks.ts";
 import { EFFORT, isLegacyThinking, MODEL, requestSettings } from "./model.ts";
 import { DEFAULT_PREFERENCES, type RidePreferences } from "./preferences.ts";
 import { RideAnswer } from "./schema.ts";
@@ -356,14 +357,57 @@ export async function openRide(request: RideRequest): Promise<RideSession> {
     }
   }
 
+  // The rider's caps, from their own words; a later message stating a cap replaces it.
+  let limits: RequestLimits = { maxDistanceKm: null, maxRidingMinutes: null };
+
+  /**
+   * Check a new itinerary in code. A failure goes back to the planner once,
+   * unless the answer already owns up to it; what still fails is shown under it.
+   */
+  async function selfCheck(): Promise<void> {
+    const shown = current!;
+    const first = checkItinerary(context, shown.route, shown.itinerary, limits);
+    if (first.violations.length === 0) return;
+    context.trace({
+      scope: "main",
+      kind: "check",
+      name: first.acknowledged ? "acknowledged" : "failed",
+      payload: first,
+    });
+    if (first.acknowledged) return;
+    process.stderr.write(
+      `\x1b[2m\n  code check failed (${first.violations.join("; ")}); asking the planner to fix it\x1b[0m\n`,
+    );
+    await send(correctionMessage(first.violations));
+    const after = checkItinerary(context, current!.route, current!.itinerary, limits);
+    context.trace({ scope: "main", kind: "check", name: "after retry", payload: after });
+    if (after.violations.length && !after.acknowledged) {
+      console.log(`\nCode check, not fixed:\n${after.violations.map((v) => `- ${v}`).join("\n")}`);
+    }
+  }
+
+  async function turn(text: string, riderWords: string): Promise<void> {
+    const stated = parseLimits(riderWords);
+    limits = {
+      maxDistanceKm: stated.maxDistanceKm ?? limits.maxDistanceKm,
+      maxRidingMinutes: stated.maxRidingMinutes ?? limits.maxRidingMinutes,
+    };
+    const before = current;
+    await send(text);
+    if (current && current !== before) await selfCheck();
+  }
+
   // Context the model needs once, attached to whatever the rider says first.
   // Settings are read at that moment, so a switch made before it is honoured.
   let opened = false;
   async function sendWithContext(text: string): Promise<void> {
-    if (opened) return send(text);
+    if (opened) return turn(text, text);
     const repeatRule = context.allowRepeat ? "\nRepeating saved rides is allowed this time." : "";
     const base = request.baseRide ? `\n\n${describeBaseRide(request.baseRide)}` : "";
-    await send(`${text}\n\n${describeSituation(request.home, start, context.preferences, now)}${repeatRule}${base}`);
+    await turn(
+      `${text}\n\n${describeSituation(request.home, start, context.preferences, now)}${repeatRule}${base}`,
+      text,
+    );
     opened = true;
   }
   return { context, send: sendWithContext, current: () => current, usage: () => ({ ...usage }) };

@@ -49,7 +49,7 @@ test("planner: routes, presents a scout's route, saves it; usage and trace are k
       // Back in the planner:
       finalText(
         JSON.stringify({
-          message: "Itinerary text",
+          message: "Flandre loop, 135 km, dry.",
           ride: { routeId: "flandre-r1", rideDate: "2026-10-10", departure: "09:00", name: "Flandre loop" },
         }),
       ),
@@ -135,7 +135,7 @@ test("saving a duplicate of a saved ride is refused unless forced; rated roads a
   try {
     const answer = finalText(
       JSON.stringify({
-        message: "x",
+        message: "Loop, 85 km.",
         ride: { routeId: "r1", rideDate: "2026-10-10", departure: "09:00", name: "Loop" },
       }),
     );
@@ -145,10 +145,14 @@ test("saving a duplicate of a saved ride is refused unless forced; rated roads a
     const id = saveCurrentRide(first.context, first.current()!, { request: "go", parentId: null, home: "Lille" });
     store.rateRide(id, 0, "never again");
 
-    api.script = [toolUse("calculateTrip", { waypoints: ["Lille", "Cassel"], roundTrip: true }), answer];
+    // The second session presents the same loop: the code check sends it back once.
+    api.script = [toolUse("calculateTrip", { waypoints: ["Lille", "Cassel"], roundTrip: true }), answer, answer];
     const second = await openRide({ home: "Lille", store });
     await second.send("go again");
-    const result = JSON.parse(api.requests.at(-1).messages.at(-1).content[0].content);
+    const correction = api.requests.at(-1).messages.at(-1).content;
+    assert.match(String(correction), /Automatic check by code/);
+    assert.match(String(correction), /repeat: \d+% of the roads of saved ride #1/);
+    const result = JSON.parse(api.requests.at(-2).messages.at(-1).content[0].content);
     assert.ok(result.savedRides.verdict.startsWith("DUPLICATE"));
     assert.ok(result.ratedRoads.verdict.startsWith("AVOID"), result.ratedRoads.verdict);
     assert.throws(

@@ -15,7 +15,7 @@ export const SIMILAR_PCT = 40;
 export interface TraceEvent {
   /** "main" for the planner, "scout:<area>" for a scout. */
   scope: string;
-  kind: "user" | "model" | "tool" | "answer" | "error";
+  kind: "user" | "model" | "tool" | "answer" | "error" | "check";
   name: string;
   ms?: number;
   payload: unknown;

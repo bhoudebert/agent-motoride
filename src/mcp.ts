@@ -3,6 +3,7 @@
 // planning; this process provides tools, state and the planning prompt.
 // Standard output carries the protocol, so all logging goes to stderr.
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { describeSituation, SYSTEM_CORE } from "./agent.ts";
@@ -152,15 +153,46 @@ async function ask(form: ElicitForm): Promise<Record<string, unknown> | null> {
   return result.action === "accept" ? (result.content ?? {}) : null;
 }
 
+/**
+ * The four MCP hints of every tool this file registers, set on purpose: clients
+ * use them to decide what may run without asking. Shared tools carry theirs in
+ * src/tools/index.ts. A tool missing here stops the server at start.
+ */
+const HINTS: Record<string, ToolAnnotations> = {
+  // changes session settings and the bike profile; geocodes the start point
+  rideSettings: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  checkItinerary: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  // adds a ride to the library, then gathers its extras online
+  saveRide: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  // writes a file, overwriting one at the given path; may route a saved ride again
+  exportGpx: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
+  // recomputes a ride's derived figures; ratings and notes are kept
+  refreshRide: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  rideBriefing: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  showRide: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  // writes a file, overwriting one at the given path
+  exportMarkdown: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+  // each call stores one more note
+  addRideNote: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  // stores placements and road ratings; map matching online
+  reviewRide: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  listRides: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  planningGuide: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+};
+const hintsOf = (name: string): ToolAnnotations => {
+  const hints = HINTS[name];
+  if (!hints) throw new Error(`Tool ${name} declares no MCP hints: add it to HINTS in src/mcp.ts.`);
+  return hints;
+};
+
 // The ride tools, shared with the API planner. Each call is traced and counted.
 for (const tool of createToolDefinitions(context, { scouts: true })) {
   server.registerTool(
     tool.name,
-    // Lookups only: a client in "writes" approval mode lets these run without asking.
     {
       description: tool.description,
       inputSchema: tool.inputSchema,
-      annotations: { readOnlyHint: true, openWorldHint: true },
+      annotations: tool.hints,
     },
     async (args: unknown) => {
       if (!context.home.label) throw new Error("No start point yet: call rideSettings with the rider's home first.");
@@ -178,6 +210,7 @@ server.registerTool(
   {
     description:
       "Show or change the rider's settings for this session: start and end point, whether motorways are permitted, and the slow-zone targets. Call it first with the home when the rider has not set one. Returns the settings in force.",
+    annotations: hintsOf("rideSettings"),
     inputSchema: z.object({
       home: z.string().optional().describe('Start and end point: town, address or "lat,lon"'),
       allowMotorways: z.boolean().optional(),
@@ -210,12 +243,12 @@ server.registerTool(
   {
     description:
       "Check an itinerary in code before presenting it: routed distance and riding time against the caps in the rider's words, motorways when forbidden, repeats of saved rides, roads rated 0-1, and the distance stated in your text against the routed one. Returns PASS, or what failed. Fix the itinerary once and check again, or say plainly in the answer which limit cannot be met.",
+    annotations: hintsOf("checkItinerary"),
     inputSchema: z.object({
       routeId: z.string().describe("routeId of the itinerary, from calculateTrip"),
       request: z.string().describe("The rider's request, in their words"),
       itinerary: z.string().describe("The itinerary text you are about to present"),
     }),
-    annotations: { readOnlyHint: true },
   },
   async (args) => {
     const route = context.routes.get(args.routeId);
@@ -234,6 +267,7 @@ server.registerTool(
   {
     description:
       "Save an itinerary to the rider's library. Only when the rider asks to save. routeId must be one returned by calculateTrip in this session; the saved distances and geometry come from that routed trip. A ride that duplicates a saved one (70% or more of the same roads) is refused; pass force only when the rider explicitly wants a copy. Returns the saved ride id.",
+    annotations: hintsOf("saveRide"),
     inputSchema: z.object({
       routeId: z.string(),
       name: z.string().describe("A few words a rider would recognise the ride by"),
@@ -284,6 +318,7 @@ server.registerTool(
   {
     description:
       "Write a ride as a GPX file for a GPS app: either a routeId from this session or the id of a saved ride. Returns the file path.",
+    annotations: hintsOf("exportGpx"),
     inputSchema: z.object({
       routeId: z.string().optional(),
       rideId: z.number().int().optional(),
@@ -320,6 +355,7 @@ server.registerTool(
   {
     description:
       "Recompute a saved ride without changing it: route the same waypoints again with the ride's own motorway setting, update distance, times, road mix and leg names, then re-gather daylight, weather, fixed cameras and stops, and rebuild the stop plan from the current bike profile. Deterministic, no planning involved; takes a minute or two. Use it when the rider says refresh, update or recompute a ride; with stopsOnly when only the stops or the bike profile changed. Returns the refreshed view, or the new stop plan.",
+    annotations: hintsOf("refreshRide"),
     inputSchema: z.object({
       ride: z.string().describe("Saved ride id or name"),
       stopsOnly: z
@@ -360,6 +396,7 @@ server.registerTool(
   {
     description:
       "Ride-day briefing for a saved ride: forecast along the route now, daylight and return time, traffic at departure, the stops re-planned and checked against opening hours at arrival, fixed cameras, and a go, caution or no-go verdict with reasons. Deterministic; show it as returned. Without a ride, takes the next dated ride.",
+    annotations: hintsOf("rideBriefing"),
     inputSchema: z.object({
       ride: z.string().optional().describe("Saved ride id or name; default the next dated ride"),
     }),
@@ -377,8 +414,8 @@ server.registerTool(
   {
     description:
       "Full view of one saved ride, as the rider sees it in the app: figures, road mix, time at 70+, daylight, fixed cameras, fuel and café stops, legs with names, main roads, times and ratings, map link and the itinerary text. Show it to the rider as is; do not rebuild it from other tools.",
+    annotations: hintsOf("showRide"),
     inputSchema: z.object({ ride: z.string().describe("Saved ride id or name") }),
-    annotations: { readOnlyHint: true },
   },
   async (args) => {
     const ride = store.findRide(args.ride);
@@ -392,6 +429,7 @@ server.registerTool(
   {
     description:
       "Write a saved ride as a Markdown document in the app's standard layout (figures, road mix, legs table, daylight, cameras, stops, itinerary), for versioning elsewhere. Returns the file path, and the document itself when asked.",
+    annotations: hintsOf("exportMarkdown"),
     inputSchema: z.object({
       ride: z.string().describe("Saved ride id or name"),
       file: z.string().optional().describe("Destination path; default exports/ in the project"),
@@ -413,13 +451,13 @@ server.registerTool(
   {
     description:
       'During a ride: keep a note about the road just ridden, timed now, e.g. "last 10 min awesome" or "cobbles, never again". The note covers the minutes before it (default 10) and is placed on the road after the ride by reviewRide. Call it as soon as the rider says something about the road, with their words; no planning, no questions. Without a ride, it goes to the ride dated today, else the last saved one.',
+    annotations: hintsOf("addRideNote"),
     inputSchema: z.object({
       text: z.string().min(1).describe("The rider's words"),
       rating: z.number().int().min(0).max(5).optional().describe("Only if the rider gave one: 0 never again, 5 loved"),
       minutesBack: z.number().int().min(1).max(120).optional().describe("Minutes the note covers, default 10"),
       ride: z.string().optional().describe("Saved ride id or name; default today's ride"),
     }),
-    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   },
   async (args) => {
     const { note, ride } = addRideNote(store, args);
@@ -436,6 +474,7 @@ server.registerTool(
   {
     description:
       "After a ride: place its pending notes on the road. With gpxPath (a track recorded by any app, as a GPX file on this machine), each note lands on the road actually ridden, detours of 2 km or more from the plan are listed, and the moving pace is compared with the plan; without it, notes are placed on the plan by elapsed time (approximate). Returns the stretches with a proposed rating each. Show the review as returned and ask the rider to confirm or change the ratings; then call again with decisions to store them. Stored road ratings steer future planning (0-1 avoided, 4-5 preferred).",
+    annotations: hintsOf("reviewRide"),
     inputSchema: z.object({
       ride: z.string().optional().describe("Saved ride id or name; default the ride of the latest pending note"),
       gpxPath: z.string().optional().describe("Path of the recorded track on this machine"),
@@ -450,7 +489,6 @@ server.registerTool(
         .optional()
         .describe("The rider's confirmed ratings, after a first call without decisions"),
     }),
-    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
   },
   async (args) => {
     if (args.decisions) return text(applyReview(store, args.decisions).join("\n"));
@@ -474,8 +512,8 @@ server.registerTool(
   "listRides",
   {
     description: "The rider's saved rides, one line each (id, name, distance, time, date, rating).",
+    annotations: hintsOf("listRides"),
     inputSchema: z.object({}),
-    annotations: { readOnlyHint: true },
   },
   async () => text(formatRideList(store.listRides())),
 );
@@ -558,11 +596,11 @@ server.registerTool(
   {
     description:
       "The full planning guidance for a new ride (how to search, what to check, how to lay out the itinerary), with the rider's request and current settings. Call it first whenever the rider asks for a new ride in plain words, whatever the client; then follow it. Not needed after the plan-ride command, which carries the same text. With a saved ride id, returns the guidance for editing that ride instead.",
+    annotations: hintsOf("planningGuide"),
     inputSchema: z.object({
       request: z.string().describe("What the rider asked for, verbatim"),
       ride: z.string().optional().describe("Saved ride id or name, when the request is about an existing ride"),
     }),
-    annotations: { readOnlyHint: true },
   },
   async (args) => {
     if (args.ride) {

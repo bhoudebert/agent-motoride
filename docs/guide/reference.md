@@ -93,18 +93,22 @@ reused as building blocks, those rated 0-1 are avoided.
 
 ## Claude Code and Codex (MCP server)
 
-24 tools, 13 prompts. Read-only tools are marked; a client can let them run without asking.
+24 tools, 13 prompts. Each tool shows its MCP hints: a client can let read-only tools run without asking.
 
 ### Tools
 
-#### `listSavedRides` (read-only)
+#### `listSavedRides`
+
+_read-only · local only_
 
 The rider's library of saved rides near a place, with rating (1-5, null if not ridden yet), notes, waypoints and legs. Each leg has coordinates usable directly as calculateTrip waypoints, its main roads, and its own rating when the rider gave one. roadRatings are stretches the rider rated after riding them. Call it once at the start: legs and stretches rated 4-5 are proven building blocks, those rated 0-1 are roads to stay away from, and anything already saved is ground the rider has covered.
 
 - `location` (string, optional): Centre of the search, default the rider's start point
 - `radiusKm` (number, optional): Default 150
 
-#### `getWeather` (read-only)
+#### `getWeather`
+
+_read-only · uses online services_
 
 Hourly weather forecast for one place on one day (up to 16 days ahead): temperature, rain probability and amount, wind, gusts, sky. Call it for the start point and for several points along a candidate route, covering the hours the rider would actually be there.
 
@@ -113,7 +117,9 @@ Hourly weather forecast for one place on one day (up to 16 days ahead): temperat
 - `fromHour` (integer, optional): First local hour to include, default 8
 - `toHour` (integer, optional): Last local hour to include, default 20
 
-#### `searchRoads` (read-only)
+#### `searchRoads`
+
+_read-only · uses online services_
 
 Find winding paved secondary/tertiary roads and mountain passes around a place, from OpenStreetMap. Roads are ranked by curvinessDegPerKm (cumulative heading change per km: under 200 mostly straight, 200-400 flowing bends, over 400 properly twisty mountain road); areaMedianCurviness tells you how twisty the area is overall. Each road comes with `from`/`to` coordinates usable as waypoints in calculateTrip. Search around an area you expect to be good riding country, not around a city centre.
 
@@ -122,7 +128,9 @@ Find winding paved secondary/tertiary roads and mountain passes around a place, 
 - `minLengthKm` (number, optional): Ignore roads shorter than this, default 5
 - `limit` (integer, optional): Max roads returned, default 12
 
-#### `calculateTrip` (read-only)
+#### `calculateTrip`
+
+_read-only · uses online services_
 
 Route through waypoints in order with a motorcycle profile. Returns a routeId identifying this exact routed trip, real road distance, and per leg and in total: estimated riding time and average speed (from each road segment's speed limit and bends, without stops or traffic; the router's own pessimistic time is given as routerUpperBoundTime), main roads, and a Google Maps link. speedLimits gives openRoadPct (share of distance outside built-up areas and off motorways, the figure to maximise), km and percent in zones of 30 km/h or less and of 31-50 km/h (untagged streets in built-up areas are counted as 50 zones), above 50, and untagged open road (assumed at the legal default of its country and region), plus the longest 30 and 50 stretches by road name so you can move waypoints to bypass them. savedRides compares the route with the rider's saved rides: a verdict plus the percent of this route that runs on roads of each similar saved ride. ratedRoads tells how much of it runs on roads the rider rated 0-1 (avoid) or 4-5 (loved). speedLimits.surface gives the km on cobbles or setts and on unpaved surfaces, with the stretches by road. speedLimits.fastExpressway gives the km and share on roads that are not motorways but are limited to 100 km/h or more (expressways), with the longest stretches: keep it small for a leisure ride. Motorways: the result says whether the rider currently permits them (motorwaysPermitted) and whether this trip was routed with them excluded (motorwaysAvoided). When they are not permitted they are excluded whatever you pass; if usesMotorway is still true, no motorway-free route exists between those waypoints and they must be changed. When they are permitted, pass avoidMotorways false to let the router take them where faster. Use it to check every candidate loop; straight-line guesses are not reliable on winding roads.
 
@@ -130,13 +138,17 @@ Route through waypoints in order with a motorcycle profile. Returns a routeId id
 - `roundTrip` (boolean, optional): Return to the first waypoint at the end, default false
 - `avoidMotorways` (boolean, optional): Default true. False takes motorways where faster, and only has effect when the rider permits motorways
 
-#### `importRoute` (read-only)
+#### `importRoute`
+
+_read-only · uses online services_
 
 Turn a route file the rider has (GPX track or route, KML line; a path on this machine) into a routed trip: its line is reduced to waypoints and routed with the motorcycle profile, with waypoints added where the router strays from the file. Returns a routeId like calculateTrip, with the same figures and checks, plus fidelityPct (share of the file's line the routed trip follows; under 90% say where it differs, e.g. motorways avoided), the file's name and length, and the waypoints used, which you can edit and route again with calculateTrip. Present, finish and save it like any planned ride.
 
 - `file` (string): Path of the .gpx or .kml file
 
-#### `getTraffic` (read-only)
+#### `getTraffic`
+
+_read-only · uses online services_
 
 Expected traffic along a route for a given departure time: travel time with traffic, free-flow time and the delay between them. Meant for the final loop once it is chosen on road data, not for comparing candidates. trafficDelayMinutes is the expected congestion for that departure (travel time minus free-flow time); incidentDelayMinutes is the part due to reported incidents. Report trafficDelayMinutes on top of the riding-time estimate from calculateTrip. May report that no traffic source is configured; in that case say so in the answer instead of estimating.
 
@@ -145,20 +157,26 @@ Expected traffic along a route for a given departure time: travel time with traf
 - `roundTrip` (boolean, optional): Return to the first waypoint at the end, default false
 - `avoidMotorways` (boolean, optional): Use the same value as the calculateTrip call for this route. Default true
 
-#### `getDaylight` (read-only)
+#### `getDaylight`
+
+_read-only · uses online services_
 
 Sunrise, sunset, first and last usable light, and daylight hours for a place and a date, any date. Use it to set the departure time and to check the return is before sunset; weather results carry the same figures for the forecast day.
 
 - `location` (string): Town ("Florac", "Vannes, France"), street or address ("Avenue de Bretagne, Lille"), or "lat,lon" coordinates
 - `date` (string): YYYY-MM-DD
 
-#### `getSpeedCameras` (read-only)
+#### `getSpeedCameras`
+
+_read-only · uses online services_
 
 Fixed speed cameras mapped in OpenStreetMap on or beside a routed trip, with position along the route, leg, posted limit and direction. Call it for the final loop so the itinerary can warn where to watch the speed. Fixed cameras only, no mobile controls, and only those mappers recorded.
 
 - `routeId` (string): routeId from calculateTrip
 
-#### `findStops` (read-only)
+#### `findStops`
+
+_read-only · uses online services_
 
 Fuel stations, cafés, restaurants and bakeries within a short detour of a routed trip, ordered by distance from the start, with opening hours when mapped. Use it on the final loop to place a fuel stop within the tank range and a coffee or lunch stop at a sensible point, and name them in the itinerary.
 
@@ -167,7 +185,9 @@ Fuel stations, cafés, restaurants and bakeries within a short detour of a route
 - `radiusM` (integer, optional): Max detour from the route in metres, default 400
 - `limitPerKind` (integer, optional): Default 15
 
-#### `planStops` (read-only)
+#### `planStops`
+
+_read-only · uses online services_
 
 Choose the stops of a routed trip from the rider's bike profile: the last fuel station before each fuel deadline (tank range minus reserve, from the fuel at departure), a café or bakery pause after the pause interval, a restaurant where the ride crosses midday, preferring places open at the arrival time when the ride date is given. Returns the stops with arrival times and whether each is open, the return time with breaks, warnings (no fuel in reach, long stint), and navigation links that include the stops so they are announced on the bike. Call it once for the final loop, after calculateTrip, and name the stops in the itinerary. findStops is only for browsing alternatives.
 
@@ -176,7 +196,9 @@ Choose the stops of a routed trip from the rider's bike profile: the last fuel s
 - `date` (string, optional): Ride date, to check opening hours at arrival
 - `fuelAtStartKm` (number, optional): Range left in the tank at departure, km; default a full tank
 
-#### `checkConditions` (read-only)
+#### `checkConditions`
+
+_read-only · uses online services_
 
 Crosswind and low-sun glare along a routed trip for a date and departure: stretches where gusts blow 35 km/h or more across the direction of travel (50 or more: strong), and stretches where the sun is low (0-15 degrees) within 30 degrees ahead at the time of passage. Wind needs the date within 16 days; glare works for any date. Call it on the final loop and name any stretch in the itinerary; a long glare stretch on the way home can be a reason to leave earlier.
 
@@ -184,7 +206,9 @@ Crosswind and low-sun glare along a routed trip for a date and departure: stretc
 - `date` (string): Ride date, YYYY-MM-DD
 - `departure` (string): Departure time, HH:MM
 
-#### `scoutAreas` (read-only)
+#### `scoutAreas`
+
+_read-only · uses online services_
 
 Send one scout per area, in parallel, to find the best loop from the start point through that area within the constraints. Each scout searches roads, assembles and routes a loop, reads its open-road and slow-zone shares, checks the weather, and reports a candidate with its routeId, which you can present directly or route again (free, cached) to refine. Use it once at the start of a new leisure ride with 2 to 4 areas; not for edits, questions or practical trips. Give each area a name and a central town or village of good riding country, not a city.
 
@@ -196,6 +220,8 @@ Send one scout per area, in parallel, to find the best loop from the start point
 - `constraints` (string): The rider's request and constraints, in one paragraph, as scouts will not see the conversation
 
 #### `rideSettings`
+
+_writes · not destructive · idempotent · uses online services_
 
 Show or change the rider's settings for this session: start and end point, whether motorways are permitted, and the slow-zone targets. Call it first with the home when the rider has not set one. Returns the settings in force.
 
@@ -210,7 +236,9 @@ Show or change the rider's settings for this session: start and end point, wheth
 - `maxStintMin` (number, optional)
 - `lunch` (boolean, optional): Bike profile: plan a lunch stop when the ride spans midday
 
-#### `checkItinerary` (read-only)
+#### `checkItinerary`
+
+_read-only · local only_
 
 Check an itinerary in code before presenting it: routed distance and riding time against the caps in the rider's words, motorways when forbidden, repeats of saved rides, roads rated 0-1, and the distance stated in your text against the routed one. Returns PASS, or what failed. Fix the itinerary once and check again, or say plainly in the answer which limit cannot be met.
 
@@ -219,6 +247,8 @@ Check an itinerary in code before presenting it: routed distance and riding time
 - `itinerary` (string): The itinerary text you are about to present
 
 #### `saveRide`
+
+_writes · not destructive · not idempotent · uses online services_
 
 Save an itinerary to the rider's library. Only when the rider asks to save. routeId must be one returned by calculateTrip in this session; the saved distances and geometry come from that routed trip. A ride that duplicates a saved one (70% or more of the same roads) is refused; pass force only when the rider explicitly wants a copy. Returns the saved ride id.
 
@@ -232,6 +262,8 @@ Save an itinerary to the rider's library. Only when the rider asks to save. rout
 
 #### `exportGpx`
 
+_writes · may overwrite · idempotent · uses online services_
+
 Write a ride as a GPX file for a GPS app: either a routeId from this session or the id of a saved ride. Returns the file path.
 
 - `routeId` (string, optional)
@@ -241,6 +273,8 @@ Write a ride as a GPX file for a GPS app: either a routeId from this session or 
 
 #### `refreshRide`
 
+_writes · not destructive · idempotent · uses online services_
+
 Recompute a saved ride without changing it: route the same waypoints again with the ride's own motorway setting, update distance, times, road mix and leg names, then re-gather daylight, weather, fixed cameras and stops, and rebuild the stop plan from the current bike profile. Deterministic, no planning involved; takes a minute or two. Use it when the rider says refresh, update or recompute a ride; with stopsOnly when only the stops or the bike profile changed. Returns the refreshed view, or the new stop plan.
 
 - `ride` (string): Saved ride id or name
@@ -248,17 +282,23 @@ Recompute a saved ride without changing it: route the same waypoints again with 
 
 #### `rideBriefing`
 
+_read-only · uses online services_
+
 Ride-day briefing for a saved ride: forecast along the route now, daylight and return time, traffic at departure, the stops re-planned and checked against opening hours at arrival, fixed cameras, and a go, caution or no-go verdict with reasons. Deterministic; show it as returned. Without a ride, takes the next dated ride.
 
 - `ride` (string, optional): Saved ride id or name; default the next dated ride
 
-#### `showRide` (read-only)
+#### `showRide`
+
+_read-only · local only_
 
 Full view of one saved ride, as the rider sees it in the app: figures, road mix, time at 70+, daylight, fixed cameras, fuel and café stops, legs with names, main roads, times and ratings, map link and the itinerary text. Show it to the rider as is; do not rebuild it from other tools.
 
 - `ride` (string): Saved ride id or name
 
 #### `exportMarkdown`
+
+_writes · may overwrite · idempotent · local only_
 
 Write a saved ride as a Markdown document in the app's standard layout (figures, road mix, legs table, daylight, cameras, stops, itinerary), for versioning elsewhere. Returns the file path, and the document itself when asked.
 
@@ -267,6 +307,8 @@ Write a saved ride as a Markdown document in the app's standard layout (figures,
 - `includeContent` (boolean, optional): Also return the Markdown text, default false
 
 #### `addRideNote`
+
+_writes · not destructive · not idempotent · local only_
 
 During a ride: keep a note about the road just ridden, timed now, e.g. "last 10 min awesome" or "cobbles, never again". The note covers the minutes before it (default 10) and is placed on the road after the ride by reviewRide. Call it as soon as the rider says something about the road, with their words; no planning, no questions. Without a ride, it goes to the ride dated today, else the last saved one.
 
@@ -277,19 +319,25 @@ During a ride: keep a note about the road just ridden, timed now, e.g. "last 10 
 
 #### `reviewRide`
 
+_writes · not destructive · not idempotent · uses online services_
+
 After a ride: place its pending notes on the road. With gpxPath (a track recorded by any app, as a GPX file on this machine), each note lands on the road actually ridden, detours of 2 km or more from the plan are listed, and the moving pace is compared with the plan; without it, notes are placed on the plan by elapsed time (approximate). Returns the stretches with a proposed rating each. Show the review as returned and ask the rider to confirm or change the ratings; then call again with decisions to store them. Stored road ratings steer future planning (0-1 avoided, 4-5 preferred).
 
 - `ride` (string, optional): Saved ride id or name; default the ride of the latest pending note
 - `gpxPath` (string, optional): Path of the recorded track on this machine
 - `decisions` (object[], optional): The rider's confirmed ratings, after a first call without decisions
 
-#### `listRides` (read-only)
+#### `listRides`
+
+_read-only · local only_
 
 The rider's saved rides, one line each (id, name, distance, time, date, rating).
 
 No input.
 
-#### `planningGuide` (read-only)
+#### `planningGuide`
+
+_read-only · local only_
 
 The full planning guidance for a new ride (how to search, what to check, how to lay out the itinerary), with the rider's request and current settings. Call it first whenever the rider asks for a new ride in plain words, whatever the client; then follow it. Not needed after the plan-ride command, which carries the same text. With a saved ride id, returns the guidance for editing that ride instead.
 
@@ -329,6 +377,7 @@ Slash commands in Claude Code (`/mcp__ride__<name>`); plain words do the same in
 | Setting                | Default             | What for                                                                                                                                   |
 | ---------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `ANTHROPIC_API_KEY`    | to set              | Anthropic API key (https://platform.claude.com/): the terminal app, and scouts in Claude Code or Codex                                     |
+| `ANTHROPIC_AUTH_TOKEN` | unset               | Or a bearer token instead of the key, as the Anthropic SDK accepts (e.g. behind a gateway)                                                 |
 | `RIDE_HOME`            | to set              | Your start and end point: a town, a street or an address, or "lat,lon" (overridden by --from)                                              |
 | `TOMTOM_API_KEY`       | to set              | Optional TomTom key (https://developer.tomtom.com/, free tier): traffic at departure                                                       |
 | `RIDE_ALLOW_MOTORWAYS` | `0`                 | 1 permits motorways by default (--allow-motorways, /motorways on\|off per session)                                                         |

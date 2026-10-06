@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -199,6 +199,100 @@ test("mcp: plain words get the full guidance, in any client", async () => {
       await client.callTool({ name: "planningGuide", arguments: { request: "50 km longer", ride: "1" } }),
     );
     assert.match(edit, /This concerns saved ride #1 "Straight north"/);
+  } finally {
+    await client.close();
+  }
+});
+
+test("mcp: every tool declares all four hints, as the server means them", async () => {
+  const client = await connect(library(), false);
+  try {
+    const tools = (await client.listTools()).tools;
+    for (const tool of tools) {
+      for (const hint of ["readOnlyHint", "destructiveHint", "idempotentHint", "openWorldHint"] as const) {
+        assert.equal(typeof tool.annotations?.[hint], "boolean", `${tool.name} ${hint}`);
+      }
+    }
+    const hints = Object.fromEntries(tools.map((t) => [t.name, t.annotations!]));
+    assert.equal(hints.calculateTrip!.readOnlyHint, true);
+    assert.equal(hints.listSavedRides!.openWorldHint, false, "the library is local");
+    assert.equal(hints.saveRide!.readOnlyHint, false);
+    assert.equal(hints.saveRide!.idempotentHint, false, "saving twice stores twice");
+    assert.equal(hints.exportGpx!.destructiveHint, true, "may overwrite a file");
+    assert.equal(hints.showRide!.openWorldHint, false);
+  } finally {
+    await client.close();
+  }
+});
+
+test("mcp: every tool answers when called by name through a client", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "ride-tools-"));
+  const gpx = join(dir, "shared.gpx");
+  writeFileSync(
+    gpx,
+    `<gpx><trk><name>Club ride</name><trkseg>${Array.from({ length: 30 }, (_, i) => `<trkpt lat="${50.63 + i * 0.004}" lon="${3.05 - i * 0.012}"/>`).join("")}</trkseg></trk></gpx>`,
+  );
+  const client = await connect(library(), false);
+  const called = new Set<string>();
+  const call = async (name: string, args: Record<string, unknown>) => {
+    called.add(name);
+    const result = (await client.callTool({ name, arguments: args })) as {
+      isError?: boolean;
+      content: Array<{ text: string }>;
+    };
+    assert.ok(!result.isError, `${name} failed: ${result.content[0]?.text}`);
+    return result.content[0]!.text;
+  };
+  const loop = { waypoints: ["Lille", "Cassel", "Mont des Cats"], roundTrip: true };
+  try {
+    await call("rideSettings", { home: "Lille" });
+    await call("listSavedRides", {});
+    await call("getWeather", { location: "Lille", date: "2026-10-10" });
+    await call("searchRoads", { location: "Cassel" });
+    const routeId = JSON.parse(await call("calculateTrip", loop)).routeId;
+    await call("importRoute", { file: gpx });
+    await call("getTraffic", { waypoints: loop.waypoints, departAt: "2026-10-10T09:00:00" });
+    await call("getDaylight", { location: "Lille", date: "2026-10-10" });
+    await call("getSpeedCameras", { routeId });
+    await call("findStops", { routeId });
+    await call("planStops", { routeId, departure: "09:00", date: "2026-10-10" });
+    await call("checkConditions", { routeId, date: "2026-10-10", departure: "09:00" });
+    assert.match(
+      await call("scoutAreas", {
+        areas: [{ name: "Flandre", location: "Cassel" }],
+        rideDate: "2026-10-10",
+        departure: "09:00",
+        maxDistanceKm: 200,
+        maxRidingMinutes: null,
+        constraints: "dry",
+      }),
+      /Scouts are unavailable/,
+    );
+    await call("checkItinerary", { routeId, request: "under 200 km", itinerary: "Loop, 135 km." });
+    assert.match(
+      await call("saveRide", {
+        routeId,
+        name: "Flandre",
+        rideDate: "2026-10-10",
+        departure: "09:00",
+        itinerary: "135 km",
+        request: "loop",
+      }),
+      /Saved as ride #2/,
+    );
+    await call("exportGpx", { rideId: 2, file: join(dir, "ride.gpx") });
+    await call("exportMarkdown", { ride: "2", file: join(dir, "ride.md") });
+    await call("refreshRide", { ride: "2", stopsOnly: true });
+    await call("rideBriefing", { ride: "2" });
+    await call("showRide", { ride: "2" });
+    await call("addRideNote", { text: "nice bends", ride: "2" });
+    await call("reviewRide", { ride: "1" });
+    await call("listRides", {});
+    await call("planningGuide", { request: "plan me a ride" });
+
+    // A new tool must come with its line above.
+    const listed = (await client.listTools()).tools.map((t) => t.name).sort();
+    assert.deepEqual([...called].sort(), listed);
   } finally {
     await client.close();
   }

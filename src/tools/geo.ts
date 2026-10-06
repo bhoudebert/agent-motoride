@@ -215,6 +215,14 @@ export function usePersistentGeoCache(cache: typeof persistentCache): void {
   persistentCache = cache;
 }
 
+/** Forget every place resolved so far and the start-point anchor: a fresh process, for evals and tests. */
+export function resetGeoState(): void {
+  cache.clear();
+  reverseCache.clear();
+  anchor = undefined;
+  persistentCache = undefined;
+}
+
 /**
  * A rider-readable name for a point given as coordinates: a pass or place name
  * when the point is one, otherwise the road and the nearest village,
@@ -228,8 +236,11 @@ export async function describeCoords(lat: number, lon: number): Promise<string> 
   let label = key;
   try {
     const url = new URL("https://photon.komoot.io/reverse");
-    url.searchParams.set("lat", String(lat));
-    url.searchParams.set("lon", String(lon));
+    // Ask at the cache's precision (about 100 m): two nearby points share one
+    // label whichever is asked first, so the requests made do not depend on timing.
+    const [keyLat = "", keyLon = ""] = key.split(",");
+    url.searchParams.set("lat", keyLat);
+    url.searchParams.set("lon", keyLon);
     url.searchParams.set("limit", "5");
     const features = (await fetchJson<ReverseResponse>(url.toString(), {}, 10_000)).features.map((f) => f.properties);
     // Roads, passes and settlements make good labels; postcodes, boundaries and bare numbers do not.

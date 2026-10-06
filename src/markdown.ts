@@ -9,7 +9,8 @@ const EXPORT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..", "expor
 
 const fmtMinutes = (minutes: number) => `${Math.floor(minutes / 60)}h${String(minutes % 60).padStart(2, "0")}`;
 const avg = (km: number, minutes: number) => (minutes > 0 ? Math.round(km / (minutes / 60)) : 0);
-const cell = (text: string) => text.replace(/\|/g, "\\|");
+/** Table cell text: backslashes first, so an escaped pipe cannot be undone by the text. */
+export const cell = (text: string) => text.replace(/\\/g, "\\\\").replace(/\|/g, "\\|");
 const stars = (rating: number | null) => (rating === null ? "unrated" : `${rating}/5`);
 
 /** Cameras a few metres apart (one per direction) shown once, with a count. */

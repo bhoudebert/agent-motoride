@@ -3,7 +3,7 @@ import { z } from "zod";
 import { stopCandidatesFor } from "../library.ts";
 import { pinnedMapsLinks } from "../maps.ts";
 import { scoutAreas } from "../scouts.ts";
-import { type RideContext, ratedOverlap, registerRoute, savedRideOverlap } from "../session.ts";
+import { nextRouteId, type RideContext, ratedOverlap, registerRoute, savedRideOverlap } from "../session.ts";
 import { analyseConditions, windAlong } from "../conditions.ts";
 import { locateStops, planStops } from "../stops.ts";
 import { type StopKind, speedCamerasAlong, stopsAlong } from "./along.ts";
@@ -51,15 +51,56 @@ const waypoints = z
   .max(20)
   .describe('Ordered stops, each a town, a street or address, or "lat,lon". First one is the start.');
 
-/** Log each call to stderr and to the trace, and return the result to the model as JSON. */
+/** From this many identical calls in one scope, the earlier result is returned instead of calling again. */
+const REPEAT_LIMIT = 3;
+/**
+ * Pure lookups, where an identical call can only return the same data. Not
+ * calculateTrip (each call registers a fresh route id the answer may name),
+ * planStops (stores the plan) or scoutAreas (starts sessions).
+ */
+const REPEAT_GUARDED = new Set([
+  "listSavedRides",
+  "getWeather",
+  "getDaylight",
+  "getTraffic",
+  "searchRoads",
+  "getSpeedCameras",
+  "findStops",
+  "checkConditions",
+]);
+
+/**
+ * Log each call to stderr and to the trace, and return the result to the model as JSON.
+ * A model can get stuck calling the same tool with the same input (an eval
+ * caught 40 identical getDaylight calls in a row): from the third identical
+ * call, the earlier result comes back with a note instead of a new lookup.
+ */
 function traced<I, O>(context: RideContext, scope: string, name: string, fn: (input: I) => Promise<O>) {
   return async (input: I): Promise<string> => {
     const started = Date.now();
     const tag = scope === "main" ? "" : `[${scope}] `;
     process.stderr.write(`\x1b[2m  -> ${tag}${name}(${JSON.stringify(input)})\x1b[0m\n`);
+    const callKey = `${scope}|${name}|${stableJson(input)}`;
+    context.calls ??= new Map();
+    const seen = context.calls.get(callKey);
+    if (seen) seen.count++;
+    if (seen && seen.count >= REPEAT_LIMIT && REPEAT_GUARDED.has(name)) {
+      const result = JSON.stringify({
+        repeatedCall: seen.count,
+        note: `You already called ${name} with exactly this input ${seen.count - 1} times; the result has not changed and is repeated below. Use it and move on: do not call ${name} with this input again.`,
+        result: JSON.parse(seen.result) as unknown,
+      });
+      context.repeatsInARow ??= new Map();
+      context.repeatsInARow.set(scope, (context.repeatsInARow.get(scope) ?? 0) + 1);
+      context.trace({ scope, kind: "tool", name, ms: 0, payload: { input, repeated: seen.count } });
+      return result;
+    }
+    context.repeatsInARow?.set(scope, 0);
     try {
       const output = await fn(input);
       const result = JSON.stringify(output);
+      if (seen) seen.result = result;
+      else context.calls.set(callKey, { count: 1, result });
       process.stderr.write(`\x1b[2m     ${tag}ok, ${Date.now() - started} ms\x1b[0m\n`);
       context.trace({ scope, kind: "tool", name, ms: Date.now() - started, payload: { input, output } });
       return result;
@@ -241,12 +282,13 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
           ),
       }),
       run: trace("calculateTrip", async (input: CalculateTripInput) => {
+        const id = nextRouteId(context, scope);
         const trip = await cachedTrip({
           waypoints: input.waypoints,
           roundTrip: input.roundTrip ?? false,
           avoidMotorways: !mayUseMotorways(input.avoidMotorways),
         });
-        const route = registerRoute(context, trip);
+        const route = registerRoute(context, trip, id);
         return {
           routeId: route.id,
           motorwaysPermitted: !context.preferences.avoidMotorways,

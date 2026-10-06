@@ -198,3 +198,12 @@ test("weather lines and rating parsing", () => {
   assert.deepEqual(parseRating(["5"]), { rating: 5, notes: null });
   assert.throws(() => parseRating(["6"]), /0 \(never again\) to 5/);
 });
+
+test("escaping: share page quotes and Markdown cells hold against hostile names", async () => {
+  const { escapeHtml } = await import("../src/share.ts");
+  const { cell } = await import("../src/markdown.ts");
+  assert.equal(escapeHtml(`" onmouseover="alert(1)' <b>&`), "&quot; onmouseover=&quot;alert(1)&#39; &lt;b&gt;&amp;");
+  // A trailing backslash must not swallow the escape of the pipe after it.
+  assert.equal(cell("D 9\\| x"), "D 9\\\\\\| x");
+  assert.equal(cell("a|b"), "a\\|b");
+});

@@ -35,7 +35,7 @@ test("planner: routes, presents a scout's route, saves it; usage and trace are k
         JSON.stringify({
           area: "Flandre",
           found: true,
-          routeId: "r1",
+          routeId: "flandre-r1",
           waypoints: ["Lille", "Cassel", "Mont des Cats"],
           distanceKm: 135,
           ridingMinutes: 110,
@@ -50,7 +50,7 @@ test("planner: routes, presents a scout's route, saves it; usage and trace are k
       finalText(
         JSON.stringify({
           message: "Itinerary text",
-          ride: { routeId: "r1", rideDate: "2026-10-10", departure: "09:00", name: "Flandre loop" },
+          ride: { routeId: "flandre-r1", rideDate: "2026-10-10", departure: "09:00", name: "Flandre loop" },
         }),
       ),
     ];
@@ -58,7 +58,7 @@ test("planner: routes, presents a scout's route, saves it; usage and trace are k
     await session.send("ride saturday");
     const current = session.current();
     assert.ok(current, "an itinerary is on the table");
-    assert.equal(current!.route.id, "r1");
+    assert.equal(current!.route.id, "flandre-r1", "scout routes are numbered per area");
     assert.equal(current!.title, "Flandre loop");
     assert.equal(current!.route.trip.result.legs.length, 3);
     // Scout tokens count in the session's usage.
@@ -183,6 +183,59 @@ test("routed trips report cobbles and unpaved stretches by road", async () => {
     assert.equal(result.speedLimits.surface.unpavedKm, 0);
     assert.equal(result.speedLimits.surface.stretches[0].surface, "cobbles or setts");
     assert.equal(result.speedLimits.surface.stretches[0].road, "Rue de la Gare");
+  } finally {
+    restore();
+    store.close();
+  }
+});
+
+test("planner: a tool called again and again with the same input answers from the first result", async () => {
+  const restore = quiet();
+  const store = new Store(":memory:");
+  try {
+    const daylight = toolUse("getDaylight", { location: "Lille", date: "2026-10-10" });
+    api.script = [daylight, daylight, daylight, finalText(JSON.stringify({ message: "Sunset 19:09", ride: null }))];
+    const session = await openRide({ home: "Lille", store });
+    await session.send("when is sunset?");
+    const results = api.requests.slice(1).map((r) => JSON.parse(r.messages.at(-1).content[0].content));
+    assert.equal(results[0].sunset, results[1].sunset, "second identical call still looked up");
+    assert.equal(results[1].repeatedCall, undefined);
+    assert.equal(results[2].repeatedCall, 3);
+    assert.match(results[2].note, /do not call getDaylight with this input again/);
+    assert.equal(results[2].result.sunset, results[0].sunset);
+  } finally {
+    restore();
+    store.close();
+  }
+});
+
+test("planner: a model stuck on one call is stopped and made to answer with tools disabled", async () => {
+  const restore = quiet();
+  const store = new Store(":memory:");
+  try {
+    const daylight = toolUse("getDaylight", { location: "Lille", date: "2026-10-10" });
+    api.script = [
+      ...Array.from({ length: 6 }, () => daylight),
+      finalText(JSON.stringify({ message: "Sunset at 19:09", ride: null })),
+      daylight, // never reached
+    ];
+    const session = await openRide({ home: "Lille", store });
+    await session.send("when is sunset?");
+    assert.equal(api.script.length, 1, "stopped after the forced answer");
+    const forced = api.requests.at(-1);
+    assert.deepEqual(forced.tool_choice, { type: "none" });
+    const note = forced.messages.at(-1).content;
+    assert.equal(note[0].type, "tool_result");
+    assert.equal(note[0].is_error, true);
+    assert.match(note.at(-1).text, /give your final answer now/);
+    const trace = store.listTrace(session.context.runId);
+    assert.ok(trace.some((e) => e.kind === "error" && e.name === "stuck"));
+    assert.ok(trace.some((e) => e.kind === "answer"));
+    // The conversation stays valid for a follow-up: it ends with the forced answer.
+    api.script = [finalText(JSON.stringify({ message: "ok", ride: null }))];
+    await session.send("thanks");
+    const followUp = api.requests.at(-1).messages;
+    assert.equal(followUp.at(-2).role, "assistant");
   } finally {
     restore();
     store.close();

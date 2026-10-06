@@ -46,6 +46,12 @@ export interface RideContext {
   trace: (event: TraceEvent) => void;
   /** Stop plans made this session, by route id, so links and GPX can carry the stops. */
   stopPlans: Map<string, StopPlan>;
+  /** Tool calls made so far, by scope, tool and input, to stop a model repeating one. */
+  calls?: Map<string, { count: number; result: string }>;
+  /** Guarded repeats in a row, per scope: the planner stops a session stuck on one call. */
+  repeatsInARow?: Map<string, number>;
+  /** Last route number used, per id prefix; see nextRouteId. */
+  routeSeq?: Map<string, number>;
   /** Roads the rider rated, computed once per session from the library. */
   ratedRoads?: RatedRoads;
 }
@@ -129,8 +135,33 @@ export function duplicateOf(
   return undefined;
 }
 
-export function registerRoute(context: RideContext, trip: TripComputation): RegisteredRoute {
-  const route = { id: `r${context.routes.size + 1}`, trip, cells: routeCells(trip.shapes) };
+/**
+ * Reserve the id of the next routed trip of a scope: "r1", "r2" for the planner,
+ * "vercors-r1" for the scout of the Vercors. Taken synchronously when the call
+ * starts, so ids follow the order of the tool calls, not the order in which
+ * parallel routing requests happen to finish: a replayed session gets the same ids.
+ */
+export function nextRouteId(context: RideContext, scope = "main"): string {
+  const prefix =
+    scope === "main"
+      ? "r"
+      : `${
+          scope
+            .replace(/^scout:/, "")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-|-$/g, "") || "scout"
+        }-r`;
+  context.routeSeq ??= new Map();
+  const n = (context.routeSeq.get(prefix) ?? 0) + 1;
+  context.routeSeq.set(prefix, n);
+  return `${prefix}${n}`;
+}
+
+export function registerRoute(context: RideContext, trip: TripComputation, id = nextRouteId(context)): RegisteredRoute {
+  const route = { id, trip, cells: routeCells(trip.shapes) };
   context.routes.set(route.id, route);
   return route;
 }

@@ -65,6 +65,9 @@ with a navigation app (Liberty Rider, Google Maps) on the phone.
 - **OpenTelemetry**: export of logged sessions done (`rides otel`). Next: live
   spans during a session, and the MCP server's tool calls as their own service.
 
+- **Rides from an image**: done (`--image`, `/image`, pasted in MCP clients).
+  Next: a GPX or KML file as input the same way.
+
 ## Smaller items
 
 - Rain-free window finder over the next 16 days for a saved ride.

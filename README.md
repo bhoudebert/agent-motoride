@@ -261,6 +261,26 @@ costs no extra call. In Claude Code and Codex the same checks are the
 `checkItinerary` tool, which the server asks the client to call before
 presenting a ride.
 
+### From a photo of a map
+
+Photographed a loop on a paper map, got a screenshot of a route from a friend,
+or scribbled a list of villages? Attach it:
+
+```bash
+npm run ride -- --image ~/Pictures/loop.jpg "ride this on Sunday, leave at 10:00"
+```
+
+At the refine prompt: `/image <file> [text]`. In Claude Code or Codex, paste
+the picture into the chat and say what you want. The planner reads the places
+on the image in order, says what it read, then routes them by name with the
+usual tools, so every figure still comes from the map data, and finishes the
+ride (weather, cameras, stops). PNG, JPEG, WebP or GIF, 5 MB at most; only
+the file name is kept in the trace, not the picture.
+
+The eval case `image-sketch-map` sends a hand-drawn style sketch
+(`evals/fixtures/sketch-loop.png`) of a loop through four towns without
+listing their order; the recorded answer routed all four in loop order.
+
 ### Refining the itinerary
 
 After the itinerary the program stays open on a `refine>` prompt. Type a change

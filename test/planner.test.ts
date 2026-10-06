@@ -245,3 +245,27 @@ test("planner: a model stuck on one call is stopped and made to answer with tool
     store.close();
   }
 });
+
+test("planner: an attached image goes to the model as a picture; only its name is traced", async () => {
+  const restore = quiet();
+  const store = new Store(":memory:");
+  const { readImage } = await import("../src/images.ts");
+  try {
+    api.script = [finalText(JSON.stringify({ message: "I read Lille, Cassel, Mont des Cats.", ride: null }))];
+    const session = await openRide({ home: "Lille", store });
+    const image = readImage(new URL("../evals/fixtures/sketch-loop.png", import.meta.url).pathname);
+    await session.send("ride this", { images: [image] });
+    const content = api.requests[0].messages[0].content;
+    assert.equal(content[0].type, "image");
+    assert.equal(content[0].source.media_type, "image/png");
+    assert.equal(content[0].source.data, image.data);
+    assert.equal(content[1].type, "text");
+    assert.match(content[1].text, /^ride this/);
+    const traced = store.listTrace(session.context.runId).find((e) => e.kind === "user")!;
+    assert.deepEqual((traced.payload as { images: string[] }).images, ["sketch-loop.png"]);
+    assert.ok(!JSON.stringify(traced.payload).includes(image.data.slice(0, 40)), "no picture in the database");
+  } finally {
+    restore();
+    store.close();
+  }
+});

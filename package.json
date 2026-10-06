@@ -17,6 +17,8 @@
     "test": "node --test 'test/**/*.test.ts'",
     "check": "node --env-file-if-exists=.env src/check.ts",
     "eval": "node --env-file-if-exists=.env evals/run.ts",
+    "docs:dev": "vitepress dev docs/guide",
+    "docs:build": "vitepress build docs/guide",
     "codex:register": "node scripts/codex-register.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -46,7 +48,8 @@
     "prettier": "^3.9.9",
     "simple-git-hooks": "^2.14.0",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "typescript-eslint": "^8.71.0"
+    "typescript-eslint": "^8.71.0",
+    "vitepress": "^1.6.4"
   },
   "simple-git-hooks": {
     "pre-commit": "npx lint-staged",

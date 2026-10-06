@@ -1,0 +1,173 @@
+/* The roadbook look of the project site, on VitePress's default theme. */
+:root {
+  --rb-paper: #f3eee4;
+  --rb-paper-2: #e9e2d3;
+  --rb-card: #fbf8f1;
+  --rb-ink: #1c1d1a;
+  --rb-ink-2: #4a4b44;
+  --rb-rule: #cfc6b4;
+  --rb-moss: #24382d;
+  --rb-moss-2: #31503f;
+  --rb-signal: #e6b422;
+  --rb-rust: #a8432a;
+
+  --vp-font-family-base: "Space Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --vp-font-family-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+
+  --vp-c-bg: var(--rb-paper);
+  --vp-c-bg-alt: var(--rb-paper-2);
+  --vp-c-bg-elv: var(--rb-card);
+  --vp-c-bg-soft: var(--rb-paper-2);
+  --vp-c-text-1: var(--rb-ink);
+  --vp-c-text-2: var(--rb-ink-2);
+  --vp-c-divider: var(--rb-rule);
+  --vp-c-gutter: var(--rb-rule);
+
+  --vp-c-brand-1: var(--rb-rust);
+  --vp-c-brand-2: #8f3823;
+  --vp-c-brand-3: var(--rb-moss);
+  --vp-c-brand-soft: rgba(168, 67, 42, 0.12);
+
+  --vp-code-bg: var(--rb-paper-2);
+  --vp-code-color: var(--rb-moss);
+  --vp-code-block-bg: var(--rb-moss);
+  --vp-code-block-color: #e9efe6;
+  --vp-code-tab-bg: var(--rb-ink);
+  --vp-code-tab-text-color: #b9c2b4;
+  --vp-code-tab-active-text-color: #ffffff;
+  --vp-code-tab-active-bar-color: var(--rb-signal);
+  --vp-code-tab-divider: var(--rb-moss-2);
+
+  --vp-home-hero-name-color: var(--rb-ink);
+  --vp-button-brand-bg: var(--rb-ink);
+  --vp-button-brand-border: var(--rb-ink);
+  --vp-button-brand-hover-bg: var(--rb-moss);
+  --vp-button-brand-hover-border: var(--rb-moss);
+  --vp-button-brand-active-bg: var(--rb-moss);
+
+  --vp-custom-block-tip-bg: color-mix(in srgb, var(--rb-moss) 9%, var(--rb-card));
+  --vp-custom-block-tip-border: var(--rb-moss);
+  --vp-custom-block-warning-bg: color-mix(in srgb, var(--rb-signal) 18%, var(--rb-card));
+  --vp-custom-block-info-bg: var(--rb-card);
+}
+
+.dark {
+  --vp-c-bg: #17221c;
+  --vp-c-bg-alt: #121b16;
+  --vp-c-bg-elv: #1d2b23;
+  --vp-c-bg-soft: #1d2b23;
+  --vp-c-text-1: #ece6d8;
+  --vp-c-text-2: #b9b3a5;
+  --vp-c-divider: #34473b;
+  --vp-c-gutter: #34473b;
+  --vp-c-brand-1: #e0795e;
+  --vp-c-brand-2: #e88d74;
+  --vp-c-brand-3: var(--rb-signal);
+  --vp-code-bg: #22332a;
+  --vp-code-color: #f0d27a;
+  --vp-code-block-bg: #0f1612;
+  --vp-home-hero-name-color: #ece6d8;
+  --vp-button-brand-bg: var(--rb-signal);
+  --vp-button-brand-border: var(--rb-signal);
+  --vp-button-brand-text: var(--rb-ink);
+  --vp-button-brand-hover-bg: #f0c64a;
+  --vp-button-brand-hover-text: var(--rb-ink);
+  --vp-custom-block-tip-bg: #1d2b23;
+  --vp-custom-block-warning-bg: #2e2a17;
+  --vp-custom-block-info-bg: #1d2b23;
+}
+
+/* Headings in the serif of the site, as on a printed roadbook. */
+.vp-doc h1,
+.vp-doc h2,
+.VPHero .name,
+.VPHero .text {
+  font-family: "Instrument Serif", Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.5px;
+}
+.vp-doc h1 {
+  font-size: 46px;
+  line-height: 1.05;
+}
+.vp-doc h2 {
+  font-size: 32px;
+  border-top: 1px solid var(--vp-c-divider);
+}
+.vp-doc h3 {
+  font-weight: 600;
+}
+.VPHero .text {
+  font-style: italic;
+  color: var(--rb-moss-2);
+}
+.dark .VPHero .text {
+  color: var(--rb-signal);
+}
+
+/* Section labels in the sidebar, like the site's "01 / example". */
+.VPSidebarItem.level-0 > .item .text {
+  font-family: var(--vp-font-family-mono);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--vp-c-brand-1);
+}
+
+/* Code groups are the two ways to do a thing: square, like the site's panels. */
+.vp-code-group .tabs {
+  border-radius: 0;
+}
+.vp-doc div[class*="language-"],
+.vp-code-group .tabs {
+  border-radius: 0 !important;
+}
+/* On a phone, code runs edge to edge: the frame only from tablet width. */
+@media (min-width: 640px) {
+  .vp-doc .vp-code-group {
+    border: 1.5px solid var(--rb-ink);
+  }
+  .dark .vp-doc .vp-code-group {
+    border-color: #34473b;
+  }
+}
+
+/* Feature cards on the guide home. */
+.VPFeature {
+  border-radius: 0 !important;
+  border: 1.5px solid var(--rb-ink) !important;
+  background: var(--rb-card) !important;
+}
+.dark .VPFeature {
+  border-color: #34473b !important;
+  background: var(--vp-c-bg-elv) !important;
+}
+.VPFeature .title {
+  font-size: 17px;
+}
+
+/* The tab group sits on the code colour, with no strip under the panel. */
+.vp-doc .vp-code-group {
+  background: var(--vp-code-block-bg);
+}
+.vp-doc .vp-code-group div[class*="language-"] {
+  margin-bottom: 0;
+}
+
+/* Secondary button: outlined, in the palette. */
+:root {
+  --vp-button-alt-bg: transparent;
+  --vp-button-alt-border: var(--rb-ink);
+  --vp-button-alt-text: var(--rb-ink);
+  --vp-button-alt-hover-bg: var(--rb-paper-2);
+  --vp-button-alt-hover-border: var(--rb-ink);
+  --vp-button-alt-hover-text: var(--rb-ink);
+}
+.dark {
+  --vp-button-alt-bg: transparent;
+  --vp-button-alt-border: #ece6d8;
+  --vp-button-alt-text: #ece6d8;
+  --vp-button-alt-hover-bg: #1d2b23;
+  --vp-button-alt-hover-border: var(--rb-signal);
+  --vp-button-alt-hover-text: var(--rb-signal);
+}

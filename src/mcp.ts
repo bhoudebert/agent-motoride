@@ -132,7 +132,7 @@ const settingsText = () => {
 // Server instructions reach the client's system prompt at connection time, so
 // the method applies even when the rider types in plain words instead of using
 // the plan-ride command. Kept to the essentials; the command carries the rest.
-const INSTRUCTIONS = `agentMotoride plans one-day motorcycle rides and keeps the rider's library of saved rides. Anything the rider says about rides, trips, loops, routes, the library, stops, cameras, weather for a ride, or a ride-day briefing is a request for this server's tools: showRide, listRides, rideBriefing, refreshRide, exportGpx, exportMarkdown, planningGuide and the planning tools. Never run shell commands, scripts or web searches for these, and never look for a "ride" program: "ride show 7" or "/ride plan ..." typed by the rider means "use the ride tools" (here: showRide for ride 7). Plain words are enough, slash commands are only shortcuts: before planning any new ride asked in plain words, in any client, call planningGuide with the rider's request and follow it, with ride set when it changes a saved ride (the plan-ride and edit-ride commands already carry that guidance).
+const INSTRUCTIONS = `agentMotoride plans one-day motorcycle rides and keeps the rider's library of saved rides. Anything the rider says about rides, trips, loops, routes, the library, stops, cameras, weather for a ride, or a ride-day briefing is a request for this server's tools: showRide, listRides, rideBriefing, refreshRide, rateRide, exportGpx, exportMarkdown, planningGuide and the planning tools. Never run shell commands, scripts or web searches for these, and never look for a "ride" program: "ride show 7" or "/ride plan ..." typed by the rider means "use the ride tools" (here: showRide for ride 7). Plain words are enough, slash commands are only shortcuts: before planning any new ride asked in plain words, in any client, call planningGuide with the rider's request and follow it, with ride set when it changes a saved ride (the plan-ride and edit-ride commands already carry that guidance).
 For a new leisure ride: call listSavedRides, then scoutAreas with 2-4 areas (or searchRoads and calculateTrip yourself if scouts are unavailable), pick the best candidate, then finish it: getDaylight, getWeather along the loop for the riding hours, getSpeedCameras, checkConditions (crosswind, low sun) with the date and departure, planStops with the date and departure, getTraffic for the departure. Before presenting it, call checkItinerary with its routeId, the rider's request and your text, and fix what it reports once (or say plainly which limit cannot be met). Present the itinerary in plain text (never JSON) with legs named by towns, the figures from the tools, the stops with times, the navigation links from planStops (and its overviewLink as "Whole ride (overview, not for navigation)" when there are several parts), and end with one line "Route: <routeId>". Save only when the rider asks, with saveRide. During a ride, a remark about the road ("last 10 min awesome", "cobbles, never again") is a note: call addRideNote at once with the rider's words, and a rating 0-5 only when they gave one. After the ride, reviewRide places the notes on the recorded track (gpxPath) or on the plan, shows detours and pace, and proposes ratings; apply them with reviewRide and decisions only once the rider confirms. If the rider has a route file (GPX or KML, from another app, a club or a friend), call importRoute with its path: it returns a routeId to present, finish and save like a planned ride. If the rider shares an image (photo of a paper map, route screenshot, list of places), read the places on it in order and route them with calculateTrip by name, then finish the ride as usual. For an edit or a question about a saved ride, work from its data (showRide) without replanning. For a practical trip (commute), route point to point, motorways if permitted, with traffic.`;
 
 const server = new McpServer({ name: "agentMotoride", version: "0.1.0" }, { instructions: INSTRUCTIONS });
@@ -173,6 +173,8 @@ const HINTS: Record<string, ToolAnnotations> = {
   // writes a file, overwriting one at the given path
   exportMarkdown: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
   // each call stores one more note
+  // Sets a ride's or a leg's rating, replacing the previous one; same call, same state.
+  rateRide: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   addRideNote: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   // stores placements and road ratings; map matching online
   reviewRide: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
@@ -509,6 +511,37 @@ server.registerTool(
 );
 
 server.registerTool(
+  "rateRide",
+  {
+    description:
+      "Rate a saved ride after riding it, or one of its legs: 0 (never again) to 5 (loved), with the rider's words as a note. Ratings steer later plans: rides and legs rated 4-5 are reused as building blocks, those rated 0-1 avoided. For a stretch of road within a leg, notes during the ride and reviewRide are more precise. Use the rider's own rating; ask when they gave none.",
+    annotations: hintsOf("rateRide"),
+    inputSchema: z.object({
+      ride: z.string().describe("Saved ride id or name"),
+      rating: z.number().int().min(0).max(5).describe("0 never again, 5 loved"),
+      leg: z.number().int().min(1).optional().describe("Leg number, to rate one leg instead of the whole ride"),
+      note: z.string().optional().describe("The rider's words, kept with the rating"),
+    }),
+  },
+  async (args) => {
+    const ride = store.findRide(args.ride);
+    if (!ride) throw new Error(`No saved ride matches "${args.ride}". Call listRides.`);
+    const note = args.note?.trim() || null;
+    if (args.leg !== undefined) {
+      if (!store.rateLeg(ride.id, args.leg, args.rating, note)) {
+        throw new Error(`Ride #${ride.id} has no leg ${args.leg}; it has legs 1 to ${ride.legs.length}.`);
+      }
+    } else store.rateRide(ride.id, args.rating, note);
+    // The next routed trip of this session must see the new rating.
+    context.ratedRoads = undefined;
+    const leg = args.leg === undefined ? undefined : ride.legs.find((l) => l.seq === args.leg);
+    return text(
+      `Rated ${leg ? `leg ${leg.seq} (${leg.from} -> ${leg.to}) of ` : ""}#${ride.id} "${ride.name}" ${args.rating}/5.`,
+    );
+  },
+);
+
+server.registerTool(
   "listRides",
   {
     description: "The rider's saved rides, one line each (id, name, distance, time, date, rating).",
@@ -818,7 +851,7 @@ agentMotoride commands (slash commands):
   /mcp__ride__help                       this text
 
 Attach a saved ride with @ in the prompt: @ride:ride://library, @ride:ride://ride/<id>, @ride:ride://roads/rated.
-Things to say in plain words: "import ~/Downloads/route.gpx", "allow motorways", "no repeats of saved rides", "aim for 10% in 50 zones" (settings), "where are the speed cameras", "find a fuel stop and a café", "when does the sun set".
+Things to say in plain words: "rate ride 7 five, superb", "leg 2 of ride 7: never again, gravel", "import ~/Downloads/route.gpx", "allow motorways", "no repeats of saved rides", "aim for 10% in 50 zones" (settings), "where are the speed cameras", "find a fuel stop and a café", "when does the sun set".
 Outside Claude Code: npm run rides -- list | show | rate | note | review | import | export | qr | share | trace | runs.
 
 Current settings:

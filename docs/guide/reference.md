@@ -93,7 +93,7 @@ reused as building blocks, those rated 0-1 are avoided.
 
 ## Claude Code and Codex (MCP server)
 
-24 tools, 13 prompts. Each tool shows its MCP hints: a client can let read-only tools run without asking.
+25 tools, 13 prompts. Each tool shows its MCP hints: a client can let read-only tools run without asking.
 
 ### Tools
 
@@ -326,6 +326,17 @@ After a ride: place its pending notes on the road. With gpxPath (a track recorde
 - `ride` (string, optional): Saved ride id or name; default the ride of the latest pending note
 - `gpxPath` (string, optional): Path of the recorded track on this machine
 - `decisions` (object[], optional): The rider's confirmed ratings, after a first call without decisions
+
+#### `rateRide`
+
+_writes · not destructive · idempotent · local only_
+
+Rate a saved ride after riding it, or one of its legs: 0 (never again) to 5 (loved), with the rider's words as a note. Ratings steer later plans: rides and legs rated 4-5 are reused as building blocks, those rated 0-1 avoided. For a stretch of road within a leg, notes during the ride and reviewRide are more precise. Use the rider's own rating; ask when they gave none.
+
+- `ride` (string): Saved ride id or name
+- `rating` (integer): 0 never again, 5 loved
+- `leg` (integer, optional): Leg number, to rate one leg instead of the whole ride
+- `note` (string, optional): The rider's words, kept with the rating
 
 #### `listRides`
 

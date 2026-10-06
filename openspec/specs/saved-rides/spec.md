@@ -35,7 +35,7 @@ The planner SHALL read the library at the start; candidates sharing 70% or more 
 
 ### Requirement: Ratings
 
-Rides and legs SHALL be rateable 0 to 5 with a note, from the CLI, the prompt and the menu; 0 means never again. Legs rated 4 or 5 SHALL be offered as building blocks. Every routed trip SHALL report its share of distance on roads from rides or legs rated 0 or 1 (a leg's rating overriding the ride's); 10% or more SHALL make the loop invalid unless nothing else meets the hard limits, in which case the planner SHALL say so.
+Rides and legs SHALL be rateable 0 to 5 with a note, from the CLI, the prompt, the menu and the `rateRide` MCP tool; 0 means never again. A rating SHALL count for the rest of the session at once, in the rated-roads check of the next routed trip. Legs rated 4 or 5 SHALL be offered as building blocks. Every routed trip SHALL report its share of distance on roads from rides or legs rated 0 or 1 (a leg's rating overriding the ride's); 10% or more SHALL make the loop invalid unless nothing else meets the hard limits, in which case the planner SHALL say so.
 
 ### Requirement: Editing a saved ride
 

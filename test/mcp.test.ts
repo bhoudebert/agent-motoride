@@ -285,6 +285,7 @@ test("mcp: every tool answers when called by name through a client", async () =>
     await call("refreshRide", { ride: "2", stopsOnly: true });
     await call("rideBriefing", { ride: "2" });
     await call("showRide", { ride: "2" });
+    await call("rateRide", { ride: "2", rating: 4, note: "nice" });
     await call("addRideNote", { text: "nice bends", ride: "2" });
     await call("reviewRide", { ride: "1" });
     await call("listRides", {});
@@ -296,4 +297,41 @@ test("mcp: every tool answers when called by name through a client", async () =>
   } finally {
     await client.close();
   }
+});
+
+test("mcp: rating a ride or a leg is stored and counts at once in the next routed trip", async () => {
+  const db = library();
+  const client = await connect(db, false);
+  const loop = { waypoints: ["Lille", "Cassel", "Mont des Cats"], roundTrip: true };
+  try {
+    await client.callTool({ name: "rideSettings", arguments: { home: "Lille" } });
+    const routeId = JSON.parse(textOf(await client.callTool({ name: "calculateTrip", arguments: loop }))).routeId;
+    await client.callTool({
+      name: "saveRide",
+      arguments: { routeId, name: "Flandre", rideDate: null, departure: null, itinerary: "135 km", request: "loop" },
+    });
+    assert.match(
+      textOf(await client.callTool({ name: "rateRide", arguments: { ride: "2", rating: 0, note: "never again" } })),
+      /Rated #2 "Flandre" 0\/5/,
+    );
+    // The same session routes the same roads again: they now count as rated never again.
+    const again = JSON.parse(textOf(await client.callTool({ name: "calculateTrip", arguments: loop })));
+    assert.match(again.ratedRoads.verdict, /^AVOID/);
+    assert.match(
+      textOf(await client.callTool({ name: "rateRide", arguments: { ride: "Flandre", leg: 2, rating: 5 } })),
+      /Rated leg 2 \(.+\) of #2 "Flandre" 5\/5/,
+    );
+    const bad = (await client.callTool({ name: "rateRide", arguments: { ride: "2", leg: 9, rating: 3 } })) as {
+      isError?: boolean;
+    };
+    assert.equal(bad.isError, true);
+  } finally {
+    await client.close();
+  }
+  const store = new Store(db);
+  const ride = store.findRide("2")!;
+  assert.equal(ride.rating, 0);
+  assert.equal(ride.notes, "never again");
+  assert.equal(ride.legs[1]!.rating, 5);
+  store.close();
 });

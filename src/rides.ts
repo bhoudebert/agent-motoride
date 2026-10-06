@@ -1,5 +1,7 @@
 // Manage the saved-ride library without starting a planning session.
 
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { pickRideForToday, rideBriefing } from "./briefing.ts";
 import {
@@ -22,6 +24,7 @@ import { formatStopPlan } from "./stops.ts";
 import { Store } from "./store.ts";
 import { setGeoAnchor } from "./tools/geo.ts";
 import { computeTrip } from "./tools/trip.ts";
+import { otlpEndpoint, otlpHeaders, runToOtlp, sendOtlp } from "./otel.ts";
 import { formatTrace } from "./trace.ts";
 
 const USAGE = `Usage: npm run rides -- <command>
@@ -41,6 +44,9 @@ const USAGE = `Usage: npm run rides -- <command>
   qr <id|name>                          QR code of the ride's Google Maps link
   share <id|name>                       Serve the ride to the phone on the local Wi-Fi (QR code), until Ctrl-C
   trace <run> [--full]                  Replay a planning session step by step (run ids from "runs")
+  otel <run|last> [--content] [--file out.json]
+                                        Export a session as OpenTelemetry traces to OTEL_EXPORTER_OTLP_ENDPOINT, else to a file;
+                                        --content adds prompts, answers and tool data (they hold your places and routes)
   bike [range=250 reserve=40 pause=75 stint=90 lunch=yes]   Show or set the bike profile used to plan stops
   runs [--csv]                          Every planning session with model, effort, tokens, cost and result
   refresh <id|name|all> [--stops]       Route a saved ride again: distance, times, road mix, leg names, daylight, cameras, stops
@@ -180,6 +186,27 @@ try {
       const run = Number.isInteger(id) ? store.findRun(id) : undefined;
       if (!run) throw new Error(`Which run? Give a run id from: npm run rides -- runs`);
       console.log(formatTrace(run, store.listTrace(run.id), args.includes("--full")));
+      break;
+    }
+    case "otel": {
+      const runs = store.listRuns();
+      const run = args[0] === "last" ? runs.at(-1) : store.findRun(Number(args[0]));
+      if (!run) throw new Error("Which run? Give a run id from: npm run rides -- runs, or last");
+      const traces = runToOtlp(run, store.listTrace(run.id), { content: args.includes("--content") });
+      const spans = traces.resourceSpans[0]!.scopeSpans[0]!.spans.length;
+      const fileAt = args.indexOf("--file");
+      const endpoint = otlpEndpoint();
+      if (fileAt < 0 && endpoint) {
+        await sendOtlp(traces, endpoint, otlpHeaders());
+        console.log(`Run #${run.id}: ${spans} spans sent to ${endpoint}.`);
+      } else {
+        const file = resolve(args[fileAt + 1] && fileAt >= 0 ? args[fileAt + 1]! : `exports/run-${run.id}.otlp.json`);
+        mkdirSync(dirname(file), { recursive: true });
+        writeFileSync(file, JSON.stringify(traces, null, 1));
+        console.log(
+          `Run #${run.id}: ${spans} spans written to ${file}. Set OTEL_EXPORTER_OTLP_ENDPOINT to send them instead.`,
+        );
+      }
       break;
     }
     case "qr": {

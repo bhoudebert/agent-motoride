@@ -72,6 +72,8 @@ const UNKNOWN_COUNTRY_DEFAULT_KMH = 80;
 // The legal default also applies to farm lanes and estate roads, but nobody
 // rides them at 90: cap the assumed speed by road class.
 const MINOR_ROAD_CAP_KMH: Record<string, number> = { unclassified: 60, residential: 40, service_other: 30 };
+/** Limit from which a road that is not a motorway counts as a fast expressway. */
+export const FAST_EXPRESSWAY_KMH = 100;
 const MAJOR_CLASSES = new Set(["motorway", "trunk", "primary", "secondary", "tertiary"]);
 
 /** Assumed limit for an untagged segment outside built-up areas. */
@@ -219,6 +221,9 @@ async function profileLegs(legShapes: string[]) {
   let kmFaster = 0;
   let kmOpenUnposted = 0;
   let kmMotorway = 0;
+  // Fast roads that are not motorways: expressways (trunk) at 100 km/h or more, or any road posted at 100+.
+  let kmFastExpressway = 0;
+  const fastExpressways = new Map<string, number>();
   const zones30 = new Map<string, number>();
   const zones50 = new Map<string, number>();
   const assumedLimits = new Map<number, number>();
@@ -276,6 +281,15 @@ async function profileLegs(legShapes: string[]) {
       const limit = posted ?? (builtUp ? Math.min(50, rural) : rural);
       if (posted === undefined && !builtUp && limit > 50) {
         assumedLimits.set(limit, (assumedLimits.get(limit) ?? 0) + km);
+      }
+
+      // Country defaults alone do not count outside trunk roads: Germany's rural default is 100.
+      if (
+        roadClass !== "motorway" &&
+        ((roadClass === "trunk" && limit >= FAST_EXPRESSWAY_KMH) || (posted ?? 0) >= FAST_EXPRESSWAY_KMH)
+      ) {
+        kmFastExpressway += km;
+        fastExpressways.set(name, (fastExpressways.get(name) ?? 0) + km);
       }
 
       if (limit <= 30) {
@@ -340,6 +354,11 @@ async function profileLegs(legShapes: string[]) {
         ),
       },
       motorwayKm: round1(kmMotorway),
+      fastExpressway: {
+        km: round1(kmFastExpressway),
+        pct: pct(kmFastExpressway),
+        longest: longest(fastExpressways),
+      },
       longest30Zones: longest(zones30),
       longest50Zones: longest(zones50),
       surface: {
@@ -424,6 +443,7 @@ export async function computeTrip(input: CalculateTripInput): Promise<TripComput
         locations: points.map((p) => ({ lat: p.lat, lon: p.lon })),
         costing: "motorcycle",
         // 0 keeps off motorways wherever another road exists; 1 takes them whenever they are faster.
+        // The router's "highways" are motorways at full weight and expressways (trunk) at half weight.
         costing_options: { motorcycle: { use_highways: avoidMotorways ? 0 : 1 } },
         units: "kilometers",
         directions_type: "none",

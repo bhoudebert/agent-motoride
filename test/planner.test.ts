@@ -304,3 +304,40 @@ test("routing: more locations than the router takes is refused with a clear reas
   const nine = Array.from({ length: 9 }, () => "Lille");
   await assert.rejects(computeTrip({ waypoints: [...nine, "Cassel"], roundTrip: true }), /router takes 10 locations/);
 });
+
+test("routing: fast expressways are counted apart from motorways and country roads", async () => {
+  const { computeTrip } = await import("../src/tools/trip.ts");
+  const edge = (length: number, road_class: string, speed_limit: number | undefined, name: string, cc = "FR") => ({
+    length,
+    road_class,
+    ...(speed_limit ? { speed_limit } : {}),
+    density: 2,
+    names: [name],
+    begin_shape_index: 0,
+    end_shape_index: 5,
+    end_node: { admin_index: cc === "FR" ? 0 : 1 },
+  });
+  api.edges = [
+    edge(10, "motorway", 130, "A 1"),
+    edge(20, "trunk", 110, "N 41"), // voie express at 110: fast expressway
+    edge(5, "trunk", 80, "N 17"), // former expressway now at 80: fine
+    edge(5, "primary", 100, "N 4"), // a road posted at 100: fast
+    edge(60, "secondary", undefined, "L 3", "DE"), // untagged German country road, default 100: not counted
+  ];
+  try {
+    const trip = await computeTrip({ waypoints: ["Lille", "Cassel"] });
+    const limits = trip.result.speedLimits as {
+      motorwayKm: number;
+      fastExpressway: { km: number; pct: number; longest: Array<{ road: string }> };
+    };
+    assert.equal(limits.motorwayKm, 10);
+    assert.equal(limits.fastExpressway.km, 25);
+    assert.deepEqual(
+      limits.fastExpressway.longest.map((r) => r.road),
+      ["N 41", "N 4"],
+    );
+    assert.equal(limits.fastExpressway.pct, 25);
+  } finally {
+    api.edges = undefined;
+  }
+});

@@ -1277,12 +1277,13 @@ prints the `plan-ride` prompt exactly as the server serves it.
 The goal is as much riding as possible on open road: outside towns and
 villages, never on motorways.
 
-| Preference    | Default             | How it is applied                                                                                                                                                                   |
-| ------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| No motorways  | on                  | Enforced in code: while motorways are forbidden, every routing call excludes them, whatever the model asks. The result reports `usesMotorway` and `motorwayKm` so a leak is visible |
-| Open road     | maximise            | Every routed trip reports `openRoadPct`, the share of distance outside built-up areas and off motorways. Among loops that meet your hard constraints, the agent prefers the highest |
-| 30 km/h zones | aim for at most 3%  | Measured per route, with the longest such stretches by road name. The agent moves waypoints to bypass them and reroutes                                                             |
-| 50 km/h zones | aim for at most 20% | Same mechanism, for 31-50 km/h                                                                                                                                                      |
+| Preference       | Default             | How it is applied                                                                                                                                                                   |
+| ---------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No motorways     | on                  | Enforced in code: while motorways are forbidden, every routing call excludes them, whatever the model asks. The result reports `usesMotorway` and `motorwayKm` so a leak is visible |
+| Fast expressways | keep small          | Roads that are not motorways but are limited to 100 km/h or more. Reported with the longest stretches; a leisure ride with 25% or more goes back to the planner once                |
+| Open road        | maximise            | Every routed trip reports `openRoadPct`, the share of distance outside built-up areas and off motorways. Among loops that meet your hard constraints, the agent prefers the highest |
+| 30 km/h zones    | aim for at most 3%  | Measured per route, with the longest such stretches by road name. The agent moves waypoints to bypass them and reroutes                                                             |
+| 50 km/h zones    | aim for at most 20% | Same mechanism, for 31-50 km/h                                                                                                                                                      |
 
 Slow zones cannot be avoided completely: every ride leaves a town and crosses
 villages. The percentages are targets to minimise toward, not pass/fail limits,
@@ -1295,6 +1296,39 @@ default of the country and region it lies in: 80 in France, 90 in Wallonia, 70
 in Flanders, 100 in Germany, and so on (table `RURAL_DEFAULT_KMH` in
 `src/tools/trip.ts`). Minor lanes are capped at 60 whatever the legal default.
 The saved-ride view shows how much of the open road rests on that assumption.
+
+### What counts as a motorway
+
+**Motorway** here means the legal high-speed road category, wherever you ride:
+autoroute (France, Belgium), autosnelweg (Flanders, Netherlands), Autobahn
+(Germany), motorway (UK), freeway or interstate (US). Blue sign in most of
+Europe, access only at junctions, no slow vehicles. It is the category that
+counts, not the speed limit: the limit varies by country (130 in France, 120 in
+Belgium, 100 to 130 in the Netherlands, advisory in Germany).
+
+"Highway" is avoided on purpose: in American English it is any main road, and
+in OpenStreetMap every road is a `highway`.
+
+**Expressways** are the grey zone: dual carriageways with junctions but no
+motorway status, such as the French voie express (green sign) or Belgian 2x2
+N-roads. Many are now limited to 70 to 90, and those are ordinary roads here.
+The ones at **100 km/h or more** are reported as **fast expressway**, next to
+the motorway figure:
+
+```
+motorway 0 km  |  fast expressway (100+) 12 km, 6%
+```
+
+|                              | Motorway                             | Fast expressway (100+)                 | Expressway at 70-90, other roads |
+| ---------------------------- | ------------------------------------ | -------------------------------------- | -------------------------------- |
+| Routing, motorways forbidden | avoided wherever another road exists | discouraged (the router's half weight) | normal                           |
+| Figures                      | `motorwayKm`                         | `fastExpressway` km, share, roads      | road mix as usual                |
+| Code check on a leisure ride | forbidden                            | sent back once at 25% or more          | none                             |
+
+"Never motorways" is a strong penalty in the router, not an absolute ban: when
+no other road exists, the router takes one and the itinerary says so. In the
+recorded evals, real plans have no motorway and at most 0.4 km of fast
+expressway.
 
 ### Motorways and practical trips
 

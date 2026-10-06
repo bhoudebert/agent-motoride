@@ -26,6 +26,20 @@ For every road segment the system SHALL take the tagged limit; where none is tag
 - **WHEN** a secondary road in Wallonia has no maxspeed tag and lies outside a built-up area
 - **THEN** it counts as open road at 90 km/h
 
+### Requirement: Fast expressways
+
+The profile SHALL report, apart from motorways, the km and share of fast expressways: segments that are not motorways and are either expressways (`trunk`) limited to 100 km/h or more, tagged or by default, or any road with a tagged limit of 100 km/h or more, with the longest stretches by road. A country's default alone SHALL NOT make a road outside `trunk` count.
+
+#### Scenario: Former expressway now at 80
+
+- **WHEN** a route uses an expressway at 110 for 20 km and a former expressway now posted 80 for 5 km
+- **THEN** 20 km count as fast expressway and the 5 km do not
+
+#### Scenario: Untagged country road in Germany
+
+- **WHEN** a secondary road in Germany has no limit tagged (legal default 100)
+- **THEN** it does not count as fast expressway
+
 ### Requirement: Riding-time estimate
 
 Riding time SHALL be estimated per segment as the limit scaled by a bend factor (about 95% straight, 80% flowing bends, 50% hairpins), capped at 85% of the limit in town, excluding stops and traffic. The router's own time SHALL be returned only as an upper bound.

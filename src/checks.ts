@@ -46,6 +46,9 @@ export function parseLimits(request: string): RequestLimits {
   };
 }
 
+/** Share of fast expressway above which a leisure itinerary goes back to the planner. */
+export const FAST_EXPRESSWAY_MAX_PCT = 25;
+
 /** Wording by which an answer owns up to a limit it does not meet. */
 const ACKNOWLEDGED =
   /\b(over the|exceeds?|above the|beyond|longer than|more than the|cannot|can't|can not|not possible|impossible|closest option|not a full match|breaks?)\b/i;
@@ -77,6 +80,18 @@ export function checkItinerary(
   if (duplicate) {
     violations.push(
       `repeat: ${duplicate.overlapPct}% of the roads of saved ride #${duplicate.rideId} "${duplicate.name}"`,
+    );
+  }
+  // Not a motorway, but a leisure ride mostly on 100+ expressways is not a motorcycle ride.
+  // A rider who permits motorways is on a practical trip, where they are fine.
+  const fast = (trip.speedLimits as { fastExpressway?: { pct: number; longest: Array<{ road: string }> } } | undefined)
+    ?.fastExpressway;
+  if (context.preferences.avoidMotorways && fast && fast.pct >= FAST_EXPRESSWAY_MAX_PCT) {
+    violations.push(
+      `fast expressway: ${fast.pct}% of the ride on roads limited to 100 km/h or more that are not motorways (${fast.longest
+        .slice(0, 2)
+        .map((r) => r.road)
+        .join(", ")}); route around them for a leisure ride, or say why not`,
     );
   }
   const { avoidPct } = ratedOverlap(context, route.cells);

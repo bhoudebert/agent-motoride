@@ -123,3 +123,25 @@ test("checks: repeats of saved rides and roads rated never again", () => {
   assert.match(violations[1]!, /^rated roads: 100% on roads the rider rated 0 or 1/);
   assert.match(correctionMessage(violations), /^\[Automatic check by code, not from the rider\./);
 });
+
+test("checks: a leisure ride mostly on fast expressways goes back; a practical trip does not", () => {
+  const { route } = setup();
+  const fast = {
+    ...route,
+    trip: {
+      ...route.trip,
+      result: {
+        ...route.trip.result,
+        usesMotorway: false,
+        speedLimits: { fastExpressway: { km: 90, pct: 42, longest: [{ road: "N 41" }, { road: "N 17" }] } },
+      },
+    },
+  } as unknown as RegisteredRoute;
+  const limits = { maxDistanceKm: null, maxRidingMinutes: null };
+  const leisure = checkItinerary(setup().context, fast, "Loop, 214 km.", limits);
+  assert.deepEqual(leisure.violations, [
+    "fast expressway: 42% of the ride on roads limited to 100 km/h or more that are not motorways (N 41, N 17); route around them for a leisure ride, or say why not",
+  ]);
+  const practical = checkItinerary(setup({ avoidMotorways: false }).context, fast, "Trip, 214 km.", limits);
+  assert.deepEqual(practical.violations, []);
+});

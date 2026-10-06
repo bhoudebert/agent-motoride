@@ -32,7 +32,7 @@ The planner SHALL treat distance caps, riding-time caps and "dry" as hard limits
 
 ### Requirement: Itinerary checked by code
 
-Every itinerary SHALL be checked by code before it is shown: routed distance and riding time against the caps read from the rider's words, no motorway when forbidden, no repeat of a saved ride unless repeats are allowed, less than 10% on roads rated 0-1, and the distance stated in the answer equal to the routed one within 1.5 km. In API mode a failed check SHALL be sent back to the planner once, marked as an automatic check, unless the answer already acknowledges the breach; checks still failing after that SHALL be shown to the rider under the itinerary. In MCP mode the checks SHALL be available as the `checkItinerary` tool.
+Every itinerary SHALL be checked by code before it is shown: routed distance and riding time against the caps read from the rider's words, no motorway when forbidden, no repeat of a saved ride unless repeats are allowed, less than 10% on roads rated 0-1, the distance stated in the answer equal to the routed one within 1.5 km, and, while motorways are forbidden, less than 25% of fast expressway (roads that are not motorways, limited to 100 km/h or more). In API mode a failed check SHALL be sent back to the planner once, marked as an automatic check, unless the answer already acknowledges the breach; checks still failing after that SHALL be shown to the rider under the itinerary. In MCP mode the checks SHALL be available as the `checkItinerary` tool.
 
 #### Scenario: Over the cap
 

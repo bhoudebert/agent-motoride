@@ -19,6 +19,7 @@ import { readImage } from "./images.ts";
 import { overviewLink, pinnedMapsLinks } from "./maps.ts";
 import { writeRideMarkdown } from "./markdown.ts";
 import { rideMapPng, writeRideMap } from "./rideMap.ts";
+import { parsePlanRide, planRideFrom } from "./planRide.ts";
 import { DEFAULT_PREFERENCES, preferencesFromEnv } from "./preferences.ts";
 import { describeProfile, parseProfileArgs } from "./profile.ts";
 import { printQr, type Shared, startShareServer } from "./share.ts";
@@ -31,12 +32,13 @@ const USAGE = `Usage: npm run ride                              Start menu: plan
        npm run ride -- [options] "<what you want>"  Plan a ride directly
 
   npm run ride -- --from "Grenoble" "Roadtrip moto this Saturday, no rain, <250km, winding roads, give me an itinerary"
-  npm run ride -- --ride 3 "same ride next Sunday, 50 km longer, lunch in Die"
+  npm run ride -- --roadbook 3 "50 km longer, lunch in Die"
+  npm run ride -- "plan a ride from roadbook 3 on Saturday at 9"     a ride on a day, no copy, no model call
 
 Options:
   --from <place>        Start and end point. Defaults to RIDE_HOME, or the saved ride's start with --ride.
   --show <id|name>      Display a saved ride and exit. No planning, no API call.
-  --ride <id|name>      Work on a saved ride. With a request: apply it. Without: open the prompt on the ride.
+  --roadbook <id|name>  Work on a saved roadbook (also --ride). With a request: apply it. Without: open the prompt on it.
   --allow-repeat        Accept rides that repeat saved ones. Default: near-duplicates are rejected.
   --save-as <name>      Save the first itinerary under this name (useful with --once).
   --allow-motorways     Permit motorways (autoroutes), e.g. for a commute. Default: never used.
@@ -58,6 +60,7 @@ function refineHelp(): string {
   return `  /save [name]          Save the current itinerary (new version if already saved); refused when it duplicates a saved ride, --force to override
   /roadbooks [page]     Roadbooks (the loops and trips you saved), newest first, 20 per page
   /rides [page]         Rides (a roadbook on a day), latest date first, 20 per page
+  /plan <day> [time]    Plan a ride from this saved roadbook on a day (also: "plan a ride on Saturday at 9"); no copy
   /show [id|name]       Details of a saved ride (no argument: the one loaded or saved here)
   /gpx [file.gpx]       Export the current itinerary (or the loaded ride) as a GPX file
   /md [file.md]         Export the saved or loaded ride as a Markdown document, with its map (save first)
@@ -81,6 +84,7 @@ const { values, positionals } = parseArgs({
   options: {
     from: { type: "string" },
     ride: { type: "string" },
+    roadbook: { type: "string" },
     show: { type: "string" },
     "allow-repeat": { type: "boolean" },
     "save-as": { type: "string" },
@@ -97,6 +101,8 @@ const { values, positionals } = parseArgs({
 // Read and checked at once, so a wrong path fails before any model call.
 const startImages = (values.image ?? []).map((file) => readImage(file));
 const interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY);
+// --roadbook is the word riders know; --ride stays for scripts written before it.
+values.ride ??= values.roadbook;
 const hasRequest = positionals.length > 0 || Boolean(values.ride) || Boolean(values.show);
 
 // With nothing to do and nobody to ask, explain how to call the program.
@@ -213,8 +219,12 @@ try {
       if (!baseRide) throw new Error(`No saved ride matches "${values.ride}". Run: npm run rides -- roadbooks`);
     }
     const request = positionals.join(" ").trim();
-    let outcome: Outcome;
-    if (request) outcome = await plan(request, baseRide, values.from);
+    // "plan a ride from roadbook 7 on Saturday at 9": a ride on a day, decided in code, no model call.
+    const dated = request ? parsePlanRide(request) : null;
+    const roadbook = dated?.roadbook ?? (dated && baseRide ? String(baseRide.id) : null);
+    let outcome: Outcome = "quit";
+    if (dated && roadbook) console.log(await planRideFrom(store, roadbook, dated.date, dated.departure));
+    else if (request) outcome = await plan(request, baseRide, values.from);
     // A saved ride with no request: open the prompt on it when someone is there
     // to type, otherwise replan it for the coming weekend.
     else if (interactive && !values.once) outcome = await plan(null, baseRide, values.from);
@@ -831,12 +841,29 @@ async function refineLoop(
             }
             break;
           }
+          case "plan": {
+            const dated = parsePlanRide(`plan ${args.join(" ")}`);
+            const target = dated?.roadbook ?? (savedId() !== null ? String(savedId()) : null);
+            if (!dated || !target) {
+              console.log("Usage: /plan <day> [time] on a saved roadbook (save it first), e.g. /plan saturday 9:30");
+              break;
+            }
+            console.log(await planRideFrom(store, target, dated.date, dated.departure));
+            break;
+          }
           case "help":
             console.log(refineHelp());
             break;
           default:
             console.log(`Unknown command /${command}.\n${refineHelp()}`);
         }
+        continue;
+      }
+      // "plan a ride on Saturday at 9" on a saved roadbook, or "... from roadbook 7 ...": no model call.
+      const dated = parsePlanRide(line);
+      const target = dated?.roadbook ?? (dated && savedId() !== null ? String(savedId()) : null);
+      if (dated && target) {
+        console.log(await planRideFrom(store, target, dated.date, dated.departure));
         continue;
       }
       await session.send(pendingNote ? `${pendingNote}\n${line}` : line);

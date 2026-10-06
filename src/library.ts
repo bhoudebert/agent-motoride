@@ -279,7 +279,7 @@ export async function replanStops(store: Store, ride: SavedRide): Promise<RideEx
     stopPlan,
   };
   delete extras.errors.stops;
-  store.setExtras(ride.id, extras);
+  store.setExtras(ride.id, extras, ride.rideDayId);
   return extras;
 }
 
@@ -378,7 +378,7 @@ export async function enrichRide(store: Store, ride: SavedRide): Promise<RideExt
     stopPlan: stopPlan ?? previous?.stopPlan ?? null,
     conditions: conditions ?? previous?.conditions ?? null,
   };
-  store.setExtras(ride.id, extras);
+  store.setExtras(ride.id, extras, ride.rideDayId);
   return extras;
 }
 
@@ -430,7 +430,7 @@ export function formatExtras(ride: SavedRide): string[] {
 export async function rideWeatherFor(store: Store, ride: SavedRide): Promise<RideWeather | null> {
   if (!ride.shapes) return null;
   const weather = await rideWeather(ride, ride.shapes);
-  if (weather && ride.extras) store.setExtras(ride.id, { ...ride.extras, weather });
+  if (weather && ride.extras) store.setExtras(ride.id, { ...ride.extras, weather }, ride.rideDayId);
   return weather;
 }
 

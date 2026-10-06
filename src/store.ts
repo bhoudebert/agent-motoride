@@ -181,6 +181,8 @@ export interface SavedRun extends RunRecord {
 
 export interface SavedRide extends Omit<NewRide, "legs"> {
   id: number;
+  /** The ride (day) shown with this roadbook: its date, departure and day data; null if it has none. */
+  rideDayId: number | null;
   createdAt: string;
   rating: number | null;
   notes: string | null;
@@ -509,20 +511,60 @@ export class Store {
     return Number(lastInsertRowid);
   }
 
-  /** The ride shown with a roadbook: the latest planned one, else the latest. */
+  /** The ride shown with a roadbook: the next planned one, else the latest planned, else the latest. */
   #currentDay(roadbookId: number): DayRow | undefined {
     return this.#db
-      .prepare("SELECT * FROM rides WHERE roadbook_id = ? ORDER BY status = 'planned' DESC, id DESC LIMIT 1")
-      .get(roadbookId) as unknown as DayRow | undefined;
+      .prepare(
+        `SELECT * FROM rides WHERE roadbook_id = ?
+         ORDER BY status = 'planned' AND ride_date >= ? DESC,
+           CASE WHEN status = 'planned' AND ride_date >= ? THEN ride_date END ASC,
+           status = 'planned' DESC, id DESC
+         LIMIT 1`,
+      )
+      .get(roadbookId, localDay(new Date()), localDay(new Date())) as unknown as DayRow | undefined;
   }
 
-  #hydrate(row: RoadbookRow): SavedRide {
+  /**
+   * Plan a ride of a roadbook on a date: the ride already on that date is
+   * updated (departure, planned again), else a new one is added. The roadbook
+   * itself is not touched.
+   */
+  planDay(roadbookId: number, date: string, departure: string): { dayId: number; created: boolean } {
+    const existing = this.#db
+      .prepare("SELECT id FROM rides WHERE roadbook_id = ? AND ride_date = ?")
+      .get(roadbookId, date) as { id: number } | undefined;
+    if (existing) {
+      this.#db
+        .prepare("UPDATE rides SET departure = ?, status = 'planned', stale = 0 WHERE id = ?")
+        .run(departure, existing.id);
+      return { dayId: existing.id, created: false };
+    }
+    const roadbook = this.#db.prepare("SELECT home FROM roadbooks WHERE id = ?").get(roadbookId) as
+      { home: string } | undefined;
+    if (!roadbook) throw new Error(`No roadbook #${roadbookId}.`);
+    return {
+      dayId: this.#addDay(roadbookId, { date, departure, start: roadbook.home, dayExtras: null }),
+      created: true,
+    };
+  }
+
+  /** A roadbook shown with one of its rides instead of the current one. */
+  rideView(roadbookId: number, dayId: number): SavedRide | undefined {
+    const row = this.#db.prepare("SELECT * FROM roadbooks WHERE id = ?").get(roadbookId) as unknown as
+      RoadbookRow | undefined;
+    const day = this.#db.prepare("SELECT * FROM rides WHERE id = ? AND roadbook_id = ?").get(dayId, roadbookId) as
+      DayRow | undefined;
+    return row && day ? this.#hydrate(row, day) : undefined;
+  }
+
+  #hydrate(row: RoadbookRow, shown?: DayRow): SavedRide {
     const legs = this.#db
       .prepare("SELECT * FROM legs WHERE roadbook_id = ? ORDER BY seq")
       .all(row.id) as unknown as SegmentRow[];
-    const day = this.#currentDay(row.id);
+    const day = shown ?? this.#currentDay(row.id);
     return {
       id: row.id,
+      rideDayId: day?.id ?? null,
       name: row.name,
       createdAt: row.created_at,
       parentId: row.variant_of,
@@ -720,15 +762,19 @@ export class Store {
     }
   }
 
-  setExtras(id: number, extras: RideExtras): void {
+  /** Store gathered extras: route-bound ones on the roadbook, day-bound ones on the given ride, else its current one. */
+  setExtras(id: number, extras: RideExtras, dayId?: number | null): void {
     const { route, day } = splitExtras(extras);
     const roadbook = this.#db
       .prepare("UPDATE roadbooks SET route_extras = ? WHERE id = ? RETURNING home")
       .get(route, id) as { home: string } | undefined;
     if (!roadbook) return;
-    const current = this.#currentDay(id);
-    if (current) this.#db.prepare("UPDATE rides SET day_extras = ? WHERE id = ?").run(day, current.id);
-    else this.#addDay(id, { date: null, departure: null, start: roadbook.home, dayExtras: day });
+    const current = dayId ? { id: dayId } : this.#currentDay(id);
+    if (current) {
+      this.#db
+        .prepare("UPDATE rides SET day_extras = ?, stale = 0 WHERE id = ? AND roadbook_id = ?")
+        .run(day, current.id, id);
+    } else this.#addDay(id, { date: null, departure: null, start: roadbook.home, dayExtras: day });
   }
 
   /** Attach the exact route line to a ride saved without one. */

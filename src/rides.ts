@@ -40,6 +40,7 @@ import { otlpEndpoint, otlpHeaders, runToOtlp, sendOtlp } from "./otel.ts";
 import { preferencesFromEnv } from "./preferences.ts";
 import { importRoute, readRouteFile } from "./routeImport.ts";
 import { type RideContext, registerRoute } from "./session.ts";
+import { parsePlanRide, planRideFrom } from "./planRide.ts";
 import { formatTrace } from "./trace.ts";
 import { emptyUsage } from "./usage.ts";
 
@@ -47,6 +48,8 @@ const USAGE = `Usage: npm run rides -- <command>
 
   roadbooks [--page N]                  Roadbooks (the loops and trips you saved), newest first, 20 per page
   rides [--page N]                      Rides (a roadbook on a day), latest date first, 20 per page
+  plan <roadbook> <day> [time]          Plan a ride from a roadbook: day as 2026-10-17, 17/10, saturday, tomorrow;
+                                        time as 9, 9:30, 9h30 (default the roadbook's last departure). No copy, no model
   today [id|name]                       Ride-day briefing: weather now, daylight, traffic, stops checked against opening hours, go or no-go
   show <id|name> [--md]                 One ride: legs, map link, itinerary (--md: as Markdown on stdout)
   export-md <id|name> [file.md]         Write the ride as a Markdown document, with its map (default: exports/ in the project)
@@ -110,6 +113,16 @@ try {
         "Two lists now: npm run rides -- roadbooks (saved loops and trips), npm run rides -- rides (by date).",
       );
       break;
+    case "plan": {
+      const [roadbook, ...when] = args;
+      const words = when.join(" ");
+      const parsed = roadbook ? parsePlanRide(`plan roadbook ${roadbook} ${words}`) : null;
+      if (!roadbook || !parsed) {
+        throw new Error("Usage: npm run rides -- plan <roadbook> <day> [time], e.g. plan 7 saturday 9:30");
+      }
+      console.log(await planRideFrom(store, roadbook, parsed.date, parsed.departure));
+      break;
+    }
     case "rides":
       console.log(formatRideDayPage(store.listRideDays(pageArg(args)), (n) => `npm run rides -- rides --page ${n}`));
       break;

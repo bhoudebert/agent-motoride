@@ -374,6 +374,17 @@ versioning, written with `IF NOT EXISTS` so older libraries pass through it.
 A released step is never edited: changes go in a new step, with a test that
 builds a library at the previous version and migrates it.
 
+Step 2 splits saved rides into roadbooks and rides (ADR 0023). `roadbooks`
+holds the design with the same ids as before (waypoints, route line, figures,
+cameras and stop candidates in `route_extras`, ratings), `legs` its legs, and
+`roadbook_versions` the versions kept on each edit. `rides` holds a roadbook
+on a day: date (or none yet), departure, start, status (planned, ridden,
+cancelled), the day-bound extras (daylight, forecast, stop plan, conditions)
+and later the track and the day's rating. Notes point to both; road ratings
+and runs to the roadbook. Until the commands know both levels, `Store` shows a
+roadbook with its current ride (the latest planned, else the latest) as one
+saved ride, as before.
+
 ## Lookup cache
 
 Tool results are cached in the same file so repeated planning does not hit the

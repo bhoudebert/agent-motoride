@@ -11,7 +11,8 @@ candidates, its rating and notes, and its versions. A ride SHALL hold its
 roadbook and the version it uses, date, departure, start point, settings of
 the day, forecast, daylight, stop plan, traffic, status (planned, ridden,
 cancelled), recorded track, notes and rating. There SHALL be at most one ride
-per roadbook and date.
+per roadbook and date; a ride with no date yet (a plan saved without one)
+SHALL be allowed.
 
 #### Scenario: Same loop, two Saturdays
 
@@ -45,8 +46,8 @@ A backup SHALL be written before.
 ### Requirement: Saving
 
 A roadbook SHALL be saved only on request, from a route id routed in the
-session, under a name (default the planner's title), with a first ride when
-the plan has a date. Saving after a change to a saved roadbook SHALL update it
+session, under a name (default the planner's title), with a first ride, dated
+when the plan has a date. Saving after a change to a saved roadbook SHALL update it
 with a new version (Requirement "Editing a roadbook").
 
 ### Requirement: Extras gathered after save and on refresh

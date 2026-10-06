@@ -1,6 +1,6 @@
 # 0023. Split the library into roadbooks (the design) and rides (a roadbook on a day)
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-10-06
 
 ## Context

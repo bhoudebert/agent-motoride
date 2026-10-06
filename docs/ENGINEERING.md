@@ -91,17 +91,17 @@ that the planner ignored.
 
 ## Tools
 
-| Tool              | Input                                                                   | Returns                                                                                                                                                                                                                                                                                                                                                                                                          | Source                                                              | Key              |
-| ----------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ---------------- |
-| `getWeather`      | `location`, `date`, `fromHour?`, `toHour?`                              | Hourly temperature, rain probability and amount, wind, gusts, sky, plus a day summary with a `dry` flag                                                                                                                                                                                                                                                                                                          | [Open-Meteo](https://open-meteo.com/), up to 16 days ahead          | none             |
-| `searchRoads`     | `location`, `radiusKm?` (5 to 40, default 25), `minLengthKm?`, `limit?` | Paved secondary and tertiary roads ranked by curviness, with end coordinates usable as waypoints, and named mountain passes                                                                                                                                                                                                                                                                                      | OpenStreetMap via [Overpass](https://overpass-api.de/)              | none             |
-| `calculateTrip`   | `waypoints`, `roundTrip?`, `avoidMotorways?`                            | Routed distance, estimated riding time and average speed per leg and in total, motorway and toll flags, open-road share and speed-limit profile (km and % at 30 or less, 31-50, above 50, untagged open road), share of riding time on roads limited to 70 or more and at an estimated 70 or more, main roads per leg, comparison with saved rides, plain map link and navigation links with pass-through points | [Valhalla](https://valhalla1.openstreetmap.de/), motorcycle profile | none             |
-| `getDaylight`     | `location`, `date`                                                      | Sunrise, sunset, first and last light, daylight hours, any date                                                                                                                                                                                                                                                                                                                                                  | Computed locally (NOAA solar equations), timezone from Open-Meteo   | none             |
-| `getSpeedCameras` | `routeId`                                                               | Fixed speed cameras on or beside the routed trip: km mark, leg, limit, direction                                                                                                                                                                                                                                                                                                                                 | OpenStreetMap via Overpass                                          | none             |
-| `planStops`       | `routeId`, `departure`, `fuelAtStartKm?`                                | The chosen fuel, pause and lunch stops with arrival times, return time with breaks, warnings, and navigation links including the stops                                                                                                                                                                                                                                                                           | Stops from OpenStreetMap, choice from the bike profile              | none             |
-| `findStops`       | `routeId`, `kinds?`, `radiusM?`, `limitPerKind?`                        | Fuel stations, cafés, restaurants, bakeries within a short detour, spread along the route, with opening hours when mapped                                                                                                                                                                                                                                                                                        | OpenStreetMap via Overpass                                          | none             |
-| `listSavedRides`  | `location?`, `radiusKm?`                                                | Saved rides near a place with ratings, notes and legs                                                                                                                                                                                                                                                                                                                                                            | local SQLite file                                                   | none             |
-| `getTraffic`      | `waypoints`, `departAt`, `roundTrip?`                                   | Travel time, free-flow time and traffic delay for that departure                                                                                                                                                                                                                                                                                                                                                 | TomTom Routing                                                      | `TOMTOM_API_KEY` |
+| Tool              | Input                                                                   | Returns                                                                                                                                                                                                                                                                                                                                                                                                        | Source                                                              | Key              |
+| ----------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ---------------- |
+| `getWeather`      | `location`, `date`, `fromHour?`, `toHour?`                              | Hourly temperature, rain probability and amount, wind, gusts, sky, plus a day summary with a `dry` flag                                                                                                                                                                                                                                                                                                        | [Open-Meteo](https://open-meteo.com/), up to 16 days ahead          | none             |
+| `searchRoads`     | `location`, `radiusKm?` (5 to 40, default 25), `minLengthKm?`, `limit?` | Paved secondary and tertiary roads ranked by curviness, with end coordinates usable as waypoints, and named mountain passes                                                                                                                                                                                                                                                                                    | OpenStreetMap via [Overpass](https://overpass-api.de/)              | none             |
+| `calculateTrip`   | `waypoints`, `roundTrip?`, `avoidMotorways?`                            | Routed distance, estimated riding time and average speed per leg and in total, motorway and toll flags, open-road share and speed-limit profile (km and % at 30 or less, 31-50, above 50, untagged open road), share of riding time on roads limited to 70 or more and at an estimated 70 or more, main roads per leg, comparison with roadbooks, plain map link and navigation links with pass-through points | [Valhalla](https://valhalla1.openstreetmap.de/), motorcycle profile | none             |
+| `getDaylight`     | `location`, `date`                                                      | Sunrise, sunset, first and last light, daylight hours, any date                                                                                                                                                                                                                                                                                                                                                | Computed locally (NOAA solar equations), timezone from Open-Meteo   | none             |
+| `getSpeedCameras` | `routeId`                                                               | Fixed speed cameras on or beside the routed trip: km mark, leg, limit, direction                                                                                                                                                                                                                                                                                                                               | OpenStreetMap via Overpass                                          | none             |
+| `planStops`       | `routeId`, `departure`, `fuelAtStartKm?`                                | The chosen fuel, pause and lunch stops with arrival times, return time with breaks, warnings, and navigation links including the stops                                                                                                                                                                                                                                                                         | Stops from OpenStreetMap, choice from the bike profile              | none             |
+| `findStops`       | `routeId`, `kinds?`, `radiusM?`, `limitPerKind?`                        | Fuel stations, cafés, restaurants, bakeries within a short detour, spread along the route, with opening hours when mapped                                                                                                                                                                                                                                                                                      | OpenStreetMap via Overpass                                          | none             |
+| `listSavedRides`  | `location?`, `radiusKm?`                                                | Roadbooks near a place with ratings, notes and legs                                                                                                                                                                                                                                                                                                                                                            | local SQLite file                                                   | none             |
+| `getTraffic`      | `waypoints`, `departAt`, `roundTrip?`                                   | Travel time, free-flow time and traffic delay for that departure                                                                                                                                                                                                                                                                                                                                               | TomTom Routing                                                      | `TOMTOM_API_KEY` |
 
 Notes:
 
@@ -162,11 +162,11 @@ npm run rides -- runs          # comparison table
 npm run rides -- runs --csv    # for a spreadsheet
 ```
 
-A saved ride also records what its session had consumed when it was saved; it
+A roadbook also records what its session had consumed when it was saved; it
 shows as a "Planned with" line in the ride view.
 
 To compare models fairly: use the same request and start point for each, plan
-without saved rides in the way (`--allow-repeat`, or a scratch database with
+without roadbooks in the way (`--allow-repeat`, or a scratch database with
 `RIDE_DB`), and clear the lookup cache between runs (`npm run rides --
 clear-cache`), otherwise later runs get roads and routes for free. Compare cost
 against the ride you got, not cost alone.
@@ -240,18 +240,18 @@ hard limit of 3 hours of riding.
 
 ### Recommended settings
 
-| Situation                           | `RIDE_MODEL`        | `RIDE_EFFORT` | Expect                                                          |
-| ----------------------------------- | ------------------- | ------------- | --------------------------------------------------------------- |
-| Everyday use                        | `claude-sonnet-5-5` | `medium`      | About $0.10 and under a minute for a new ride. Check the result |
-| You want it right first time        | `claude-sonnet-5-5` | `high`        | About $0.17 and 4 minutes                                       |
-| Editing or questioning a saved ride | `claude-sonnet-5-5` | `medium`      | A few cents                                                     |
+| Situation                         | `RIDE_MODEL`        | `RIDE_EFFORT` | Expect                                                          |
+| --------------------------------- | ------------------- | ------------- | --------------------------------------------------------------- |
+| Everyday use                      | `claude-sonnet-5-5` | `medium`      | About $0.10 and under a minute for a new ride. Check the result |
+| You want it right first time      | `claude-sonnet-5-5` | `high`        | About $0.17 and 4 minutes                                       |
+| Editing or questioning a roadbook | `claude-sonnet-5-5` | `medium`      | A few cents                                                     |
 
 With `medium`, look at the open-road and 50 zone shares of the itinerary before
 accepting it. When they are poor, ask for better at the `refine>` prompt ("too
 many 50 zones, find a better loop"): a refinement costs a few cents, so Sonnet
 at medium plus one retry is still far below a single Opus run.
 
-Free in every setup: the start menu, viewing saved rides, rating, `refresh`.
+Free in every setup: the start menu, viewing roadbooks, rating, `refresh`.
 
 ### Limits of this benchmark
 
@@ -281,7 +281,7 @@ npm run rides -- runs                     # compare
 unset RIDE_DB
 ```
 
-Do not `/save` during a benchmark: a saved ride changes what the next run sees.
+Do not `/save` during a benchmark: a roadbook changes what the next run sees.
 Use your own start point and your own kind of request; that is the only
 benchmark that tells you what to pick. Three runs per setup give a picture, one
 is an anecdote.
@@ -295,7 +295,7 @@ an eval suite, in `evals/`.
 - **Cases** (`evals/cases.ts`): scripted rider requests with what a good
   answer must satisfy. A classic Saturday ride under 250 km, a two-hour cap,
   a commute, an impossible request, a plain question, a request close to a
-  saved ride, one near a road rated "never again", and an injection case.
+  roadbook, one near a road rated "never again", and an injection case.
 - **Graders** (`evals/graders.ts`): code, no model. `rule` graders check what
   the code guarantees (motorways excluded, settings unchanged); `quality`
   graders check the model's work (caps met, daylight, weather, cameras and
@@ -411,8 +411,8 @@ clear-cache` empties it.
 | `listSavedRides`, `getWeather`, `searchRoads`, `calculateTrip`, `getTraffic` | The planner's tools, unchanged                                                                                                                                                |
 | `scoutAreas`                                                                 | Parallel scouts. They are model sessions of their own, so they need `ANTHROPIC_API_KEY` and bill it; `RIDE_SCOUTS=0` turns them off and the client's model explores by itself |
 | `saveRide`                                                                   | Save an itinerary to the library, from a route id of this session                                                                                                             |
-| `exportGpx`                                                                  | GPX file from a route id or a saved ride                                                                                                                                      |
-| `showRide`                                                                   | Full view of one saved ride, as in the CLI: road mix, daylight, cameras, stops, legs, itinerary                                                                               |
+| `exportGpx`                                                                  | GPX file from a route id or a roadbook                                                                                                                                        |
+| `showRide`                                                                   | Full view of one roadbook, as in the CLI: road mix, daylight, cameras, stops, legs, itinerary                                                                                 |
 | `planRide`                                                                   | A ride from a roadbook on a day: added or updated, day data gathered, briefing and links; no copy                                                                             |
 | `rideBriefing`                                                               | Ride-day briefing: weather now, daylight, traffic, stops checked against opening hours, go or no-go                                                                           |
 | `planningGuide`                                                              | The planning guidance as text, fetched before any new ride asked in plain words, in every client (the plan-ride prompt carries the same text)                                 |
@@ -432,9 +432,9 @@ clear-cache` empties it.
 | ------------------------------------------------- | ----------------------------------------------------------- |
 | `/mcp__ride__plan-ride <request>`                 | Plan a new leisure ride with the full planning instructions |
 | `/mcp__ride__commute <destination> <when> [from]` | Practical trip, motorways permitted, traffic checked        |
-| `/mcp__ride__edit-ride <id\|name> <change>`       | Load a saved ride and apply a change, or ask about it       |
+| `/mcp__ride__edit-ride <id\|name> <change>`       | Load a roadbook and apply a change, or ask about it         |
 | `/mcp__ride__save-ride [name]`                    | Save the itinerary on the table                             |
-| `/mcp__ride__export-gpx [id\|name]`               | GPX file of the current or a saved ride                     |
+| `/mcp__ride__export-gpx [id\|name]`               | GPX file of the current or a roadbook                       |
 | `/mcp__ride__show-ride <id\|name>`                | Everything stored about one ride                            |
 | `/mcp__ride__today [id\|name]`                    | Ride-day briefing with a go or no-go                        |
 | `/mcp__ride__refresh <id\|name>`                  | Recompute a ride without changing it                        |
@@ -477,7 +477,7 @@ npm run rides -- runs | grep mcp-client     # a new row with a fresh time = new 
 
 Each server start creates a run row before any tool is called, so no new row
 means the old process is still serving. Routed trips and settings of the old
-process are gone after a restart; saved rides, cache and traces are on disk and
+process are gone after a restart; roadbooks, cache and traces are on disk and
 survive.
 
 The `plan-ride` prompt is fetched on every use, but a conversation that already
@@ -493,7 +493,7 @@ prints the `plan-ride` prompt exactly as the server serves it.
 | Command                                  | What it does                                                                                                                       |
 | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | `npm run ride -- ...`                    | Run the agent                                                                                                                      |
-| `npm run rides -- ...`                   | List, show, rate, export, replay and delete saved rides and runs                                                                   |
+| `npm run rides -- ...`                   | Roadbooks, rides, plan a ride, show, rate, export, replay, delete                                                                  |
 | `npm run mcp`                            | MCP server on stdio, for Claude Code, Codex or another MCP client                                                                  |
 | `npm run mcp:smoke`                      | Protocol-level check of the MCP server, no model involved                                                                          |
 | `npm run codex:register`                 | Register the server in Codex CLI's user config (once per machine)                                                                  |
@@ -522,7 +522,7 @@ src/
   session.ts        Per-session state: routed trips, duplicate comparison, usage, trace
   store.ts          SQLite storage: rides, legs, lookup cache
   migrations.ts     versioned schema steps, applied once each after a backup
-  library.ts        Saving the current ride, formatting saved rides
+  library.ts        Saving the current ride, formatting roadbooks
   geometry.ts       Route decoding and the grid used to compare routes
   gpx.ts            GPX export of a ride
   share.ts          QR codes and the local web page for the phone

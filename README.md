@@ -21,9 +21,11 @@ and files to put it on your phone.
 The agent decides where to look and what to propose. Everything it states comes
 from tools: road geometry and speed limits from OpenStreetMap, routing from
 Valhalla, forecasts from Open-Meteo, traffic from TomTom when you have a key.
-The code enforces your hard rules (no motorways unless you say so, a saved ride
-is never silently duplicated) and keeps a library of rides you liked, with
-ratings, so the next ride is different and better.
+The code enforces your hard rules (no motorways unless you say so, a loop you
+already have is never silently duplicated) and keeps your library: **roadbooks**,
+the loops you designed and rated, and **rides**, a roadbook on a given day. Ride
+a loop again with "plan a ride from roadbook 7 on Saturday at 9"; a new plan
+learns from what you rated, so the next one is different and better.
 
 **How to use it, task by task, in the terminal and in Claude Code or Codex:** the
 [rider's guide](https://bhoudebert.github.io/agent-motoride/guide/) (source in
@@ -97,7 +99,7 @@ Details for each mode: [the terminal app](https://bhoudebert.github.io/agent-mot
 ## What you get
 
 - **An itinerary** built from real data: legs with town names and main roads, distance, estimated riding time and average speed, open-road share, time at 70 km/h or more, slow-zone shares against your targets, daylight, weather by time of day, traffic, fixed cameras, a stop plan with times, navigation links.
-- **A library of saved rides**, versioned, rated, with everything above stored and refreshable, and a rule that keeps new rides from repeating old ones.
+- **Roadbooks and rides**: every loop you keep is a roadbook (points, legs, route line, ratings), ridden on as many days as you like. "Plan a ride from roadbook 7 on Saturday at 9" adds a ride with that day's forecast, open stops and go or no-go, without copying the loop and, in the terminal, without a model call. Lists of both, 20 per page; a rule keeps new plans from repeating a roadbook you have.
 - **Rides from anywhere**: a sentence, a GPX or KML file someone shared, or a photo of a map.
 - **Checked before you see it**: your distance and time limits, motorways, repeats and rated roads verified by code, not by the model.
 - **Feedback from the road**: say "last 10 minutes awesome" or "cobbles, never again" while riding; after the ride the notes land on the road you actually rode, from any app's recorded track, and become ratings the next plans follow.

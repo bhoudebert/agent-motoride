@@ -60,7 +60,7 @@ get me to Rue de la Loi, Brussels, by 9:00 Monday
 Allowing is not forcing. On a **practical trip** (getting somewhere on time)
 the route goes point to point, the quickest sensible way, with motorways and
 traffic checked for the travel hours. On a **leisure ride**, motorways only
-reach the riding area and come back. A saved ride remembers its setting, so a
+reach the riding area and come back. A roadbook remembers its setting, so a
 saved commute stays a motorway trip.
 
 ## Slow zones
@@ -82,7 +82,7 @@ in Germany.
 
 ## Repeats
 
-New plans never repeat a saved ride (70% or more of the same roads). To allow
+New plans never repeat a roadbook you have (70% or more of the same roads). To allow
 it for a session: `--allow-repeat`, or "repeats are fine" in Claude Code or Codex.
 
 ## The model and its cost (terminal)

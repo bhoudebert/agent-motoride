@@ -80,8 +80,8 @@ save it as "Vercors loop"
 
 :::
 
-Saved rides can be changed later the same way: `npm run ride -- --ride 3
-"next Sunday, 50 km longer"`, or "make ride 3 50 km longer, next Sunday" in
+Saved loops (roadbooks) can be changed later the same way: `npm run ride -- --roadbook 3
+"50 km longer"`, or "make roadbook 3 50 km longer" in
 Claude Code or Codex.
 
 ## Checked before you see it
@@ -106,5 +106,5 @@ expressways are kept small.
   model and how many areas are scouted. `/usage` shows it.
 - Weather is always checked fresh for the day in question, also on a saved
   ride.
-- Nothing is saved unless you ask. Saved rides live in one file,
+- Nothing is saved unless you ask. Roadbooks and rides live in one file,
   `data/agentmotoride.db`, on your machine.

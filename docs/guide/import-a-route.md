@@ -1,7 +1,7 @@
 # Import a route someone shared
 
 A club's Sunday ride, a friend's Kurviger or Calimoto export, a GPX from a
-forum: import the file and it becomes a ride of your library like one you
+forum: import the file and it becomes a roadbook of your library like one you
 planned, with its riding time, open-road share, slow zones, surfaces, legs
 named by town, daylight, cameras and stops.
 

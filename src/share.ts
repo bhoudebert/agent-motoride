@@ -1,16 +1,12 @@
 import { createServer, type Server } from "node:http";
 import { networkInterfaces } from "node:os";
-import qrcode from "qrcode-terminal";
+import { renderUnicodeCompact } from "uqr";
 import { buildGpx, type GpxInput } from "./gpx.ts";
 
-/** Print a QR code for a short text (a link) in the terminal. */
+/** Print a QR code for a short text (a link) in the terminal, two modules per character. */
 export function printQr(text: string): Promise<void> {
-  return new Promise((resolve) => {
-    qrcode.generate(text, { small: true }, (code: string) => {
-      console.log(code);
-      resolve();
-    });
-  });
+  console.log(renderUnicodeCompact(text, { border: 2 }));
+  return Promise.resolve();
 }
 
 /** First non-loopback IPv4 address: what a phone on the same Wi-Fi can reach. */

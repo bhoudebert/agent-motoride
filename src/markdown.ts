@@ -1,7 +1,8 @@
 import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describeParts, formatSurface, gpxStopsAt, rideNavigation } from "./library.ts";
+import { exportBase, writeRideMap } from "./rideMap.ts";
 import type { SavedRide } from "./store.ts";
 import { formatUsage } from "./usage.ts";
 
@@ -29,7 +30,8 @@ function mergeCameras(cameras: NonNullable<SavedRide["extras"]>["cameras"]) {
  * A ride as a Markdown document: everything stored about it, in a fixed
  * layout, fit for versioning next to the GPX file.
  */
-export function formatRideMarkdown(ride: SavedRide): string {
+/** `map`: file name of the ride's map picture next to the document, shown at its top. */
+export function formatRideMarkdown(ride: SavedRide, map: string | null = null): string {
   const s = (ride.speedLimits ?? {}) as {
     openRoadPct?: number;
     untaggedOpenRoad?: { pct: number };
@@ -49,6 +51,7 @@ export function formatRideMarkdown(ride: SavedRide): string {
     `**${ride.distanceKm} km | ${fmtMinutes(ride.ridingMinutes)} riding | ${avg(ride.distanceKm, ride.ridingMinutes)} km/h average | ${stars(ride.rating)}**`,
     "",
   );
+  if (map) push(`![Map of the ride](${encodeURI(map)})`, "");
   push(
     `Ride date ${ride.rideDate ?? "not set"}, departure ${ride.departure ?? "not set"}, from ${ride.home}. Saved ${ride.createdAt.slice(0, 10)}.`,
     "",
@@ -220,14 +223,14 @@ export function formatRideMarkdown(ride: SavedRide): string {
 
 /** Write the Markdown document, by default into exports/ in the project. Returns the absolute path. */
 export function writeRideMarkdown(ride: SavedRide, file?: string): string {
-  const slug = ride.name
-    .normalize("NFD")
-    .replace(/[^\x20-\x7e]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-  const path = resolve(file?.trim() || resolve(EXPORT_DIR, `${ride.id}-${slug || "ride"}.md`));
+  const path = resolve(file?.trim() || resolve(EXPORT_DIR, `${exportBase(ride)}.md`));
   mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, formatRideMarkdown(ride));
+  // The ride's map goes next to the document, which shows it at its top.
+  let map: string | null = null;
+  if (ride.shapes?.length) {
+    map = path.replace(/\.md$/i, "") + ".png";
+    writeRideMap(ride, map);
+  }
+  writeFileSync(path, formatRideMarkdown(ride, map ? basename(map) : null));
   return path;
 }

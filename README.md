@@ -979,8 +979,10 @@ Then, in Claude Code:
 ```
 
 That prompt carries the full planning instructions of the built-in planner, the
-rider's settings and today's date. Plain requests work too ("use the ride tools
-to plan…"), with less guidance.
+rider's settings and today's date. Plain words get the same: "plan me a ride
+this Saturday, under 250 km", "show ride 7", "make ride 7 50 km longer". The
+server instructions ask the model to fetch the planning guidance first
+(`planningGuide`), so the slash commands are only shortcuts.
 
 ### From your phone: Remote Control
 

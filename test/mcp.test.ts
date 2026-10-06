@@ -247,6 +247,7 @@ test("mcp: every tool answers when called by name through a client", async () =>
   try {
     await call("rideSettings", { home: "Lille" });
     await call("listSavedRides", {});
+    assert.match(await call("recallArea", { location: "Lille", query: "Flandre" }), /"radiusKm":40/);
     await call("getWeather", { location: "Lille", date: "2026-10-10" });
     await call("searchRoads", { location: "Cassel" });
     const routeId = JSON.parse(await call("calculateTrip", loop)).routeId;

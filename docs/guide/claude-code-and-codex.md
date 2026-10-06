@@ -63,7 +63,8 @@ Slash commands are optional shortcuts; `/mcp__ride__help` lists them.
 | `/mcp__ride__refresh <id\|name>`                  | Recompute a ride without changing it                 |
 | `/mcp__ride__export-gpx [id\|name]`               | GPX file of the current or a saved ride              |
 | `/mcp__ride__export-md <id\|name> [file]`         | Markdown document of a ride                          |
-| `/mcp__ride__list-rides`                          | The library                                          |
+| `/mcp__ride__list-roadbooks [page]`               | Saved loops and trips, 20 per page                   |
+| `/mcp__ride__list-rides [page]`                   | Rides by date, latest first, 20 per page             |
 | `/mcp__ride__note <text>`                         | During the ride: a note about the last 10 minutes    |
 | `/mcp__ride__review [gpxPath] [ride]`             | After the ride: place the notes, confirm the ratings |
 

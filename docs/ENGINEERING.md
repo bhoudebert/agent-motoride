@@ -417,7 +417,8 @@ clear-cache` empties it.
 | `planningGuide`                                                              | The planning guidance as text, fetched before any new ride asked in plain words, in every client (the plan-ride prompt carries the same text)                                 |
 | `refreshRide`                                                                | Same as `npm run rides -- refresh`: recompute figures, weather, cameras, stops and stop plan, no replanning; `stopsOnly` rebuilds just the stop plan                          |
 | `exportMarkdown`                                                             | The ride's standard Markdown document, written to a file                                                                                                                      |
-| `listRides`                                                                  | The library, one line per ride                                                                                                                                                |
+| `listRoadbooks`                                                              | Roadbooks, newest first, 20 per page (`page`), with ride count and next date                                                                                                  |
+| `listRides`                                                                  | Rides by date, latest first, undated last, 20 per page (`page`)                                                                                                               |
 | `importRoute`                                                                | A GPX or KML file turned into a routed trip with a route id, its fidelity to the file and the waypoints used                                                                  |
 | `checkItinerary`                                                             | Code check of an itinerary before it is presented: caps from the rider's words, motorways, repeats, rated roads, stated distance                                              |
 | `addRideNote`                                                                | During a ride: a note about the last minutes, placed on the road after the ride                                                                                               |
@@ -437,7 +438,8 @@ clear-cache` empties it.
 | `/mcp__ride__today [id\|name]`                    | Ride-day briefing with a go or no-go                        |
 | `/mcp__ride__refresh <id\|name>`                  | Recompute a ride without changing it                        |
 | `/mcp__ride__export-md <id\|name> [file]`         | Markdown document of a ride, written and shown              |
-| `/mcp__ride__list-rides`                          | The library                                                 |
+| `/mcp__ride__list-roadbooks [page]`               | Roadbooks, 20 per page                                      |
+| `/mcp__ride__list-rides [page]`                   | Rides by date, 20 per page                                  |
 | `/mcp__ride__note <text>`                         | During the ride: a note about the last 10 minutes           |
 | `/mcp__ride__review [gpxPath] [ride]`             | After the ride: place the notes, confirm the ratings        |
 | `/mcp__ride__help`                                | What the server can do, no tool call                        |

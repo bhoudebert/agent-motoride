@@ -31,7 +31,8 @@ Options:
 
 At the "refine>" prompt, type a change in plain words, or a command:
   /save [name]          Save the current itinerary (new version if already saved); refused when it duplicates a saved ride, --force to override
-  /list                 Saved rides
+  /list [page]          Roadbooks (the loops you saved), newest first, 20 per page
+  /rides [page]         Rides (a roadbook on a day), latest date first, 20 per page
   /show [id|name]       Details of a saved ride (no argument: the one loaded or saved here)
   /gpx [file.gpx]       Export the current itinerary (or the loaded ride) as a GPX file
   /md [file.md]         Export the saved or loaded ride as a Markdown document, with its map (save first)
@@ -50,7 +51,7 @@ At the "refine>" prompt, type a change in plain words, or a command:
   /quit                 Quit the program (also exit, Ctrl-C)
   /help                 This list
 
-Saved rides are managed with: npm run rides -- list | show | rate | rate-leg | note | review | delete
+Saved rides are managed with: npm run rides -- list | rides | show | rate | rate-leg | note | review | delete
 Env equivalents: RIDE_ALLOW_MOTORWAYS=1, RIDE_MAX_30_PCT, RIDE_MAX_50_PCT.
 Needs ANTHROPIC_API_KEY (see .env.example).
 ```
@@ -60,7 +61,8 @@ Needs ANTHROPIC_API_KEY (see .env.example).
 ```text
 Usage: npm run rides -- <command>
 
-  list                                  All saved rides
+  list [--page N]                       Roadbooks (the loops you saved), newest first, 20 per page (alias: roadbooks)
+  rides [--page N]                      Rides (a roadbook on a day), latest date first, 20 per page
   today [id|name]                       Ride-day briefing: weather now, daylight, traffic, stops checked against opening hours, go or no-go
   show <id|name> [--md]                 One ride: legs, map link, itinerary (--md: as Markdown on stdout)
   export-md <id|name> [file.md]         Write the ride as a Markdown document, with its map (default: exports/ in the project)
@@ -95,7 +97,7 @@ reused as building blocks, those rated 0-1 are avoided.
 
 ## Claude Code and Codex (MCP server)
 
-27 tools, 13 prompts. Each tool shows its MCP hints: a client can let read-only tools run without asking.
+28 tools, 14 prompts. Each tool shows its MCP hints: a client can let read-only tools run without asking.
 
 ### Tools
 
@@ -359,13 +361,21 @@ Rate a saved ride after riding it, or one of its legs: 0 (never again) to 5 (lov
 - `leg` (integer, optional): Leg number, to rate one leg instead of the whole ride
 - `note` (string, optional): The rider's words, kept with the rating
 
+#### `listRoadbooks`
+
+_read-only · local only_
+
+The rider's roadbooks (saved loops and trips), newest first, 20 per page: number, name, distance, time, how many rides and the next planned date, rating. The last line says the page and how to get the next one: call again with that page when the rider asks for more. The number is what the rider calls "ride 7".
+
+- `page` (integer, optional): Page to show, 20 lines each (default 1)
+
 #### `listRides`
 
 _read-only · local only_
 
-The rider's saved rides, one line each (id, name, distance, time, date, rating).
+The rider's rides (a roadbook on a day), latest date first, rides with no date yet last, 20 per page: date, weekday, departure, roadbook number and name, distance, time, status (planned, ridden, cancelled). The last line says the page and how to get the next one: call again with that page when the rider asks for more. Use the roadbook number with showRide and the other ride tools.
 
-No input.
+- `page` (integer, optional): Page to show, 20 lines each (default 1)
 
 #### `planningGuide`
 
@@ -380,21 +390,22 @@ The full planning guidance for a new ride (how to search, what to check, how to 
 
 Slash commands in Claude Code (`/mcp__ride__<name>`); plain words do the same in any client.
 
-| Prompt       | Arguments                                | Does                                                                                                      |
-| ------------ | ---------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `plan-ride`  | `request`                                | Plan a one-day ride with the agentMotoride tools: what the rider wants, in one sentence.                  |
-| `commute`    | `destination`, `when`, `from` (optional) | Point to point, quickest sensible route, motorways permitted, with weather and traffic for the departure. |
-| `edit-ride`  | `ride`, `change`                         | Load a saved ride and apply a change: new date, longer, skip a town, or just a question about it.         |
-| `save-ride`  | `name` (optional)                        | Store the itinerary on the table in the library, under a name.                                            |
-| `export-gpx` | `ride` (optional)                        | GPX file of the current itinerary or of a saved ride, for a GPS app.                                      |
-| `show-ride`  | `ride`                                   | Everything stored about one ride: figures, daylight, cameras, stops, legs, itinerary.                     |
-| `export-md`  | `ride`, `file` (optional)                | The ride's standard Markdown document, written to a file and shown.                                       |
-| `today`      | `ride` (optional)                        | Weather now, daylight, traffic, stops checked against opening hours, go or no-go for a saved ride.        |
-| `refresh`    | `ride`                                   | Recompute a ride's figures, weather, cameras, stops and stop plan, without changing the ride.             |
-| `note`       | `text`                                   | During the ride: "last 10 min awesome", "cobbles, never again". Reviewed after the ride.                  |
-| `review`     | `gpxPath` (optional), `ride` (optional)  | Place your ride notes on the road ridden (recorded GPX track) or on the plan, then confirm ratings.       |
-| `list-rides` | none                                     | The rider's library, one line per ride.                                                                   |
-| `help`       | none                                     | Commands and tools of agentMotoride, no tool call.                                                        |
+| Prompt           | Arguments                                | Does                                                                                                      |
+| ---------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `plan-ride`      | `request`                                | Plan a one-day ride with the agentMotoride tools: what the rider wants, in one sentence.                  |
+| `commute`        | `destination`, `when`, `from` (optional) | Point to point, quickest sensible route, motorways permitted, with weather and traffic for the departure. |
+| `edit-ride`      | `ride`, `change`                         | Load a saved ride and apply a change: new date, longer, skip a town, or just a question about it.         |
+| `save-ride`      | `name` (optional)                        | Store the itinerary on the table in the library, under a name.                                            |
+| `export-gpx`     | `ride` (optional)                        | GPX file of the current itinerary or of a saved ride, for a GPS app.                                      |
+| `show-ride`      | `ride`                                   | Everything stored about one ride: figures, daylight, cameras, stops, legs, itinerary.                     |
+| `export-md`      | `ride`, `file` (optional)                | The ride's standard Markdown document, written to a file and shown.                                       |
+| `today`          | `ride` (optional)                        | Weather now, daylight, traffic, stops checked against opening hours, go or no-go for a saved ride.        |
+| `refresh`        | `ride`                                   | Recompute a ride's figures, weather, cameras, stops and stop plan, without changing the ride.             |
+| `note`           | `text`                                   | During the ride: "last 10 min awesome", "cobbles, never again". Reviewed after the ride.                  |
+| `review`         | `gpxPath` (optional), `ride` (optional)  | Place your ride notes on the road ridden (recorded GPX track) or on the plan, then confirm ratings.       |
+| `list-rides`     | `page` (optional)                        | The rider's rides by date, latest first, 20 per page.                                                     |
+| `list-roadbooks` | `page` (optional)                        | The rider's saved loops and trips, newest first, 20 per page.                                             |
+| `help`           | none                                     | Commands and tools of agentMotoride, no tool call.                                                        |
 
 ### Resources
 

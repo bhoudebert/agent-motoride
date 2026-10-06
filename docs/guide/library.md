@@ -30,12 +30,40 @@ your requests and the itinerary text, and, gathered right after the save:
 daylight, the forecast for the ride date, fixed cameras, stops and the stop
 plan.
 
+## Roadbooks and rides
+
+Your library has two levels. A **roadbook** is a loop or trip as designed:
+its points, legs, route line and road ratings; its number is the one you
+already use ("ride 3"). A **ride** is a roadbook on one day: date, departure,
+forecast, stop plan, and afterwards your notes. One roadbook can have many
+rides.
+
+::: code-group
+
+```bash [Terminal]
+npm run rides -- list                # roadbooks, newest first
+npm run rides -- rides               # rides, latest date first
+npm run rides -- rides --page 2      # 20 per page; the last line says how to see more
+
+# at the refine> prompt: /list, /rides, /rides 2
+```
+
+```text [Claude Code / Codex]
+list my roadbooks
+what are my latest rides
+more
+```
+
+:::
+
+Each list shows 20 lines and ends with "Page 1 of 3 (45 rides)" and how to see
+the next page; in Claude Code or Codex, say "more" or "page 2".
+
 ## Look at it, change it
 
 ::: code-group
 
 ```bash [Terminal]
-npm run rides -- list
 npm run rides -- show 3
 npm run ride -- --ride 3                     # open the prompt on ride 3, nothing sent yet
 npm run ride -- --ride 3 "next Sunday, 50 km longer, lunch in Die"

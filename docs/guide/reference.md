@@ -95,7 +95,7 @@ reused as building blocks, those rated 0-1 are avoided.
 
 ## Claude Code and Codex (MCP server)
 
-26 tools, 13 prompts. Each tool shows its MCP hints: a client can let read-only tools run without asking.
+27 tools, 13 prompts. Each tool shows its MCP hints: a client can let read-only tools run without asking.
 
 ### Tools
 
@@ -107,6 +107,16 @@ The rider's library of saved rides near a place, with rating (1-5, null if not r
 
 - `location` (string, optional): Centre of the search, default the rider's start point
 - `radiusKm` (number, optional): Default 150
+
+#### `recallArea`
+
+_read-only · uses online services_
+
+What the app already knows around a place, from earlier sessions: saved rides with their ratings, stretches the rider loved (4-5) or avoids (0-1), areas scouts already visited with their verdict, open-road share and age in days, and known winding roads with curviness and from/to coordinates usable directly as calculateTrip waypoints. With words (query), also the best matches anywhere, e.g. a road ref or a village. Call it before scouting or searching roads in a region: do not scout again an area recently found poor without a reason, and route known winding roads directly instead of a new road search. Weather is never remembered.
+
+- `location` (string): Centre of the region, e.g. the start point or a candidate area
+- `radiusKm` (number, optional): Default 40
+- `query` (string, optional): Words to look for anywhere: a road, a village, cobbles...
 
 #### `getWeather`
 

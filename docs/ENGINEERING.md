@@ -332,6 +332,24 @@ return. The motorway rule holds in code whatever the model reads (a `rule`
 grader), the prompts say that map text is data, and `quality` graders check
 that the model neither asked for motorways nor obeyed.
 
+## Road memory
+
+`src/memory.ts`, ADR 0020. A `memory` table and an FTS5 index in the library's
+SQLite file, derived from what is stored: rides and rated legs, rated road
+stretches, scout verdicts from the traces (area, date, found, open-road and
+50-zone shares, verdict, placed at the middle of the loop without the start),
+and the winding roads of each road search (ref, curviness, length, end
+coordinates). Rides and ratings are rebuilt on every catch-up; traces are read
+from a watermark, so each step is read once.
+
+`recallArea` resolves a place, catches up, and returns the items within a
+radius (a degree box narrows the scan, the exact distance decides) plus, with
+words, the best BM25 matches anywhere. Words are quoted one by one, so the
+rider's text is never read as FTS syntax. No embeddings: the corpus is small
+and structured; the retrieval sits behind one function if a semantic layer is
+ever needed. The planner and the scouts are told to consult it before
+scouting or searching roads.
+
 ## Lookup cache
 
 Tool results are cached in the same file so repeated planning does not hit the

@@ -5,19 +5,20 @@ requirements with scenarios. `changes/` holds proposals that add or modify
 requirements before they are implemented; once merged into the code, the
 change is folded into the specs.
 
-| Capability       | Covers                                                                                    |
-| ---------------- | ----------------------------------------------------------------------------------------- |
-| ride-planning    | The planner: request, constraints, scouts, structured answer, follow-ups, practical trips |
-| route-analysis   | Routing, speed-limit profile, riding-time estimate, open road and 70 km/h readings        |
-| place-resolution | Geocoding of towns and addresses, reverse geocoding of coordinates                        |
-| weather-daylight | Forecasts along a route, sunrise and sunset, traffic check                                |
-| saved-rides      | Library: save, versions, ratings, duplicate detection, refresh, stored extras             |
-| stop-planning    | Bike profile, fuel and pause planning, stop locations                                     |
-| route-exports    | Navigation links, GPX, Markdown, QR and phone share page                                  |
-| external-lookups | Robustness and caching of public map services                                             |
-| mcp-server       | Tools and slash commands for Claude Code and other MCP clients                            |
-| observability    | Runs, usage, cost, trace replay, benchmarking                                             |
-| evaluation       | Eval cases, code graders, recorded sessions replayed for free, injection resistance       |
-| route-import     | GPX and KML files turned into routed rides, fidelity to the file, saved like any ride     |
-| cli              | Start menu, refine prompt, commands, library management                                   |
-| ride-feedback    | Notes during the ride, review with a recorded track, road ratings                         |
+| Capability       | Covers                                                                                                    |
+| ---------------- | --------------------------------------------------------------------------------------------------------- |
+| ride-planning    | The planner: request, constraints, scouts, structured answer, follow-ups, practical trips                 |
+| route-analysis   | Routing, speed-limit profile, riding-time estimate, open road and 70 km/h readings                        |
+| place-resolution | Geocoding of towns and addresses, reverse geocoding of coordinates                                        |
+| weather-daylight | Forecasts along a route, sunrise and sunset, traffic check                                                |
+| saved-rides      | Library: save, versions, ratings, duplicate detection, refresh, stored extras                             |
+| stop-planning    | Bike profile, fuel and pause planning, stop locations                                                     |
+| route-exports    | Navigation links, GPX, Markdown, QR and phone share page                                                  |
+| external-lookups | Robustness and caching of public map services                                                             |
+| mcp-server       | Tools and slash commands for Claude Code and other MCP clients                                            |
+| observability    | Runs, usage, cost, trace replay, benchmarking                                                             |
+| evaluation       | Eval cases, code graders, recorded sessions replayed for free, injection resistance                       |
+| route-import     | GPX and KML files turned into routed rides, fidelity to the file, saved like any ride                     |
+| road-memory      | What past sessions learnt (rides, ratings, scout verdicts, winding roads), recalled by place and by words |
+| cli              | Start menu, refine prompt, commands, library management                                                   |
+| ride-feedback    | Notes during the ride, review with a recorded track, road ratings                                         |

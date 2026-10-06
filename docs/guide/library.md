@@ -85,6 +85,33 @@ during the ride work better: see [Notes and review](/notes-and-review).
 - **Weather is never reused.** A saved ride shows the last forecast gathered,
   for reading; a plan or a change always checks the forecast afresh.
 
+## What the app remembers
+
+Every session leaves something behind, and the next one starts from it. Before
+scouting, the planner asks the road memory what is already known around the
+start: your saved rides and their ratings, the stretches you loved or never
+want again, the areas scouts already visited with their verdict and how long
+ago, and the winding roads earlier searches found, with their coordinates. So
+an area found poor last week is not scouted again for nothing, and known
+roads are routed directly instead of searched again.
+
+::: code-group
+
+```text [Terminal]
+Automatic in every plan: the planner and its scouts consult it first.
+```
+
+```text [Claude Code / Codex]
+what do you know about the Condroz?
+anything about cobbles near Namur?
+```
+
+:::
+
+The memory is built from what is already stored (the library and the traces
+of past sessions), kept current by itself, and never holds weather: forecasts
+are always checked fresh.
+
 ## Keep it current
 
 ::: code-group

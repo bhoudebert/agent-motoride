@@ -26,3 +26,4 @@ not rewritten.
 | [0017](0017-mcp-elicitation-and-resources-not-sampling.md) | MCP: ask the rider through elicitation, offer rides as resources; no sampling    | accepted |
 | [0018](0018-guide-with-vitepress.md)                       | A rider's guide built with VitePress from Markdown in the repository             | accepted |
 | [0019](0019-ride-map-from-own-data.md)                     | Draw the ride map from the ride's own data, rendered with resvg                  | accepted |
+| [0020](0020-road-memory-geo-and-keywords.md)               | Road memory: what the app learnt, retrieved by place and by words                | accepted |

@@ -88,6 +88,12 @@ export function widenCells(cells: Iterable<string>): Set<string> {
   return wide;
 }
 
+/** The middle of a grid cell, back as a point. */
+export function cellCenter(cell: string): LatLon {
+  const [i = 0, j = 0] = cell.split(":").map(Number);
+  return { lat: (i + 0.5) * CELL_LAT, lon: (j + 0.5) * CELL_LON };
+}
+
 /** The cell a point falls in. */
 export const cellOfPoint = cellOf;
 

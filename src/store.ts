@@ -350,6 +350,11 @@ export class Store {
   readonly path: string;
   readonly #db: DatabaseSync;
 
+  /** The SQLite connection, for modules that keep their own tables in the same file (the road memory). */
+  get database(): DatabaseSync {
+    return this.#db;
+  }
+
   constructor(path = process.env.RIDE_DB || DEFAULT_DB) {
     if (path === DEFAULT_DB) migrateLegacyDb();
     this.path = path;

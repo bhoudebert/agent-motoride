@@ -5,6 +5,7 @@ import { pinnedMapsLinks } from "../maps.ts";
 import { scoutAreas } from "../scouts.ts";
 import { nextRouteId, type RideContext, ratedOverlap, registerRoute, savedRideOverlap } from "../session.ts";
 import { analyseConditions, windAlong } from "../conditions.ts";
+import { Memory, recall } from "../memory.ts";
 import { importRoute, readRouteFile } from "../routeImport.ts";
 import { locateStops, planStops } from "../stops.ts";
 import { type StopKind, speedCamerasAlong, stopsAlong } from "./along.ts";
@@ -262,6 +263,26 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
           .listRoadRatings()
           .map((r) => ({ road: r.road, rating: r.rating, why: r.reason, approximate: r.approximate }));
         return { centre: centre.label, radiusKm, count: rides.length, rides, roadRatings };
+      }),
+    },
+    {
+      name: "recallArea",
+      description:
+        "What the app already knows around a place, from earlier sessions: saved rides with their ratings, stretches the rider loved (4-5) or avoids (0-1), areas scouts already visited with their verdict, open-road share and age in days, and known winding roads with curviness and from/to coordinates usable directly as calculateTrip waypoints. With words (query), also the best matches anywhere, e.g. a road ref or a village. Call it before scouting or searching roads in a region: do not scout again an area recently found poor without a reason, and route known winding roads directly instead of a new road search. Weather is never remembered.",
+      inputSchema: z.object({
+        location: location.describe("Centre of the region, e.g. the start point or a candidate area"),
+        radiusKm: z.number().min(5).max(150).optional().describe("Default 40"),
+        query: z.string().optional().describe("Words to look for anywhere: a road, a village, cobbles..."),
+      }),
+      run: trace("recallArea", async (input: { location: string; radiusKm?: number; query?: string }) => {
+        const centre =
+          input.location.trim().toLowerCase() === context.home.label.toLowerCase()
+            ? context.home
+            : await resolvePoint(input.location);
+        return {
+          centre: centre.label,
+          ...recall(new Memory(store), centre, { radiusKm: input.radiusKm, query: input.query }),
+        };
       }),
     },
     {

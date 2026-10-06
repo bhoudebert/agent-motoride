@@ -5,6 +5,7 @@ import { pinnedMapsLinks } from "../maps.ts";
 import { scoutAreas } from "../scouts.ts";
 import { nextRouteId, type RideContext, ratedOverlap, registerRoute, savedRideOverlap } from "../session.ts";
 import { analyseConditions, windAlong } from "../conditions.ts";
+import { importRoute, readRouteFile } from "../routeImport.ts";
 import { locateStops, planStops } from "../stops.ts";
 import { type StopKind, speedCamerasAlong, stopsAlong } from "./along.ts";
 import { fmtCoords, haversineKm, resolvePoint } from "./geo.ts";
@@ -48,8 +49,10 @@ const location = z
 const waypoints = z
   .array(location)
   .min(1)
-  .max(20)
-  .describe('Ordered stops, each a town, a street or address, or "lat,lon". First one is the start.');
+  .max(10)
+  .describe(
+    'Ordered stops, each a town, a street or address, or "lat,lon". First one is the start. At most 10 locations in all: a round trip\'s return to the start counts as one.',
+  );
 
 /** From this many identical calls in one scope, the earlier result is returned instead of calling again. */
 const REPEAT_LIMIT = 3;
@@ -293,6 +296,33 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
           routeId: route.id,
           motorwaysPermitted: !context.preferences.avoidMotorways,
           ...trip.result,
+          savedRides: savedRideOverlap(context, route.cells),
+          ratedRoads: ratedOverlap(context, route.cells),
+        };
+      }),
+    },
+    {
+      name: "importRoute",
+      description:
+        "Turn a route file the rider has (GPX track or route, KML line; a path on this machine) into a routed trip: its line is reduced to waypoints and routed with the motorcycle profile, with waypoints added where the router strays from the file. Returns a routeId like calculateTrip, with the same figures and checks, plus fidelityPct (share of the file's line the routed trip follows; under 90% say where it differs, e.g. motorways avoided), the file's name and length, and the waypoints used, which you can edit and route again with calculateTrip. Present, finish and save it like any planned ride.",
+      inputSchema: z.object({ file: z.string().describe("Path of the .gpx or .kml file") }),
+      run: trace("importRoute", async (input: { file: string }) => {
+        const file = readRouteFile(input.file.replace(/^~(?=\/)/, process.env.HOME ?? "~"));
+        const id = nextRouteId(context, scope);
+        const imported = await importRoute(file, {
+          avoidMotorways: context.preferences.avoidMotorways,
+          route: (trip) => cachedTrip(trip),
+        });
+        const route = registerRoute(context, imported.trip, id);
+        return {
+          routeId: route.id,
+          file: { name: file.name, lengthKm: file.lengthKm, loop: file.roundTrip },
+          fidelityPct: imported.fidelityPct,
+          legsOffTheFile: imported.weakLegs,
+          waypoints: imported.waypoints,
+          roundTrip: imported.roundTrip,
+          motorwaysPermitted: !context.preferences.avoidMotorways,
+          ...imported.trip.result,
           savedRides: savedRideOverlap(context, route.cells),
           ratedRoads: ratedOverlap(context, route.cells),
         };

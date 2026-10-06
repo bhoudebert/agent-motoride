@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import prettier from "prettier";
+import { cell } from "../src/markdown.ts";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const page = join(root, "docs/guide/reference.md");
@@ -20,6 +21,9 @@ const env: Record<string, string> = {
   RIDE_DB: join(mkdtempSync(join(tmpdir(), "ride-reference-")), "rides.db"),
   RIDE_SCOUTS: "0",
 };
+
+/** Text for a Markdown table cell: backslashes and pipes escaped, line breaks folded. */
+const td = (text: string) => cell(text.replace(/\s*\n\s*/g, " "));
 
 const run = (args: string[]) => execFileSync(process.execPath, args, { cwd: root, env, encoding: "utf8" }).trimEnd();
 
@@ -61,7 +65,7 @@ function settings(): string {
       const [, commented, name, value] = variable;
       // A commented line shows the default; an open one is for you to fill in.
       const shown = commented ? (value ? `\`${value}\`` : "unset") : "to set";
-      rows.push(`| \`${name}\` | ${shown} | ${comment.join(" ").replace(/\|/g, "\\|")} |`);
+      rows.push(`| \`${name}\` | ${shown} | ${td(comment.join(" "))} |`);
       comment = [];
     } else if (line.startsWith("#")) comment.push(line.replace(/^#\s?/, "").trim());
     else comment = [];
@@ -123,7 +127,7 @@ Slash commands in Claude Code (\`/mcp__ride__<name>\`); plain words do the same 
 ${prompts
   .map(
     (p) =>
-      `| \`${p.name}\` | ${(p.arguments ?? []).map((a) => `\`${a.name}\`${a.required ? "" : " (optional)"}`).join(", ") || "none"} | ${(p.description ?? "").replace(/\|/g, "\\|")} |`,
+      `| \`${p.name}\` | ${(p.arguments ?? []).map((a) => `\`${a.name}\`${a.required ? "" : " (optional)"}`).join(", ") || "none"} | ${td(p.description ?? "")} |`,
   )
   .join("\n")}
 
@@ -134,8 +138,8 @@ ${prompts
 ${[
   ...resources
     .filter((r) => !r.uri.startsWith("ride://ride/"))
-    .map((r) => `| \`${r.uri}\` | ${r.description ?? r.name} |`),
-  ...templates.map((t) => `| \`${t.uriTemplate}\` | ${t.description ?? t.name} |`),
+    .map((r) => `| \`${r.uri}\` | ${td(r.description ?? r.name)} |`),
+  ...templates.map((t) => `| \`${t.uriTemplate}\` | ${td(t.description ?? t.name)} |`),
 ].join("\n")}
 
 ## Settings (\`.env\`)

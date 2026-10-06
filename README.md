@@ -520,6 +520,14 @@ about ten points per link on the phone, so a long loop gets two or more links,
 "part 1" and "part 2", sharing their boundary point. Planned stops take part of
 the same budget.
 
+A ride split into parts also gets one **whole-ride overview** link: start,
+end, and at most ten points spread along the route, so the ride can be seen
+as a whole in one map, typically a loop far from home with the way there and
+back. It is for viewing: between its points Google may pick other roads, so
+navigate with the parts. It is listed after the parts in the itinerary, in
+`rides show`, in the Markdown export and on the phone share page, which now
+also carries every part rather than the first one only.
+
 The GPX track is exact regardless; when a GPS app shows a different route from
 the GPX, it is recalculating from the route points, and choosing "follow the
 track" in that app fixes it.

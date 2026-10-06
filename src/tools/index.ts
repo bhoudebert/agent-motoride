@@ -10,7 +10,7 @@ import { type StopKind, speedCamerasAlong, stopsAlong } from "./along.ts";
 import { fmtCoords, haversineKm, resolvePoint } from "./geo.ts";
 import { searchRoads } from "./roads.ts";
 import { getTraffic } from "./traffic.ts";
-import { type CalculateTripInput, computeTrip, type TripComputation } from "./trip.ts";
+import { type CalculateTripInput, computeTrip, overviewWhenSplit, type TripComputation } from "./trip.ts";
 import { getDaylight, getWeather, utcOffsetSecondsOn } from "./weather.ts";
 
 // Bump when the shape of cached tool results changes, so stale entries are ignored.
@@ -419,10 +419,12 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
             const [lat = 0, lon = 0] = (i === 0 ? leg.fromCoords : leg.toCoords).split(",").map(Number);
             return { lat, lon };
           });
+          const navigationLinksWithStops = pinnedMapsLinks(waypoints, trip.shapes, stopPoints);
           return {
             profile,
             ...plan,
-            navigationLinksWithStops: pinnedMapsLinks(waypoints, trip.shapes, stopPoints),
+            navigationLinksWithStops,
+            ...overviewWhenSplit(waypoints, trip.shapes, navigationLinksWithStops.length),
             alternatives: {
               fuel: candidates.fuel.slice(0, 12).map((f) => `${f.name} km ${f.kmAlongRoute}`),
               cafeOrBakery: [...candidates.cafe, ...candidates.bakery]

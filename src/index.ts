@@ -14,7 +14,7 @@ import {
   saveCurrentRide,
 } from "./library.ts";
 import { readImage } from "./images.ts";
-import { pinnedMapsLinks } from "./maps.ts";
+import { overviewLink, pinnedMapsLinks } from "./maps.ts";
 import { writeRideMarkdown } from "./markdown.ts";
 import { DEFAULT_PREFERENCES, preferencesFromEnv } from "./preferences.ts";
 import { describeProfile, parseProfileArgs } from "./profile.ts";
@@ -548,9 +548,12 @@ async function sharedRide(session: RideSession, savedId: number | null): Promise
       const [lat = 0, lon = 0] = (i === 0 ? leg.fromCoords : leg.toCoords).split(",").map(Number);
       return { lat, lon };
     });
+    const links = pinnedMapsLinks(waypoints, trip.shapes, stops);
     lastShared = {
       name: current.title,
-      mapsUrl: pinnedMapsLinks(waypoints, trip.shapes, stops)[0]!,
+      mapsUrl: links[0]!,
+      mapsUrls: links,
+      overviewUrl: links.length > 1 ? overviewLink(waypoints, trip.shapes) : null,
       itinerary: current.itinerary,
       gpx: {
         name: current.title,
@@ -565,7 +568,15 @@ async function sharedRide(session: RideSession, savedId: number | null): Promise
   const ride = savedId === null ? undefined : store.findRide(String(savedId));
   if (!ride) return undefined;
   const { gpx } = await savedRideGpx(store, ride);
-  lastShared = { name: ride.name, mapsUrl: rideNavigation(ride).links[0]!, itinerary: ride.itinerary, gpx };
+  const nav = rideNavigation(ride);
+  lastShared = {
+    name: ride.name,
+    mapsUrl: nav.links[0]!,
+    mapsUrls: nav.links,
+    overviewUrl: nav.overview,
+    itinerary: ride.itinerary,
+    gpx,
+  };
   return lastShared;
 }
 

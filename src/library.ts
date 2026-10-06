@@ -1,7 +1,7 @@
 import type { CurrentRide } from "./agent.ts";
 import { centroid, decodePolyline } from "./geometry.ts";
 import { describeStopsAt, routePointIndex } from "./gpx.ts";
-import { type MapsLink, pinnedMapsParts } from "./maps.ts";
+import { type MapsLink, overviewLink, pinnedMapsParts } from "./maps.ts";
 import { duplicateOf, type RideContext } from "./session.ts";
 import { analyseConditions, windAlong, type RideConditions } from "./conditions.ts";
 import { formatStopPlan, locateStops, planStops, type StopCandidate } from "./stops.ts";
@@ -475,6 +475,8 @@ export function formatWeather(weather: RideWeather | null | undefined, rideDate:
 /** Points of a saved ride for the map links: waypoints, and the planned stops when any. */
 export function rideNavigation(ride: SavedRide): {
   links: string[];
+  /** One link showing the whole ride, when it needs several parts. */
+  overview: string | null;
   parts: MapsLink[];
   stops: Array<{ lat: number; lon: number; label: string; km: number }>;
 } {
@@ -489,7 +491,8 @@ export function rideNavigation(ride: SavedRide): {
   });
   const parts = ride.shapes ? pinnedMapsParts(waypoints, ride.shapes, stops) : [];
   const links = parts.length ? parts.map((p) => p.url) : [ride.mapsUrl];
-  return { links, parts, stops };
+  const overview = ride.shapes && links.length > 1 ? overviewLink(waypoints, ride.shapes) : null;
+  return { links, overview, parts, stops };
 }
 
 /** "part 1 ends at km 103, pause: Les Secrets du sucré" for each boundary between parts. */
@@ -511,11 +514,12 @@ export function describeParts(parts: MapsLink[], ride: SavedRide): string[] {
 }
 
 function navigationLines(ride: SavedRide): string[] {
-  const { links, parts, stops } = rideNavigation(ride);
+  const { links, overview, parts, stops } = rideNavigation(ride);
   if (links.length === 1) return [`Map: ${links[0]}${stops.length ? ` (with ${stops.length} stops)` : ""}`];
   return [
     ...links.map((link, i) => `Map part ${i + 1}/${links.length}: ${link}`),
     ...describeParts(parts, ride),
+    ...(overview ? [`Whole ride (overview, not for navigation): ${overview}`] : []),
     stops.length
       ? `(links carry the ${stops.length} planned stops and pass-through points that keep Google on the chosen roads)`
       : "(pass-through points keep Google on the chosen roads)",

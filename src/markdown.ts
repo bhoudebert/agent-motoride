@@ -59,6 +59,7 @@ export function formatRideMarkdown(ride: SavedRide): string {
     push(`Map${nav.links.length > 1 ? ` part ${i + 1}/${nav.links.length}` : ""}: <${link}>`);
   });
   for (const line of describeParts(nav.parts, ride)) push(`- ${line.trim()}`);
+  if (nav.overview) push(`Whole ride (overview, not for navigation): <${nav.overview}>`);
   push(
     nav.stops.length
       ? `_Links carry the planned stops and pass-through points that keep Google Maps on the chosen roads._`

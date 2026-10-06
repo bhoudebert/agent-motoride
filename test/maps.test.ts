@@ -39,3 +39,18 @@ test("splitLinks shares the boundary point between parts", () => {
   assert.ok(parts.length >= 2);
   assert.equal(parts[0]!.to, parts[1]!.from);
 });
+
+test("overview: one link over the whole ride, ten points at most, from start to end", async () => {
+  const { overviewLink } = await import("../src/maps.ts");
+  // A long ride: home, out to a far loop of many waypoints, and back.
+  const stops = Array.from({ length: 14 }, (_, i) => ({ lat: 50 + i * 0.05, lon: 3 + (i % 2) * 0.1 }));
+  const shapes = stops.slice(1).map((to, i) => encodePolyline(bentLine(stops[i]!, to, 30, 0.01)));
+  const url = overviewLink(stops, shapes);
+  const points = url.replace("https://www.google.com/maps/dir/", "").split("/");
+  assert.equal(points.length, 10);
+  assert.equal(points[0], "50.00000,3.00000");
+  assert.equal(points.at(-1), `${stops.at(-1)!.lat.toFixed(5)},${stops.at(-1)!.lon.toFixed(5)}`);
+  // A short ride keeps its shape with pass-through points, still within one link.
+  const short = overviewLink(stops.slice(0, 3), shapes.slice(0, 2)).split("/").length - 5;
+  assert.ok(short >= 3 && short <= 10, `${short} points`);
+});

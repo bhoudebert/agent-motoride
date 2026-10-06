@@ -27,6 +27,8 @@ export interface Shared {
   name: string;
   mapsUrl: string;
   mapsUrls?: string[];
+  /** One link showing the whole ride, when it needs several parts. */
+  overviewUrl?: string | null;
   gpx: GpxInput;
   itinerary: string;
 }
@@ -71,6 +73,7 @@ export function startShareServer(
           `<a href="${esc(url)}" style="display:inline-block;margin:.2rem .4rem .2rem 0;padding:.8rem 1.2rem;background:#1a73e8;color:#fff;border-radius:.5rem;text-decoration:none">Google Maps${all.length > 1 ? ` part ${i + 1}` : ""}</a>`,
       )
       .join("")}
+${shared.overviewUrl && isWebLink(shared.overviewUrl) ? `<a href="${esc(shared.overviewUrl)}" style="display:inline-block;margin:.2rem .4rem .2rem 0;padding:.8rem 1.2rem;background:#fff;color:#1a73e8;border:2px solid #1a73e8;border-radius:.5rem;text-decoration:none">Whole ride (overview)</a>` : ""}
 &nbsp; <a href="/ride.gpx" style="display:inline-block;padding:.8rem 1.2rem;background:#444;color:#fff;border-radius:.5rem;text-decoration:none">Download GPX</a></p>
 <pre style="white-space:pre-wrap;background:#f4f4f4;padding:1rem;border-radius:.5rem">${esc(shared.itinerary)}</pre>
 </body>`);

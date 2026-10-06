@@ -194,3 +194,19 @@ export function pinnedMapsParts(
   }
   return parts;
 }
+
+/**
+ * One link showing the whole ride, for a ride split into several navigation
+ * parts: start, end, and at most ten points in all, spread along the route.
+ * For seeing the ride as a whole; between its points Google may choose other
+ * roads, so the parts remain the links to navigate with.
+ */
+export function overviewLink(waypoints: Array<LatLon & { label?: string }>, shapes: string[]): string {
+  const points = navigationPoints(waypoints, shapes, [], MAX_POINTS_PER_LINK);
+  const step = (points.length - 1) / (MAX_POINTS_PER_LINK - 1);
+  const kept =
+    points.length <= MAX_POINTS_PER_LINK
+      ? points
+      : Array.from({ length: MAX_POINTS_PER_LINK }, (_, i) => points[Math.round(i * step)]!);
+  return `https://www.google.com/maps/dir/${kept.map((p) => `${p.lat.toFixed(5)},${p.lon.toFixed(5)}`).join("/")}`;
+}

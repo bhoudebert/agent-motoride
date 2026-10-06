@@ -16,7 +16,15 @@ import {
 } from "./feedback.ts";
 import { routeCells } from "./geometry.ts";
 import { describeStopsAt, exportSavedRide, savedRideGpx } from "./gpx.ts";
-import { enrichRide, formatRideDetail, formatRideList, parseRating, replanStops, tripFigures } from "./library.ts";
+import {
+  enrichRide,
+  formatRideDetail,
+  formatRideList,
+  parseRating,
+  replanStops,
+  rideNavigation,
+  tripFigures,
+} from "./library.ts";
 import { formatRideMarkdown, writeRideMarkdown } from "./markdown.ts";
 import { describeProfile, parseProfileArgs } from "./profile.ts";
 import { printQr, startShareServer } from "./share.ts";
@@ -218,7 +226,15 @@ try {
     case "share": {
       const target = ride(args[0]);
       const { gpx } = await savedRideGpx(store, target);
-      const shared = { name: target.name, mapsUrl: target.mapsUrl, itinerary: target.itinerary, gpx };
+      const nav = rideNavigation(target);
+      const shared = {
+        name: target.name,
+        mapsUrl: nav.links[0]!,
+        mapsUrls: nav.links,
+        overviewUrl: nav.overview,
+        itinerary: target.itinerary,
+        gpx,
+      };
       const { url } = await startShareServer(() => shared, Number(process.env.RIDE_SHARE_PORT) || 8787);
       console.log(`Scan with the phone (same Wi-Fi): ${url}\nServing until Ctrl-C.`);
       await printQr(url);

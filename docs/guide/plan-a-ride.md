@@ -95,8 +95,9 @@ met.
 
 ::: info Motorways
 Motorways are never used unless you allow them: `--allow-motorways`,
-`/motorways on`, or "allow motorways" in Claude Code. Asking in the request
-alone does not lift the rule; that is on purpose.
+`/motorways on`, or "allow motorways" in Claude Code. See
+[what counts as a motorway](/settings#what-counts-as-a-motorway), and how fast
+expressways are kept small.
 :::
 
 ## Good to know

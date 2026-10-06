@@ -30,12 +30,22 @@ export default defineConfig({
       { text: "Project site", link: "https://bhoudebert.github.io/agent-motoride/" },
     ],
     sidebar: [
-      { text: "Start", items: [{ text: "Getting started", link: "/getting-started" }] },
+      {
+        text: "Start",
+        items: [
+          { text: "Getting started", link: "/getting-started" },
+          { text: "Claude Code and Codex", link: "/claude-code-and-codex" },
+          { text: "From your phone", link: "/from-your-phone" },
+        ],
+      },
       {
         text: "Before the ride",
         items: [
           { text: "Plan a ride", link: "/plan-a-ride" },
           { text: "Import a route someone shared", link: "/import-a-route" },
+          { text: "From a photo of a map", link: "/from-a-photo" },
+          { text: "Stops and your bike", link: "/stops-and-bike" },
+          { text: "What to watch", link: "/what-to-watch" },
         ],
       },
       {
@@ -44,7 +54,19 @@ export default defineConfig({
       },
       {
         text: "Back home",
-        items: [{ text: "Notes and review", link: "/notes-and-review" }],
+        items: [
+          { text: "Notes and review", link: "/notes-and-review" },
+          { text: "Your library", link: "/library" },
+        ],
+      },
+      {
+        text: "Reference",
+        items: [
+          { text: "Settings and rules", link: "/settings" },
+          { text: "The terminal app", link: "/terminal" },
+          { text: "Limits and troubleshooting", link: "/limits" },
+          { text: "Behind the scenes", link: "/behind-the-scenes" },
+        ],
       },
     ],
     socialLinks: [{ icon: "github", link: "https://github.com/bhoudebert/agent-motoride" }],

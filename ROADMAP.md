@@ -72,6 +72,18 @@ with a navigation app (Liberty Rider, Google Maps) on the phone.
   GPX and KML import: done (`rides import`, `importRoute`; README "Importing
   a route someone shared").
 
+## Done lately
+
+- **A map of the ride**: the loop, towns, stops and fixed cameras with their
+  limits as a picture, drawn from the ride's own data (`rides map`, `/map`,
+  `showRideMap` in Claude Code or Codex, the Markdown export, the share page).
+  Next, maybe: a real map background through a provider that allows static
+  images, with its own key.
+- **Rating from Claude Code or Codex** (`rateRide`): the last gap between the
+  terminal and the MCP mode.
+- **MCP quality**: all four tool hints on every tool, every tool tested by name
+  through a client, a maintained QR library.
+
 ## Open questions
 
 - **How strict on fast expressways.** Today a leisure ride is sent back at 25%

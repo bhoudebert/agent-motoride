@@ -24,6 +24,10 @@ The code enforces your hard rules (no motorways unless you say so, a saved ride
 is never silently duplicated) and keeps a library of rides you liked, with
 ratings, so the next ride is different and better.
 
+**How to use it, task by task, in the terminal and in Claude Code:** the
+[rider's guide](https://bhoudebert.github.io/agent-motoride/guide/) (source in
+[`docs/guide/`](docs/guide/)).
+
 It is also a working example of an agentic application: tool use, parallel
 sub-agents ("scouts"), schema-validated answers, a replayable trace of every
 step, cost accounting and a benchmark of models, and the same tools exposed

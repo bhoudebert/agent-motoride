@@ -17,12 +17,14 @@ import {
 import { routeCells } from "./geometry.ts";
 import { describeStopsAt, exportSavedRide, savedRideGpx } from "./gpx.ts";
 import {
+  DuplicateRideError,
   enrichRide,
   formatRideDetail,
   formatRideList,
   parseRating,
   replanStops,
   rideNavigation,
+  saveCurrentRide,
   tripFigures,
 } from "./library.ts";
 import { formatRideMarkdown, writeRideMarkdown } from "./markdown.ts";
@@ -33,7 +35,11 @@ import { Store } from "./store.ts";
 import { setGeoAnchor } from "./tools/geo.ts";
 import { computeTrip } from "./tools/trip.ts";
 import { otlpEndpoint, otlpHeaders, runToOtlp, sendOtlp } from "./otel.ts";
+import { preferencesFromEnv } from "./preferences.ts";
+import { importRoute, readRouteFile } from "./routeImport.ts";
+import { type RideContext, registerRoute } from "./session.ts";
 import { formatTrace } from "./trace.ts";
+import { emptyUsage } from "./usage.ts";
 
 const USAGE = `Usage: npm run rides -- <command>
 
@@ -59,6 +65,9 @@ const USAGE = `Usage: npm run rides -- <command>
   runs [--csv]                          Every planning session with model, effort, tokens, cost and result
   refresh <id|name|all> [--stops]       Route a saved ride again: distance, times, road mix, leg names, daylight, cameras, stops
                                         --stops: only rebuild the stop plan from the bike profile (instant when the stops are cached)
+  import <file.gpx|file.kml> [name] [--force]
+                                        Save a route someone shared: routed like a planned ride (figures, stops, cameras),
+                                        with waypoints added until it follows the file; --force saves a duplicate anyway
   delete <id|name>                      Remove a ride and its legs
   clear-cache                           Drop cached road, route and weather lookups
 
@@ -353,6 +362,72 @@ try {
               : " Speed-limit data was unavailable, so the time is the router's pessimistic one; run refresh again later."),
         );
       }
+      break;
+    }
+    case "import": {
+      const path = args.find((a) => /\.(gpx|kml)$/i.test(a));
+      if (!path) throw new Error("Which file? e.g. npm run rides -- import ~/Downloads/route.gpx");
+      const file = readRouteFile(path);
+      const preferences = preferencesFromEnv();
+      const start = file.points[0]!;
+      const runId = store.startRun({
+        home: `${start.lat},${start.lon}`,
+        request: `import ${path}`,
+        usage: emptyUsage("none", "n/a"),
+        costUsd: 0,
+        result: null,
+        rideId: null,
+        error: null,
+      });
+      const context: RideContext = {
+        store,
+        preferences,
+        home: { ...start, label: `${start.lat},${start.lon}` },
+        allowRepeat: false,
+        lineage: new Set(),
+        routes: new Map(),
+        runId,
+        usage: emptyUsage("none", "n/a"),
+        trace: (event) => store.addTrace(runId, event),
+        stopPlans: new Map(),
+      };
+      await setGeoAnchor(`${start.lat},${start.lon}`);
+      const imported = await importRoute(file, { avoidMotorways: preferences.avoidMotorways, route: computeTrip });
+      const route = registerRoute(context, imported.trip);
+      const trip = imported.trip.result;
+      const name =
+        args.filter((a) => a !== path && !a.startsWith("--")).join(" ") ||
+        file.name ||
+        `Imported ${trip.legs[0]?.from ?? "route"} loop`;
+      const summary = [
+        `${name}: imported from ${path.split("/").at(-1)}, ${file.lengthKm} km in the file.`,
+        `Routed ${trip.totalDistanceKm} km, ${trip.totalRidingTime} riding, ${imported.fidelityPct}% of the file's line followed (${imported.passes} routing pass${imported.passes > 1 ? "es" : ""}, ${imported.waypoints.length} waypoints).`,
+        ...trip.legs.map((leg, i) => `${i + 1}. ${leg.from} -> ${leg.to}: ${leg.distanceKm} km, ${leg.ridingTime}`),
+      ].join("\n");
+      console.log(summary);
+      if (imported.fidelityPct < 90) {
+        const why = preferences.avoidMotorways
+          ? " Motorways are forbidden, so any motorway in the file was routed around."
+          : "";
+        console.log(
+          `Below 90%: legs ${imported.weakLegs.map((l) => `${l.leg} (${l.coveragePct}%)`).join(", ")} leave the file's roads.${why}`,
+        );
+      }
+      let id: number;
+      try {
+        id = saveCurrentRide(
+          context,
+          { route, rideDate: null, departure: null, title: name, itinerary: summary },
+          { request: `import ${path}`, parentId: null, home: context.home.label, force: args.includes("--force") },
+        );
+      } catch (error) {
+        if (error instanceof DuplicateRideError) {
+          throw new Error(`${error.message} Add --force to save it anyway.`, { cause: error });
+        }
+        throw error;
+      }
+      await enrichRide(store, store.findRide(String(id))!);
+      console.log(`Saved as #${id}. See it with: npm run rides -- show ${id}`);
       break;
     }
     case "delete": {

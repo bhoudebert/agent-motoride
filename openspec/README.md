@@ -18,5 +18,6 @@ change is folded into the specs.
 | mcp-server       | Tools and slash commands for Claude Code and other MCP clients                            |
 | observability    | Runs, usage, cost, trace replay, benchmarking                                             |
 | evaluation       | Eval cases, code graders, recorded sessions replayed for free, injection resistance       |
+| route-import     | GPX and KML files turned into routed rides, fidelity to the file, saved like any ride     |
 | cli              | Start menu, refine prompt, commands, library management                                   |
 | ride-feedback    | Notes during the ride, review with a recorded track, road ratings                         |

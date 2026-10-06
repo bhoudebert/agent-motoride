@@ -133,6 +133,12 @@ export async function resolveWaypoints(waypoints: string[], roundTrip = false): 
   if (waypoints.length < 2 && !(roundTrip && waypoints.length === 1)) {
     throw new Error("At least two waypoints are required");
   }
+  // The public router takes 10 locations per route, and a loop's return to the start is one.
+  if (waypoints.length + (roundTrip ? 1 : 0) > 10) {
+    throw new Error(
+      `Too many waypoints: ${waypoints.length}${roundTrip ? " plus the return to the start" : ""}; the router takes 10 locations. Keep the ones that shape the loop.`,
+    );
+  }
   const points: Point[] = [];
   for (const waypoint of waypoints) {
     const point = await resolvePoint(waypoint);

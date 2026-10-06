@@ -40,3 +40,22 @@ test("daylight tool resolves the place and localises the times", async () => {
   assert.equal(d.timezone, "Europe/Paris");
   assert.ok(Math.abs(toMin(d.sunrise!) - toMin("08:02")) <= 4);
 });
+
+test("traffic: the delay is expected congestion, not only reported incidents", async () => {
+  const { getTraffic } = await import("../src/tools/traffic.ts");
+  const key = process.env.TOMTOM_API_KEY;
+  process.env.TOMTOM_API_KEY = "test-key";
+  try {
+    const traffic = await getTraffic({ waypoints: ["Lille", "Cassel"], departAt: "2026-10-12T07:30:00" });
+    assert.ok(traffic.available);
+    assert.equal(traffic.travelMinutes, 106);
+    assert.equal(traffic.freeFlowMinutes, 83);
+    assert.equal(traffic.trafficDelayMinutes, 23);
+    assert.equal(traffic.incidentDelayMinutes, 0);
+    delete process.env.TOMTOM_API_KEY;
+    assert.equal((await getTraffic({ waypoints: ["Lille"], departAt: "2026-10-12T07:30:00" })).available, false);
+  } finally {
+    if (key === undefined) delete process.env.TOMTOM_API_KEY;
+    else process.env.TOMTOM_API_KEY = key;
+  }
+});

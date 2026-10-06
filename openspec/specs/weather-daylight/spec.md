@@ -26,7 +26,12 @@ On save and refresh, when the ride date is within forecast range, the forecast S
 
 ### Requirement: Traffic
 
-`getTraffic` SHALL return travel time, free-flow time and delay for a departure time when `TOMTOM_API_KEY` is set, and SHALL otherwise report that no source is configured so the planner says "not checked" rather than guessing. Traffic SHALL be a final check on the chosen loop, not a selection criterion.
+`getTraffic` SHALL return travel time, free-flow time and delay for a departure time when `TOMTOM_API_KEY` is set. The delay SHALL be the expected travel time minus the free-flow time (predicted congestion for that departure, incidents included), with the share due to reported incidents given apart; and SHALL otherwise report that no source is configured so the planner says "not checked" rather than guessing. Traffic SHALL be a final check on the chosen loop, not a selection criterion.
+
+#### Scenario: Rush hour without incidents
+
+- **WHEN** a Monday 07:30 departure is expected to take 106 minutes against 83 without traffic, with no incident reported
+- **THEN** the delay is 23 minutes and the incident delay 0
 
 ### Requirement: Crosswind and low sun along the route
 

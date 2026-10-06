@@ -147,6 +147,20 @@ export function installFakeServices(): FakeApi {
       });
     if (url.host.includes("overpass")) return json({ elements: api.overpass });
     if (url.host === "nominatim.openstreetmap.org") return json([]);
+    if (url.host === "api.tomtom.com")
+      // Monday rush hour: 106 min expected, 83 without traffic, no incident reported.
+      return json({
+        routes: [
+          {
+            summary: {
+              lengthInMeters: 114395,
+              travelTimeInSeconds: 6354,
+              trafficDelayInSeconds: 0,
+              noTrafficTravelTimeInSeconds: 4953,
+            },
+          },
+        ],
+      });
     throw new Error(`fake services: unexpected call to ${url.host}${url.pathname}`);
   }) as typeof fetch;
   return api;

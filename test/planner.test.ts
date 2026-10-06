@@ -269,3 +269,38 @@ test("planner: an attached image goes to the model as a picture; only its name i
     store.close();
   }
 });
+
+test("planner: a shared GPX file becomes a routed trip with a route id and its fidelity", async () => {
+  const restore = quiet();
+  const store = new Store(":memory:");
+  const { mkdtempSync, writeFileSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const { tmpdir } = await import("node:os");
+  try {
+    const file = join(mkdtempSync(join(tmpdir(), "ride-import-")), "shared.gpx");
+    const points = Array.from({ length: 50 }, (_, i) => ({ lat: 50.63 + i * 0.004, lon: 3.05 - i * 0.012 }));
+    writeFileSync(
+      file,
+      `<gpx><trk><name>Club ride</name><trkseg>${points.map((p) => `<trkpt lat="${p.lat}" lon="${p.lon}"/>`).join("")}</trkseg></trk></gpx>`,
+    );
+    api.script = [toolUse("importRoute", { file }), finalText(JSON.stringify({ message: "x", ride: null }))];
+    const session = await openRide({ home: "Lille", store });
+    await session.send("import my club's route");
+    const result = JSON.parse(api.requests.at(-1).messages.at(-1).content[0].content);
+    assert.equal(result.routeId, "r1");
+    assert.equal(result.file.name, "Club ride");
+    assert.equal(typeof result.fidelityPct, "number");
+    assert.equal(result.motorwaysPermitted, false);
+    assert.ok(result.waypoints.length >= 2);
+    assert.ok(session.context.routes.has("r1"), "saveable like any routed trip");
+  } finally {
+    restore();
+    store.close();
+  }
+});
+
+test("routing: more locations than the router takes is refused with a clear reason", async () => {
+  const { computeTrip } = await import("../src/tools/trip.ts");
+  const nine = Array.from({ length: 9 }, () => "Lille");
+  await assert.rejects(computeTrip({ waypoints: [...nine, "Cassel"], roundTrip: true }), /router takes 10 locations/);
+});

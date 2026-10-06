@@ -29,6 +29,45 @@ export interface CurrentRide {
 }
 
 const MAX_ITERATIONS = 40;
+/** Guarded repeats of one lookup in a row after which the planner is made to answer. */
+const STUCK_REPEATS = 3;
+
+/**
+ * The conversation for a forced answer: the history, the assistant message that
+ * asked for yet another repeat, and, in place of running its tool calls, a note
+ * that they were not run and an instruction to answer now.
+ */
+function stuckConversation(
+  messages: Anthropic.Beta.BetaMessageParam[],
+  repeat: Anthropic.Beta.BetaMessage,
+): Anthropic.Beta.BetaMessageParam[] {
+  const history = messages.at(-1)?.role === "assistant" ? messages.slice(0, -1) : messages;
+  return [
+    ...history,
+    { role: "assistant", content: repeat.content },
+    {
+      role: "user",
+      content: [
+        ...repeat.content.flatMap((block) =>
+          block.type === "tool_use"
+            ? [
+                {
+                  type: "tool_result" as const,
+                  tool_use_id: block.id,
+                  is_error: true,
+                  content: "Not run: this exact call was already answered above.",
+                },
+              ]
+            : [],
+        ),
+        {
+          type: "text" as const,
+          text: "[You are repeating the same tool call. Do not call tools any more: give your final answer now, from the results above.]",
+        },
+      ],
+    },
+  ];
+}
 
 /** What the planner is and how it works; shared by the API planner and the MCP prompt. */
 export const SYSTEM_CORE = `You plan one-day motorcycle rides for a rider who wants an itinerary they can follow tomorrow morning.
@@ -207,11 +246,41 @@ export async function openRide(request: RideRequest): Promise<RideSession> {
     });
 
     let last: Anthropic.Beta.BetaMessage | undefined;
+    // Set when the session was stuck and forced to answer: the conversation as sent for that last call.
+    let forced: Anthropic.Beta.BetaMessageParam[] | undefined;
     const before = { ...usage };
     const started = Date.now();
     usage.turns++;
+    context.repeatsInARow?.set("main", 0);
     try {
       for await (const message of runner) {
+        // A model repeating one call despite the guard's note will not stop by itself:
+        // stop the tool loop and ask for the answer with tools disabled.
+        if ((context.repeatsInARow?.get("main") ?? 0) >= STUCK_REPEATS && last) {
+          countUsage(usage, message);
+          forced = stuckConversation([...runner.params.messages], message);
+          context.trace({ scope: "main", kind: "error", name: "stuck", payload: "repeating one call; answer forced" });
+          const final = await client.beta.messages.create({
+            model: MODEL,
+            max_tokens: 16000,
+            ...requestSettings(MODEL, EFFORT, RideAnswer),
+            cache_control: { type: "ephemeral" },
+            system: SYSTEM,
+            tools,
+            tool_choice: { type: "none" },
+            messages: forced,
+          });
+          last = final;
+          countUsage(usage, final);
+          context.trace({
+            scope: "main",
+            kind: "model",
+            name: final.model,
+            ms: Date.now() - started,
+            payload: describeResponse(final),
+          });
+          break;
+        }
         last = message;
         countUsage(usage, message);
         context.trace({
@@ -247,7 +316,7 @@ export async function openRide(request: RideRequest): Promise<RideSession> {
     switch (last?.stop_reason) {
       case "end_turn": {
         // Keep every block as returned (thinking included): the API requires them unchanged.
-        const messages = [...runner.params.messages];
+        const messages = forced ? [...forced] : [...runner.params.messages];
         if (messages.at(-1)?.role !== "assistant") messages.push({ role: "assistant", content: last.content });
         history = messages;
 

@@ -208,3 +208,36 @@ test("planner: a tool called again and again with the same input answers from th
     store.close();
   }
 });
+
+test("planner: a model stuck on one call is stopped and made to answer with tools disabled", async () => {
+  const restore = quiet();
+  const store = new Store(":memory:");
+  try {
+    const daylight = toolUse("getDaylight", { location: "Lille", date: "2026-10-10" });
+    api.script = [
+      ...Array.from({ length: 6 }, () => daylight),
+      finalText(JSON.stringify({ message: "Sunset at 19:09", ride: null })),
+      daylight, // never reached
+    ];
+    const session = await openRide({ home: "Lille", store });
+    await session.send("when is sunset?");
+    assert.equal(api.script.length, 1, "stopped after the forced answer");
+    const forced = api.requests.at(-1);
+    assert.deepEqual(forced.tool_choice, { type: "none" });
+    const note = forced.messages.at(-1).content;
+    assert.equal(note[0].type, "tool_result");
+    assert.equal(note[0].is_error, true);
+    assert.match(note.at(-1).text, /give your final answer now/);
+    const trace = store.listTrace(session.context.runId);
+    assert.ok(trace.some((e) => e.kind === "error" && e.name === "stuck"));
+    assert.ok(trace.some((e) => e.kind === "answer"));
+    // The conversation stays valid for a follow-up: it ends with the forced answer.
+    api.script = [finalText(JSON.stringify({ message: "ok", ride: null }))];
+    await session.send("thanks");
+    const followUp = api.requests.at(-1).messages;
+    assert.equal(followUp.at(-2).role, "assistant");
+  } finally {
+    restore();
+    store.close();
+  }
+});

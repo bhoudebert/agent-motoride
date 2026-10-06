@@ -90,9 +90,12 @@ function traced<I, O>(context: RideContext, scope: string, name: string, fn: (in
         note: `You already called ${name} with exactly this input ${seen.count - 1} times; the result has not changed and is repeated below. Use it and move on: do not call ${name} with this input again.`,
         result: JSON.parse(seen.result) as unknown,
       });
+      context.repeatsInARow ??= new Map();
+      context.repeatsInARow.set(scope, (context.repeatsInARow.get(scope) ?? 0) + 1);
       context.trace({ scope, kind: "tool", name, ms: 0, payload: { input, repeated: seen.count } });
       return result;
     }
+    context.repeatsInARow?.set(scope, 0);
     try {
       const output = await fn(input);
       const result = JSON.stringify(output);

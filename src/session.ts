@@ -48,6 +48,8 @@ export interface RideContext {
   stopPlans: Map<string, StopPlan>;
   /** Tool calls made so far, by scope, tool and input, to stop a model repeating one. */
   calls?: Map<string, { count: number; result: string }>;
+  /** Guarded repeats in a row, per scope: the planner stops a session stuck on one call. */
+  repeatsInARow?: Map<string, number>;
   /** Last route number used, per id prefix; see nextRouteId. */
   routeSeq?: Map<string, number>;
   /** Roads the rider rated, computed once per session from the library. */

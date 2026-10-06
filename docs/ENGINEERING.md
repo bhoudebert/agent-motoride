@@ -359,6 +359,21 @@ and structured; the retrieval sits behind one function if a semantic layer is
 ever needed. The planner and the scouts are told to consult it before
 scouting or searching roads.
 
+## Library schema and migrations
+
+The schema is versioned (ADR 0022). `src/migrations.ts` lists numbered steps;
+`PRAGMA user_version` in the file says which have run. On open, each pending
+step runs in `BEGIN IMMEDIATE ... COMMIT` together with its version bump, so
+it applies completely or not at all; a step that rebuilds tables runs with
+foreign keys off and a `PRAGMA foreign_key_check` before committing. Before
+the first pending step, the file is copied with `VACUUM INTO` to
+`<file>.bak-v<from>`. A library at a version above the last step is refused
+untouched, and a busy timeout makes a second process (CLI and MCP server)
+wait for a migration in progress. Step 1 is the schema as it stood before
+versioning, written with `IF NOT EXISTS` so older libraries pass through it.
+A released step is never edited: changes go in a new step, with a test that
+builds a library at the previous version and migrates it.
+
 ## Lookup cache
 
 Tool results are cached in the same file so repeated planning does not hit the
@@ -492,6 +507,7 @@ src/
   trace.ts          Replay of a session from the trace table
   session.ts        Per-session state: routed trips, duplicate comparison, usage, trace
   store.ts          SQLite storage: rides, legs, lookup cache
+  migrations.ts     versioned schema steps, applied once each after a backup
   library.ts        Saving the current ride, formatting saved rides
   geometry.ts       Route decoding and the grid used to compare routes
   gpx.ts            GPX export of a ride

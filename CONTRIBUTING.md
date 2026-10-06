@@ -52,7 +52,7 @@ Conventional Commits, enforced by the commit-msg hook and in CI:
 | `fix`      | Wrong behaviour corrected                              | patch version                  |
 | `perf`     | Same behaviour, faster or cheaper                      | patch version                  |
 | `refactor` | Code change with no behaviour change                   | none                           |
-| `docs`     | README, specs, roadmap, comments                       | none (listed in the changelog) |
+| `docs`     | Guide, README, specs, roadmap, comments                | none (listed in the changelog) |
 | `test`     | Tests only                                             | none                           |
 | `build`    | Dependencies, tooling, scripts, package.json           | none (listed in the changelog) |
 | `ci`       | GitHub Actions, Dependabot, release automation         | none                           |

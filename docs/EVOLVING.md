@@ -6,7 +6,7 @@ coded, specified before it is tested, and explained before it is released.
 
 ```
 idea ─▶ decision ─▶ spec ─▶ code + tests ─▶ docs ─▶ showcase ─▶ PR ─▶ release
-        (ADR)      (openspec)  (all modes)   (README)  (site)    (review) (automatic)
+        (ADR)      (openspec)  (all modes)   (guide)   (site)    (review) (automatic)
 ```
 
 ## 1. Idea
@@ -54,7 +54,11 @@ written first and reviewed with the code in the same pull request.
 
 ## 5. Docs
 
-README: what the feature is for, how to use it in each mode, its limits.
+The guide (`docs/guide/`): what the feature is for, how to use it in each mode
+side by side, its limits; a new page for a new task, and a line in the sidebar
+(`docs/guide/.vitepress/config.mts`). The README only when the overview changes
+(what you get, how it is built). `docs/ENGINEERING.md` when the architecture,
+a tool or a data source changes.
 `AGENTS.md` or `CONTRIBUTING.md` when the way of working changes. `ROADMAP.md`:
 remove what is done, add what was learnt.
 

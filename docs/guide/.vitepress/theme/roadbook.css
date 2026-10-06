@@ -171,3 +171,8 @@
   --vp-button-alt-hover-border: var(--rb-signal);
   --vp-button-alt-hover-text: var(--rb-signal);
 }
+
+/* Options and commands in a reference table stay on one line. */
+.vp-doc td:first-child code {
+  white-space: nowrap;
+}

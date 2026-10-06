@@ -19,6 +19,6 @@
 - [ ] Spec updated first when behaviour changes
 - [ ] Reachable in every mode (MCP tool/prompt, API planner, CLI) or the spec says why not
 - [ ] Tests with the code; `npm run quality` passes
-- [ ] README updated; roadmap updated
+- [ ] Guide updated (`docs/guide/`); README if the overview changed; roadmap updated
 - [ ] Site and diagram updated when a rider would notice the feature
 - [ ] Commits and PR title follow Conventional Commits

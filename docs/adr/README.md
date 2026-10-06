@@ -22,3 +22,4 @@ not rewritten.
 | [0013](0013-evals-recorded-once-replayed-free.md) | Evaluate the planner on recorded sessions, replayed for free                     | accepted |
 | [0014](0014-code-checks-the-itinerary.md)         | Code checks the itinerary; the planner gets one chance to fix it                 | accepted |
 | [0015](0015-otlp-json-without-sdk.md)             | Export sessions as OTLP/JSON, written without the OpenTelemetry SDK              | accepted |
+| [0016](0016-import-by-rerouting.md)               | Import a route file by re-routing it through waypoints, with measured fidelity   | accepted |

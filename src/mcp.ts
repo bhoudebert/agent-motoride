@@ -341,7 +341,7 @@ server.registerTool(
     lastRouteId = args.routeId;
     syncRun();
     void enrichRide(store, store.findRide(String(id))!).catch(() => undefined);
-    return text(`Saved as ride #${id} "${args.name}". Export with exportGpx, or: npm run rides -- show ${id}`);
+    return text(`Saved as roadbook #${id} "${args.name}". Export with exportGpx, or: npm run rides -- show ${id}`);
   },
 );
 
@@ -361,7 +361,7 @@ server.registerTool(
   async (args) => {
     if (args.rideId !== undefined) {
       const ride = store.findRide(String(args.rideId));
-      if (!ride) throw new Error(`No saved ride #${args.rideId}`);
+      if (!ride) throw new Error(`No roadbook #${args.rideId}`);
       const { path } = await exportSavedRide(store, ride, args.file);
       return text(`GPX written: ${path}`);
     }
@@ -389,7 +389,7 @@ server.registerTool(
       "Recompute a saved ride without changing it: route the same waypoints again with the ride's own motorway setting, update distance, times, road mix and leg names, then re-gather daylight, weather, fixed cameras and stops, and rebuild the stop plan from the current bike profile. Deterministic, no planning involved; takes a minute or two. Use it when the rider says refresh, update or recompute a ride; with stopsOnly when only the stops or the bike profile changed. Returns the refreshed view, or the new stop plan.",
     annotations: hintsOf("refreshRide"),
     inputSchema: z.object({
-      ride: z.string().describe("Saved ride id or name"),
+      ride: z.string().describe("Roadbook number or name"),
       stopsOnly: z
         .boolean()
         .optional()
@@ -401,7 +401,8 @@ server.registerTool(
     if (!target) throw new Error(`No saved ride matches "${args.ride}". Call listRoadbooks.`);
     if (args.stopsOnly) {
       const extras = await replanStops(store, target);
-      if (!extras?.stopPlan) throw new Error(`Ride #${target.id} has no stored route line; run a full refresh first.`);
+      if (!extras?.stopPlan)
+        throw new Error(`Roadbook #${target.id} has no stored route line; run a full refresh first.`);
       return text(formatStopPlan(extras.stopPlan, target.departure ?? "09:00", target.ridingMinutes).join("\n"));
     }
     await setGeoAnchor(target.home);
@@ -412,7 +413,7 @@ server.registerTool(
     });
     if (trip.result.legs.length !== target.legs.length)
       throw new Error(
-        `Ride #${target.id} now routes into ${trip.result.legs.length} legs instead of ${target.legs.length}; not updated.`,
+        `Roadbook #${target.id} now routes into ${trip.result.legs.length} legs instead of ${target.legs.length}; not updated.`,
       );
     store.refreshRide(target.id, tripFigures(trip, routeCells(trip.shapes)));
     const extras = await enrichRide(store, store.findRide(String(target.id))!);
@@ -430,7 +431,7 @@ server.registerTool(
       "Ride-day briefing for a saved ride: forecast along the route now, daylight and return time, traffic at departure, the stops re-planned and checked against opening hours at arrival, fixed cameras, and a go, caution or no-go verdict with reasons. Deterministic; show it as returned. Without a ride, takes the next dated ride.",
     annotations: hintsOf("rideBriefing"),
     inputSchema: z.object({
-      ride: z.string().optional().describe("Saved ride id or name; default the next dated ride"),
+      ride: z.string().optional().describe("Roadbook number or name; default the next dated ride"),
     }),
   },
   async (args) => {
@@ -466,7 +467,7 @@ server.registerTool(
     description:
       "Full view of one saved ride, as the rider sees it in the app: figures, road mix, time at 70+, daylight, fixed cameras, fuel and café stops, legs with names, main roads, times and ratings, map link and the itinerary text. Show it to the rider as is; do not rebuild it from other tools.",
     annotations: hintsOf("showRide"),
-    inputSchema: z.object({ ride: z.string().describe("Saved ride id or name") }),
+    inputSchema: z.object({ ride: z.string().describe("Roadbook number or name") }),
   },
   async (args) => {
     const ride = store.findRide(args.ride);
@@ -481,7 +482,7 @@ server.registerTool(
     description:
       "A picture of a saved ride, to show the rider: the route leg by leg, towns in riding order, planned stops with their arrival times, fixed speed cameras with their limits, km marks, scale and the ride's figures. Drawn from the ride's own data, no map background. Returns the image; show it as is. exportMarkdown and rides map also write it to a file.",
     annotations: hintsOf("showRideMap"),
-    inputSchema: z.object({ ride: z.string().describe("Saved ride id or name") }),
+    inputSchema: z.object({ ride: z.string().describe("Roadbook number or name") }),
   },
   async (args) => {
     const ride = store.findRide(args.ride);
@@ -489,7 +490,7 @@ server.registerTool(
     return {
       content: [
         { type: "image" as const, data: rideMapPng(ride).toString("base64"), mimeType: "image/png" },
-        { type: "text" as const, text: `Map of ride #${ride.id} "${ride.name}".` },
+        { type: "text" as const, text: `Map of roadbook #${ride.id} "${ride.name}".` },
       ],
     };
   },
@@ -502,7 +503,7 @@ server.registerTool(
       "Write a saved ride as a Markdown document in the app's standard layout (figures, road mix, legs table, daylight, cameras, stops, itinerary), for versioning elsewhere. Returns the file path, and the document itself when asked.",
     annotations: hintsOf("exportMarkdown"),
     inputSchema: z.object({
-      ride: z.string().describe("Saved ride id or name"),
+      ride: z.string().describe("Roadbook number or name"),
       file: z.string().optional().describe("Destination path; default exports/ in the project"),
       includeContent: z.boolean().optional().describe("Also return the Markdown text, default false"),
     }),
@@ -527,7 +528,7 @@ server.registerTool(
       text: z.string().min(1).describe("The rider's words"),
       rating: z.number().int().min(0).max(5).optional().describe("Only if the rider gave one: 0 never again, 5 loved"),
       minutesBack: z.number().int().min(1).max(120).optional().describe("Minutes the note covers, default 10"),
-      ride: z.string().optional().describe("Saved ride id or name; default today's ride"),
+      ride: z.string().optional().describe("Roadbook number or name; default today's ride"),
     }),
   },
   async (args) => {
@@ -535,7 +536,7 @@ server.registerTool(
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const end = Date.parse(note.createdAt);
     return text(
-      `Noted #${note.id} on ride #${ride.id} "${ride.name}", ${clockAt(end - note.minutesBack * 60_000, timezone)}-${clockAt(end, timezone)}. It will be reviewed after the ride.`,
+      `Noted #${note.id} on roadbook #${ride.id} "${ride.name}", ${clockAt(end - note.minutesBack * 60_000, timezone)}-${clockAt(end, timezone)}. It will be reviewed after the ride.`,
     );
   },
 );
@@ -547,7 +548,7 @@ server.registerTool(
       "After a ride: place its pending notes on the road. With gpxPath (a track recorded by any app, as a GPX file on this machine), each note lands on the road actually ridden, detours of 2 km or more from the plan are listed, and the moving pace is compared with the plan; without it, notes are placed on the plan by elapsed time (approximate). Returns the stretches with a proposed rating each. Show the review as returned and ask the rider to confirm or change the ratings; then call again with decisions to store them. Stored road ratings steer future planning (0-1 avoided, 4-5 preferred).",
     annotations: hintsOf("reviewRide"),
     inputSchema: z.object({
-      ride: z.string().optional().describe("Saved ride id or name; default the ride of the latest pending note"),
+      ride: z.string().optional().describe("Roadbook number or name; default the ride of the latest pending note"),
       gpxPath: z.string().optional().describe("Path of the recorded track on this machine"),
       decisions: z
         .array(
@@ -586,7 +587,7 @@ server.registerTool(
       "Rate a saved ride after riding it, or one of its legs: 0 (never again) to 5 (loved), with the rider's words as a note. Ratings steer later plans: rides and legs rated 4-5 are reused as building blocks, those rated 0-1 avoided. For a stretch of road within a leg, notes during the ride and reviewRide are more precise. Use the rider's own rating; ask when they gave none.",
     annotations: hintsOf("rateRide"),
     inputSchema: z.object({
-      ride: z.string().describe("Saved ride id or name"),
+      ride: z.string().describe("Roadbook number or name"),
       rating: z.number().int().min(0).max(5).describe("0 never again, 5 loved"),
       leg: z.number().int().min(1).optional().describe("Leg number, to rate one leg instead of the whole ride"),
       note: z.string().optional().describe("The rider's words, kept with the rating"),
@@ -598,7 +599,7 @@ server.registerTool(
     const note = args.note?.trim() || null;
     if (args.leg !== undefined) {
       if (!store.rateLeg(ride.id, args.leg, args.rating, note)) {
-        throw new Error(`Ride #${ride.id} has no leg ${args.leg}; it has legs 1 to ${ride.legs.length}.`);
+        throw new Error(`Roadbook #${ride.id} has no leg ${args.leg}; it has legs 1 to ${ride.legs.length}.`);
       }
     } else store.rateRide(ride.id, args.rating, note);
     // The next routed trip of this session must see the new rating.
@@ -654,7 +655,7 @@ server.registerResource(
   { title: "Saved ride", description: "Everything stored about one saved ride", mimeType: "text/plain" },
   async (uri, { id }) => {
     const ride = store.findRide(String(id));
-    if (!ride) throw new Error(`No saved ride #${String(id)}`);
+    if (!ride) throw new Error(`No roadbook #${String(id)}`);
     return { contents: [{ uri: uri.href, mimeType: "text/plain", text: formatRideDetail(ride) }] };
   },
 );
@@ -700,7 +701,7 @@ const editText = (saved: ReturnType<typeof store.findRide> & object, change: str
     originalRequest: saved.request,
   };
   return planText(
-    `${change}\n\nThis concerns saved ride #${saved.id} "${saved.name}". Work from its waypoints rather than searching for a new area. If the message asks for a change or a new date, route the ride again with calculateTrip, check the weather for that day, and apply the change, keeping everything else. If it is only a question, answer it from this data and the tools. Overlap with this ride is expected; use rideSettings to allow repeats if the duplicate check objects.\n${JSON.stringify(data)}`,
+    `${change}\n\nThis concerns roadbook #${saved.id} "${saved.name}". Work from its waypoints rather than searching for a new area. If the message asks for a change or a new date, route the ride again with calculateTrip, check the weather for that day, and apply the change, keeping everything else. If it is only a question, answer it from this data and the tools. Overlap with this ride is expected; use rideSettings to allow repeats if the duplicate check objects.\n${JSON.stringify(data)}`,
   );
 };
 const planText = (request: string, rules = RULES) =>
@@ -718,7 +719,7 @@ server.registerTool(
     annotations: hintsOf("planningGuide"),
     inputSchema: z.object({
       request: z.string().describe("What the rider asked for, verbatim"),
-      ride: z.string().optional().describe("Saved ride id or name, when the request is about an existing ride"),
+      ride: z.string().optional().describe("Roadbook number or name, when the request is about an existing ride"),
     }),
   },
   async (args) => {
@@ -778,7 +779,7 @@ server.registerPrompt(
     title: "Edit a saved ride",
     description: "Load a saved ride and apply a change: new date, longer, skip a town, or just a question about it.",
     argsSchema: {
-      ride: z.string().describe("Saved ride id or name"),
+      ride: z.string().describe("Roadbook number or name"),
       change: z.string().describe("What to change or ask"),
     },
   },
@@ -811,7 +812,7 @@ server.registerPrompt(
   {
     title: "Export GPX",
     description: "GPX file of the current itinerary or of a saved ride, for a GPS app.",
-    argsSchema: { ride: z.string().optional().describe("Saved ride id or name; default the itinerary on the table") },
+    argsSchema: { ride: z.string().optional().describe("Roadbook number or name; default the itinerary on the table") },
   },
   ({ ride }) =>
     userMessage(
@@ -826,7 +827,7 @@ server.registerPrompt(
   {
     title: "Show a saved ride",
     description: "Everything stored about one ride: figures, daylight, cameras, stops, legs, itinerary.",
-    argsSchema: { ride: z.string().describe("Saved ride id or name") },
+    argsSchema: { ride: z.string().describe("Roadbook number or name") },
   },
   ({ ride }) =>
     userMessage(
@@ -840,7 +841,7 @@ server.registerPrompt(
     title: "Export a ride as Markdown",
     description: "The ride's standard Markdown document, written to a file and shown.",
     argsSchema: {
-      ride: z.string().describe("Saved ride id or name"),
+      ride: z.string().describe("Roadbook number or name"),
       file: z.string().optional().describe("Destination path"),
     },
   },
@@ -855,7 +856,7 @@ server.registerPrompt(
   {
     title: "Ride-day briefing",
     description: "Weather now, daylight, traffic, stops checked against opening hours, go or no-go for a saved ride.",
-    argsSchema: { ride: z.string().optional().describe("Saved ride id or name; default the next dated ride") },
+    argsSchema: { ride: z.string().optional().describe("Roadbook number or name; default the next dated ride") },
   },
   ({ ride }) =>
     userMessage(
@@ -868,7 +869,7 @@ server.registerPrompt(
   {
     title: "Refresh a saved ride",
     description: "Recompute a ride's figures, weather, cameras, stops and stop plan, without changing the ride.",
-    argsSchema: { ride: z.string().describe("Saved ride id or name") },
+    argsSchema: { ride: z.string().describe("Roadbook number or name") },
   },
   ({ ride }) =>
     userMessage(
@@ -896,7 +897,7 @@ server.registerPrompt(
     description: "Place your ride notes on the road ridden (recorded GPX track) or on the plan, then confirm ratings.",
     argsSchema: {
       gpxPath: z.string().optional().describe("Recorded track, GPX file on this machine"),
-      ride: z.string().optional().describe("Saved ride id or name; default the ride with pending notes"),
+      ride: z.string().optional().describe("Roadbook number or name; default the ride with pending notes"),
     },
   },
   ({ gpxPath, ride }) =>

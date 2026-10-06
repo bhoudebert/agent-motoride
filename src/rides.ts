@@ -56,7 +56,7 @@ const USAGE = `Usage: npm run rides -- <command>
   map <id|name> [file.png]              A picture of the ride: route, towns, stops, fixed cameras with their limits
   rate <id|name> <1-5> [note]           Rate a ride after riding it
   rate-leg <id|name> <leg> <1-5> [note] Rate one leg of a ride
-  note "<text>" [--rating 0-5] [--back N] [--ride id|name]
+  note "<text>" [--rating 0-5] [--back N] [--roadbook id|name]
                                         During the ride: a note about the last N minutes (default 10), on today's ride
   notes [--all]                         Notes waiting for review (--all: reviewed and dismissed ones too)
   review [id|name] [track.gpx] [--yes]  After the ride: place the notes on the recorded track (or on the plan without one),
@@ -158,7 +158,7 @@ try {
       const seq = Number(args[1]);
       const { rating, notes } = parseRating(args.slice(2));
       if (!store.rateLeg(target.id, seq, rating, notes)) {
-        throw new Error(`Ride #${target.id} has no leg ${args[1] ?? ""}; it has legs 1 to ${target.legs.length}.`);
+        throw new Error(`Roadbook #${target.id} has no leg ${args[1] ?? ""}; it has legs 1 to ${target.legs.length}.`);
       }
       console.log(`Rated leg ${seq} of #${target.id} "${target.name}" ${rating}/5.`);
       break;
@@ -170,7 +170,7 @@ try {
       };
       const rating = flag("--rating");
       const back = flag("--back");
-      const rideName = flag("--ride");
+      const rideName = flag("--roadbook") ?? flag("--ride");
       const text = args.join(" ").trim();
       if (!text) throw new Error('What about it? e.g. npm run rides -- note "last 10 min awesome" --rating 5');
       const { note, ride: target } = addRideNote(store, {
@@ -191,7 +191,7 @@ try {
       if (!notes.length) console.log("No notes waiting for review.");
       for (const note of notes) {
         console.log(
-          `#${note.id}  ride #${note.rideId}  ${note.createdAt.slice(0, 16).replace("T", " ")} UTC  last ${note.minutesBack} min  ${note.rating ?? "-"}  ${note.status}  "${note.text}"`,
+          `#${note.id}  roadbook #${note.rideId}  ${note.createdAt.slice(0, 16).replace("T", " ")} UTC  last ${note.minutesBack} min  ${note.rating ?? "-"}  ${note.status}  "${note.text}"`,
         );
       }
       break;
@@ -390,7 +390,7 @@ try {
         });
         if (trip.result.legs.length !== target.legs.length) {
           throw new Error(
-            `Ride #${target.id} now routes into ${trip.result.legs.length} legs instead of ${target.legs.length}; not updated.`,
+            `Roadbook #${target.id} now routes into ${trip.result.legs.length} legs instead of ${target.legs.length}; not updated.`,
           );
         }
         store.refreshRide(target.id, tripFigures(trip, routeCells(trip.shapes)));

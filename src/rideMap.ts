@@ -184,7 +184,7 @@ class Labels {
 /** The ride as an SVG picture, 1200 wide, its height following the ride's shape. */
 export function rideMapSvg(ride: SavedRide): string {
   const legs = (ride.shapes ?? []).map((s) => decodePolyline(s));
-  if (!legs.length) throw new Error(`Ride #${ride.id} has no stored route line; refresh it first.`);
+  if (!legs.length) throw new Error(`Roadbook #${ride.id} has no stored route line; refresh it first.`);
   const all = legs.flat();
   const H = heightFor(all);
   const { project, kmPerPx } = projector(all, H);

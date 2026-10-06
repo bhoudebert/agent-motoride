@@ -184,14 +184,14 @@ export function savedRideOverlap(context: RideContext, cells: string[]) {
   const worst = overlaps.find((o) => !o.baseRideOfThisSession);
   const base = overlaps.find((o) => o.baseRideOfThisSession);
   let verdict = base
-    ? `variant of saved ride #${base.rideId} "${base.name}", the ride this session evolves (${base.overlapPct}% same roads, as expected)`
+    ? `variant of roadbook #${base.rideId} "${base.name}", the ride this session evolves (${base.overlapPct}% same roads, as expected)`
     : "new: no significant overlap with saved rides";
   if (worst && worst.overlapPct >= DUPLICATE_PCT) {
     verdict = context.allowRepeat
-      ? `repeat of saved ride #${worst.rideId} "${worst.name}" (${worst.overlapPct}% same roads); repeats are allowed this session`
-      : `DUPLICATE of saved ride #${worst.rideId} "${worst.name}" (${worst.overlapPct}% same roads). Do not propose it unless the rider asked for a variant of that ride; pick other roads or another area.`;
+      ? `repeat of roadbook #${worst.rideId} "${worst.name}" (${worst.overlapPct}% same roads); repeats are allowed this session`
+      : `DUPLICATE of roadbook #${worst.rideId} "${worst.name}" (${worst.overlapPct}% same roads). Do not propose it unless the rider asked for a variant of that ride; pick other roads or another area.`;
   } else if (worst && worst.overlapPct >= SIMILAR_PCT) {
-    verdict = `similar to saved ride #${worst.rideId} "${worst.name}" (${worst.overlapPct}% same roads); acceptable, mention it to the rider`;
+    verdict = `similar to roadbook #${worst.rideId} "${worst.name}" (${worst.overlapPct}% same roads); acceptable, mention it to the rider`;
   }
   return { verdict, overlaps };
 }

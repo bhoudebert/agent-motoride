@@ -45,7 +45,7 @@ export class DuplicateRideError extends Error {
   readonly duplicate: { rideId: number; name: string; overlapPct: number };
   constructor(duplicate: { rideId: number; name: string; overlapPct: number }) {
     super(
-      `This ride is ${duplicate.overlapPct}% the same roads as saved ride #${duplicate.rideId} "${duplicate.name}". Not saved. Rate or edit that ride instead, or force the save if it is meant as a copy.`,
+      `This ride is ${duplicate.overlapPct}% the same roads as roadbook #${duplicate.rideId} "${duplicate.name}". Not saved. Rate or edit that ride instead, or force the save if it is meant as a copy.`,
     );
     this.duplicate = duplicate;
   }
@@ -610,11 +610,11 @@ export function formatRatedRoads(store: Store): string {
   const lines: string[] = [];
   for (const ride of store.listRides()) {
     if (ride.rating !== null)
-      lines.push(`ride #${ride.id} "${ride.name}": ${ride.rating}/5${ride.notes ? `, "${ride.notes}"` : ""}`);
+      lines.push(`roadbook #${ride.id} "${ride.name}": ${ride.rating}/5${ride.notes ? `, "${ride.notes}"` : ""}`);
     for (const leg of ride.legs) {
       if (leg.rating !== null) {
         lines.push(
-          `ride #${ride.id} leg ${leg.seq} ${leg.from} -> ${leg.to}: ${leg.rating}/5${leg.notes ? `, "${leg.notes}"` : ""}`,
+          `roadbook #${ride.id} leg ${leg.seq} ${leg.from} -> ${leg.to}: ${leg.rating}/5${leg.notes ? `, "${leg.notes}"` : ""}`,
         );
       }
     }

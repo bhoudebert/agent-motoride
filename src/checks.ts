@@ -79,7 +79,7 @@ export function checkItinerary(
   const duplicate = context.allowRepeat ? undefined : duplicateOf(context, route.cells);
   if (duplicate) {
     violations.push(
-      `repeat: ${duplicate.overlapPct}% of the roads of saved ride #${duplicate.rideId} "${duplicate.name}"`,
+      `repeat: ${duplicate.overlapPct}% of the roads of roadbook #${duplicate.rideId} "${duplicate.name}"`,
     );
   }
   // Not a motorway, but a leisure ride mostly on 100+ expressways is not a motorcycle ride.

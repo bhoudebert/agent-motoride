@@ -795,7 +795,7 @@ export class Store {
     const day = localDay(at);
     const roadbook = this.#db.prepare("SELECT home FROM roadbooks WHERE id = ?").get(note.rideId) as
       { home: string } | undefined;
-    if (!roadbook) throw new Error(`No saved ride #${note.rideId}.`);
+    if (!roadbook) throw new Error(`No roadbook #${note.rideId}.`);
     const existing = this.#db
       .prepare("SELECT id FROM rides WHERE roadbook_id = ? AND ride_date = ?")
       .get(note.rideId, day) as { id: number } | undefined;

@@ -338,7 +338,7 @@ export function applyReview(store: Store, decisions: ReviewDecision[]): string[]
 
 /** The review as the rider reads it, in any mode. */
 export function formatReview(review: RideReview): string {
-  const lines = [`Review of ride #${review.ride.id} "${review.ride.name}"`];
+  const lines = [`Review of roadbook #${review.ride.id} "${review.ride.name}"`];
   const t = review.track;
   if (t) {
     lines.push(
@@ -377,5 +377,5 @@ export function pendingNotesSummary(store: Store): string | null {
   const pending = store.listNotes();
   if (!pending.length) return null;
   const rides = [...new Set(pending.map((n) => `#${n.rideId}`))];
-  return `${pending.length} ride note${pending.length > 1 ? "s" : ""} waiting for review (ride ${rides.join(", ")})`;
+  return `${pending.length} ride note${pending.length > 1 ? "s" : ""} waiting for review (roadbook ${rides.join(", ")})`;
 }

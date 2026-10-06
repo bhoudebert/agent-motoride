@@ -36,7 +36,7 @@ const USAGE = `Usage: npm run ride                              Start menu: plan
   npm run ride -- "plan a ride from roadbook 3 on Saturday at 9"     a ride on a day, no copy, no model call
 
 Options:
-  --from <place>        Start and end point. Defaults to RIDE_HOME, or the saved ride's start with --ride.
+  --from <place>        Start and end point. Defaults to RIDE_HOME, or the roadbook's start with --roadbook.
   --show <id|name>      Display a saved ride and exit. No planning, no API call.
   --roadbook <id|name>  Work on a saved roadbook (also --ride). With a request: apply it. Without: open the prompt on it.
   --allow-repeat        Accept rides that repeat saved ones. Default: near-duplicates are rejected.
@@ -278,7 +278,7 @@ async function plan(
     max50Pct: percent("--max-50-pct", values["max-50-pct"], fromEnv.max50Pct),
   };
 
-  if (baseRide) console.error(`Working on saved ride #${baseRide.id} "${baseRide.name}".`);
+  if (baseRide) console.error(`Working on roadbook #${baseRide.id} "${baseRide.name}".`);
   console.error(describeSettings(home, preferences));
   console.error(`Bike: ${describeProfile(store.getProfile())}`);
   const model = process.env.RIDE_MODEL || "claude-opus-5-5";
@@ -364,7 +364,7 @@ async function plan(
     if (!ride) {
       console.log(
         requests.length === 0 && savedId
-          ? `Ride #${savedId} is already saved and has not been changed. Ask for a change first; /save then stores a new version.`
+          ? `Roadbook #${savedId} is already saved and has not been changed. Ask for a change first; /save then stores a new version.`
           : "Nothing to save yet: the last answer did not contain a routed itinerary. Ask for one, then /save.",
       );
       return;

@@ -230,6 +230,7 @@ Send one scout per area, in parallel, to find the best loop from the start point
 - `maxDistanceKm` (number,null): Hard distance cap from the rider's request, or null
 - `maxRidingMinutes` (number,null): Hard riding-time cap in minutes, or null
 - `constraints` (string): The rider's request and constraints, in one paragraph, as scouts will not see the conversation
+- `start` (string,null, optional): Start and end point of the loops when the request names one other than the rider's home ("from Thuin"): town or "lat,lon". Omit for the home
 
 #### `rideSettings`
 

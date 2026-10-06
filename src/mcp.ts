@@ -35,7 +35,7 @@ import {
 } from "./library.ts";
 import { formatRideMarkdown, writeRideMarkdown } from "./markdown.ts";
 import { SCOUT_MODEL } from "./model.ts";
-import { SCOUT_SYSTEM, type ScoutInput, scoutBrief, scoutsUnavailable } from "./scouts.ts";
+import { SCOUT_SYSTEM, type ScoutInput, scoutBrief, scoutStart, scoutsUnavailable } from "./scouts.ts";
 import { preferencesFromEnv } from "./preferences.ts";
 import { describeProfile } from "./profile.ts";
 import type { RideContext } from "./session.ts";
@@ -142,11 +142,12 @@ ${SCOUT_SYSTEM}
 Use only the agentMotoride tools (recallArea, searchRoads, calculateTrip, getWeather), never shell commands, scripts or web search. End with a short report: area, found (yes or no), routeId, distance, riding time, open-road and 50-zone shares, weather, verdict in one sentence.`;
 
 /** scoutAreas without API scouts: the way to scout with subagents, and each area's brief ready to hand over. */
-function clientScouting(input: ScoutInput): string {
+async function clientScouting(input: ScoutInput): Promise<string> {
+  const start = await scoutStart(context, input);
   return JSON.stringify({
     reports: [],
     notes: [CLIENT_SCOUTS],
-    briefs: input.areas.map((area) => ({ area: area.name, brief: scoutBrief(context, input, area) })),
+    briefs: input.areas.map((area) => ({ area: area.name, brief: scoutBrief(context, input, area, start) })),
   });
 }
 
@@ -222,7 +223,7 @@ for (const tool of createToolDefinitions(context, { scouts: true })) {
       if (!context.home.label) throw new Error("No start point yet: call rideSettings with the rider's home first.");
       usage.toolCalls++;
       const result =
-        tool.name === "scoutAreas" && scoutsOff ? clientScouting(args as ScoutInput) : await tool.run(args);
+        tool.name === "scoutAreas" && scoutsOff ? await clientScouting(args as ScoutInput) : await tool.run(args);
       if (tool.name === "calculateTrip") lastRouteId = (JSON.parse(result) as { routeId: string }).routeId;
       syncRun();
       return text(result);

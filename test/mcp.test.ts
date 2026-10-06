@@ -293,8 +293,9 @@ test("mcp: every tool answers when called by name through a client", async () =>
         maxDistanceKm: 200,
         maxRidingMinutes: null,
         constraints: "dry",
+        start: "50.3397,4.2869",
       }),
-      /API scouts are off here \(disabled by RIDE_SCOUTS=0\)[\s\S]*"brief":"Area to scout: Flandre \(around Cassel\)/,
+      /API scouts are off here \(disabled by RIDE_SCOUTS=0\)[\s\S]*"brief":"Area to scout: Flandre \(around Cassel\)\.\\nStart and end point of the loop: 50\.3397,4\.2869/,
     );
     await call("checkItinerary", { routeId, request: "under 200 km", itinerary: "Loop, 135 km." });
     assert.match(

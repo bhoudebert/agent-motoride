@@ -95,7 +95,7 @@ reused as building blocks, those rated 0-1 are avoided.
 
 ## Claude Code and Codex (MCP server)
 
-25 tools, 13 prompts. Each tool shows its MCP hints: a client can let read-only tools run without asking.
+26 tools, 13 prompts. Each tool shows its MCP hints: a client can let read-only tools run without asking.
 
 ### Tools
 

@@ -91,6 +91,35 @@ test("planner: routes, presents a scout's route, saves it; usage and trace are k
   }
 });
 
+test("planner: scouts start from the place the request names, else from home", async () => {
+  const restore = quiet();
+  const store = new Store(":memory:");
+  const scout = (start?: string) =>
+    toolUse("scoutAreas", {
+      areas: [{ name: "Fagne", location: "Chimay" }],
+      rideDate: "2026-10-10",
+      departure: "09:00",
+      maxDistanceKm: 150,
+      maxRidingMinutes: null,
+      constraints: "twisty",
+      ...(start ? { start } : {}),
+    });
+  const report = finalText(JSON.stringify({ area: "Fagne", found: false, waypoints: [], verdict: "none" }));
+  try {
+    api.script = [scout("50.3397,4.2869"), report, scout(), report, finalText(JSON.stringify({ message: "none" }))];
+    const session = await openRide({ home: "Lille", store });
+    await session.send("a loop from Thuin");
+    const briefs = api.requests
+      .map((r: any) => String(r.messages[0].content))
+      .filter((c: string) => c.startsWith("Area to scout"));
+    assert.match(briefs[0]!, /Start and end point of the loop: 50\.3397,4\.2869 \(50\.3397,4\.2869\)/);
+    assert.match(briefs[1]!, /Start and end point of the loop: Lille/);
+  } finally {
+    restore();
+    store.close();
+  }
+});
+
 test("planner: an answer naming an unknown route is shown but not saveable", async () => {
   const restore = quiet();
   const store = new Store(":memory:");

@@ -52,6 +52,16 @@ export async function getTraffic(input: GetTrafficInput) {
     travelMinutes: Math.round(summary.travelTimeInSeconds / 60),
     freeFlowMinutes:
       summary.noTrafficTravelTimeInSeconds === undefined ? null : Math.round(summary.noTrafficTravelTimeInSeconds / 60),
-    trafficDelayMinutes: Math.round(summary.trafficDelayInSeconds / 60),
+    // TomTom's trafficDelayInSeconds counts reported incidents only; the expected
+    // congestion for the departure (rush hour) is the gap to the free-flow time.
+    trafficDelayMinutes: Math.round(
+      Math.max(
+        summary.noTrafficTravelTimeInSeconds === undefined
+          ? summary.trafficDelayInSeconds
+          : summary.travelTimeInSeconds - summary.noTrafficTravelTimeInSeconds,
+        0,
+      ) / 60,
+    ),
+    incidentDelayMinutes: Math.round(summary.trafficDelayInSeconds / 60),
   };
 }

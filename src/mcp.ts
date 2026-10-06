@@ -6,6 +6,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { describeSituation, SYSTEM_CORE } from "./agent.ts";
+import { checkItinerary, parseLimits } from "./checks.ts";
 import { pickRideForToday, rideBriefing } from "./briefing.ts";
 import { routeCells } from "./geometry.ts";
 import {
@@ -129,7 +130,7 @@ const settingsText = () => {
 // the method applies even when the rider types in plain words instead of using
 // the plan-ride command. Kept to the essentials; the command carries the rest.
 const INSTRUCTIONS = `agentMotoride plans one-day motorcycle rides and keeps the rider's library of saved rides. Anything the rider says about rides, trips, loops, routes, the library, stops, cameras, weather for a ride, or a ride-day briefing is a request for this server's tools: showRide, listRides, rideBriefing, refreshRide, exportGpx, exportMarkdown, planningGuide and the planning tools. Never run shell commands, scripts or web searches for these, and never look for a "ride" program: "ride show 7" or "/ride plan ..." typed by the rider means "use the ride tools" (here: showRide for ride 7). If your client does not expose this server's prompts, call planningGuide with the rider's request before planning a new ride, and follow it.
-For a new leisure ride: call listSavedRides, then scoutAreas with 2-4 areas (or searchRoads and calculateTrip yourself if scouts are unavailable), pick the best candidate, then finish it: getDaylight, getWeather along the loop for the riding hours, getSpeedCameras, checkConditions (crosswind, low sun) with the date and departure, planStops with the date and departure, getTraffic for the departure. Present the itinerary in plain text (never JSON) with legs named by towns, the figures from the tools, the stops with times, the navigation links from planStops, and end with one line "Route: <routeId>". Save only when the rider asks, with saveRide. During a ride, a remark about the road ("last 10 min awesome", "cobbles, never again") is a note: call addRideNote at once with the rider's words, and a rating 0-5 only when they gave one. After the ride, reviewRide places the notes on the recorded track (gpxPath) or on the plan, shows detours and pace, and proposes ratings; apply them with reviewRide and decisions only once the rider confirms. For an edit or a question about a saved ride, work from its data (showRide) without replanning. For a practical trip (commute), route point to point, motorways if permitted, with traffic.`;
+For a new leisure ride: call listSavedRides, then scoutAreas with 2-4 areas (or searchRoads and calculateTrip yourself if scouts are unavailable), pick the best candidate, then finish it: getDaylight, getWeather along the loop for the riding hours, getSpeedCameras, checkConditions (crosswind, low sun) with the date and departure, planStops with the date and departure, getTraffic for the departure. Before presenting it, call checkItinerary with its routeId, the rider's request and your text, and fix what it reports once (or say plainly which limit cannot be met). Present the itinerary in plain text (never JSON) with legs named by towns, the figures from the tools, the stops with times, the navigation links from planStops, and end with one line "Route: <routeId>". Save only when the rider asks, with saveRide. During a ride, a remark about the road ("last 10 min awesome", "cobbles, never again") is a note: call addRideNote at once with the rider's words, and a rating 0-5 only when they gave one. After the ride, reviewRide places the notes on the recorded track (gpxPath) or on the plan, shows detours and pace, and proposes ratings; apply them with reviewRide and decisions only once the rider confirms. For an edit or a question about a saved ride, work from its data (showRide) without replanning. For a practical trip (commute), route point to point, motorways if permitted, with traffic.`;
 
 const server = new McpServer({ name: "agentMotoride", version: "0.1.0" }, { instructions: INSTRUCTIONS });
 const text = (value: unknown) => ({
@@ -186,6 +187,30 @@ server.registerTool(
     if (args.max50Pct !== undefined) context.preferences.max50Pct = args.max50Pct;
     if (args.allowRepeat !== undefined) context.allowRepeat = args.allowRepeat;
     return text(settingsText());
+  },
+);
+
+server.registerTool(
+  "checkItinerary",
+  {
+    description:
+      "Check an itinerary in code before presenting it: routed distance and riding time against the caps in the rider's words, motorways when forbidden, repeats of saved rides, roads rated 0-1, and the distance stated in your text against the routed one. Returns PASS, or what failed. Fix the itinerary once and check again, or say plainly in the answer which limit cannot be met.",
+    inputSchema: z.object({
+      routeId: z.string().describe("routeId of the itinerary, from calculateTrip"),
+      request: z.string().describe("The rider's request, in their words"),
+      itinerary: z.string().describe("The itinerary text you are about to present"),
+    }),
+    annotations: { readOnlyHint: true },
+  },
+  async (args) => {
+    const route = context.routes.get(args.routeId);
+    if (!route) throw new Error(`Unknown routeId ${args.routeId}; it must come from calculateTrip in this session.`);
+    const { violations, acknowledged } = checkItinerary(context, route, args.itinerary, parseLimits(args.request));
+    context.trace({ scope: "main", kind: "check", name: violations.length ? "failed" : "passed", payload: violations });
+    if (!violations.length) return text("PASS");
+    return text(
+      `${acknowledged ? "Failed, but your text already says a limit is missed; present it if that is the closest option." : "FAILED:"}\n${violations.map((v) => `- ${v}`).join("\n")}`,
+    );
   },
 );
 
@@ -423,7 +448,7 @@ server.registerTool(
   async () => text(formatRideList(store.listRides())),
 );
 
-const RULES = `Use the agentMotoride tools for every lookup, never shell commands or web search. The settings below are the rider's defaults; when the request changes one (motorways allowed, other targets, repeats allowed), apply it with rideSettings before planning. Answer in plain text as laid out above, never JSON. End an itinerary with one line "Route: <routeId>" naming the routed trip it describes, so the ride can be saved later. Save only when the rider asks, with saveRide and that routeId.`;
+const RULES = `Use the agentMotoride tools for every lookup, never shell commands or web search. The settings below are the rider's defaults; when the request changes one (motorways allowed, other targets, repeats allowed), apply it with rideSettings before planning. Answer in plain text as laid out above, never JSON. Before presenting an itinerary, call checkItinerary and fix what it reports once. End an itinerary with one line "Route: <routeId>" naming the routed trip it describes, so the ride can be saved later. Save only when the rider asks, with saveRide and that routeId.`;
 const userMessage = (text: string) => ({
   messages: [{ role: "user" as const, content: { type: "text" as const, text } }],
 });

@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.4.0](https://github.com/bhoudebert/agent-motoride/compare/v1.3.0...v1.4.0) (2026-10-06)
+
+
+### Features
+
+* **mcp:** scout with the client's parallel subagents when API scouts are off ([#48](https://github.com/bhoudebert/agent-motoride/issues/48)) ([3b15365](https://github.com/bhoudebert/agent-motoride/commit/3b153655523b5cee44f381733b090344e57f60f4))
+* **memory:** recall what past sessions learnt before scouting a region ([#46](https://github.com/bhoudebert/agent-motoride/issues/46)) ([4457cd4](https://github.com/bhoudebert/agent-motoride/commit/4457cd495f77cbe6643bfcede9b7bd7f2b4344f2))
+
+
+### Bug Fixes
+
+* **scouts:** start the loops from the place the request names, not always from home ([#49](https://github.com/bhoudebert/agent-motoride/issues/49)) ([e57dc04](https://github.com/bhoudebert/agent-motoride/commit/e57dc0480ef85bbfc8189ab84d77601137e74832))
+
 ## [1.3.0](https://github.com/bhoudebert/agent-motoride/compare/v1.2.0...v1.3.0) (2026-10-06)
 
 

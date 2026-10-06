@@ -5,7 +5,7 @@ import { type MapsLink, overviewLink, pinnedMapsParts } from "./maps.ts";
 import { duplicateOf, type RideContext } from "./session.ts";
 import { analyseConditions, windAlong, type RideConditions } from "./conditions.ts";
 import { formatStopPlan, locateStops, planStops, type StopCandidate } from "./stops.ts";
-import type { NewRide, RideExtras, RideWeather, SavedRide, Store } from "./store.ts";
+import type { NewRide, Page, RideDay, RideExtras, RideWeather, RoadbookSummary, SavedRide, Store } from "./store.ts";
 import { type StopKind, speedCamerasAlong, stopsAlong } from "./tools/along.ts";
 import { haversineKm, setGeoAnchor } from "./tools/geo.ts";
 import type { TripComputation } from "./tools/trip.ts";
@@ -112,6 +112,39 @@ function formatRoadMix(ride: SavedRide): string | null {
 export function formatRideLine(ride: SavedRide): string {
   const parent = ride.parentId ? ` (from #${ride.parentId})` : "";
   return `#${ride.id}  ${ride.name}${parent}  |  ${ride.distanceKm} km, ${fmtMinutes(ride.ridingMinutes)}, ${avgSpeed(ride.distanceKm, ride.ridingMinutes)}  |  ${ride.rideDate ?? "no date"}  |  from ${ride.home}  |  ${stars(ride.rating)}`;
+}
+
+/** The line under a page: where it is, how many there are, how to get the next one. */
+export function formatPageFooter(page: Page<unknown>, noun: string, next: (page: number) => string): string {
+  const count = `${page.total} ${noun}${page.total === 1 ? "" : "s"}`;
+  if (page.page > page.pages) return `Page ${page.page} does not exist: the last is page ${page.pages} (${count}).`;
+  const where = `Page ${page.page} of ${page.pages} (${count}).`;
+  return page.page < page.pages ? `${where} Next: ${next(page.page + 1)}` : where;
+}
+
+export function formatRoadbookPage(page: Page<RoadbookSummary>, next: (page: number) => string): string {
+  if (page.total === 0) return "No saved roadbooks yet.";
+  const lines = page.items.map(({ roadbook: r, rides, nextDate }) => {
+    const parent = r.parentId ? ` (from #${r.parentId})` : "";
+    const days = `${rides} ride${rides === 1 ? "" : "s"}${nextDate ? `, next ${nextDate}` : ""}`;
+    return `#${r.id}  ${r.name}${parent}  |  ${r.distanceKm} km, ${fmtMinutes(r.ridingMinutes)}, ${avgSpeed(r.distanceKm, r.ridingMinutes)}  |  ${days}  |  ${stars(r.rating)}`;
+  });
+  const footer = formatPageFooter(page, "roadbook", next);
+  return lines.length ? [...lines, "", footer].join("\n") : footer;
+}
+
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const weekday = (date: string) => WEEKDAYS[new Date(`${date}T12:00:00Z`).getUTCDay()]!;
+
+export function formatRideDayPage(page: Page<RideDay>, next: (page: number) => string): string {
+  if (page.total === 0) return "No rides yet.";
+  const lines = page.items.map((d) => {
+    const when = d.rideDate ? `${d.rideDate} ${weekday(d.rideDate)} ${d.departure ?? "--:--"}` : "no date yet         ";
+    const rating = d.rating === null ? "" : `  |  ${stars(d.rating)}`;
+    return `${when}  #${d.roadbookId}  ${d.name}  |  ${d.distanceKm} km, ${fmtMinutes(d.ridingMinutes)}  |  ${d.status}${rating}`;
+  });
+  const footer = formatPageFooter(page, "ride", next);
+  return lines.length ? [...lines, "", footer].join("\n") : footer;
 }
 
 export function formatRideList(rides: SavedRide[]): string {

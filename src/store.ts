@@ -187,6 +187,37 @@ export interface SavedRide extends Omit<NewRide, "legs"> {
   legs: SavedLeg[];
 }
 
+/** One page of a list: 20 lines unless asked otherwise. */
+export interface Page<T> {
+  items: T[];
+  page: number;
+  pages: number;
+  total: number;
+}
+
+export const PER_PAGE = 20;
+
+/** A roadbook on one day, as listed: with its roadbook's number, name and figures. */
+export interface RideDay {
+  id: number;
+  roadbookId: number;
+  name: string;
+  rideDate: string | null;
+  departure: string | null;
+  start: string;
+  status: "planned" | "ridden" | "cancelled";
+  distanceKm: number;
+  ridingMinutes: number;
+  rating: number | null;
+}
+
+export interface RoadbookSummary {
+  roadbook: SavedRide;
+  rides: number;
+  /** Earliest planned ride from today on, or null. */
+  nextDate: string | null;
+}
+
 interface RoadbookRow {
   id: number;
   name: string;
@@ -533,6 +564,63 @@ export class Store {
   listRides(): SavedRide[] {
     const rows = this.#db.prepare("SELECT * FROM roadbooks ORDER BY id").all() as unknown as RoadbookRow[];
     return rows.map((row) => this.#hydrate(row));
+  }
+
+  /** Roadbooks, newest first, one page at a time. */
+  listRoadbooks(page = 1, perPage = PER_PAGE): Page<RoadbookSummary> {
+    const total = (this.#db.prepare("SELECT count(*) AS n FROM roadbooks").get() as { n: number }).n;
+    const rows = this.#db
+      .prepare("SELECT * FROM roadbooks ORDER BY id DESC LIMIT ? OFFSET ?")
+      .all(perPage, (page - 1) * perPage) as unknown as RoadbookRow[];
+    const today = localDay(new Date());
+    const counts = this.#db.prepare(
+      `SELECT count(*) AS rides,
+         min(CASE WHEN status = 'planned' AND ride_date >= ? THEN ride_date END) AS next_date
+       FROM rides WHERE roadbook_id = ?`,
+    );
+    const items = rows.map((row) => {
+      const { rides, next_date } = counts.get(today, row.id) as { rides: number; next_date: string | null };
+      return { roadbook: this.#hydrate(row), rides, nextDate: next_date };
+    });
+    return { items, page, pages: Math.max(1, Math.ceil(total / perPage)), total };
+  }
+
+  /** Rides by date, latest first, rides with no date yet last, one page at a time. */
+  listRideDays(page = 1, perPage = PER_PAGE): Page<RideDay> {
+    const total = (this.#db.prepare("SELECT count(*) AS n FROM rides").get() as { n: number }).n;
+    const rows = this.#db
+      .prepare(
+        `SELECT r.id, r.roadbook_id, b.name, r.ride_date, r.departure, r.start, r.status, b.distance_km,
+           b.riding_minutes, r.rating
+         FROM rides r JOIN roadbooks b ON b.id = r.roadbook_id
+         ORDER BY r.ride_date IS NULL, r.ride_date DESC, r.departure DESC, r.id DESC
+         LIMIT ? OFFSET ?`,
+      )
+      .all(perPage, (page - 1) * perPage) as Array<{
+      id: number;
+      roadbook_id: number;
+      name: string;
+      ride_date: string | null;
+      departure: string | null;
+      start: string;
+      status: RideDay["status"];
+      distance_km: number;
+      riding_minutes: number;
+      rating: number | null;
+    }>;
+    const items = rows.map((r) => ({
+      id: r.id,
+      roadbookId: r.roadbook_id,
+      name: r.name,
+      rideDate: r.ride_date,
+      departure: r.departure,
+      start: r.start,
+      status: r.status,
+      distanceKm: r.distance_km,
+      ridingMinutes: r.riding_minutes,
+      rating: r.rating,
+    }));
+    return { items, page, pages: Math.max(1, Math.ceil(total / perPage)), total };
   }
 
   /** Find a ride by numeric id, or by name (exact first, then unique partial match). */

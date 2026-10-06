@@ -20,7 +20,8 @@ import {
   DuplicateRideError,
   enrichRide,
   formatRideDetail,
-  formatRideList,
+  formatRideDayPage,
+  formatRoadbookPage,
   parseRating,
   replanStops,
   rideNavigation,
@@ -44,7 +45,8 @@ import { emptyUsage } from "./usage.ts";
 
 const USAGE = `Usage: npm run rides -- <command>
 
-  list                                  All saved rides
+  list [--page N]                       Roadbooks (the loops you saved), newest first, 20 per page (alias: roadbooks)
+  rides [--page N]                      Rides (a roadbook on a day), latest date first, 20 per page
   today [id|name]                       Ride-day briefing: weather now, daylight, traffic, stops checked against opening hours, go or no-go
   show <id|name> [--md]                 One ride: legs, map link, itinerary (--md: as Markdown on stdout)
   export-md <id|name> [file.md]         Write the ride as a Markdown document, with its map (default: exports/ in the project)
@@ -86,10 +88,25 @@ function ride(idOrName: string | undefined) {
   return found;
 }
 
+/** --page N, or 1. */
+function pageArg(args: string[]): number {
+  const at = args.indexOf("--page");
+  if (at === -1) return 1;
+  const page = Number(args[at + 1]);
+  if (!Number.isInteger(page) || page < 1) throw new Error("--page takes a page number: 1, 2, ...");
+  return page;
+}
+
 try {
   switch (command) {
     case "list":
-      console.log(formatRideList(store.listRides()));
+    case "roadbooks":
+      console.log(
+        formatRoadbookPage(store.listRoadbooks(pageArg(args)), (n) => `npm run rides -- ${command} --page ${n}`),
+      );
+      break;
+    case "rides":
+      console.log(formatRideDayPage(store.listRideDays(pageArg(args)), (n) => `npm run rides -- rides --page ${n}`));
       break;
     case "today": {
       const today = new Date().toISOString().slice(0, 10);

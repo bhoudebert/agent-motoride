@@ -28,7 +28,9 @@ import {
   enrichRide,
   formatRideDetail,
   formatRatedRoads,
+  formatRideDayPage,
   formatRideList,
+  formatRoadbookPage,
   replanStops,
   saveCurrentRide,
   tripFigures,
@@ -154,7 +156,7 @@ async function clientScouting(input: ScoutInput): Promise<string> {
 // Server instructions reach the client's system prompt at connection time, so
 // the method applies even when the rider types in plain words instead of using
 // the plan-ride command. Kept to the essentials; the command carries the rest.
-const INSTRUCTIONS = `agentMotoride plans one-day motorcycle rides and keeps the rider's library of saved rides. Anything the rider says about rides, trips, loops, routes, the library, stops, cameras, weather for a ride, or a ride-day briefing is a request for this server's tools: showRide, showRideMap, listRides, rideBriefing, refreshRide, rateRide, exportGpx, exportMarkdown, planningGuide and the planning tools. Never run shell commands, scripts or web searches for these, and never look for a "ride" program: "ride show 7" or "/ride plan ..." typed by the rider means "use the ride tools" (here: showRide for ride 7). Plain words are enough, slash commands are only shortcuts: before planning any new ride asked in plain words, in any client, call planningGuide with the rider's request and follow it, with ride set when it changes a saved ride (the plan-ride and edit-ride commands already carry that guidance).
+const INSTRUCTIONS = `agentMotoride plans one-day motorcycle rides and keeps the rider's library of saved rides. Anything the rider says about rides, trips, loops, routes, the library, stops, cameras, weather for a ride, or a ride-day briefing is a request for this server's tools: showRide, showRideMap, listRoadbooks, listRides, rideBriefing, refreshRide, rateRide, exportGpx, exportMarkdown, planningGuide and the planning tools. Never run shell commands, scripts or web searches for these, and never look for a "ride" program: "ride show 7" or "/ride plan ..." typed by the rider means "use the ride tools" (here: showRide for ride 7). A roadbook is a saved loop or trip, numbered as the rider says it ("ride 7"); a ride is a roadbook on one day: listRoadbooks lists the first, listRides the second, 20 per page. Plain words are enough, slash commands are only shortcuts: before planning any new ride asked in plain words, in any client, call planningGuide with the rider's request and follow it, with ride set when it changes a saved ride (the plan-ride and edit-ride commands already carry that guidance).
 For a new leisure ride: call listSavedRides and recallArea around the start (what earlier sessions learnt: scouted areas and their verdicts, known winding roads), then ${scoutsOff ? "scout 2-4 areas with parallel subagents as planningGuide explains (API scouts are off here, scoutAreas cannot run)" : "scoutAreas with 2-4 areas"}, skipping areas recently found poor${scoutsOff ? "" : " (or searchRoads and calculateTrip yourself if scouts are unavailable)"}, pick the best candidate, then finish it: getDaylight, getWeather along the loop for the riding hours, getSpeedCameras, checkConditions (crosswind, low sun) with the date and departure, planStops with the date and departure, getTraffic for the departure. Before presenting it, call checkItinerary with its routeId, the rider's request and your text, and fix what it reports once (or say plainly which limit cannot be met). Present the itinerary in plain text (never JSON) with legs named by towns, the figures from the tools, the stops with times, the navigation links from planStops (and its overviewLink as "Whole ride (overview, not for navigation)" when there are several parts), and end with one line "Route: <routeId>". Save only when the rider asks, with saveRide. During a ride, a remark about the road ("last 10 min awesome", "cobbles, never again") is a note: call addRideNote at once with the rider's words, and a rating 0-5 only when they gave one. After the ride, reviewRide places the notes on the recorded track (gpxPath) or on the plan, shows detours and pace, and proposes ratings; apply them with reviewRide and decisions only once the rider confirms. If the rider has a route file (GPX or KML, from another app, a club or a friend), call importRoute with its path: it returns a routeId to present, finish and save like a planned ride. If the rider shares an image (photo of a paper map, route screenshot, list of places), read the places on it in order and route them with calculateTrip by name, then finish the ride as usual. For an edit or a question about a saved ride, work from its data (showRide) without replanning. For a practical trip (commute), route point to point, motorways if permitted, with traffic.`;
 
 const server = new McpServer({ name: "agentMotoride", version: "0.1.0" }, { instructions: INSTRUCTIONS });
@@ -202,6 +204,7 @@ const HINTS: Record<string, ToolAnnotations> = {
   // stores placements and road ratings; map matching online
   reviewRide: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
   listRides: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  listRoadbooks: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   planningGuide: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
 };
 const hintsOf = (name: string): ToolAnnotations => {
@@ -392,7 +395,7 @@ server.registerTool(
   },
   async (args) => {
     const target = store.findRide(args.ride);
-    if (!target) throw new Error(`No saved ride matches "${args.ride}". Call listRides.`);
+    if (!target) throw new Error(`No saved ride matches "${args.ride}". Call listRoadbooks.`);
     if (args.stopsOnly) {
       const extras = await replanStops(store, target);
       if (!extras?.stopPlan) throw new Error(`Ride #${target.id} has no stored route line; run a full refresh first.`);
@@ -445,7 +448,7 @@ server.registerTool(
   },
   async (args) => {
     const ride = store.findRide(args.ride);
-    if (!ride) throw new Error(`No saved ride matches "${args.ride}". Call listRides.`);
+    if (!ride) throw new Error(`No saved ride matches "${args.ride}". Call listRoadbooks.`);
     return text(formatRideDetail(ride));
   },
 );
@@ -460,7 +463,7 @@ server.registerTool(
   },
   async (args) => {
     const ride = store.findRide(args.ride);
-    if (!ride) throw new Error(`No saved ride matches "${args.ride}". Call listRides.`);
+    if (!ride) throw new Error(`No saved ride matches "${args.ride}". Call listRoadbooks.`);
     return {
       content: [
         { type: "image" as const, data: rideMapPng(ride).toString("base64"), mimeType: "image/png" },
@@ -484,7 +487,7 @@ server.registerTool(
   },
   async (args) => {
     const ride = store.findRide(args.ride);
-    if (!ride) throw new Error(`No saved ride matches "${args.ride}". Call listRides.`);
+    if (!ride) throw new Error(`No saved ride matches "${args.ride}". Call listRoadbooks.`);
     const path = writeRideMarkdown(ride, args.file);
     return text(
       args.includeContent ? `Markdown written: ${path}\n\n${formatRideMarkdown(ride)}` : `Markdown written: ${path}`,
@@ -569,7 +572,7 @@ server.registerTool(
   },
   async (args) => {
     const ride = store.findRide(args.ride);
-    if (!ride) throw new Error(`No saved ride matches "${args.ride}". Call listRides.`);
+    if (!ride) throw new Error(`No saved ride matches "${args.ride}". Call listRoadbooks.`);
     const note = args.note?.trim() || null;
     if (args.leg !== undefined) {
       if (!store.rateLeg(ride.id, args.leg, args.rating, note)) {
@@ -585,14 +588,29 @@ server.registerTool(
   },
 );
 
+const page = z.number().int().min(1).optional().describe("Page to show, 20 lines each (default 1)");
+
+server.registerTool(
+  "listRoadbooks",
+  {
+    description:
+      'The rider\'s roadbooks (saved loops and trips), newest first, 20 per page: number, name, distance, time, how many rides and the next planned date, rating. The last line says the page and how to get the next one: call again with that page when the rider asks for more. The number is what the rider calls "ride 7".',
+    annotations: hintsOf("listRoadbooks"),
+    inputSchema: z.object({ page }),
+  },
+  async (args) =>
+    text(formatRoadbookPage(store.listRoadbooks(args.page ?? 1), (n) => `call listRoadbooks with page ${n}`)),
+);
+
 server.registerTool(
   "listRides",
   {
-    description: "The rider's saved rides, one line each (id, name, distance, time, date, rating).",
+    description:
+      "The rider's rides (a roadbook on a day), latest date first, rides with no date yet last, 20 per page: date, weekday, departure, roadbook number and name, distance, time, status (planned, ridden, cancelled). The last line says the page and how to get the next one: call again with that page when the rider asks for more. Use the roadbook number with showRide and the other ride tools.",
     annotations: hintsOf("listRides"),
-    inputSchema: z.object({}),
+    inputSchema: z.object({ page }),
   },
-  async () => text(formatRideList(store.listRides())),
+  async (args) => text(formatRideDayPage(store.listRideDays(args.page ?? 1), (n) => `call listRides with page ${n}`)),
 );
 
 // Read-only documents the rider can attach (in Claude Code: @ then ride:).
@@ -684,7 +702,7 @@ server.registerTool(
   async (args) => {
     if (args.ride) {
       const saved = store.findRide(args.ride);
-      if (!saved) throw new Error(`No saved ride matches "${args.ride}". Call listRides.`);
+      if (!saved) throw new Error(`No saved ride matches "${args.ride}". Call listRoadbooks.`);
       return text(editText(saved, args.request));
     }
     requests.push(args.request);
@@ -744,7 +762,7 @@ server.registerPrompt(
   },
   ({ ride, change }) => {
     const saved = store.findRide(ride);
-    if (!saved) return userMessage(`No saved ride matches "${ride}". Call listRides to see the library.`);
+    if (!saved) return userMessage(`No saved ride matches "${ride}". Call listRoadbooks to see the library.`);
     const request = editText(saved, change);
     requests.push(`edit #${saved.id}: ${change}`);
     usage.turns++;
@@ -776,7 +794,7 @@ server.registerPrompt(
   ({ ride }) =>
     userMessage(
       ride
-        ? `Export saved ride "${ride}" as GPX with exportGpx (find its id with listRides if needed) and give the file path.`
+        ? `Export saved ride "${ride}" as GPX with exportGpx (find its id with listRoadbooks if needed) and give the file path.`
         : `Export the itinerary on the table as GPX with exportGpx, using the routeId from its "Route:" line, and give the file path.`,
     ),
 );
@@ -867,8 +885,22 @@ server.registerPrompt(
 
 server.registerPrompt(
   "list-rides",
-  { title: "List saved rides", description: "The rider's library, one line per ride.", argsSchema: {} },
-  () => userMessage("Call listRides and show the result as is."),
+  {
+    title: "List rides",
+    description: "The rider's rides by date, latest first, 20 per page.",
+    argsSchema: { page: z.string().optional().describe("Page number, default 1") },
+  },
+  ({ page }) => userMessage(`Call listRides with page ${Number(page) || 1} and show the result as is.`),
+);
+
+server.registerPrompt(
+  "list-roadbooks",
+  {
+    title: "List roadbooks",
+    description: "The rider's saved loops and trips, newest first, 20 per page.",
+    argsSchema: { page: z.string().optional().describe("Page number, default 1") },
+  },
+  ({ page }) => userMessage(`Call listRoadbooks with page ${Number(page) || 1} and show the result as is.`),
 );
 
 server.registerPrompt(
@@ -891,7 +923,8 @@ agentMotoride commands (slash commands):
   /mcp__ride__show-ride <id|name>        everything stored about one ride (daylight, cameras, stops, legs)
   /mcp__ride__today [id|name]            ride-day briefing: weather now, daylight, traffic, stops open or not, go/no-go
   /mcp__ride__refresh <id|name>          recompute a ride: figures, weather, cameras, stops, stop plan (no replanning)
-  /mcp__ride__list-rides                 the library
+  /mcp__ride__list-roadbooks [page]      the saved loops and trips, 20 per page
+  /mcp__ride__list-rides [page]          the rides by date, latest first, 20 per page
   /mcp__ride__note <text>                during the ride: a note about the last 10 minutes ("awesome", "never again")
   /mcp__ride__review [gpxPath] [ride]    after the ride: notes placed on the recorded track, detours, pace, confirm ratings
   /mcp__ride__help                       this text

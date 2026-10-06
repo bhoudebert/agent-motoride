@@ -8,7 +8,9 @@ import {
   DuplicateRideError,
   enrichRide,
   formatRideDetail,
+  formatRideDayPage,
   formatRideList,
+  formatRoadbookPage,
   parseRating,
   rideNavigation,
   saveCurrentRide,
@@ -48,13 +50,14 @@ Options:
 At the "refine>" prompt, type a change in plain words, or a command:
 ${refineHelp()}
 
-Saved rides are managed with: npm run rides -- list | show | rate | rate-leg | note | review | delete
+Saved rides are managed with: npm run rides -- list | rides | show | rate | rate-leg | note | review | delete
 Env equivalents: RIDE_ALLOW_MOTORWAYS=1, RIDE_MAX_30_PCT, RIDE_MAX_50_PCT.
 Needs ANTHROPIC_API_KEY (see .env.example).`;
 
 function refineHelp(): string {
   return `  /save [name]          Save the current itinerary (new version if already saved); refused when it duplicates a saved ride, --force to override
-  /list                 Saved rides
+  /list [page]          Roadbooks (the loops you saved), newest first, 20 per page
+  /rides [page]         Rides (a roadbook on a day), latest date first, 20 per page
   /show [id|name]       Details of a saved ride (no argument: the one loaded or saved here)
   /gpx [file.gpx]       Export the current itinerary (or the loaded ride) as a GPX file
   /md [file.md]         Export the saved or loaded ride as a Markdown document, with its map (save first)
@@ -644,8 +647,20 @@ async function refineLoop(
             save(args.join(" "));
             break;
           case "list":
-            console.log(formatRideList(store.listRides()));
+          case "rides": {
+            const page = args[0] ? Number(args[0]) : 1;
+            if (!Number.isInteger(page) || page < 1) {
+              console.log(`Usage: /${command} [page], with a page number: 1, 2, ...`);
+              break;
+            }
+            const next = (n: number) => `/${command} ${n}`;
+            console.log(
+              command === "list"
+                ? formatRoadbookPage(store.listRoadbooks(page), next)
+                : formatRideDayPage(store.listRideDays(page), next),
+            );
             break;
+          }
           case "show": {
             // Without an argument: the ride this session saved or loaded.
             const target = args.length ? args.join(" ") : savedId() !== null ? String(savedId()) : undefined;

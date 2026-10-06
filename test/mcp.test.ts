@@ -326,7 +326,12 @@ test("mcp: every tool answers when called by name through a client", async () =>
     assert.ok(Buffer.from(map.content[0]!.data!, "base64").subarray(1, 4).toString() === "PNG");
     await call("addRideNote", { text: "nice bends", ride: "2" });
     await call("reviewRide", { ride: "1" });
-    await call("listRides", {});
+    assert.match(await call("listRides", {}), /#\d+ {2}.*\| {2}(planned|ridden)[\s\S]*Page 1 of 1 \(\d+ rides?\)\.$/);
+    assert.match(await call("listRoadbooks", { page: 1 }), /^#2 {2}[\s\S]*Page 1 of 1 \(2 roadbooks\)\.$/);
+    assert.match(
+      await call("listRoadbooks", { page: 3 }),
+      /Page 3 does not exist: the last is page 1 \(2 roadbooks\)\./,
+    );
     await call("planningGuide", { request: "plan me a ride" });
 
     // A new tool must come with its line above.

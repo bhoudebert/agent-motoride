@@ -54,7 +54,9 @@ written first and reviewed with the code in the same pull request.
 
 ## 5. Docs
 
-The guide (`docs/guide/`): what the feature is for, how to use it in each mode
+Run `npm run docs:reference` after changing a command, a tool, a prompt or a
+setting: the reference page is generated from the code, and CI fails when it
+is out of date. The guide (`docs/guide/`): what the feature is for, how to use it in each mode
 side by side, its limits; a new page for a new task, and a line in the sidebar
 (`docs/guide/.vitepress/config.mts`). The README only when the overview changes
 (what you get, how it is built). `docs/ENGINEERING.md` when the architecture,

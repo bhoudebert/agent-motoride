@@ -1,6 +1,7 @@
 # The terminal app
 
-Everything the terminal app does, in one place. Planning uses your Anthropic
+The terminal app's commands, in one place; the [reference](/reference) has
+the complete help texts, generated from the code. Planning uses your Anthropic
 API key; the library commands (`npm run rides -- ...`) never call a model.
 
 ## Planning: `npm run ride`

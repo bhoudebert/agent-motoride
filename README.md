@@ -695,6 +695,26 @@ against the ride you got, not cost alone.
 
 Cost is an estimate from list prices in `src/usage.ts`, not your invoice.
 
+### Exporting sessions to an observability tool (OpenTelemetry)
+
+Any logged session can be sent to Langfuse, Arize Phoenix, Jaeger, Grafana
+Tempo or any OpenTelemetry backend, as traces following the GenAI semantic
+conventions: one `invoke_agent` span for the planner and one per scout (under
+the `scoutAreas` call that ran it), a `chat` span per model call with tokens
+and finish reason, an `execute_tool` span per tool call with failures marked.
+
+```bash
+npm run rides -- otel last                     # writes exports/run-<id>.otlp.json
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 npm run rides -- otel 12
+OTEL_EXPORTER_OTLP_HEADERS="x-api-key=..." npm run rides -- otel last --content
+```
+
+The endpoint and headers are the standard OpenTelemetry variables, so a
+backend's own setup instructions apply as written. By default nothing
+personal leaves: no prompt, answer, place or route, only structure, timings,
+tokens and errors. `--content` adds prompts, answers and tool arguments and
+results.
+
 ## Choosing a model: benchmark results
 
 Short version: **use `claude-sonnet-5-5`**. Effort `medium` for speed and price,

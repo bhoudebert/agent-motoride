@@ -61,6 +61,9 @@ with a navigation app (Liberty Rider, Google Maps) on the phone.
   through Claude Code headless (`claude -p` with the MCP server) so live evals
   run on the subscription; more cases (edits, follow-ups, Codex).
 
+- **OpenTelemetry**: export of logged sessions done (`rides otel`). Next: live
+  spans during a session, and the MCP server's tool calls as their own service.
+
 ## Smaller items
 
 - Rain-free window finder over the next 16 days for a saved ride.

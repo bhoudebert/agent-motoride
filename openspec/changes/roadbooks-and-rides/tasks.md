@@ -19,7 +19,8 @@
 - [x] List roadbooks and rides, 20 per page, in the terminal and over MCP
 
 - [ ] Edit in place with versions; undo to a version; copy as a variant
-- [ ] Ride on a date: create, refresh, briefing, cancel; stale after an edit
+- [x] Plan a ride from a roadbook on a date, in a sentence and by command, no copy
+- [ ] Ride on a date: refresh, briefing on a chosen ride, cancel; stale after an edit
 - [ ] Ratings split (roadbook, ride); review stores road ratings on the roadbook
 - [ ] Overlap offers a ride of the existing roadbook
 - [ ] CLI, MCP tools and prompts, exports, ride map, memory adapted; reference regenerated

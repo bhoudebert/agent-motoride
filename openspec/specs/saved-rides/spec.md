@@ -71,6 +71,33 @@ beyond the last SHALL say so and name the last page.
 - **WHEN** the rider lists rides and the library holds 45
 - **THEN** the 20 latest are shown with "Page 1 of 3 (45 rides)" and how to see page 2
 
+### Requirement: Planning a ride from a roadbook
+
+The rider SHALL be able to plan a ride from a saved roadbook on a day, in a
+sentence ("plan a ride from roadbook 7 on Saturday at 9", or "plan a ride on
+Saturday" once a roadbook is in view) and by command (`rides plan <roadbook>
+<day> [time]`, `/plan <day> [time]`, the MCP tool `planRide` and prompt
+`plan-from`). Days SHALL be understood as dates, 17/10, today, tomorrow or a
+weekday (English or French); times as 9, 9:30, 9h30 or 2pm; the departure
+SHALL default to the roadbook's shown ride. It SHALL add a ride to that
+roadbook, or update the ride already on that day, without copying the
+roadbook; gather the day's data (daylight, forecast, conditions, stop plan)
+onto that ride; and return the briefing with its verdict and the navigation
+links. In the terminal it SHALL make no model call. A past day, an unknown
+roadbook or a time that cannot be read SHALL be refused, adding nothing. A
+sentence that asks for anything beyond a day and a time ("50 km longer") SHALL
+go to the planner as a change.
+
+#### Scenario: Same loop next Saturday
+
+- **WHEN** the rider says "plan a ride from roadbook 7 on Saturday at 9"
+- **THEN** roadbook 7 has one more ride, dated Saturday, leaving 09:00, with its forecast and stop plan, and no new roadbook exists
+
+#### Scenario: In view
+
+- **WHEN** the rider shows roadbook 7, then says "plan a ride on Sunday"
+- **THEN** the ride is added to roadbook 7
+
 ### Requirement: Library management
 
 The CLI SHALL list, show (plain or Markdown), rate, rate a leg, export, refresh, delete rides and clear the cache without a model call.

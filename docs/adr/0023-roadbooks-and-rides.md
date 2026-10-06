@@ -43,11 +43,13 @@ Rules that follow:
   version. Planned rides of that roadbook move to the new version and their
   day data is marked stale until refreshed; ridden rides keep the version they
   rode.
-- A new date for a roadbook ("roadbook 7 on Sunday") adds or updates a ride;
-  the briefing refreshes the ride only.
-- A ride is addressed by its roadbook and its date ("7 on Saturday"), or by
-  default the next planned one. "Ride 7" keeps meaning roadbook 7: it is how
-  riders say it.
+- A new date for a roadbook adds or updates a ride, in a sentence: "plan a
+  ride from roadbook 7 on Saturday at 9", or "plan a ride on Saturday" once
+  roadbook 7 is the one in view. The briefing refreshes the ride only.
+- Numbers name roadbooks ("roadbook 7"); a ride is named by its roadbook and
+  its date ("Saturday's ride"), or by default the next planned one. Ride ids
+  stay internal. (Amended 2026-10-07: the first version kept "ride 7" for
+  roadbook 7, which made "plan ride 7" mean two things.)
 - Ratings split: road and leg ratings belong to the roadbook and feed the
   road memory and the rated-roads check; the day's rating belongs to the ride
   and never marks a road as bad.

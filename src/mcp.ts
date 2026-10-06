@@ -2,7 +2,7 @@
 // (Claude Code, Claude desktop, other agents). The client's own model does the
 // planning; this process provides tools, state and the planning prompt.
 // Standard output carries the protocol, so all logging goes to stderr.
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { describeSituation, SYSTEM_CORE } from "./agent.ts";
@@ -19,11 +19,13 @@ import {
   reviewRide,
   rideToReview,
 } from "./feedback.ts";
+import { duplicateForm, type ElicitForm, reviewDecisions, reviewForm } from "./elicit.ts";
 import { exportSavedRide, writeGpx } from "./gpx.ts";
 import {
   DuplicateRideError,
   enrichRide,
   formatRideDetail,
+  formatRatedRoads,
   formatRideList,
   replanStops,
   saveCurrentRide,
@@ -137,6 +139,19 @@ const text = (value: unknown) => ({
   content: [{ type: "text" as const, text: typeof value === "string" ? value : JSON.stringify(value) }],
 });
 
+/** Whether the client can show a form to the rider (MCP elicitation). */
+const canElicit = () => Boolean(server.server.getClientCapabilities()?.elicitation);
+
+/** Ask the rider through the client; a person needs longer than a request's default timeout. */
+async function ask(form: ElicitForm): Promise<Record<string, unknown> | null> {
+  const result = await server.server.elicitInput(
+    { message: form.message, requestedSchema: form.requestedSchema } as Parameters<typeof server.server.elicitInput>[0],
+    { timeout: 10 * 60_000 },
+  );
+  context.trace({ scope: "main", kind: "user", name: "elicitation", payload: { action: result.action } });
+  return result.action === "accept" ? (result.content ?? {}) : null;
+}
+
 // The ride tools, shared with the API planner. Each call is traced and counted.
 for (const tool of createToolDefinitions(context, { scouts: true })) {
   server.registerTool(
@@ -235,19 +250,26 @@ server.registerTool(
   async (args) => {
     const route = context.routes.get(args.routeId);
     if (!route) throw new Error(`Unknown routeId ${args.routeId}; it must come from calculateTrip in this session.`);
-    let id: number;
-    try {
-      id = saveCurrentRide(
+    const save = (force: boolean | undefined) =>
+      saveCurrentRide(
         context,
         { route, rideDate: args.rideDate, departure: args.departure, title: args.name, itinerary: args.itinerary },
-        { name: args.name, request: args.request, parentId: lastSavedId, home: homeInput, usage, force: args.force },
+        { name: args.name, request: args.request, parentId: lastSavedId, home: homeInput, usage, force },
       );
+    let id: number;
+    try {
+      id = save(args.force);
     } catch (error) {
-      if (error instanceof DuplicateRideError)
+      if (!(error instanceof DuplicateRideError)) throw error;
+      // The rider decides, in the client's own dialog when it has one.
+      if (!canElicit()) {
         return text(
           `Not saved: ${error.message} Tell the rider, and only call saveRide again with force if they want the copy.`,
         );
-      throw error;
+      }
+      const answer = await ask(duplicateForm(error.message));
+      if (answer?.save !== true) return text(`Not saved: ${error.message} The rider chose not to keep a copy.`);
+      id = save(true);
     }
     lastSavedId = id;
     lastRouteId = args.routeId;
@@ -434,7 +456,17 @@ server.registerTool(
     if (args.decisions) return text(applyReview(store, args.decisions).join("\n"));
     const ride = rideToReview(store, args.ride);
     const review = await reviewRide(store, ride, { track: args.gpxPath ? readTrack(args.gpxPath) : undefined });
-    return text(formatReview(review));
+    const form = canElicit() ? reviewForm(review) : null;
+    if (!form) return text(formatReview(review));
+    // The rider rates in the client's form; the model never rates on their behalf.
+    const answer = await ask(form);
+    if (!answer) {
+      return text(
+        `${formatReview(review)}\n\nThe rider closed the form: nothing stored, the notes stay pending. Do not rate them yourself.`,
+      );
+    }
+    const stored = applyReview(store, reviewDecisions(review, answer));
+    return text(`${formatReview(review)}\n\nThe rider's answers:\n${stored.join("\n") || "nothing rated"}`);
   },
 );
 
@@ -446,6 +478,40 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async () => text(formatRideList(store.listRides())),
+);
+
+// Read-only documents the rider can attach (in Claude Code: @ then ride:).
+server.registerResource(
+  "library",
+  "ride://library",
+  { title: "Saved rides", description: "The rider's library, one line per ride", mimeType: "text/plain" },
+  async (uri) => ({ contents: [{ uri: uri.href, mimeType: "text/plain", text: formatRideList(store.listRides()) }] }),
+);
+server.registerResource(
+  "ride",
+  new ResourceTemplate("ride://ride/{id}", {
+    list: async () => ({
+      resources: store
+        .listRides()
+        .map((r) => ({ uri: `ride://ride/${r.id}`, name: `#${r.id} ${r.name}`, mimeType: "text/plain" })),
+    }),
+  }),
+  { title: "Saved ride", description: "Everything stored about one saved ride", mimeType: "text/plain" },
+  async (uri, { id }) => {
+    const ride = store.findRide(String(id));
+    if (!ride) throw new Error(`No saved ride #${String(id)}`);
+    return { contents: [{ uri: uri.href, mimeType: "text/plain", text: formatRideDetail(ride) }] };
+  },
+);
+server.registerResource(
+  "rated-roads",
+  "ride://roads/rated",
+  {
+    title: "Rated roads",
+    description: "Rides, legs and road stretches the rider rated: 0-1 avoided, 4-5 sought out",
+    mimeType: "text/plain",
+  },
+  async (uri) => ({ contents: [{ uri: uri.href, mimeType: "text/plain", text: formatRatedRoads(store) }] }),
 );
 
 const RULES = `Use the agentMotoride tools for every lookup, never shell commands or web search. The settings below are the rider's defaults; when the request changes one (motorways allowed, other targets, repeats allowed), apply it with rideSettings before planning. Answer in plain text as laid out above, never JSON. Before presenting an itinerary, call checkItinerary and fix what it reports once. End an itinerary with one line "Route: <routeId>" naming the routed trip it describes, so the ride can be saved later. Save only when the rider asks, with saveRide and that routeId.`;
@@ -713,6 +779,7 @@ agentMotoride commands (slash commands):
   /mcp__ride__review [gpxPath] [ride]    after the ride: notes placed on the recorded track, detours, pace, confirm ratings
   /mcp__ride__help                       this text
 
+Attach a saved ride with @ in the prompt: @ride:ride://library, @ride:ride://ride/<id>, @ride:ride://roads/rated.
 Things to say in plain words: "import ~/Downloads/route.gpx", "allow motorways", "no repeats of saved rides", "aim for 10% in 50 zones" (settings), "where are the speed cameras", "find a fuel stop and a café", "when does the sun set".
 Outside Claude Code: npm run rides -- list | show | rate | note | review | import | export | qr | share | trace | runs.
 

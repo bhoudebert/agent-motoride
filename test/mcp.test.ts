@@ -183,3 +183,23 @@ test("mcp: saving a repeat of an earlier ride asks the rider; yes keeps a copy, 
     await plain.close();
   }
 });
+
+test("mcp: plain words get the full guidance, in any client", async () => {
+  const client = await connect(library(), false);
+  try {
+    const instructions = client.getInstructions() ?? "";
+    assert.match(instructions, /Plain words are enough, slash commands are only shortcuts/);
+    assert.match(instructions, /before planning any new ride asked in plain words, in any client, call planningGuide/);
+    const guide = textOf(
+      await client.callTool({ name: "planningGuide", arguments: { request: "plan me a ride this Saturday" } }),
+    );
+    assert.match(guide, /^You plan one-day motorcycle rides/);
+    assert.match(guide, /Rider's request: plan me a ride this Saturday/);
+    const edit = textOf(
+      await client.callTool({ name: "planningGuide", arguments: { request: "50 km longer", ride: "1" } }),
+    );
+    assert.match(edit, /This concerns saved ride #1 "Straight north"/);
+  } finally {
+    await client.close();
+  }
+});

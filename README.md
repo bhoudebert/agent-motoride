@@ -24,7 +24,7 @@ The code enforces your hard rules (no motorways unless you say so, a saved ride
 is never silently duplicated) and keeps a library of rides you liked, with
 ratings, so the next ride is different and better.
 
-**How to use it, task by task, in the terminal and in Claude Code:** the
+**How to use it, task by task, in the terminal and in Claude Code or Codex:** the
 [rider's guide](https://bhoudebert.github.io/agent-motoride/guide/) (source in
 [`docs/guide/`](docs/guide/)).
 
@@ -45,17 +45,17 @@ exports and the data are the same in both.
 | ------------------- | --------------------------------------------------- | --------------------------------------------------------------------------------------- |
 | What runs the agent | This app, through the Anthropic API                 | Claude Code or Codex CLI (any MCP client), using this app as a tool server              |
 | What you pay with   | An Anthropic API key, per token                     | Your Claude Code or Codex plan; scouts still use the key if set                         |
-| How you talk to it  | A terminal app with a menu and a `refine>` prompt   | Slash commands in Claude Code, e.g. `/mcp__ride__plan-ride ...`                         |
+| How you talk to it  | A terminal app with a menu and a `refine>` prompt   | Plain words in Claude Code or Codex; slash commands as shortcuts in Claude Code         |
 | Planning guidance   | A real system prompt, schema-validated final answer | The same instructions sent as the prompt's text; free-text answer                       |
-| Model and effort    | `RIDE_MODEL`, `RIDE_EFFORT` in `.env`               | The MCP client's own model                                                              |
+| Model and effort    | `RIDE_MODEL`, `RIDE_EFFORT` in `.env` (Anthropic)   | The MCP client's own model: Claude in Claude Code, OpenAI models in Codex               |
 | Best for            | Full control, benchmarks, scripted runs             | Daily use on a subscription, chatting about rides, and the phone through Remote Control |
 
 Start with the one that matches what you have: an API key, Claude Code or
 Codex.
 
-**From your phone, with nothing to install**: a Claude Code session running on
+**From your phone, with nothing to install**: a Claude Code or Codex session running on
 any machine (your computer, a Raspberry Pi, a VPS) can be driven from the Claude
-app or claude.ai, with this server attached. See
+app or the ChatGPT app, with this server attached. See
 [From your phone](https://bhoudebert.github.io/agent-motoride/guide/from-your-phone) in the guide, for the Claude app and
 the ChatGPT app.
 
@@ -142,7 +142,7 @@ a decision record in [`docs/adr/`](docs/adr/).
 
 - Node.js 24 or newer. The TypeScript sources run directly, there is no build step.
 - API mode: an Anthropic API key from <https://platform.claude.com/>, billed per token.
-- MCP mode: Claude Code (or another MCP client). No API key needed, except for scouts.
+- MCP mode: Claude Code, Codex or another MCP client. No API key needed, except for scouts.
 - Internet access to the public data services listed in [the engineering notes](docs/ENGINEERING.md#tools).
 - Optional: a TomTom API key (free tier at <https://developer.tomtom.com/>) for traffic checks.
 

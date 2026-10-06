@@ -72,7 +72,7 @@ saved commute stays a motorway trip.
 
 Slow zones cannot be avoided completely: every ride leaves a town and crosses
 villages. These are targets the planner works toward, moving waypoints around
-the longest slow stretches, not pass or fail limits. In Claude Code: "aim for
+the longest slow stretches, not pass or fail limits. In Claude Code or Codex: "aim for
 10% in 50 zones".
 
 Speed limits come from OpenStreetMap. A stretch with no limit tagged counts as
@@ -83,7 +83,7 @@ in Germany.
 ## Repeats
 
 New plans never repeat a saved ride (70% or more of the same roads). To allow
-it for a session: `--allow-repeat`, or "repeats are fine" in Claude Code.
+it for a session: `--allow-repeat`, or "repeats are fine" in Claude Code or Codex.
 
 ## The model and its cost (terminal)
 

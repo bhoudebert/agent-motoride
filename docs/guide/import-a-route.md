@@ -46,7 +46,7 @@ waypoint is added in the middle of that stretch and the route is computed
 again, up to three times.
 
 ::: tip The terminal import needs no model
-`rides import` costs nothing and works without an API key. In Claude Code the
+`rides import` costs nothing and works without an API key. In Claude Code or Codex the
 same import is a tool, so the planner can present it, change it and save it.
 :::
 

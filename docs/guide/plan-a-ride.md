@@ -82,7 +82,7 @@ save it as "Vercors loop"
 
 Saved rides can be changed later the same way: `npm run ride -- --ride 3
 "next Sunday, 50 km longer"`, or "make ride 3 50 km longer, next Sunday" in
-Claude Code.
+Claude Code or Codex.
 
 ## Checked before you see it
 
@@ -95,7 +95,7 @@ met.
 
 ::: info Motorways
 Motorways are never used unless you allow them: `--allow-motorways`,
-`/motorways on`, or "allow motorways" in Claude Code. See
+`/motorways on`, or "allow motorways" in Claude Code or Codex. See
 [what counts as a motorway](/settings#what-counts-as-a-motorway), and how fast
 expressways are kept small.
 :::

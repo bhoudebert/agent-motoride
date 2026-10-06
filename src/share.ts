@@ -27,6 +27,8 @@ export interface Shared {
   overviewUrl?: string | null;
   gpx: GpxInput;
   itinerary: string;
+  /** The ride's map picture (PNG), for a saved ride. */
+  picture?: Buffer;
 }
 
 /** Escape text for HTML content and quoted attributes. */
@@ -51,6 +53,10 @@ export function startShareServer(
       res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
       return res.end("No itinerary to share yet.");
     }
+    if (req.url?.startsWith("/map.png") && shared.picture) {
+      res.writeHead(200, { "content-type": "image/png", "cache-control": "no-store" });
+      return res.end(shared.picture);
+    }
     if (req.url?.startsWith("/ride.gpx")) {
       res.writeHead(200, {
         "content-type": "application/gpx+xml",
@@ -71,6 +77,7 @@ export function startShareServer(
       .join("")}
 ${shared.overviewUrl && isWebLink(shared.overviewUrl) ? `<a href="${esc(shared.overviewUrl)}" style="display:inline-block;margin:.2rem .4rem .2rem 0;padding:.8rem 1.2rem;background:#fff;color:#1a73e8;border:2px solid #1a73e8;border-radius:.5rem;text-decoration:none">Whole ride (overview)</a>` : ""}
 &nbsp; <a href="/ride.gpx" style="display:inline-block;padding:.8rem 1.2rem;background:#444;color:#fff;border-radius:.5rem;text-decoration:none">Download GPX</a></p>
+${shared.picture ? `<p><img src="/map.png" alt="Map of the ride" style="width:100%;height:auto;border-radius:.5rem"></p>` : ""}
 <pre style="white-space:pre-wrap;background:#f4f4f4;padding:1rem;border-radius:.5rem">${esc(shared.itinerary)}</pre>
 </body>`);
   });

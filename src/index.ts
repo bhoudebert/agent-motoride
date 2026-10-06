@@ -16,6 +16,7 @@ import {
 import { readImage } from "./images.ts";
 import { overviewLink, pinnedMapsLinks } from "./maps.ts";
 import { writeRideMarkdown } from "./markdown.ts";
+import { rideMapPng, writeRideMap } from "./rideMap.ts";
 import { DEFAULT_PREFERENCES, preferencesFromEnv } from "./preferences.ts";
 import { describeProfile, parseProfileArgs } from "./profile.ts";
 import { printQr, type Shared, startShareServer } from "./share.ts";
@@ -56,7 +57,8 @@ function refineHelp(): string {
   /list                 Saved rides
   /show [id|name]       Details of a saved ride (no argument: the one loaded or saved here)
   /gpx [file.gpx]       Export the current itinerary (or the loaded ride) as a GPX file
-  /md [file.md]         Export the saved or loaded ride as a Markdown document (save first)
+  /md [file.md]         Export the saved or loaded ride as a Markdown document, with its map (save first)
+  /map [file.png]       A picture of the saved or loaded ride: route, towns, stops, cameras (save first)
   /qr                   QR code of the Google Maps link, to scan with the phone
   /share                Page for the phone on the local Wi-Fi (map link, itinerary, GPX download) with its QR code
   /rate <1-5> [note]    Rate the ride saved or loaded in this session
@@ -570,6 +572,7 @@ async function sharedRide(session: RideSession, savedId: number | null): Promise
   const { gpx } = await savedRideGpx(store, ride);
   const nav = rideNavigation(ride);
   lastShared = {
+    picture: ride.shapes?.length ? rideMapPng(ride) : undefined,
     name: ride.name,
     mapsUrl: nav.links[0]!,
     mapsUrls: nav.links,
@@ -740,6 +743,16 @@ async function refineLoop(
             }
             if (hasUnsaved()) console.log("Note: the itinerary on screen is not saved; exporting the saved version.");
             console.log(`Markdown written: ${writeRideMarkdown(ride, args.join(" ") || undefined)}`);
+            break;
+          }
+          case "map": {
+            const id = savedId();
+            const ride = id === null ? undefined : store.findRide(String(id));
+            if (!ride) {
+              console.log("The map is drawn from a saved ride: /save first, then /map.");
+              break;
+            }
+            console.log(`Map written: ${writeRideMap(ride, args.join(" ") || undefined)}`);
             break;
           }
           case "qr": {

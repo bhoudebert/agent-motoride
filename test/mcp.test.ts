@@ -286,6 +286,15 @@ test("mcp: every tool answers when called by name through a client", async () =>
     await call("rideBriefing", { ride: "2" });
     await call("showRide", { ride: "2" });
     await call("rateRide", { ride: "2", rating: 4, note: "nice" });
+    called.add("showRideMap");
+    const map = (await client.callTool({ name: "showRideMap", arguments: { ride: "2" } })) as {
+      isError?: boolean;
+      content: Array<{ type: string; mimeType?: string; data?: string }>;
+    };
+    assert.ok(!map.isError);
+    assert.equal(map.content[0]!.type, "image");
+    assert.equal(map.content[0]!.mimeType, "image/png");
+    assert.ok(Buffer.from(map.content[0]!.data!, "base64").subarray(1, 4).toString() === "PNG");
     await call("addRideNote", { text: "nice bends", ride: "2" });
     await call("reviewRide", { ride: "1" });
     await call("listRides", {});

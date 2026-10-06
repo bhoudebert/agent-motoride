@@ -28,6 +28,7 @@ import {
   tripFigures,
 } from "./library.ts";
 import { formatRideMarkdown, writeRideMarkdown } from "./markdown.ts";
+import { rideMapPng, writeRideMap } from "./rideMap.ts";
 import { describeProfile, parseProfileArgs } from "./profile.ts";
 import { printQr, startShareServer } from "./share.ts";
 import { formatStopPlan } from "./stops.ts";
@@ -46,7 +47,8 @@ const USAGE = `Usage: npm run rides -- <command>
   list                                  All saved rides
   today [id|name]                       Ride-day briefing: weather now, daylight, traffic, stops checked against opening hours, go or no-go
   show <id|name> [--md]                 One ride: legs, map link, itinerary (--md: as Markdown on stdout)
-  export-md <id|name> [file.md]         Write the ride as a Markdown document (default: exports/ in the project)
+  export-md <id|name> [file.md]         Write the ride as a Markdown document, with its map (default: exports/ in the project)
+  map <id|name> [file.png]              A picture of the ride: route, towns, stops, fixed cameras with their limits
   rate <id|name> <1-5> [note]           Rate a ride after riding it
   rate-leg <id|name> <leg> <1-5> [note] Rate one leg of a ride
   note "<text>" [--rating 0-5] [--back N] [--ride id|name]
@@ -102,6 +104,11 @@ try {
     case "export-md": {
       const target = ride(args[0]);
       console.log(`Markdown written: ${writeRideMarkdown(target, args[1])}`);
+      break;
+    }
+    case "map": {
+      const target = ride(args[0]);
+      console.log(`Map written: ${writeRideMap(target, args[1])}`);
       break;
     }
     case "rate": {
@@ -237,6 +244,7 @@ try {
       const { gpx } = await savedRideGpx(store, target);
       const nav = rideNavigation(target);
       const shared = {
+        picture: target.shapes?.length ? rideMapPng(target) : undefined,
         name: target.name,
         mapsUrl: nav.links[0]!,
         mapsUrls: nav.links,

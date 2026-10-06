@@ -101,7 +101,7 @@ Details for each mode: [the terminal app](https://bhoudebert.github.io/agent-mot
 - **Rides from anywhere**: a sentence, a GPX or KML file someone shared, or a photo of a map.
 - **Checked before you see it**: your distance and time limits, motorways, repeats and rated roads verified by code, not by the model.
 - **Feedback from the road**: say "last 10 minutes awesome" or "cobbles, never again" while riding; after the ride the notes land on the road you actually rode, from any app's recorded track, and become ratings the next plans follow.
-- **Exports**: Google Maps links pinned to the chosen roads, GPX for navigation apps (Liberty Rider, Kurviger, Garmin, TomTom), a Markdown document per ride, a QR code and a phone page on your Wi-Fi.
+- **Exports**: a map picture of the ride with its stops and cameras, Google Maps links pinned to the chosen roads, GPX for navigation apps (Liberty Rider, Kurviger, Garmin, TomTom), a Markdown document per ride, a QR code and a phone page on your Wi-Fi.
 - **Accounting**: every run logged with tokens, cost and result; every step replayable; a model benchmark with recommendations.
 - **Evals**: scripted rider requests graded by code, recorded once and replayed for free in CI, with a prompt-injection case planted in map data.
 

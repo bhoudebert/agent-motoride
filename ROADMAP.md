@@ -72,6 +72,14 @@ with a navigation app (Liberty Rider, Google Maps) on the phone.
   GPX and KML import: done (`rides import`, `importRoute`; README "Importing
   a route someone shared").
 
+## Open questions
+
+- **How strict on fast expressways.** Today a leisure ride is sent back at 25%
+  of roads that are not motorways but are limited to 100 km/h or more. To
+  discuss: a setting like the slow-zone targets (`RIDE_MAX_FAST_EXPRESSWAY_PCT`),
+  whether 100 or 110 is the right threshold per country, and whether "no
+  motorways" should steer the router harder off them than its half weight.
+
 ## Smaller items
 
 - Rain-free window finder over the next 16 days for a saved ride.

@@ -83,7 +83,7 @@ Codex has no slash commands for MCP servers; plain words do the same.
   `RIDE_MODEL`.
 - **One session per server process**: routed trips and settings last until the
   client restarts the server; saved rides, the cache and traces are on disk.
-- **After updating agentMotoride**, quit and relaunch Claude Code: it keeps the
+- **After updating agentMotoride**, quit and relaunch Claude Code or Codex: it keeps the
   old server process otherwise.
 - Every session is logged: `npm run rides -- runs` shows an `mcp-client` run,
   `npm run rides -- trace <id>` replays it.

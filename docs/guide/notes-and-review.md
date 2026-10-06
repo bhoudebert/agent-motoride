@@ -29,8 +29,8 @@ cobbles, never again
 
 :::
 
-From the phone, Claude Code's Remote Control makes this a few words in the
-Claude app.
+From the phone, with the session running at home, this is a few words in the
+Claude or ChatGPT app: see [From your phone](/from-your-phone).
 
 ## After the ride
 

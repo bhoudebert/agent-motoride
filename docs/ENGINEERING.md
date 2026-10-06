@@ -408,11 +408,12 @@ client's model is not visible to the server, so its own tokens are not counted.
 
 ## Reloading after a change
 
-Claude Code starts the server as a child process and keeps it for the whole
-session. A change to the server code, to any module it imports, or to `.env`
-needs a **full quit and relaunch of Claude Code**; the `/mcp` reconnect action
-restarts remote servers only, not local ones (an open limitation in Claude
-Code at the time of writing). To confirm the new code is running:
+An MCP client starts this server as a child process when its session starts
+and keeps it until the session ends. A change to the server code, to any
+module it imports, or to `.env` therefore needs a new session of the client.
+In Claude Code that means a **full quit and relaunch**: the `/mcp` reconnect
+action restarts remote servers only, not local ones (an open limitation at the
+time of writing). To confirm the new code is running:
 
 ```bash
 npm run rides -- runs | grep mcp-client     # a new row with a fresh time = new process
@@ -437,7 +438,7 @@ prints the `plan-ride` prompt exactly as the server serves it.
 | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | `npm run ride -- ...`                    | Run the agent                                                                                                                      |
 | `npm run rides -- ...`                   | List, show, rate, export, replay and delete saved rides and runs                                                                   |
-| `npm run mcp`                            | MCP server on stdio, for Claude Code or another MCP client                                                                         |
+| `npm run mcp`                            | MCP server on stdio, for Claude Code, Codex or another MCP client                                                                  |
 | `npm run mcp:smoke`                      | Protocol-level check of the MCP server, no model involved                                                                          |
 | `npm run codex:register`                 | Register the server in Codex CLI's user config (once per machine)                                                                  |
 | `node scripts/mcp-prompt.ts "<request>"` | Print the `plan-ride` prompt exactly as the server serves it                                                                       |

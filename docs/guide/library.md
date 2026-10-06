@@ -76,8 +76,8 @@ during the ride work better: see [Notes and review](/notes-and-review).
 - **No duplicates, enforced.** Every candidate is compared with your saved
   rides by the share of its 500 m grid cells they already cover. At 70% or more
   it is a duplicate: the planner must look elsewhere, and a save is refused
-  (`/save --force`, or "save a copy anyway" in Claude Code, keeps a deliberate
-  copy). From 40% it is mentioned as similar. The same roads in the opposite
+  (`/save --force`, or saying yes when Claude Code or Codex asks, keeps a
+  deliberate copy). From 40% it is mentioned as similar. The same roads in the opposite
   direction count as the same ride.
 - **Ratings steer the choice.** Rides, legs and road stretches rated 4 or 5 are
   reused as building blocks. Those rated 0 or 1 are avoided: a loop with 10% or

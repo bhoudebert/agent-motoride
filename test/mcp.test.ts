@@ -60,8 +60,8 @@ function library(): string {
   return path;
 }
 
-async function connect(db: string, elicitation: boolean) {
-  const env: Record<string, string> = { PATH: process.env.PATH ?? "", RIDE_DB: db, RIDE_SCOUTS: "0" };
+async function connect(db: string, elicitation: boolean, extra: Record<string, string> = {}) {
+  const env: Record<string, string> = { PATH: process.env.PATH ?? "", RIDE_DB: db, RIDE_SCOUTS: "0", ...extra };
   const client = new Client({ name: "test", version: "0" }, { capabilities: elicitation ? { elicitation: {} } : {} });
   await client.connect(
     new StdioClientTransport({
@@ -204,6 +204,33 @@ test("mcp: plain words get the full guidance, in any client", async () => {
   }
 });
 
+test("mcp: with API scouts off, the client is told to scout with parallel subagents; with them on, nothing changes", async () => {
+  const off = await connect(library(), false);
+  try {
+    assert.match(off.getInstructions() ?? "", /scout 2-4 areas with parallel subagents as planningGuide explains/);
+    const guide = textOf(await off.callTool({ name: "planningGuide", arguments: { request: "a twisty loop" } }));
+    assert.match(guide, /start one subagent per area in the same turn/);
+    assert.match(guide, /Scout brief:\nYou scout one area for a one-day motorcycle loop/);
+    assert.ok(guide.indexOf("Scout brief:") < guide.indexOf("Rider's request: a twisty loop"), "with the rules");
+    const edit = textOf(
+      await off.callTool({ name: "planningGuide", arguments: { request: "50 km longer", ride: "1" } }),
+    );
+    assert.doesNotMatch(edit, /subagent/, "an edit is not scouted");
+  } finally {
+    await off.close();
+  }
+  // A placeholder key: nothing is called at connection, so it never reaches the API.
+  const on = await connect(library(), false, { RIDE_SCOUTS: "1", ANTHROPIC_API_KEY: "test-placeholder" });
+  try {
+    assert.match(on.getInstructions() ?? "", /then scoutAreas with 2-4 areas/);
+    assert.doesNotMatch(on.getInstructions() ?? "", /subagent/);
+    const guide = textOf(await on.callTool({ name: "planningGuide", arguments: { request: "a twisty loop" } }));
+    assert.doesNotMatch(guide, /subagent/);
+  } finally {
+    await on.close();
+  }
+});
+
 test("mcp: every tool declares all four hints, as the server means them", async () => {
   const client = await connect(library(), false);
   try {
@@ -267,7 +294,7 @@ test("mcp: every tool answers when called by name through a client", async () =>
         maxRidingMinutes: null,
         constraints: "dry",
       }),
-      /Scouts are unavailable/,
+      /API scouts are off here \(disabled by RIDE_SCOUTS=0\)[\s\S]*"brief":"Area to scout: Flandre \(around Cassel\)/,
     );
     await call("checkItinerary", { routeId, request: "under 200 km", itinerary: "Loop, 135 km." });
     assert.match(

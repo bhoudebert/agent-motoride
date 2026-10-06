@@ -64,6 +64,15 @@ the public OpenStreetMap server is never hit by several at once; routing and
 weather calls run in parallel. A scout that fails does not fail the plan: the
 planner is told which scout failed and why.
 
+Under an MCP client with no API scouts (`RIDE_SCOUTS=0` or no key), the server
+instructions and the planning guidance hand the client the same scout brief
+and ask it to start one subagent per area in parallel (Claude Code's Agent
+tool), on the rider's plan. The subagents call this same server, so their
+routeIds are valid for the planner; `scoutAreas` called anyway returns the
+guidance and each area's brief (ADR 0021). Their road searches reach the road
+memory; their verdicts are not traced as scout reports. The terminal planner
+is untouched.
+
 ### Replaying a session
 
 ```bash

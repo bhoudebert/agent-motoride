@@ -87,11 +87,11 @@ it for a session: `--allow-repeat`, or "repeats are fine" in Claude Code or Code
 
 ## The model and its cost (terminal)
 
-| In `.env`     | Default           | Notes                                            |
-| ------------- | ----------------- | ------------------------------------------------ |
-| `RIDE_MODEL`  | `claude-opus-5-5` | `claude-sonnet-5-5` plans well for much less     |
-| `RIDE_EFFORT` | `high`            | `medium` is a good balance                       |
-| `RIDE_SCOUTS` | on                | `0` turns scouts off: cheaper, a narrower search |
+| In `.env`     | Default           | Notes                                                                                             |
+| ------------- | ----------------- | ------------------------------------------------------------------------------------------------- |
+| `RIDE_MODEL`  | `claude-opus-5-5` | `claude-sonnet-5-5` plans well for much less                                                      |
+| `RIDE_EFFORT` | `high`            | `medium` is a good balance                                                                        |
+| `RIDE_SCOUTS` | on                | `0` turns scouts off: cheaper, a narrower search; in Claude Code, its own subagents scout instead |
 
 `/usage` at the prompt shows what the session cost so far; `npm run rides --
 runs` lists every session with its model, tokens and cost.

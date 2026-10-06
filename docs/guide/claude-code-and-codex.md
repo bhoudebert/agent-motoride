@@ -69,6 +69,20 @@ Slash commands are optional shortcuts; `/mcp__ride__help` lists them.
 
 Codex has no slash commands for MCP servers; plain words do the same.
 
+## Scouts, with or without a key
+
+A new leisure ride explores two to four areas before picking one.
+
+| In `.env`                            | Who scouts                                                               | Paid with   |
+| ------------------------------------ | ------------------------------------------------------------------------ | ----------- |
+| An API key, `RIDE_SCOUTS` unset or 1 | The app's scouts, one small model session per area                       | The API key |
+| `RIDE_SCOUTS=0`, or no key           | Claude Code's own subagents, one per area, in parallel, same scout brief | Your plan   |
+
+Without subagents (Codex may not run them the same way), the model explores
+the areas itself, one after the other: slower, a narrower search. Either way
+the rider rules are checked in code on every route. Restart the client after
+changing `.env`.
+
 ## Forms and attachments (Claude Code)
 
 - **Your decisions in a dialog**: reviewing a ride shows one form with a rating

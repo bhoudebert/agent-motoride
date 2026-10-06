@@ -5,12 +5,12 @@ from real road, weather and traffic data, and keeps a library of the rides you
 liked. You talk to it in one of two ways; the tools, the library and the
 exports are the same.
 
-|                    | Terminal                                       | Claude Code or Codex                                     |
-| ------------------ | ---------------------------------------------- | -------------------------------------------------------- |
-| Who thinks         | This app, with your Anthropic API key          | The model of your Claude Code or Codex plan              |
-| What you pay with  | The API key, per use (a few cents to a dollar) | Your existing plan; scouts use the API key if one is set |
-| How you talk to it | A menu, then a `refine>` prompt                | Plain words: "plan me a ride on Saturday", "show ride 7" |
-| Best for           | Full control, scripts, cost per ride           | Daily use, chatting about rides, from the phone          |
+|                    | Terminal                                       | Claude Code or Codex                                                                   |
+| ------------------ | ---------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Who thinks         | This app, with your Anthropic API key          | The model of your Claude Code or Codex plan                                            |
+| What you pay with  | The API key, per use (a few cents to a dollar) | Your existing plan; scouts use the API key if one is set, else Claude Code's subagents |
+| How you talk to it | A menu, then a `refine>` prompt                | Plain words: "plan me a ride on Saturday", "show ride 7"                               |
+| Best for           | Full control, scripts, cost per ride           | Daily use, chatting about rides, from the phone                                        |
 
 Every page of this guide shows both, side by side.
 

@@ -413,6 +413,7 @@ clear-cache` empties it.
 | `saveRide`                                                                   | Save an itinerary to the library, from a route id of this session                                                                                                             |
 | `exportGpx`                                                                  | GPX file from a route id or a saved ride                                                                                                                                      |
 | `showRide`                                                                   | Full view of one saved ride, as in the CLI: road mix, daylight, cameras, stops, legs, itinerary                                                                               |
+| `planRide`                                                                   | A ride from a roadbook on a day: added or updated, day data gathered, briefing and links; no copy                                                                             |
 | `rideBriefing`                                                               | Ride-day briefing: weather now, daylight, traffic, stops checked against opening hours, go or no-go                                                                           |
 | `planningGuide`                                                              | The planning guidance as text, fetched before any new ride asked in plain words, in every client (the plan-ride prompt carries the same text)                                 |
 | `refreshRide`                                                                | Same as `npm run rides -- refresh`: recompute figures, weather, cameras, stops and stop plan, no replanning; `stopsOnly` rebuilds just the stop plan                          |
@@ -532,6 +533,7 @@ src/
   hours.ts          Reader of OpenStreetMap opening_hours tags
   conditions.ts     Crosswind and low-sun checks along a route, solar position
   briefing.ts       Ride-day briefing
+  planRide.ts       A ride from a roadbook on a day: the sentence, the day and time, no model call
   check.ts          Environment check (npm run check)
   preferences.ts    Rider preferences and their defaults
   usage.ts          Per-session token and time accounting, cost estimate

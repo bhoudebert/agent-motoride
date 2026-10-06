@@ -59,20 +59,50 @@ more
 Each list shows 20 lines and ends with "Page 1 of 3 (45 rides)" and how to see
 the next page; in Claude Code or Codex, say "more" or "page 2".
 
+## Ride a roadbook again
+
+Say it in a sentence. The ride is added to the roadbook, with no copy: its
+forecast along the loop, daylight, wind and low sun, the stops open at your
+arrival, traffic at departure, then a go or no-go and the navigation links.
+
+::: code-group
+
+```bash [Terminal]
+npm run ride -- "plan a ride from roadbook 3 on Saturday at 9"
+npm run rides -- plan 3 saturday 9:30        # the same, as a command
+
+# with roadbook 3 open at the refine> prompt:
+#   plan a ride on Sunday at 10      or      /plan sunday 10
+```
+
+```text [Claude Code / Codex]
+plan a ride from roadbook 3 on Saturday at 9
+
+show roadbook 3
+plan a ride on Sunday
+```
+
+:::
+
+Days: `2026-10-17`, `17/10`, `today`, `tomorrow`, `saturday` (or `samedi`),
+`next saturday`. Times: `9`, `9:30`, `9h30`, `2pm`; without one, the
+roadbook's last departure. The same day again updates that ride. In the
+terminal this makes no model call. To change the route itself ("50 km
+longer"), ask for the change: that goes to the planner.
+
 ## Look at it, change it
 
 ::: code-group
 
 ```bash [Terminal]
 npm run rides -- show 3
-npm run ride -- --ride 3                     # open the prompt on ride 3, nothing sent yet
-npm run ride -- --ride 3 "next Sunday, 50 km longer, lunch in Die"
+npm run ride -- --roadbook 3                 # open the prompt on roadbook 3, nothing sent yet
+npm run ride -- --roadbook 3 "50 km longer, lunch in Die"
 ```
 
 ```text [Claude Code / Codex]
-show my rides
-show ride 3
-make ride 3 50 km longer, next Sunday, lunch in Die
+show roadbook 3
+make roadbook 3 50 km longer, lunch in Die
 ```
 
 :::

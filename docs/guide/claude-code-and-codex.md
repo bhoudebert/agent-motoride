@@ -59,6 +59,7 @@ Slash commands are optional shortcuts; `/mcp__ride__help` lists them.
 | `/mcp__ride__edit-ride <id\|name> <change>`       | Change a saved ride, or ask about it                 |
 | `/mcp__ride__save-ride [name]`                    | Save the itinerary on the table                      |
 | `/mcp__ride__show-ride <id\|name>`                | Everything stored about one ride                     |
+| `/mcp__ride__plan-from <roadbook> <day> [time]`   | A ride from a saved roadbook on a day, no copy       |
 | `/mcp__ride__today [id\|name]`                    | Ride-day briefing with a go or no-go                 |
 | `/mcp__ride__refresh <id\|name>`                  | Recompute a ride without changing it                 |
 | `/mcp__ride__export-gpx [id\|name]`               | GPX file of the current or a saved ride              |

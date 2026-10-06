@@ -13,12 +13,13 @@ Usage: npm run ride                              Start menu: plan a new ride or 
        npm run ride -- [options] "<what you want>"  Plan a ride directly
 
   npm run ride -- --from "Grenoble" "Roadtrip moto this Saturday, no rain, <250km, winding roads, give me an itinerary"
-  npm run ride -- --ride 3 "same ride next Sunday, 50 km longer, lunch in Die"
+  npm run ride -- --roadbook 3 "50 km longer, lunch in Die"
+  npm run ride -- "plan a ride from roadbook 3 on Saturday at 9"     a ride on a day, no copy, no model call
 
 Options:
   --from <place>        Start and end point. Defaults to RIDE_HOME, or the saved ride's start with --ride.
   --show <id|name>      Display a saved ride and exit. No planning, no API call.
-  --ride <id|name>      Work on a saved ride. With a request: apply it. Without: open the prompt on the ride.
+  --roadbook <id|name>  Work on a saved roadbook (also --ride). With a request: apply it. Without: open the prompt on it.
   --allow-repeat        Accept rides that repeat saved ones. Default: near-duplicates are rejected.
   --save-as <name>      Save the first itinerary under this name (useful with --once).
   --allow-motorways     Permit motorways (autoroutes), e.g. for a commute. Default: never used.
@@ -33,6 +34,7 @@ At the "refine>" prompt, type a change in plain words, or a command:
   /save [name]          Save the current itinerary (new version if already saved); refused when it duplicates a saved ride, --force to override
   /roadbooks [page]     Roadbooks (the loops and trips you saved), newest first, 20 per page
   /rides [page]         Rides (a roadbook on a day), latest date first, 20 per page
+  /plan <day> [time]    Plan a ride from this saved roadbook on a day (also: "plan a ride on Saturday at 9"); no copy
   /show [id|name]       Details of a saved ride (no argument: the one loaded or saved here)
   /gpx [file.gpx]       Export the current itinerary (or the loaded ride) as a GPX file
   /md [file.md]         Export the saved or loaded ride as a Markdown document, with its map (save first)
@@ -63,6 +65,8 @@ Usage: npm run rides -- <command>
 
   roadbooks [--page N]                  Roadbooks (the loops and trips you saved), newest first, 20 per page
   rides [--page N]                      Rides (a roadbook on a day), latest date first, 20 per page
+  plan <roadbook> <day> [time]          Plan a ride from a roadbook: day as 2026-10-17, 17/10, saturday, tomorrow;
+                                        time as 9, 9:30, 9h30 (default the roadbook's last departure). No copy, no model
   today [id|name]                       Ride-day briefing: weather now, daylight, traffic, stops checked against opening hours, go or no-go
   show <id|name> [--md]                 One ride: legs, map link, itinerary (--md: as Markdown on stdout)
   export-md <id|name> [file.md]         Write the ride as a Markdown document, with its map (default: exports/ in the project)
@@ -97,7 +101,7 @@ reused as building blocks, those rated 0-1 are avoided.
 
 ## Claude Code and Codex (MCP server)
 
-28 tools, 14 prompts. Each tool shows its MCP hints: a client can let read-only tools run without asking.
+29 tools, 15 prompts. Each tool shows its MCP hints: a client can let read-only tools run without asking.
 
 ### Tools
 
@@ -303,6 +307,16 @@ Ride-day briefing for a saved ride: forecast along the route now, daylight and r
 
 - `ride` (string, optional): Saved ride id or name; default the next dated ride
 
+#### `planRide`
+
+_writes · not destructive · idempotent · uses online services_
+
+Plan a ride from a saved roadbook on a date, without copying it: "plan a ride from roadbook 7 on Saturday at 9", or "plan a ride on Saturday" right after roadbook 7 was shown or discussed. Adds a ride to the roadbook (or updates the one already on that date), gathers the day: forecast along the loop, daylight, crosswind and low sun, the stop plan with opening hours at arrival, traffic at departure; returns the briefing with a go, caution or no-go verdict and the navigation links. Deterministic; show it as returned. Not for changing the route: a change ("50 km longer", "skip Tournai") goes through planningGuide with the roadbook.
+
+- `roadbook` (string): Roadbook number or name
+- `date` (string): Day of the ride: YYYY-MM-DD, or in words: today, tomorrow, saturday, 17/10
+- `departure` (string, optional): Departure time, e.g. 09:00; default the roadbook's last departure
+
 #### `showRide`
 
 _read-only · local only_
@@ -404,6 +418,7 @@ Slash commands in Claude Code (`/mcp__ride__<name>`); plain words do the same in
 | `note`           | `text`                                   | During the ride: "last 10 min awesome", "cobbles, never again". Reviewed after the ride.                  |
 | `review`         | `gpxPath` (optional), `ride` (optional)  | Place your ride notes on the road ridden (recorded GPX track) or on the plan, then confirm ratings.       |
 | `list-rides`     | `page` (optional)                        | The rider's rides by date, latest first, 20 per page.                                                     |
+| `plan-from`      | `roadbook`, `day`, `time` (optional)     | A ride from a saved roadbook on a day, without copying it: forecast, stops, verdict, links.               |
 | `list-roadbooks` | `page` (optional)                        | The rider's saved loops and trips, newest first, 20 per page.                                             |
 | `help`           | none                                     | Commands and tools of agentMotoride, no tool call.                                                        |
 

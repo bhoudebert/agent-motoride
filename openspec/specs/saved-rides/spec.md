@@ -7,6 +7,21 @@ learn from ratings, and hold everything needed to ride them again.
 
 ## Requirements
 
+### Requirement: Library storage
+
+The library SHALL be one SQLite file whose schema version is stored in it. On
+open, pending migration steps SHALL run once each, in order, each in a
+transaction with its version bump, so that a failing step leaves the file
+unchanged. Before the first pending step on an existing file, a copy SHALL be
+written next to it (`<file>.bak-v<version>`). A library newer than the app
+SHALL be refused without being changed. A second process opening the file
+during a migration SHALL wait for it.
+
+#### Scenario: Migration fails midway
+
+- **WHEN** a step fails after changing some tables
+- **THEN** the library is at its previous version with its previous content, and the error names the step and the backup
+
 ### Requirement: Saving
 
 A ride SHALL be saved only on request, from a route id routed in the session, under a name (default the planner's title). Saving again after a change SHALL create a new version linked to its parent; nothing SHALL be overwritten. Stored: name, home, date, departure, waypoints, legs, speed profile, preferences actually used (including the motorway setting of that trip), requests, itinerary text, map link, route line, 500 m grid footprint, session usage.

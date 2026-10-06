@@ -22,6 +22,12 @@ features:
   - title: On the phone and the GPS
     details: Google Maps links that stay on your roads, a whole-ride overview, a QR page on your Wi-Fi, GPX for Liberty Rider or Garmin.
     link: /phone-and-gps
+  - title: What to watch
+    details: Fixed speed cameras, crosswind, low sun in your eyes, cobbles and gravel, with where and when.
+    link: /what-to-watch
+  - title: From your phone
+    details: Drive it from the Claude or ChatGPT app, the session running at home. Notes at a stop are a few words.
+    link: /from-your-phone
   - title: Notes and review
     details: '"Cobbles, never again", said at a stop. After the ride, notes land on the road you really rode and steer the next plans.'
     link: /notes-and-review

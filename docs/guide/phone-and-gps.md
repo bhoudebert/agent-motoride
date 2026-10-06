@@ -69,6 +69,9 @@ exact **track**, a **route** with the stops and pass-through points (for apps
 that compute their own path, like Liberty Rider, Garmin and TomTom), and the
 planned stops as named **waypoints** with their times.
 
+`--pins 15` exports fewer route points: a shorter stage list in the app, a
+little more drift between them.
+
 ::: tip Liberty Rider
 Liberty Rider shows route points as numbered stages without names. The ride
 view tells you which number each planned stop is ("pause: ... route point 22

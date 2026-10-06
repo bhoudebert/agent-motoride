@@ -405,19 +405,19 @@ Slash commands in Claude Code (`/mcp__ride__<name>`); plain words do the same in
 
 ## Settings (`.env`)
 
-| Setting                | Default             | What for                                                                                                                                   |
-| ---------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ANTHROPIC_API_KEY`    | to set              | Anthropic API key (https://platform.claude.com/): the terminal app, and scouts in Claude Code or Codex                                     |
-| `ANTHROPIC_AUTH_TOKEN` | unset               | Or a bearer token instead of the key, as the Anthropic SDK accepts (e.g. behind a gateway)                                                 |
-| `RIDE_HOME`            | to set              | Your start and end point: a town, a street or an address, or "lat,lon" (overridden by --from)                                              |
-| `TOMTOM_API_KEY`       | to set              | Optional TomTom key (https://developer.tomtom.com/, free tier): traffic at departure                                                       |
-| `RIDE_ALLOW_MOTORWAYS` | `0`                 | 1 permits motorways by default (--allow-motorways, /motorways on\|off per session)                                                         |
-| `RIDE_MAX_30_PCT`      | `3`                 | Target max % of distance in zones of 30 km/h or less (--max-30-pct)                                                                        |
-| `RIDE_MAX_50_PCT`      | `20`                | Target max % of distance in 31-50 km/h zones (--max-50-pct)                                                                                |
-| `RIDE_DB`              | unset               | Saved rides and lookup cache, one SQLite file; default data/agentmotoride.db in the project                                                |
-| `RIDE_SHARE_PORT`      | `8787`              | Port of the phone share page (/share, rides share)                                                                                         |
-| `RIDE_MODEL`           | `claude-opus-5-5`   | Model of the terminal app's planner; cheaper: claude-sonnet-5-5 (half price), claude-haiku-4-5 (quarter)                                   |
-| `RIDE_EFFORT`          | `high`              | Reasoning effort of the planner: low \| medium \| high \| xhigh \| max (ignored by Haiku)                                                  |
-| `RIDE_SCOUTS`          | `1`                 | Scouts explore candidate areas in parallel for a new ride; 0 turns them off (they bill ANTHROPIC_API_KEY, also under Claude Code or Codex) |
-| `RIDE_SCOUT_MODEL`     | `claude-sonnet-5-5` | Model of each scout                                                                                                                        |
-| `RIDE_SCOUT_EFFORT`    | `low`               | Reasoning effort of each scout                                                                                                             |
+| Setting                | Default             | What for                                                                                                                                                                                      |
+| ---------------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ANTHROPIC_API_KEY`    | to set              | Anthropic API key (https://platform.claude.com/): the terminal app, and scouts in Claude Code or Codex                                                                                        |
+| `ANTHROPIC_AUTH_TOKEN` | unset               | Or a bearer token instead of the key, as the Anthropic SDK accepts (e.g. behind a gateway)                                                                                                    |
+| `RIDE_HOME`            | to set              | Your start and end point: a town, a street or an address, or "lat,lon" (overridden by --from)                                                                                                 |
+| `TOMTOM_API_KEY`       | to set              | Optional TomTom key (https://developer.tomtom.com/, free tier): traffic at departure                                                                                                          |
+| `RIDE_ALLOW_MOTORWAYS` | `0`                 | 1 permits motorways by default (--allow-motorways, /motorways on\|off per session)                                                                                                            |
+| `RIDE_MAX_30_PCT`      | `3`                 | Target max % of distance in zones of 30 km/h or less (--max-30-pct)                                                                                                                           |
+| `RIDE_MAX_50_PCT`      | `20`                | Target max % of distance in 31-50 km/h zones (--max-50-pct)                                                                                                                                   |
+| `RIDE_DB`              | unset               | Saved rides and lookup cache, one SQLite file; default data/agentmotoride.db in the project                                                                                                   |
+| `RIDE_SHARE_PORT`      | `8787`              | Port of the phone share page (/share, rides share)                                                                                                                                            |
+| `RIDE_MODEL`           | `claude-opus-5-5`   | Model of the terminal app's planner; cheaper: claude-sonnet-5-5 (half price), claude-haiku-4-5 (quarter)                                                                                      |
+| `RIDE_EFFORT`          | `high`              | Reasoning effort of the planner: low \| medium \| high \| xhigh \| max (ignored by Haiku)                                                                                                     |
+| `RIDE_SCOUTS`          | `1`                 | Scouts explore candidate areas in parallel for a new ride; 0 turns them off (they bill ANTHROPIC_API_KEY, also under Claude Code or Codex; with 0, Claude Code scouts with its own subagents) |
+| `RIDE_SCOUT_MODEL`     | `claude-sonnet-5-5` | Model of each scout                                                                                                                                                                           |
+| `RIDE_SCOUT_EFFORT`    | `low`               | Reasoning effort of each scout                                                                                                                                                                |

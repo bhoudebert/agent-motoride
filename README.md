@@ -45,7 +45,7 @@ exports and the data are the same in both.
 |                     | API mode                                            | MCP mode                                                                                |
 | ------------------- | --------------------------------------------------- | --------------------------------------------------------------------------------------- |
 | What runs the agent | This app, through the Anthropic API                 | Claude Code or Codex CLI (any MCP client), using this app as a tool server              |
-| What you pay with   | An Anthropic API key, per token                     | Your Claude Code or Codex plan; scouts still use the key if set                         |
+| What you pay with   | An Anthropic API key, per token                     | Your Claude Code or Codex plan; scouts use the key if set, else Claude Code's subagents |
 | How you talk to it  | A terminal app with a menu and a `refine>` prompt   | Plain words in Claude Code or Codex; slash commands as shortcuts in Claude Code         |
 | Planning guidance   | A real system prompt, schema-validated final answer | The same instructions sent as the prompt's text; free-text answer                       |
 | Model and effort    | `RIDE_MODEL`, `RIDE_EFFORT` in `.env` (Anthropic)   | The MCP client's own model: Claude in Claude Code, OpenAI models in Codex               |
@@ -81,7 +81,7 @@ npm run ride -- --from "Grenoble" "this Saturday, no rain, under 250 km, winding
 
 ```bash
 npm install
-cp .env.example .env            # set RIDE_HOME; ANTHROPIC_API_KEY only if you want scouts
+cp .env.example .env            # set RIDE_HOME; ANTHROPIC_API_KEY only for the app's own scouts
 claude                          # start Claude Code in this directory; approve the "ride" server
 ```
 
@@ -145,7 +145,7 @@ a decision record in [`docs/adr/`](docs/adr/).
 
 - Node.js 24 or newer. The TypeScript sources run directly, there is no build step.
 - API mode: an Anthropic API key from <https://platform.claude.com/>, billed per token.
-- MCP mode: Claude Code, Codex or another MCP client. No API key needed, except for scouts.
+- MCP mode: Claude Code, Codex or another MCP client. No API key needed: without one, Claude Code scouts with its own subagents.
 - Internet access to the public data services listed in [the engineering notes](docs/ENGINEERING.md#tools).
 - Optional: a TomTom API key (free tier at <https://developer.tomtom.com/>) for traffic checks.
 

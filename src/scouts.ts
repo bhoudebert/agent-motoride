@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { requestSettings, SCOUT_EFFORT, SCOUT_MODEL } from "./model.ts";
 import { ScoutReport } from "./schema.ts";
 import type { RideContext } from "./session.ts";
+import { type Point, resolvePoint } from "./tools/geo.ts";
 import { createTools } from "./tools/index.ts";
 import { countUsage, describeResponse } from "./usage.ts";
 
@@ -12,6 +13,8 @@ export interface ScoutInput {
   maxDistanceKm: number | null;
   maxRidingMinutes: number | null;
   constraints: string;
+  /** Start and end point when the request names one other than the rider's home. */
+  start?: string | null;
 }
 
 const MAX_SCOUTS = 4;
@@ -35,11 +38,21 @@ export function scoutsUnavailable(): string | null {
   return null;
 }
 
+/** Where the scouts' loops start and end: the place the request names, else the rider's home. */
+export async function scoutStart(context: RideContext, input: ScoutInput): Promise<Point> {
+  return input.start?.trim() ? resolvePoint(input.start) : context.home;
+}
+
 /** What one scout is told about its area, the start point and the rider's limits. */
-export function scoutBrief(context: RideContext, input: ScoutInput, area: ScoutInput["areas"][number]): string {
+export function scoutBrief(
+  context: RideContext,
+  input: ScoutInput,
+  area: ScoutInput["areas"][number],
+  start: Point,
+): string {
   return [
     `Area to scout: ${area.name} (around ${area.location}).`,
-    `Start and end point of the loop: ${context.home.label} (${context.home.lat},${context.home.lon}).`,
+    `Start and end point of the loop: ${start.label} (${start.lat},${start.lon}).`,
     `Ride date: ${input.rideDate}, departure ${input.departure}.`,
     input.maxDistanceKm ? `Hard limit: total distance at most ${input.maxDistanceKm} km.` : "",
     input.maxRidingMinutes ? `Hard limit: riding time at most ${input.maxRidingMinutes} minutes.` : "",
@@ -69,6 +82,7 @@ export async function scoutAreas(
       ],
     };
   }
+  const start = await scoutStart(context, input);
   const client = new Anthropic();
   const areas = input.areas.slice(0, MAX_SCOUTS);
   if (input.areas.length > MAX_SCOUTS) notes.push(`Only the first ${MAX_SCOUTS} areas were scouted.`);
@@ -77,7 +91,7 @@ export async function scoutAreas(
     areas.map(async (area) => {
       const scope = `scout:${area.name}`;
       const tools = createTools(context, { scope, only: ["recallArea", "searchRoads", "calculateTrip", "getWeather"] });
-      const brief = scoutBrief(context, input, area);
+      const brief = scoutBrief(context, input, area, start);
       context.trace({ scope, kind: "user", name: "brief", payload: brief });
 
       const runner = client.beta.messages.toolRunner({

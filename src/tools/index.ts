@@ -563,6 +563,12 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
         constraints: z
           .string()
           .describe("The rider's request and constraints, in one paragraph, as scouts will not see the conversation"),
+        start: z
+          .string()
+          .nullish()
+          .describe(
+            'Start and end point of the loops when the request names one other than the rider\'s home ("from Thuin"): town or "lat,lon". Omit for the home',
+          ),
       }),
       run: trace("scoutAreas", (input: Parameters<typeof scoutAreas>[1]) => scoutAreas(context, input)),
     },

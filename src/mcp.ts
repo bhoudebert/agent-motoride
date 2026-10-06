@@ -931,7 +931,7 @@ agentMotoride commands (slash commands):
 
 Attach a saved ride with @ in the prompt: @ride:ride://library, @ride:ride://ride/<id>, @ride:ride://roads/rated.
 Things to say in plain words: "show me ride 7 on a map", "rate ride 7 five, superb", "leg 2 of ride 7: never again, gravel", "import ~/Downloads/route.gpx", "allow motorways", "no repeats of saved rides", "aim for 10% in 50 zones" (settings), "where are the speed cameras", "find a fuel stop and a café", "when does the sun set".
-Outside Claude Code: npm run rides -- list | show | rate | note | review | import | export | qr | share | trace | runs.
+Outside Claude Code: npm run rides -- roadbooks | rides | show | rate | note | review | import | export | qr | share | trace | runs.
 
 Current settings:
 ${settingsText()}`),

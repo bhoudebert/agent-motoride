@@ -50,13 +50,13 @@ Options:
 At the "refine>" prompt, type a change in plain words, or a command:
 ${refineHelp()}
 
-Saved rides are managed with: npm run rides -- list | rides | show | rate | rate-leg | note | review | delete
+Saved rides are managed with: npm run rides -- roadbooks | rides | show | rate | rate-leg | note | review | delete
 Env equivalents: RIDE_ALLOW_MOTORWAYS=1, RIDE_MAX_30_PCT, RIDE_MAX_50_PCT.
 Needs ANTHROPIC_API_KEY (see .env.example).`;
 
 function refineHelp(): string {
   return `  /save [name]          Save the current itinerary (new version if already saved); refused when it duplicates a saved ride, --force to override
-  /list [page]          Roadbooks (the loops you saved), newest first, 20 per page
+  /roadbooks [page]     Roadbooks (the loops and trips you saved), newest first, 20 per page
   /rides [page]         Rides (a roadbook on a day), latest date first, 20 per page
   /show [id|name]       Details of a saved ride (no argument: the one loaded or saved here)
   /gpx [file.gpx]       Export the current itinerary (or the loaded ride) as a GPX file
@@ -204,13 +204,13 @@ try {
 
   if (values.show) {
     const ride = store.findRide(values.show);
-    if (!ride) throw new Error(`No saved ride matches "${values.show}". Run: npm run rides -- list`);
+    if (!ride) throw new Error(`No saved ride matches "${values.show}". Run: npm run rides -- roadbooks`);
     console.log(formatRideDetail(ride));
   } else if (hasRequest) {
     let baseRide: SavedRide | undefined;
     if (values.ride) {
       baseRide = store.findRide(values.ride);
-      if (!baseRide) throw new Error(`No saved ride matches "${values.ride}". Run: npm run rides -- list`);
+      if (!baseRide) throw new Error(`No saved ride matches "${values.ride}". Run: npm run rides -- roadbooks`);
     }
     const request = positionals.join(" ").trim();
     let outcome: Outcome;
@@ -647,6 +647,9 @@ async function refineLoop(
             save(args.join(" "));
             break;
           case "list":
+            console.log("Two lists now: /roadbooks (saved loops and trips), /rides (by date).");
+            break;
+          case "roadbooks":
           case "rides": {
             const page = args[0] ? Number(args[0]) : 1;
             if (!Number.isInteger(page) || page < 1) {
@@ -655,7 +658,7 @@ async function refineLoop(
             }
             const next = (n: number) => `/${command} ${n}`;
             console.log(
-              command === "list"
+              command === "roadbooks"
                 ? formatRoadbookPage(store.listRoadbooks(page), next)
                 : formatRideDayPage(store.listRideDays(page), next),
             );
@@ -665,7 +668,7 @@ async function refineLoop(
             // Without an argument: the ride this session saved or loaded.
             const target = args.length ? args.join(" ") : savedId() !== null ? String(savedId()) : undefined;
             const ride = target ? store.findRide(target) : undefined;
-            console.log(ride ? formatRideDetail(ride) : "Usage: /show <id|name>, see /list.");
+            console.log(ride ? formatRideDetail(ride) : "Usage: /show <id|name>, see /roadbooks.");
             break;
           }
           case "rate": {

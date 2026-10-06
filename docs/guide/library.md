@@ -41,11 +41,11 @@ rides.
 ::: code-group
 
 ```bash [Terminal]
-npm run rides -- list                # roadbooks, newest first
+npm run rides -- roadbooks           # roadbooks, newest first
 npm run rides -- rides               # rides, latest date first
 npm run rides -- rides --page 2      # 20 per page; the last line says how to see more
 
-# at the refine> prompt: /list, /rides, /rides 2
+# at the refine> prompt: /roadbooks, /rides, /rides 2
 ```
 
 ```text [Claude Code / Codex]

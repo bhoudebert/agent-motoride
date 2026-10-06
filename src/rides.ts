@@ -45,7 +45,7 @@ import { emptyUsage } from "./usage.ts";
 
 const USAGE = `Usage: npm run rides -- <command>
 
-  list [--page N]                       Roadbooks (the loops you saved), newest first, 20 per page (alias: roadbooks)
+  roadbooks [--page N]                  Roadbooks (the loops and trips you saved), newest first, 20 per page
   rides [--page N]                      Rides (a roadbook on a day), latest date first, 20 per page
   today [id|name]                       Ride-day briefing: weather now, daylight, traffic, stops checked against opening hours, go or no-go
   show <id|name> [--md]                 One ride: legs, map link, itinerary (--md: as Markdown on stdout)
@@ -84,7 +84,7 @@ const store = new Store();
 function ride(idOrName: string | undefined) {
   if (!idOrName) throw new Error("Which ride? Give its id or name.");
   const found = store.findRide(idOrName);
-  if (!found) throw new Error(`No saved ride matches "${idOrName}". Run: npm run rides -- list`);
+  if (!found) throw new Error(`No saved ride matches "${idOrName}". Run: npm run rides -- roadbooks`);
   return found;
 }
 
@@ -99,10 +99,15 @@ function pageArg(args: string[]): number {
 
 try {
   switch (command) {
-    case "list":
     case "roadbooks":
       console.log(
-        formatRoadbookPage(store.listRoadbooks(pageArg(args)), (n) => `npm run rides -- ${command} --page ${n}`),
+        formatRoadbookPage(store.listRoadbooks(pageArg(args)), (n) => `npm run rides -- roadbooks --page ${n}`),
+      );
+      break;
+    case "list":
+      // Kept only to point to the two lists it became.
+      console.log(
+        "Two lists now: npm run rides -- roadbooks (saved loops and trips), npm run rides -- rides (by date).",
       );
       break;
     case "rides":

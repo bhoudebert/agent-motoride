@@ -31,7 +31,7 @@ Options:
 
 At the "refine>" prompt, type a change in plain words, or a command:
   /save [name]          Save the current itinerary (new version if already saved); refused when it duplicates a saved ride, --force to override
-  /list [page]          Roadbooks (the loops you saved), newest first, 20 per page
+  /roadbooks [page]     Roadbooks (the loops and trips you saved), newest first, 20 per page
   /rides [page]         Rides (a roadbook on a day), latest date first, 20 per page
   /show [id|name]       Details of a saved ride (no argument: the one loaded or saved here)
   /gpx [file.gpx]       Export the current itinerary (or the loaded ride) as a GPX file
@@ -51,7 +51,7 @@ At the "refine>" prompt, type a change in plain words, or a command:
   /quit                 Quit the program (also exit, Ctrl-C)
   /help                 This list
 
-Saved rides are managed with: npm run rides -- list | rides | show | rate | rate-leg | note | review | delete
+Saved rides are managed with: npm run rides -- roadbooks | rides | show | rate | rate-leg | note | review | delete
 Env equivalents: RIDE_ALLOW_MOTORWAYS=1, RIDE_MAX_30_PCT, RIDE_MAX_50_PCT.
 Needs ANTHROPIC_API_KEY (see .env.example).
 ```
@@ -61,7 +61,7 @@ Needs ANTHROPIC_API_KEY (see .env.example).
 ```text
 Usage: npm run rides -- <command>
 
-  list [--page N]                       Roadbooks (the loops you saved), newest first, 20 per page (alias: roadbooks)
+  roadbooks [--page N]                  Roadbooks (the loops and trips you saved), newest first, 20 per page
   rides [--page N]                      Rides (a roadbook on a day), latest date first, 20 per page
   today [id|name]                       Ride-day briefing: weather now, daylight, traffic, stops checked against opening hours, go or no-go
   show <id|name> [--md]                 One ride: legs, map link, itinerary (--md: as Markdown on stdout)

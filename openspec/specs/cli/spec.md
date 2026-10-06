@@ -13,7 +13,7 @@ settings always visible and no accidental exit.
 
 ### Requirement: Refine prompt
 
-After an itinerary the prompt SHALL stay open for changes and questions, SHALL show the motorway state in its text, and SHALL accept commands: `/save`, `/list`, `/show`, `/rate`, `/gpx`, `/md`, `/qr`, `/share`, `/motorways on|off`, `/bike`, `/settings`, `/usage`, `/trace`, `/back`, `/quit`, `/help`. An empty line SHALL do nothing; Ctrl-D SHALL step back one level; leaving with an unsaved itinerary SHALL ask once.
+After an itinerary the prompt SHALL stay open for changes and questions, SHALL show the motorway state in its text, and SHALL accept commands: `/save`, `/roadbooks`, `/rides`, `/show`, `/rate`, `/gpx`, `/md`, `/qr`, `/share`, `/motorways on|off`, `/bike`, `/settings`, `/usage`, `/trace`, `/back`, `/quit`, `/help`. An empty line SHALL do nothing; Ctrl-D SHALL step back one level; leaving with an unsaved itinerary SHALL ask once.
 
 #### Scenario: Back to the menu
 
@@ -26,7 +26,7 @@ Session start SHALL print start point, motorway state, slow-zone targets, traffi
 
 ### Requirement: Library command
 
-`npm run rides` SHALL provide list (roadbooks, alias `roadbooks`), rides, each with `--page N`, show, export, export-md, qr, share, rate, rate-leg, refresh (with `--stops`), bike, trace, runs, delete, clear-cache.
+`npm run rides` SHALL provide roadbooks and rides, each with `--page N` (`list` only points to these two), show, export, export-md, qr, share, rate, rate-leg, refresh (with `--stops`), bike, trace, runs, delete, clear-cache.
 
 ### Requirement: Safety
 

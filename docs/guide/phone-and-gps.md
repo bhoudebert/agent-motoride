@@ -25,6 +25,34 @@ Whole ride (overview, not for navigation): https://www.google.com/maps/dir/...
   from home with the way there and back. Navigate with the parts: between the
   overview's points, Google may pick other roads.
 
+## A map of the ride
+
+A picture of the whole ride, roadbook style: the route leg by leg, the towns in
+riding order, the planned stops with their arrival times, the fixed cameras with
+their speed limit, km marks, a scale and the ride's figures.
+
+::: code-group
+
+```bash [Terminal]
+npm run rides -- map 7                  # writes exports/7-<name>.png
+npm run rides -- map 7 ~/ride-map.png   # or a path you choose
+
+# at the refine> prompt, on a saved ride: /map
+```
+
+```text [Claude Code / Codex]
+show me ride 7 on a map
+
+(the picture shows in the chat)
+```
+
+:::
+
+It is drawn from the ride's own data, with no map background, so it works
+offline and looks the same everywhere. It also comes with the Markdown export
+(at the top of the document) and on the phone share page. For streets and
+the land around, use the Google Maps links.
+
 ## To the phone
 
 ::: code-group

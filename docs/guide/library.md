@@ -93,7 +93,7 @@ during the ride work better: see [Notes and review](/notes-and-review).
 npm run rides -- refresh 3            # route again: times, road mix, leg names, daylight, weather, cameras, stops
 npm run rides -- refresh 3 --stops    # only the stop plan, after a bike profile change
 npm run rides -- refresh all
-npm run rides -- export-md 3          # the ride as a Markdown document, for your notes
+npm run rides -- export-md 3          # the ride as a Markdown document with its map, for your notes
 npm run rides -- delete 3
 ```
 

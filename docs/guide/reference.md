@@ -34,7 +34,8 @@ At the "refine>" prompt, type a change in plain words, or a command:
   /list                 Saved rides
   /show [id|name]       Details of a saved ride (no argument: the one loaded or saved here)
   /gpx [file.gpx]       Export the current itinerary (or the loaded ride) as a GPX file
-  /md [file.md]         Export the saved or loaded ride as a Markdown document (save first)
+  /md [file.md]         Export the saved or loaded ride as a Markdown document, with its map (save first)
+  /map [file.png]       A picture of the saved or loaded ride: route, towns, stops, cameras (save first)
   /qr                   QR code of the Google Maps link, to scan with the phone
   /share                Page for the phone on the local Wi-Fi (map link, itinerary, GPX download) with its QR code
   /rate <1-5> [note]    Rate the ride saved or loaded in this session
@@ -62,7 +63,8 @@ Usage: npm run rides -- <command>
   list                                  All saved rides
   today [id|name]                       Ride-day briefing: weather now, daylight, traffic, stops checked against opening hours, go or no-go
   show <id|name> [--md]                 One ride: legs, map link, itinerary (--md: as Markdown on stdout)
-  export-md <id|name> [file.md]         Write the ride as a Markdown document (default: exports/ in the project)
+  export-md <id|name> [file.md]         Write the ride as a Markdown document, with its map (default: exports/ in the project)
+  map <id|name> [file.png]              A picture of the ride: route, towns, stops, fixed cameras with their limits
   rate <id|name> <1-5> [note]           Rate a ride after riding it
   rate-leg <id|name> <leg> <1-5> [note] Rate one leg of a ride
   note "<text>" [--rating 0-5] [--back N] [--ride id|name]
@@ -293,6 +295,14 @@ Ride-day briefing for a saved ride: forecast along the route now, daylight and r
 _read-only · local only_
 
 Full view of one saved ride, as the rider sees it in the app: figures, road mix, time at 70+, daylight, fixed cameras, fuel and café stops, legs with names, main roads, times and ratings, map link and the itinerary text. Show it to the rider as is; do not rebuild it from other tools.
+
+- `ride` (string): Saved ride id or name
+
+#### `showRideMap`
+
+_read-only · local only_
+
+A picture of a saved ride, to show the rider: the route leg by leg, towns in riding order, planned stops with their arrival times, fixed speed cameras with their limits, km marks, scale and the ride's figures. Drawn from the ride's own data, no map background. Returns the image; show it as is. exportMarkdown and rides map also write it to a file.
 
 - `ride` (string): Saved ride id or name
 

@@ -38,6 +38,7 @@ export function formatRideMarkdown(ride: SavedRide): string {
     limit31to50?: { pct: number };
     limit30OrLess?: { pct: number };
     motorwayKm?: number;
+    fastExpressway?: { km: number; pct: number; longest: Array<{ road: string; km: number }> };
   };
   const x = ride.extras;
   const lines: string[] = [];
@@ -88,7 +89,16 @@ export function formatRideMarkdown(ride: SavedRide): string {
       push(
         `- Time on roads limited to 70 or more: ${s.timeOnRoads70PlusPct}% (${s.timeAbove70EstimatedPct}% at an estimated 70 or more)`,
       );
-    push(`- 31-50 zones: ${s.limit31to50.pct}%`, `- Zones of 30 or less: ${s.limit30OrLess?.pct ?? "?"}%`, "");
+    push(`- 31-50 zones: ${s.limit31to50.pct}%`, `- Zones of 30 or less: ${s.limit30OrLess?.pct ?? "?"}%`);
+    if (s.fastExpressway?.km) {
+      push(
+        `- Fast expressway (not motorway, 100 km/h or more): ${s.fastExpressway.km} km, ${s.fastExpressway.pct}% (${s.fastExpressway.longest
+          .slice(0, 3)
+          .map((r) => r.road)
+          .join(", ")})`,
+      );
+    }
+    push("");
   }
 
   const surface = formatSurface(ride);

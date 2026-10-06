@@ -94,6 +94,7 @@ function formatRoadMix(ride: SavedRide): string | null {
     timeOnRoads70PlusPct?: number;
     timeAbove70EstimatedPct?: number;
     motorwayKm?: number;
+    fastExpressway?: { km: number; pct: number };
   } | null;
   if (!s?.limit30OrLess || !s.limit31to50) return null;
   const open = s.openRoadPct ?? Number((100 - s.limit30OrLess.pct - s.limit31to50.pct).toFixed(1));
@@ -105,7 +106,7 @@ function formatRoadMix(ride: SavedRide): string | null {
     s.timeOnRoads70PlusPct === undefined
       ? ""
       : `  |  ${s.timeOnRoads70PlusPct}% of time on 70+ roads (${s.timeAbove70EstimatedPct}% at 70+ estimated)`;
-  return `Road mix: ${open}% open road${untagged}${motorway}${fast}  |  ${s.limit31to50.pct}% in 31-50 zones  |  ${s.limit30OrLess.pct}% in zones of 30 or less  |  motorway ${s.motorwayKm ?? 0} km`;
+  return `Road mix: ${open}% open road${untagged}${motorway}${fast}  |  ${s.limit31to50.pct}% in 31-50 zones  |  ${s.limit30OrLess.pct}% in zones of 30 or less  |  motorway ${s.motorwayKm ?? 0} km${s.fastExpressway?.km ? `  |  fast expressway (100+) ${s.fastExpressway.km} km, ${s.fastExpressway.pct}%` : ""}`;
 }
 
 export function formatRideLine(ride: SavedRide): string {

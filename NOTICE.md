@@ -23,6 +23,13 @@ Please respect the usage policies of the public instances: the app serialises
 and caches its requests for that reason. For heavy or commercial use, host your
 own instances or use a commercial provider.
 
+## Bundled fonts
+
+The ride map renders with fonts shipped in `assets/fonts`, under the SIL Open
+Font License 1.1 (licence texts next to them): Space Grotesk (© 2020 The Space
+Grotesk Project Authors) and JetBrains Mono (© 2020 The JetBrains Mono Project
+Authors).
+
 ## Trademarks and affiliation
 
 OpenStreetMap, Valhalla, Open-Meteo, Photon, komoot, Nominatim, TomTom,

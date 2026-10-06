@@ -48,6 +48,10 @@ show me ride 7 on a map
 
 :::
 
+![Map of a 131.5 km loop from Namur through the Condroz, with its towns, a coffee stop and six fixed speed cameras with their limits](/ride-map.png)
+
+_A real plan from Namur. Regenerate this example with `node scripts/sample-map.ts`._
+
 It is drawn from the ride's own data, with no map background, so it works
 offline and looks the same everywhere. It also comes with the Markdown export
 (at the top of the document) and on the phone share page. For streets and

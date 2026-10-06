@@ -6,7 +6,8 @@ Read this before changing anything. It applies to people and to coding agents
 ## What this is
 
 agentMotoride: an agentic motorcycle ride planner. `README.md` explains the product
-and the two modes (API and MCP). `openspec/project.md` holds the conventions
+and the two modes (API and MCP); the rider's guide in `docs/guide/` explains how
+to use every feature; `docs/ENGINEERING.md` how it is built. `openspec/project.md` holds the conventions
 and the domain vocabulary; `openspec/specs/<capability>/spec.md` describe the
 behaviour as requirements with scenarios.
 
@@ -32,8 +33,9 @@ The full path every feature follows, from idea to release, is in
 5. **Quality gate before pushing:** `npm run quality` (typecheck, lint, format
    check, tests with coverage thresholds) must pass. `npm run lint:fix` and `npm run format` fix most
    findings.
-6. **Docs with the change.** README when usage changes; `ROADMAP.md` when an
-   idea is done or added.
+6. **Docs with the change.** The guide (`docs/guide/`) when usage changes, the
+   README when the overview changes, `docs/ENGINEERING.md` when the
+   architecture changes; `ROADMAP.md` when an idea is done or added.
 7. **Pull request** with the template: summary, spec touched, what was
    verified, what was not. The maintainer reviews and merges.
 8. **No attribution trailers** or generated-by footers in commits, PR

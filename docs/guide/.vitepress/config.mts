@@ -63,6 +63,7 @@ export default defineConfig({
         text: "Reference",
         items: [
           { text: "Settings and rules", link: "/settings" },
+          { text: "Every command, tool and setting", link: "/reference" },
           { text: "The terminal app", link: "/terminal" },
           { text: "Limits and troubleshooting", link: "/limits" },
           { text: "Behind the scenes", link: "/behind-the-scenes" },

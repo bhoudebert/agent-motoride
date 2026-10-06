@@ -77,6 +77,9 @@ Codex has no slash commands for MCP servers; plain words do the same.
 - **Attach a ride** with `@`: `@ride:ride://library`, `@ride:ride://ride/7`,
   `@ride:ride://roads/rated`.
 
+Every tool, prompt and resource, with its inputs: see the
+[reference](/reference), generated from the server itself.
+
 ## Good to know
 
 - **The client's model plans**, so quality and cost follow that model, not

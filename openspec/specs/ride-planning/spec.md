@@ -30,6 +30,20 @@ The planner SHALL treat distance caps, riding-time caps and "dry" as hard limits
 - **WHEN** every candidate exceeds the time cap
 - **THEN** the answer states that no loop fits and presents the closest one with the overshoot
 
+### Requirement: Itinerary checked by code
+
+Every itinerary SHALL be checked by code before it is shown: routed distance and riding time against the caps read from the rider's words, no motorway when forbidden, no repeat of a saved ride unless repeats are allowed, less than 10% on roads rated 0-1, and the distance stated in the answer equal to the routed one within 1.5 km. In API mode a failed check SHALL be sent back to the planner once, marked as an automatic check, unless the answer already acknowledges the breach; checks still failing after that SHALL be shown to the rider under the itinerary. In MCP mode the checks SHALL be available as the `checkItinerary` tool.
+
+#### Scenario: Over the cap
+
+- **WHEN** the rider asked for "under 200 km" and the itinerary routes 214 km without saying so
+- **THEN** the planner is told "routed 214 km, over the 200 km limit" and answers again
+
+#### Scenario: Impossible request
+
+- **WHEN** the answer says the request cannot be met and presents the closest option
+- **THEN** it is shown as is, without a retry
+
 ### Requirement: Scouts for new rides
 
 For a new leisure ride the planner SHALL first call `scoutAreas` with two to four areas; each scout SHALL run as its own model session with `searchRoads`, `calculateTrip` and `getWeather` only, in parallel with the others, and report a candidate with a route id known to the session. Scouts SHALL NOT be used for edits, questions or practical trips, and SHALL be unavailable without API credentials or when `RIDE_SCOUTS=0`.

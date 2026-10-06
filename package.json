@@ -19,6 +19,7 @@
     "eval": "node --env-file-if-exists=.env evals/run.ts",
     "docs:dev": "vitepress dev docs/guide",
     "docs:build": "vitepress build docs/guide",
+    "docs:reference": "node scripts/reference.ts",
     "codex:register": "node scripts/codex-register.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

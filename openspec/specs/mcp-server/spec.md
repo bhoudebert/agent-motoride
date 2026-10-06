@@ -39,7 +39,7 @@ The server SHALL publish, as text: `ride://library` (the saved rides, one line e
 
 ### Requirement: Client portability
 
-The server SHALL work with any MCP client over stdio. For clients that do not expose prompts, the planning guidance SHALL be available as the `planningGuide` tool and the server instructions SHALL say so. Every lookup tool SHALL carry a read-only annotation and every tool that writes (settings, save, refresh, exports) SHALL NOT, so clients with annotation-based approval can let lookups run freely.
+The server SHALL work with any MCP client over stdio. The rider SHALL get the same planning in plain words as through the slash commands: the planning guidance SHALL be available as the `planningGuide` tool, and the server instructions SHALL ask the client to call it before planning any new ride requested in plain words, in every client. Every lookup tool SHALL carry a read-only annotation and every tool that writes (settings, save, refresh, exports) SHALL NOT, so clients with annotation-based approval can let lookups run freely.
 
 #### Scenario: Codex CLI
 
@@ -50,6 +50,11 @@ The server SHALL work with any MCP client over stdio. For clients that do not ex
 
 - **WHEN** Claude Code connects from the project directory
 - **THEN** the prompts appear as slash commands and the instructions reach the system prompt
+
+#### Scenario: Plain words in Claude Code
+
+- **WHEN** the rider types "plan me a ride this Saturday, under 250 km" without a slash command
+- **THEN** the model calls `planningGuide` first and plans with the full guidance, as with `/mcp__ride__plan-ride`
 
 ### Requirement: Run accounting
 

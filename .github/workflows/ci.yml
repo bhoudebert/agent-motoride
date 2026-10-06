@@ -32,6 +32,8 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run format:check
+      - name: Guide builds, with no dead internal link
+        run: npm run docs:build
       - name: Tests with coverage thresholds (lines 80, functions 80, branches 65)
         run: set -o pipefail; npm run test:coverage | tee coverage.txt
       - name: Coverage in the job summary

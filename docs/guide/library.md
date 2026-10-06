@@ -1,7 +1,9 @@
 # Your library
 
 Rides you keep are saved in one file on your machine, `data/agentmotoride.db`.
-Nothing is saved unless you ask. The library is what makes each new plan
+Nothing is saved unless you ask. When an update changes how the file is
+organised, the app first copies it next to itself (`agentmotoride.db.bak-v1`
+and so on); once all is well, those copies can be deleted. The library is what makes each new plan
 different and better: it is never repeated, and what you rated steers it.
 
 ## Save a ride

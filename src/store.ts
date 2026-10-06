@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, renameSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
+import { migrate } from "./migrations.ts";
 import type { RidePreferences } from "./preferences.ts";
 import { type BikeProfile, DEFAULT_PROFILE } from "./profile.ts";
 import type { RideConditions } from "./conditions.ts";
@@ -238,103 +239,6 @@ interface SegmentRow {
   notes: string | null;
 }
 
-const SCHEMA = `
-CREATE TABLE IF NOT EXISTS rides (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL,
-  created_at TEXT NOT NULL,
-  parent_id INTEGER REFERENCES rides(id) ON DELETE SET NULL,
-  home TEXT NOT NULL,
-  ride_date TEXT,
-  departure TEXT,
-  distance_km REAL NOT NULL,
-  riding_minutes INTEGER NOT NULL,
-  waypoints TEXT NOT NULL,
-  round_trip INTEGER NOT NULL,
-  speed_limits TEXT NOT NULL,
-  preferences TEXT NOT NULL,
-  request TEXT NOT NULL,
-  itinerary TEXT NOT NULL,
-  maps_url TEXT NOT NULL,
-  cells TEXT NOT NULL,
-  center_lat REAL NOT NULL,
-  center_lon REAL NOT NULL,
-  rating INTEGER,
-  notes TEXT
-);
-CREATE TABLE IF NOT EXISTS segments (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  ride_id INTEGER NOT NULL REFERENCES rides(id) ON DELETE CASCADE,
-  seq INTEGER NOT NULL,
-  from_label TEXT NOT NULL,
-  to_label TEXT NOT NULL,
-  from_coords TEXT NOT NULL,
-  to_coords TEXT NOT NULL,
-  distance_km REAL NOT NULL,
-  riding_minutes INTEGER NOT NULL,
-  main_roads TEXT NOT NULL,
-  rating INTEGER,
-  notes TEXT
-);
-CREATE INDEX IF NOT EXISTS segments_ride ON segments(ride_id, seq);
-CREATE TABLE IF NOT EXISTS runs (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  started_at TEXT NOT NULL,
-  home TEXT NOT NULL,
-  request TEXT NOT NULL,
-  model TEXT NOT NULL,
-  effort TEXT NOT NULL,
-  usage TEXT NOT NULL,
-  cost_usd REAL,
-  result TEXT,
-  ride_id INTEGER REFERENCES rides(id) ON DELETE SET NULL,
-  error TEXT
-);
-CREATE TABLE IF NOT EXISTS trace (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  run_id INTEGER NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
-  at TEXT NOT NULL,
-  scope TEXT NOT NULL,
-  kind TEXT NOT NULL,
-  name TEXT NOT NULL,
-  ms INTEGER,
-  payload TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS trace_run ON trace(run_id, id);
-CREATE TABLE IF NOT EXISTS profile (
-  key TEXT PRIMARY KEY,
-  value TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS ride_notes (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  ride_id INTEGER NOT NULL REFERENCES rides(id) ON DELETE CASCADE,
-  created_at TEXT NOT NULL,
-  text TEXT NOT NULL,
-  rating INTEGER,
-  minutes_back INTEGER NOT NULL,
-  status TEXT NOT NULL DEFAULT 'pending',
-  placement TEXT
-);
-CREATE INDEX IF NOT EXISTS ride_notes_ride ON ride_notes(ride_id, id);
-CREATE TABLE IF NOT EXISTS road_ratings (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  ride_id INTEGER REFERENCES rides(id) ON DELETE SET NULL,
-  note_id INTEGER REFERENCES ride_notes(id) ON DELETE SET NULL,
-  created_at TEXT NOT NULL,
-  road TEXT NOT NULL,
-  rating INTEGER NOT NULL,
-  reason TEXT,
-  approximate INTEGER NOT NULL,
-  cells TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS tool_cache (
-  key TEXT PRIMARY KEY,
-  tool TEXT NOT NULL,
-  output TEXT NOT NULL,
-  expires_at INTEGER NOT NULL
-);
-`;
-
 /** Stop lists are bare arrays per kind; repair any row written as { kind: { stops: [...] } }. */
 function normaliseExtras(extras: RideExtras): RideExtras {
   const stops: RideExtras["stops"] = {};
@@ -360,12 +264,13 @@ export class Store {
     this.path = path;
     if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
     this.#db = new DatabaseSync(path);
-    this.#db.exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;");
-    this.#db.exec(SCHEMA);
-    // Databases created before usage tracking lack this column.
-    const columns = this.#db.prepare("PRAGMA table_info(rides)").all() as Array<{ name: string }>;
-    for (const name of ["usage", "shapes", "extras"]) {
-      if (!columns.some((column) => column.name === name)) this.#db.exec(`ALTER TABLE rides ADD COLUMN ${name} TEXT`);
+    // A second process (CLI and MCP server) waits for a migration in progress.
+    this.#db.exec("PRAGMA busy_timeout = 10000; PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;");
+    try {
+      migrate(this.#db, path);
+    } catch (error) {
+      this.#db.close();
+      throw error;
     }
   }
 

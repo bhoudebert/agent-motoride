@@ -9,6 +9,8 @@ export interface FakeApi {
   requests: any[];
   /** Elements returned by every Overpass query (cameras, stops, roads). */
   overpass: unknown[];
+  /** Road segments of every routed leg, instead of the default two; cleared by setting undefined. */
+  edges?: Array<Record<string, unknown>>;
 }
 
 const PLACES: Record<string, { lat: number; lon: number; name: string }> = {
@@ -109,31 +111,33 @@ export function installFakeServices(): FakeApi {
           : edge;
       return json({
         shape: body.encoded_polyline,
-        admins: [{ country_code: "FR", state_code: "HDF" }],
-        edges: [
-          {
-            length: 30,
-            speed_limit: 80,
-            road_class: "secondary",
-            density: 2,
-            surface: "paved_smooth",
-            names: ["D 938"],
-            begin_shape_index: 0,
-            end_shape_index: 30,
-            end_node: { admin_index: 0 },
-          },
-          {
-            length: 10,
-            speed_limit: 50,
-            road_class: "tertiary",
-            density: 7,
-            surface: "paved_rough",
-            names: ["Rue de la Gare"],
-            begin_shape_index: 30,
-            end_shape_index: 39,
-            end_node: { admin_index: 0 },
-          },
-        ].map(keep),
+        admins: [{ country_code: "FR", state_code: "HDF" }, { country_code: "DE" }],
+        edges: (
+          api.edges ?? [
+            {
+              length: 30,
+              speed_limit: 80,
+              road_class: "secondary",
+              density: 2,
+              surface: "paved_smooth",
+              names: ["D 938"],
+              begin_shape_index: 0,
+              end_shape_index: 30,
+              end_node: { admin_index: 0 },
+            },
+            {
+              length: 10,
+              speed_limit: 50,
+              road_class: "tertiary",
+              density: 7,
+              surface: "paved_rough",
+              names: ["Rue de la Gare"],
+              begin_shape_index: 30,
+              end_shape_index: 39,
+              end_node: { admin_index: 0 },
+            },
+          ]
+        ).map(keep),
       });
     }
     if (url.host === "photon.komoot.io")

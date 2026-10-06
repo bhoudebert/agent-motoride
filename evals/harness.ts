@@ -1,4 +1,5 @@
 // Run one eval case through the API planner, live (recording) or from a cassette.
+import { fileURLToPath } from "node:url";
 import { openRide } from "../src/agent.ts";
 import { saveCurrentRide } from "../src/library.ts";
 import { EFFORT, MODEL, SCOUT_EFFORT, SCOUT_MODEL } from "../src/model.ts";
@@ -7,6 +8,7 @@ import { duplicateOf, ratedOverlap, registerRoute } from "../src/session.ts";
 import { Store } from "../src/store.ts";
 import { resetGeoState } from "../src/tools/geo.ts";
 import { computeTrip } from "../src/tools/trip.ts";
+import { readImage } from "../src/images.ts";
 import { estimateCostUsd, type RunUsage } from "../src/usage.ts";
 import { type Cassette, type Exchange, record, replay } from "./cassette.ts";
 import { type EvalCase, INJECTION } from "./cases.ts";
@@ -97,7 +99,8 @@ export async function runCase(
     const session = await openRide({ home: c.home, store, preferences, now });
     let error: string | null = null;
     try {
-      await session.send(c.request);
+      const fixtures = fileURLToPath(new URL("fixtures/", import.meta.url));
+      await session.send(c.request, { images: (c.images ?? []).map((name) => readImage(`${fixtures}${name}`)) });
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     }

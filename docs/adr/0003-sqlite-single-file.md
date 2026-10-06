@@ -14,7 +14,7 @@ runs on a laptop, a small home server or a VPS, for one rider.
 Everything lives in one SQLite file (`data/agentmotoride.db`) through Node's
 built-in `node:sqlite`. JSON columns hold nested data (legs extras, usage).
 Schema changes are applied on startup with additive `ALTER TABLE`s; a renamed
-file is migrated once.
+file is migrated once. Amended by ADR 0022: versioned migrations.
 
 ## Consequences
 

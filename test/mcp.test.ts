@@ -332,6 +332,11 @@ test("mcp: every tool answers when called by name through a client", async () =>
       await call("listRoadbooks", { page: 3 }),
       /Page 3 does not exist: the last is page 1 \(2 roadbooks\)\./,
     );
+    assert.match(
+      await call("planRide", { roadbook: "1", date: "tomorrow", departure: "9:30" }),
+      /^Ride planned from roadbook #1 .* leaving at 09:30\. The roadbook is unchanged\./,
+    );
+    assert.match(await call("listRoadbooks", {}), /^#2 [\s\S]*#1 .*2 rides/m, "a ride added, no copy");
     await call("planningGuide", { request: "plan me a ride" });
 
     // A new tool must come with its line above.

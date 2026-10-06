@@ -301,7 +301,7 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
     {
       name: "getTraffic",
       description:
-        "Expected traffic along a route for a given departure time: travel time with traffic, free-flow time and the delay between them. Meant for the final loop once it is chosen on road data, not for comparing candidates. Report trafficDelayMinutes on top of the riding-time estimate from calculateTrip. May report that no traffic source is configured; in that case say so in the answer instead of estimating.",
+        "Expected traffic along a route for a given departure time: travel time with traffic, free-flow time and the delay between them. Meant for the final loop once it is chosen on road data, not for comparing candidates. trafficDelayMinutes is the expected congestion for that departure (travel time minus free-flow time); incidentDelayMinutes is the part due to reported incidents. Report trafficDelayMinutes on top of the riding-time estimate from calculateTrip. May report that no traffic source is configured; in that case say so in the answer instead of estimating.",
       inputSchema: z.object({
         waypoints,
         departAt: z

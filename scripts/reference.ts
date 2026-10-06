@@ -55,6 +55,22 @@ function inputs(schema: JsonSchema): string {
     .join("\n")}\n`;
 }
 
+/** The four MCP hints of a tool, in words. */
+function hints(a: {
+  readOnlyHint?: boolean;
+  destructiveHint?: boolean;
+  idempotentHint?: boolean;
+  openWorldHint?: boolean;
+}) {
+  return `_${[
+    a.readOnlyHint ? "read-only" : "writes",
+    ...(a.readOnlyHint
+      ? []
+      : [a.destructiveHint ? "may overwrite" : "not destructive", a.idempotentHint ? "idempotent" : "not idempotent"]),
+    a.openWorldHint ? "uses online services" : "local only",
+  ].join(" · ")}_`;
+}
+
 /** Settings of .env.example: each with its default and the comment right above it. */
 function settings(): string {
   const rows: string[] = [];
@@ -108,14 +124,14 @@ ${fence(run(["src/index.ts", "--help"]))}
 ${fence(run(["src/rides.ts", "help"]))}
 ## Claude Code and Codex (MCP server)
 
-${tools.length} tools, ${prompts.length} prompts. Read-only tools are marked; a client can let them run without asking.
+${tools.length} tools, ${prompts.length} prompts. Each tool shows its MCP hints: a client can let read-only tools run without asking.
 
 ### Tools
 
 ${tools
   .map(
     (t) =>
-      `#### \`${t.name}\`${t.annotations?.readOnlyHint ? " (read-only)" : ""}\n\n${t.description ?? ""}\n\n${inputs(t.inputSchema as JsonSchema)}`,
+      `#### \`${t.name}\`\n\n${hints(t.annotations ?? {})}\n\n${t.description ?? ""}\n\n${inputs(t.inputSchema as JsonSchema)}`,
   )
   .join("\n")}
 ### Prompts

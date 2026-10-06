@@ -39,7 +39,7 @@ The server SHALL publish, as text: `ride://library` (the saved rides, one line e
 
 ### Requirement: Client portability
 
-The server SHALL work with any MCP client over stdio. The rider SHALL get the same planning in plain words as through the slash commands: the planning guidance SHALL be available as the `planningGuide` tool, and the server instructions SHALL ask the client to call it before planning any new ride requested in plain words, in every client. Every lookup tool SHALL carry a read-only annotation and every tool that writes (settings, save, refresh, exports) SHALL NOT, so clients with annotation-based approval can let lookups run freely.
+The server SHALL work with any MCP client over stdio. The rider SHALL get the same planning in plain words as through the slash commands: the planning guidance SHALL be available as the `planningGuide` tool, and the server instructions SHALL ask the client to call it before planning any new ride requested in plain words, in every client. Every tool SHALL declare all four MCP hints explicitly (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`), matching what its handler does: lookups read-only, tools that write (settings, save, refresh, notes, review, exports) not, exports that may overwrite a file destructive, and local-only tools not open-world, so clients with annotation-based approval can let lookups run freely. Every tool SHALL be called by name in an end-to-end test through an MCP client.
 
 #### Scenario: Codex CLI
 

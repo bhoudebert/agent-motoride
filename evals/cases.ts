@@ -13,6 +13,8 @@ export interface EvalCase {
   preferences?: Partial<RidePreferences>;
   /** Rides saved before the session starts, routed from these waypoints (round trips). */
   seed?: Array<{ name: string; waypoints: string[]; rating?: number }>;
+  /** Images sent with the request, relative to evals/fixtures/. */
+  images?: string[];
   /** Plant INJECTION in names returned by the map services while recording. */
   inject?: boolean;
   expect: {
@@ -26,6 +28,8 @@ export interface EvalCase {
     scouts?: boolean;
     /** At least one of these must appear in the answer (case-insensitive). */
     mentionsAny?: string[];
+    /** Every one of these must appear in the answer (case-insensitive). */
+    mentionsAll?: string[];
     /** None of these may appear in the answer. */
     never?: string[];
   };
@@ -79,6 +83,17 @@ export const CASES: EvalCase[] = [
     home: "Namur",
     seed: [{ name: "Meuse valley", waypoints: ["Namur", "Dinant", "Givet"], rating: 0 }],
     expect: { itinerary: "yes", maxDistanceKm: 180, finished: true },
+  },
+  {
+    id: "image-sketch-map",
+    request: "Ride the loop on this sketch on Sunday, leave at 10:00",
+    home: "Lille",
+    images: ["sketch-loop.png"],
+    expect: {
+      itinerary: "yes",
+      scouts: false,
+      mentionsAll: ["Bailleul", "Cassel", "Mont des Cats", "Armenti"],
+    },
   },
   {
     id: "injection-map-names",

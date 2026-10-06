@@ -13,6 +13,7 @@ import {
   rideNavigation,
   saveCurrentRide,
 } from "./library.ts";
+import { readImage } from "./images.ts";
 import { pinnedMapsLinks } from "./maps.ts";
 import { writeRideMarkdown } from "./markdown.ts";
 import { DEFAULT_PREFERENCES, preferencesFromEnv } from "./preferences.ts";
@@ -40,6 +41,8 @@ Options:
   --max-30-pct <n>      Target max % of distance in zones of 30 km/h or less. Default ${DEFAULT_PREFERENCES.max30Pct}.
   --max-50-pct <n>      Target max % of distance in 31-50 km/h zones. Default ${DEFAULT_PREFERENCES.max50Pct}.
   --once                Print the itinerary and exit, without the refine prompt.
+  --image <file>        Attach a photo of a map, a screenshot of a route or a list of places (PNG, JPEG, WebP, GIF,
+                        5 MB max; repeatable). The planner reads the places on it and routes them.
 
 At the "refine>" prompt, type a change in plain words, or a command:
 ${refineHelp()}
@@ -58,6 +61,7 @@ function refineHelp(): string {
   /share                Page for the phone on the local Wi-Fi (map link, itinerary, GPX download) with its QR code
   /rate <1-5> [note]    Rate the ride saved or loaded in this session
   /note <text> [--rating 0-5] [--back N]  During the ride: note about the last N minutes (default 10), reviewed after the ride
+  /image <file> [text]  Attach a map photo or route screenshot: the planner reads the places on it and routes them
   /motorways on|off     Permit or forbid motorways from now on (default off)
   /settings             Show current settings: motorways, slow-zone targets, traffic
   /bike [range=250 ...] Show or set the bike profile (range, reserve, pause, stint, lunch) used for stops
@@ -79,11 +83,14 @@ const { values, positionals } = parseArgs({
     "max-30-pct": { type: "string" },
     "max-50-pct": { type: "string" },
     once: { type: "boolean" },
+    image: { type: "string", multiple: true },
     help: { type: "boolean", short: "h" },
   },
   allowPositionals: true,
 });
 
+// Read and checked at once, so a wrong path fails before any model call.
+const startImages = (values.image ?? []).map((file) => readImage(file));
 const interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY);
 const hasRequest = positionals.length > 0 || Boolean(values.ride) || Boolean(values.show);
 
@@ -314,13 +321,13 @@ async function plan(
     store.updateRun(session.context.runId, record);
   };
   const send = session.send;
-  session.send = async (text: string) => {
+  session.send = async (text, options) => {
     requests.push(text.replace(/^\[Setting changed[^\]]*\]\n/, ""));
     console.error(
       `\x1b[2m(run #${session.context.runId}; replay later with: npm run rides -- trace ${session.context.runId})\x1b[0m`,
     );
     try {
-      await send(text);
+      await send(text, options);
       logRun(null);
     } catch (error) {
       logRun(describeError(error));
@@ -328,7 +335,8 @@ async function plan(
     }
   };
 
-  if (request !== null) await session.send(request);
+  // Images given on the command line go with the first request only.
+  if (request !== null) await session.send(request, { images: startImages.splice(0) });
   const hasUnsaved = () => {
     const ride = session.current();
     return ride !== undefined && ride.itinerary !== savedItinerary;
@@ -691,6 +699,16 @@ async function refineLoop(
             console.log(`Bike profile: ${describeProfile(profile)}`);
             if (args.length)
               pendingNote = `[Setting changed by the rider: bike profile is now ${describeProfile(profile)}. Plan stops again if an itinerary is on the table.]`;
+            break;
+          }
+          case "image": {
+            const [file, ...words] = args;
+            if (!file) {
+              console.log("Usage: /image <file> [text], e.g. /image ~/Pictures/loop.jpg ride this on Saturday");
+              break;
+            }
+            const image = readImage(file.replace(/^~(?=\/)/, process.env.HOME ?? "~"));
+            await session.send(words.join(" ") || "Plan the ride shown in this image.", { images: [image] });
             break;
           }
           case "usage":

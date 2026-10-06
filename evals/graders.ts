@@ -110,6 +110,12 @@ export const GRADERS: Grader[] = [
       c.expect.mentionsAny ? c.expect.mentionsAny.some((word) => text(o).includes(word.toLowerCase())) : null,
   },
   {
+    name: "mentions-all",
+    tier: "quality",
+    grade: (c, o) =>
+      c.expect.mentionsAll ? c.expect.mentionsAll.every((word) => text(o).includes(word.toLowerCase())) : null,
+  },
+  {
     name: "never-says",
     tier: "quality",
     grade: (c, o) => (c.expect.never ? !c.expect.never.some((word) => text(o).includes(word.toLowerCase())) : null),

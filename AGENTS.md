@@ -61,5 +61,6 @@ npm run quality      # the gate
 npm test             # unit tests only
 npm run smoke        # live tools, no model
 npm run mcp:smoke    # MCP server over stdio, no model
+npm run docs:reference  # regenerate the guide's reference after changing commands, tools or settings
 npm run rides -- runs | trace <id>   # what a planning session did
 ```

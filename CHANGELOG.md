@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.1.0](https://github.com/bhoudebert/agent-motoride/compare/v1.0.0...v1.1.0) (2026-10-06)
+
+
+### Features
+
+* **conditions:** crosswind, low-sun glare and road surface along the route ([#21](https://github.com/bhoudebert/agent-motoride/issues/21)) ([11f5e37](https://github.com/bhoudebert/agent-motoride/commit/11f5e37767c42a43ca97b5618fcec376944c69c2))
+* **evals:** eval cases and code graders, recorded once and replayed for free ([#25](https://github.com/bhoudebert/agent-motoride/issues/25)) ([e9f6eb1](https://github.com/bhoudebert/agent-motoride/commit/e9f6eb1ea16510e75a8baadfead97892c39730d2))
+* **feedback:** rate the roads you rode from notes and recorded tracks ([#24](https://github.com/bhoudebert/agent-motoride/issues/24)) ([07c3e9a](https://github.com/bhoudebert/agent-motoride/commit/07c3e9a6a5de9e6e93b1fc2cdecd69b230660f1a))
+
+
+### Bug Fixes
+
+* **routing:** request road surface from the router ([#23](https://github.com/bhoudebert/agent-motoride/issues/23)) ([a91e6ea](https://github.com/bhoudebert/agent-motoride/commit/a91e6ea742a50729fa083ea8d3f74b5abd7c5fd5))
+
 ## 1.0.0 (2026-10-05)
 
 

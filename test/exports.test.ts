@@ -171,7 +171,7 @@ test("Markdown: sections, merged cameras, escaped tables, attribution", () => {
   const store = new Store(":memory:");
   const md = formatRideMarkdown(savedRide(store));
   for (const h of [
-    "# Ride #1: Test loop",
+    "# Roadbook #1: Test loop",
     "## Road mix",
     "## Legs",
     "## Daylight",

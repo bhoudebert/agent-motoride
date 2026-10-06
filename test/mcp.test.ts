@@ -88,7 +88,7 @@ test("mcp: the review asks the rider in a form and stores their answer", async (
   try {
     const result = textOf(await client.callTool({ name: "reviewRide", arguments: { ride: "1" } }));
     const form = asked[0] as { message: string; requestedSchema: { properties: Record<string, { default?: number }> } };
-    assert.match(form.message, /Rate the roads of ride #1/);
+    assert.match(form.message, /Rate the roads of roadbook #1/);
     assert.equal(form.requestedSchema.properties.rating_1!.default, 5, "proposal from 'awesome' filled in");
     assert.match(result, /The rider's answers:\nRated 4:/);
   } finally {
@@ -156,7 +156,7 @@ test("mcp: saving a repeat of an earlier ride asks the rider; yes keeps a copy, 
   // An earlier session saved the loop.
   const earlier = await connect(db, false);
   try {
-    assert.match(await planAndSave(earlier), /Saved as ride #2/);
+    assert.match(await planAndSave(earlier), /Saved as roadbook #2/);
   } finally {
     await earlier.close();
   }
@@ -170,8 +170,8 @@ test("mcp: saving a repeat of an earlier ride asks the rider; yes keeps a copy, 
   });
   try {
     assert.match(await planAndSave(today), /chose not to keep a copy/);
-    assert.match(asked[0]!, /same roads as saved ride #2[\s\S]*Save it anyway/);
-    assert.match(await planAndSave(today), /Saved as ride #3/);
+    assert.match(asked[0]!, /same roads as roadbook #2[\s\S]*Save it anyway/);
+    assert.match(await planAndSave(today), /Saved as roadbook #3/);
   } finally {
     await today.close();
   }
@@ -198,7 +198,7 @@ test("mcp: plain words get the full guidance, in any client", async () => {
     const edit = textOf(
       await client.callTool({ name: "planningGuide", arguments: { request: "50 km longer", ride: "1" } }),
     );
-    assert.match(edit, /This concerns saved ride #1 "Straight north"/);
+    assert.match(edit, /This concerns roadbook #1 "Straight north"/);
   } finally {
     await client.close();
   }
@@ -307,7 +307,7 @@ test("mcp: every tool answers when called by name through a client", async () =>
         itinerary: "135 km",
         request: "loop",
       }),
-      /Saved as ride #2/,
+      /Saved as roadbook #2/,
     );
     await call("exportGpx", { rideId: 2, file: join(dir, "ride.gpx") });
     await call("exportMarkdown", { ride: "2", file: join(dir, "ride.md") });

@@ -44,7 +44,7 @@ test("roadbooks: a save is a roadbook and its ride; notes mark the ride of their
   store.addNote({ rideId: id, text: "again", rating: null, minutesBack: 10, at: new Date(2026, 9, 17, 11) });
   assert.deepEqual(days(store).at(-1), [id, "2026-10-17", "ridden"]);
   assert.equal(store.findRide(String(id))!.rideDate, "2026-10-17", "the latest ride is shown when none is planned");
-  assert.throws(() => store.addNote({ rideId: 99, text: "x", rating: null, minutesBack: 10 }), /No saved ride #99/);
+  assert.throws(() => store.addNote({ rideId: 99, text: "x", rating: null, minutesBack: 10 }), /No roadbook #99/);
   assert.equal(store.deleteRide(id), true);
   assert.deepEqual(days(store), [], "a roadbook's rides go with it");
 });

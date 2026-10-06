@@ -16,6 +16,8 @@
 
 ## 3. Commands and words
 
+- [x] List roadbooks and rides, 20 per page, in the terminal and over MCP
+
 - [ ] Edit in place with versions; undo to a version; copy as a variant
 - [ ] Ride on a date: create, refresh, briefing, cancel; stale after an edit
 - [ ] Ratings split (roadbook, ride); review stores road ratings on the roadbook

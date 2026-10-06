@@ -26,7 +26,7 @@ Session start SHALL print start point, motorway state, slow-zone targets, traffi
 
 ### Requirement: Library command
 
-`npm run rides` SHALL provide list, show, export, export-md, qr, share, rate, rate-leg, refresh (with `--stops`), bike, trace, runs, delete, clear-cache.
+`npm run rides` SHALL provide list (roadbooks, alias `roadbooks`), rides, each with `--page N`, show, export, export-md, qr, share, rate, rate-leg, refresh (with `--stops`), bike, trace, runs, delete, clear-cache.
 
 ### Requirement: Safety
 

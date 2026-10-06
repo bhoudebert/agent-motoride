@@ -56,6 +56,21 @@ Rides and legs SHALL be rateable 0 to 5 with a note, from the CLI, the prompt, t
 
 Opening a saved ride SHALL seed the model with its structured data (not the old conversation); a change or new date re-routes and re-checks weather; a question is answered without replanning; overlap with the ride is expected.
 
+### Requirement: Listing roadbooks and rides
+
+The library SHALL be listable at two levels, 20 lines per page: roadbooks
+(newest first, each with its ride count and next planned date) and rides
+(by date, latest first, rides with no date yet last; each with its date,
+departure, roadbook number and name, distance, time and status). Each page
+SHALL end with its number, the page count and the total, and how to get the
+next page: the command in the terminal, the page to ask for in MCP. A page
+beyond the last SHALL say so and name the last page.
+
+#### Scenario: Forty-five rides
+
+- **WHEN** the rider lists rides and the library holds 45
+- **THEN** the 20 latest are shown with "Page 1 of 3 (45 rides)" and how to see page 2
+
 ### Requirement: Library management
 
 The CLI SHALL list, show (plain or Markdown), rate, rate a leg, export, refresh, delete rides and clear the cache without a model call.

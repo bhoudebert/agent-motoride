@@ -79,6 +79,11 @@ with a navigation app (Liberty Rider, Google Maps) on the phone.
   `showRideMap` in Claude Code or Codex, the Markdown export, the share page).
   Next, maybe: a real map background through a provider that allows static
   images, with its own key.
+- **Road memory** (`recallArea`, ADR 0020): rides, ratings, scout verdicts and
+  known winding roads from past sessions, recalled by place and by words.
+  Next: measure it live (tokens and scouts on a second visit to a region,
+  with and without memory), and a semantic layer only if the evals show
+  misses.
 - **Rating from Claude Code or Codex** (`rateRide`): the last gap between the
   terminal and the MCP mode.
 - **MCP quality**: all four tool hints on every tool, every tool tested by name

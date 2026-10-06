@@ -124,8 +124,10 @@ Codex side by side: **[the rider's guide](https://bhoudebert.github.io/agent-mot
   Each tool is a plain function over a public data source; the rider's rules
   (no motorways, no repeats, the limits in the request) are checked in code,
   and a failed itinerary goes back to the planner once.
-- **Scouts**: two to four cheaper model sessions explore riding areas in
-  parallel; the planner compares their candidates.
+- **Scouts and memory**: two to four cheaper model sessions explore riding
+  areas in parallel; before they go, a road memory built from past sessions
+  (rides, ratings, scout verdicts, known winding roads), recalled by place and
+  by words with SQLite FTS5, tells the planner what is already known.
 - **Two modes, one toolbox**: the terminal app runs the agent on the Anthropic
   API with a schema-validated answer; Claude Code and Codex use the same tools
   as an MCP server, with forms (elicitation) for the rider's decisions.

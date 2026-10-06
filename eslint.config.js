@@ -4,7 +4,16 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["node_modules/", "data/", "exports/", "coverage/"] },
+  {
+    ignores: [
+      "node_modules/",
+      "data/",
+      "exports/",
+      "coverage/",
+      "docs/guide/.vitepress/dist/",
+      "docs/guide/.vitepress/cache/",
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

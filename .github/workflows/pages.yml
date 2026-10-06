@@ -3,7 +3,7 @@ name: Pages
 on:
   push:
     branches: [main]
-    paths: ["site/**", "docs/how-it-works.*", ".github/workflows/pages.yml"]
+    paths: ["site/**", "docs/how-it-works.*", "docs/guide/**", "package-lock.json", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:
@@ -23,6 +23,13 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Build the guide into the site, at /guide/
+        run: npm run docs:build && cp -r docs/guide/.vitepress/dist site/guide
       - name: Use the current diagram
         run: cp docs/how-it-works.png site/how-it-works.png
       - uses: actions/configure-pages@v6

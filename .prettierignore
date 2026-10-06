@@ -4,3 +4,5 @@ exports
 package-lock.json
 CHANGELOG.md
 site
+docs/guide/.vitepress/dist
+docs/guide/.vitepress/cache

@@ -18,7 +18,7 @@ A location SHALL resolve as "lat,lon", else as a town through Open-Meteo, else a
 
 ### Requirement: Anchoring and disambiguation
 
-Ambiguous names SHALL resolve to the match nearest the rider's start point, with town size weighed in so a real town beats a namesake hamlet. Fuzzy matches more than 500 km from the start SHALL be rejected with a message naming the closest text match.
+Ambiguous names SHALL resolve to a town of that very name before towns that only contain it (case, accents, hyphens and apostrophes aside: "Le Quesnoy", not Quesnoy-sur-Deûle), then to the match nearest the rider's start point, with town size weighed in so a real town beats a namesake hamlet. Fuzzy matches more than 500 km from the start SHALL be rejected with a message naming the closest text match.
 
 #### Scenario: Nonsense input
 

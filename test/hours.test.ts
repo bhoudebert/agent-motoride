@@ -21,3 +21,13 @@ test("opening hours: unreadable tags are unknown, never open", () => {
   assert.equal(isOpenAt(null, "2026-10-11", "09:00"), "unknown");
   assert.equal(isOpenAt("", "2026-10-11", "09:00"), "unknown");
 });
+
+test("opening hours: days without hours are open those days at hours not given, closed the others", () => {
+  const tuesday = "2026-10-06";
+  const saturday = "2026-10-10";
+  assert.equal(isOpenAt("Th-Su", tuesday, "12:42"), "closed", "a lunch place closed on Tuesdays");
+  assert.equal(isOpenAt("Th-Su", saturday, "12:42"), "unknown");
+  assert.equal(isOpenAt("Mo-Fr; Sa 09:00-12:00", saturday, "10:00"), "open");
+  assert.equal(isOpenAt("Mo-Fr; Sa 09:00-12:00", "2026-10-11", "10:00"), "closed");
+  assert.equal(isOpenAt("Mo-Fr; Sa 09:00-12:00", tuesday, "10:00"), "unknown");
+});

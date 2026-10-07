@@ -62,9 +62,10 @@ export function checkItinerary(
   route: RegisteredRoute,
   message: string,
   limits: RequestLimits,
-): { violations: string[]; acknowledged: boolean } {
+): { violations: string[]; acknowledged: boolean; notes: string[] } {
   const trip = route.trip.result;
   const violations: string[] = [];
+  const notes: string[] = [];
   if (limits.maxDistanceKm !== null && trip.totalDistanceKm > limits.maxDistanceKm) {
     violations.push(`distance: routed ${trip.totalDistanceKm} km, over the rider's ${limits.maxDistanceKm} km limit`);
   }
@@ -94,13 +95,24 @@ export function checkItinerary(
         .join(", ")}); route around them for a leisure ride, or say why not`,
     );
   }
+  // Slow-zone shares are targets, not limits: a loop over one stands, without a retry, but the rider is told.
+  const zones = trip.speedLimits as { limit31to50?: { pct: number }; limit30OrLess?: { pct: number } } | undefined;
+  for (const [label, pct, target] of [
+    ["31-50 zones", zones?.limit31to50?.pct, context.preferences.max50Pct],
+    ["zones of 30 or less", zones?.limit30OrLess?.pct, context.preferences.max30Pct],
+  ] as const) {
+    const said = pct !== undefined && new RegExp(`\\b${Math.round(pct)}(?:[.,]\\d)?\\s*%`).test(message);
+    if (pct !== undefined && pct > target && !said && !/\btarget\b/i.test(message)) {
+      notes.push(`${pct}% of the distance in ${label}, over the ${target}% target`);
+    }
+  }
   const { avoidPct } = ratedOverlap(context, route.cells);
   if (avoidPct >= 10) violations.push(`rated roads: ${avoidPct}% on roads the rider rated 0 or 1`);
   const stated = [...message.matchAll(/(\d+(?:[.,]\d+)?)\s*km\b/g)].map((m) => Number(m[1]!.replace(",", ".")));
   if (!stated.some((km) => Math.abs(km - trip.totalDistanceKm) <= 1.5)) {
     violations.push(`figures: the answer does not state the routed distance, ${trip.totalDistanceKm} km`);
   }
-  return { violations, acknowledged: ACKNOWLEDGED.test(message) };
+  return { violations, acknowledged: ACKNOWLEDGED.test(message), notes };
 }
 
 /** The message that sends a failed itinerary back to the planner. */

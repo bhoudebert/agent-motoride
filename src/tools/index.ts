@@ -476,6 +476,17 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
       run: trace(
         "planStops",
         async (input: { routeId: string; departure: string; date?: string; fuelAtStartKm?: number }) => {
+          // Opening hours and the forecast for an hour already gone help no one: say so, in code.
+          const now = context.now?.() ?? new Date();
+          const pad = (n: number) => String(n).padStart(2, "0");
+          const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+          const clock = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+          const departure = input.departure.trim().replace(/^(\d):/, "0$1:");
+          if (input.date && (input.date < today || (input.date === today && departure < clock))) {
+            throw new Error(
+              `Departure ${input.date} ${input.departure} is already past (now ${today} ${clock}). Plan for a later day or time, or ask the rider which day they mean.`,
+            );
+          }
           const route = context.routes.get(input.routeId);
           if (!route) throw new Error(`Unknown routeId ${input.routeId}; route the loop with calculateTrip first.`);
           const { trip } = route;

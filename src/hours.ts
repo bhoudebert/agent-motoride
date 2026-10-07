@@ -1,7 +1,8 @@
 /**
  * Minimal reader of OpenStreetMap opening_hours, enough for shops and cafés:
  *   "24/7", "Mo-Fr 08:00-18:00; Sa 09:00-12:00", "Mo,We,Fr-Sa 06:00-17:00",
- *   "Mo off", "Su 06:30-12:00", "08:00-12:00,16:00-19:00" (every day).
+ *   "Mo off", "Su 06:30-12:00", "08:00-12:00,16:00-19:00" (every day),
+ *   "Th-Su" (days only: open those days, at hours not given; closed the others).
  * Anything it cannot read yields "unknown", never a wrong "open".
  */
 const DAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
@@ -51,15 +52,20 @@ export function isOpenAt(openingHours: string | null | undefined, date: string, 
     const rule = rawRule.trim();
     if (!rule || /^PH\b|^SH\b/.test(rule)) continue; // public and school holidays: ignored
     const m =
-      /^((?:(?:Mo|Tu|We|Th|Fr|Sa|Su)(?:-(?:Mo|Tu|We|Th|Fr|Sa|Su))?,?\s*)+)?\s*(off|closed|(?:\d{1,2}:\d{2}-\d{1,2}:\d{2}(?:,\s*)?)+)$/.exec(
+      /^((?:(?:Mo|Tu|We|Th|Fr|Sa|Su)(?:-(?:Mo|Tu|We|Th|Fr|Sa|Su))?,?\s*)+)?\s*(off|closed|(?:\d{1,2}:\d{2}-\d{1,2}:\d{2}(?:,\s*)?)+)?$/.exec(
         rule,
       );
-    if (!m) return "unknown"; // a rule we cannot read: say nothing rather than mislead
+    if (!m || (!m[1] && !m[2])) return "unknown"; // a rule we cannot read: say nothing rather than mislead
     const days = m[1] ? expandDays(m[1]) : [0, 1, 2, 3, 4, 5, 6];
     if (!days) return "unknown";
     if (!days.includes(day)) continue;
     matchedAnyRule = true;
-    const body = m[2]!;
+    const body = m[2];
+    // Days without hours: open that day, but at what time is not said.
+    if (body === undefined) {
+      state = "unknown";
+      continue;
+    }
     if (body === "off" || body === "closed") {
       state = "closed";
       continue;

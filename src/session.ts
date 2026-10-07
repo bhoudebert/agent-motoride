@@ -54,6 +54,8 @@ export interface RideContext {
   routeSeq?: Map<string, number>;
   /** Roads the rider rated, computed once per session from the library. */
   ratedRoads?: RatedRoads;
+  /** The session's clock: real time, or the recorded time when an eval replays a session. */
+  now?: () => Date;
 }
 
 export interface RatedRoads {

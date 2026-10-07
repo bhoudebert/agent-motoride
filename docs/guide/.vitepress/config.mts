@@ -67,6 +67,7 @@ export default defineConfig({
           { text: "The terminal app", link: "/terminal" },
           { text: "Limits and troubleshooting", link: "/limits" },
           { text: "Behind the scenes", link: "/behind-the-scenes" },
+          { text: "Open source, and how to help", link: "/open-source" },
         ],
       },
     ],

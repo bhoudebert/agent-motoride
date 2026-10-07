@@ -28,7 +28,9 @@ import { parseRideDay, planRideFrom } from "./planRide.ts";
 import {
   DuplicateRideError,
   enrichRide,
+  copyRoadbook,
   formatRideDetail,
+  restoreVersion,
   formatRatedRoads,
   formatRideDayPage,
   formatRideList,
@@ -84,6 +86,9 @@ const context: RideContext = {
 };
 let homeInput = process.env.RIDE_HOME ?? "";
 let lastSavedId: number | null = null;
+// The roadbook being worked on: opened for a change, or saved in this session.
+// Saving changes it in place (a version is kept); a new ride starts without one.
+let inHand: number | null = null;
 const requests: string[] = [];
 let lastRouteId: string | null = null;
 
@@ -161,7 +166,7 @@ async function clientScouting(input: ScoutInput): Promise<string> {
 // the method applies even when the rider types in plain words instead of using
 // the plan-ride command. Kept to the essentials; the command carries the rest.
 const INSTRUCTIONS = `agentMotoride plans one-day motorcycle rides and keeps the rider's library of saved rides. Anything the rider says about rides, trips, loops, routes, the library, stops, cameras, weather for a ride, or a ride-day briefing is a request for this server's tools: showRide, showRideMap, listRoadbooks, listRides, rideBriefing, refreshRide, rateRide, exportGpx, exportMarkdown, planningGuide and the planning tools. Never run shell commands, scripts or web searches for these, and never look for a "ride" program: "ride show 7" or "/ride plan ..." typed by the rider means "use the ride tools" (here: showRide for ride 7). A roadbook is a saved loop or trip, with a number ("roadbook 7"; riders may also say "ride 7" for it); a ride is a roadbook on one day, named by its date ("Saturday's ride"): listRoadbooks lists the first, listRides the second, 20 per page. "Plan a ride from roadbook 7 on Saturday at 9", or "plan a ride on Saturday" once a roadbook is the one being discussed, is planRide: it adds a ride to that roadbook, never a copy; replan or edit the route only when the rider asks for a change. "Not riding Saturday" is cancelRide; deleteRoadbook and deleteRide only when the rider asks to delete, and they ask the rider first. Plain words are enough, slash commands are only shortcuts: before planning any new ride asked in plain words, in any client, call planningGuide with the rider's request and follow it, with ride set when it changes a saved ride (the plan-ride and edit-ride commands already carry that guidance).
-For a new leisure ride: call listSavedRides and recallArea around the start (what earlier sessions learnt: scouted areas and their verdicts, known winding roads), then ${scoutsOff ? "scout 2-4 areas with parallel subagents as planningGuide explains (API scouts are off here, scoutAreas cannot run)" : "scoutAreas with 2-4 areas"}, skipping areas recently found poor${scoutsOff ? "" : " (or searchRoads and calculateTrip yourself if scouts are unavailable)"}, pick the best candidate, then finish it: getDaylight, getWeather along the loop for the riding hours, getSpeedCameras, checkConditions (crosswind, low sun) with the date and departure, planStops with the date and departure, getTraffic for the departure. Before presenting it, call checkItinerary with its routeId, the rider's request and your text, and fix what it reports once (or say plainly which limit cannot be met). Present the itinerary in plain text (never JSON) with legs named by towns, the figures from the tools, the stops with times, the navigation links from planStops (and its overviewLink as "Whole ride (overview, not for navigation)" when there are several parts), and end with one line "Route: <routeId>". Save only when the rider asks, with saveRide. During a ride, a remark about the road ("last 10 min awesome", "cobbles, never again") is a note: call addRideNote at once with the rider's words, and a rating 0-5 only when they gave one. After the ride, reviewRide places the notes on the recorded track (gpxPath) or on the plan, shows detours and pace, and proposes ratings; apply them with reviewRide and decisions only once the rider confirms. If the rider has a route file (GPX or KML, from another app, a club or a friend), call importRoute with its path: it returns a routeId to present, finish and save like a planned ride. If the rider shares an image (photo of a paper map, route screenshot, list of places), read the places on it in order and route them with calculateTrip by name, then finish the ride as usual. For an edit or a question about a saved ride, work from its data (showRide) without replanning. For a practical trip (commute), route point to point, motorways if permitted, with traffic.`;
+For a new leisure ride: call listSavedRides and recallArea around the start (what earlier sessions learnt: scouted areas and their verdicts, known winding roads), then ${scoutsOff ? "scout 2-4 areas with parallel subagents as planningGuide explains (API scouts are off here, scoutAreas cannot run)" : "scoutAreas with 2-4 areas"}, skipping areas recently found poor${scoutsOff ? "" : " (or searchRoads and calculateTrip yourself if scouts are unavailable)"}, pick the best candidate, then finish it: getDaylight, getWeather along the loop for the riding hours, getSpeedCameras, checkConditions (crosswind, low sun) with the date and departure, planStops with the date and departure, getTraffic for the departure. Before presenting it, call checkItinerary with its routeId, the rider's request and your text, and fix what it reports once (or say plainly which limit cannot be met). Present the itinerary in plain text (never JSON) with legs named by towns, the figures from the tools, the stops with times, the navigation links from planStops (and its overviewLink as "Whole ride (overview, not for navigation)" when there are several parts), and end with one line "Route: <routeId>". Save only when the rider asks, with saveRide; after a change to a saved roadbook, saving changes it in place and keeps the previous version (restoreRoadbook undoes it), and asCopy is only for a rider who wants a separate copy. During a ride, a remark about the road ("last 10 min awesome", "cobbles, never again") is a note: call addRideNote at once with the rider's words, and a rating 0-5 only when they gave one. After the ride, reviewRide places the notes on the recorded track (gpxPath) or on the plan, shows detours and pace, and proposes ratings; apply them with reviewRide and decisions only once the rider confirms. If the rider has a route file (GPX or KML, from another app, a club or a friend), call importRoute with its path: it returns a routeId to present, finish and save like a planned ride. If the rider shares an image (photo of a paper map, route screenshot, list of places), read the places on it in order and route them with calculateTrip by name, then finish the ride as usual. For an edit or a question about a saved ride, work from its data (showRide) without replanning. For a practical trip (commute), route point to point, motorways if permitted, with traffic.`;
 
 const server = new McpServer({ name: "agentMotoride", version: "0.1.0" }, { instructions: INSTRUCTIONS });
 const text = (value: unknown) => ({
@@ -215,6 +220,9 @@ const HINTS: Record<string, ToolAnnotations> = {
   // Deletes, once the rider confirmed; the same call again finds nothing more to delete.
   deleteRoadbook: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
   deleteRide: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+  // The replaced design is kept as a version: nothing is lost, but each call adds one.
+  restoreRoadbook: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  copyRoadbook: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   planningGuide: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
 };
 const hintsOf = (name: string): ToolAnnotations => {
@@ -324,6 +332,12 @@ server.registerTool(
         .boolean()
         .optional()
         .describe("Save even if it duplicates a saved ride; only on the rider's explicit wish"),
+      asCopy: z
+        .boolean()
+        .optional()
+        .describe(
+          "Save as a separate roadbook instead of changing the one being worked on; only when the rider wants a copy or variant",
+        ),
     }),
   },
   async (args) => {
@@ -333,7 +347,15 @@ server.registerTool(
       saveCurrentRide(
         context,
         { route, rideDate: args.rideDate, departure: args.departure, title: args.name, itinerary: args.itinerary },
-        { name: args.name, request: args.request, parentId: lastSavedId, home: homeInput, usage, force },
+        {
+          name: args.name,
+          request: args.request,
+          parentId: inHand,
+          home: homeInput,
+          usage,
+          force,
+          asCopy: args.asCopy,
+        },
       );
     let id: number;
     try {
@@ -350,10 +372,17 @@ server.registerTool(
       if (answer?.save !== true) return text(`Not saved: ${error.message} The rider chose not to keep a copy.`);
       id = save(true);
     }
+    const revised = id === inHand;
     lastSavedId = id;
+    inHand = id;
     lastRouteId = args.routeId;
     syncRun();
     void enrichRide(store, store.findRide(String(id))!).catch(() => undefined);
+    if (revised) {
+      return text(
+        `Roadbook #${id} changed in place, now version ${store.versionOf(id)}; the previous version is kept (restoreRoadbook brings it back).`,
+      );
+    }
     return text(`Saved as roadbook #${id} "${args.name}". Export with exportGpx, or: npm run rides -- show ${id}`);
   },
 );
@@ -432,7 +461,7 @@ server.registerTool(
     const extras = await enrichRide(store, store.findRide(String(target.id))!);
     const failed = Object.entries(extras?.errors ?? {}).map(([name, reason]) => `${name}: ${reason.split(".")[0]}`);
     return text(
-      `${failed.length ? `Some lookups failed and kept their previous result: ${failed.join("; ")}\n\n` : ""}${formatRideDetail(store.findRide(String(target.id))!)}`,
+      `${failed.length ? `Some lookups failed and kept their previous result: ${failed.join("; ")}\n\n` : ""}${formatRideDetail(store.findRide(String(target.id))!, store)}`,
     );
   },
 );
@@ -509,6 +538,7 @@ server.registerTool(
     return confirmedDelete(deleteRoadbookQuestion(store, saved), args.confirm, "deleteRoadbook", () => {
       store.deleteRide(saved.id);
       // This session's run no longer points to it.
+      if (inHand === saved.id) inHand = null;
       if (lastSavedId === saved.id) {
         lastSavedId = null;
         syncRun();
@@ -536,6 +566,44 @@ server.registerTool(
       store.deleteRideDay(found.ride.id);
       return `Deleted the ride of ${found.date} from roadbook #${found.saved.id}.`;
     });
+  },
+);
+
+server.registerTool(
+  "restoreRoadbook",
+  {
+    description:
+      'Bring back an earlier version of a roadbook, listed under Versions in showRide. The current design is kept as a version too, so nothing is lost. For "undo that change" or "go back to the original".',
+    annotations: hintsOf("restoreRoadbook"),
+    inputSchema: z.object({
+      roadbook: z.string().describe("Roadbook number or name"),
+      version: z.number().int().min(1).describe("Version to bring back"),
+    }),
+  },
+  async (args) => {
+    const saved = roadbookOf(store, args.roadbook);
+    const now = restoreVersion(store, saved.id, args.version);
+    return text(
+      `Roadbook #${saved.id} is back to version ${args.version}, saved as version ${now}; the one it replaced is kept.`,
+    );
+  },
+);
+
+server.registerTool(
+  "copyRoadbook",
+  {
+    description:
+      'Make a separate roadbook with the same design, recorded as a variant of the original, to change on its own: "copy 7 as Avesnois short". Changes to a roadbook otherwise happen in place.',
+    annotations: hintsOf("copyRoadbook"),
+    inputSchema: z.object({
+      roadbook: z.string().describe("Roadbook number or name"),
+      name: z.string().optional().describe("Name of the copy"),
+    }),
+  },
+  async (args) => {
+    const saved = roadbookOf(store, args.roadbook);
+    const id = copyRoadbook(store, saved.id, args.name);
+    return text(`Copied roadbook #${saved.id} as #${id} "${store.findRide(String(id))!.name}".`);
   },
 );
 
@@ -570,7 +638,7 @@ server.registerTool(
   async (args) => {
     const ride = store.findRide(args.ride);
     if (!ride) throw new Error(`No saved ride matches "${args.ride}". Call listRoadbooks.`);
-    return text(formatRideDetail(ride));
+    return text(formatRideDetail(ride, store));
   },
 );
 
@@ -754,7 +822,7 @@ server.registerResource(
   async (uri, { id }) => {
     const ride = store.findRide(String(id));
     if (!ride) throw new Error(`No roadbook #${String(id)}`);
-    return { contents: [{ uri: uri.href, mimeType: "text/plain", text: formatRideDetail(ride) }] };
+    return { contents: [{ uri: uri.href, mimeType: "text/plain", text: formatRideDetail(ride, store) }] };
   },
 );
 server.registerResource(
@@ -774,6 +842,9 @@ const userMessage = (text: string) => ({
 });
 /** Guidance for working on a saved ride: its data plus the rules for edits and questions. */
 const editText = (saved: ReturnType<typeof store.findRide> & object, change: string) => {
+  // From here, saving changes this roadbook in place.
+  inHand = saved.id;
+  context.lineage.add(saved.id);
   const data = {
     rideId: saved.id,
     name: saved.name,
@@ -805,7 +876,11 @@ const editText = (saved: ReturnType<typeof store.findRide> & object, change: str
 const planText = (request: string, rules = RULES) =>
   `${SYSTEM_CORE}\n\n${rules}\n\n---\n\nRider's request: ${request}\n\n${settingsText()}`;
 /** The guidance for a new ride: with API scouts off, how to scout with subagents. */
-const newRideText = (request: string) => planText(request, scoutsOff ? `${RULES}\n\n${CLIENT_SCOUTS}` : RULES);
+const newRideText = (request: string) => {
+  // A new ride is saved as a new roadbook, not over the last one.
+  inHand = null;
+  return planText(request, scoutsOff ? `${RULES}\n\n${CLIENT_SCOUTS}` : RULES);
+};
 
 // Clients without prompt support (Codex) cannot use the slash commands below;
 // this tool hands them the same text on request.

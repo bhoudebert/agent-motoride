@@ -208,6 +208,8 @@ export interface RideDay {
   departure: string | null;
   start: string;
   status: "planned" | "ridden" | "cancelled";
+  /** The roadbook changed since this ride's day data was gathered. */
+  stale: boolean;
   distanceKm: number;
   ridingMinutes: number;
   rating: number | null;
@@ -220,10 +222,39 @@ export interface RoadbookSummary {
   nextDate: string | null;
 }
 
+/** A past state of a roadbook, kept when it was changed. */
+export interface RoadbookVersion {
+  version: number;
+  /** When this state was replaced. */
+  replacedAt: string;
+  /** The change that replaced it, in the rider's words. */
+  change: string;
+  design: Omit<SavedRide, "id" | "createdAt" | "rideDayId" | "rideDate" | "departure" | "rating" | "notes">;
+}
+
+/** What a change to a roadbook replaces: its route and figures, and how it was asked for. */
+export type RoadbookDesign = Pick<
+  NewRide,
+  | "waypoints"
+  | "roundTrip"
+  | "preferences"
+  | "itinerary"
+  | "distanceKm"
+  | "ridingMinutes"
+  | "speedLimits"
+  | "mapsUrl"
+  | "cells"
+  | "shapes"
+  | "centerLat"
+  | "centerLon"
+  | "legs"
+> & { name?: string };
+
 interface RoadbookRow {
   id: number;
   name: string;
   created_at: string;
+  version: number;
   variant_of: number | null;
   home: string;
   distance_km: number;
@@ -634,7 +665,7 @@ export class Store {
     const total = (this.#db.prepare("SELECT count(*) AS n FROM rides").get() as { n: number }).n;
     const rows = this.#db
       .prepare(
-        `SELECT r.id, r.roadbook_id, b.name, r.ride_date, r.departure, r.start, r.status, b.distance_km,
+        `SELECT r.id, r.roadbook_id, b.name, r.ride_date, r.departure, r.start, r.status, r.stale, b.distance_km,
            b.riding_minutes, r.rating
          FROM rides r JOIN roadbooks b ON b.id = r.roadbook_id
          ORDER BY r.ride_date IS NULL, r.ride_date DESC, r.departure DESC, r.id DESC
@@ -648,6 +679,7 @@ export class Store {
       departure: string | null;
       start: string;
       status: RideDay["status"];
+      stale: number;
       distance_km: number;
       riding_minutes: number;
       rating: number | null;
@@ -660,6 +692,7 @@ export class Store {
       departure: r.departure,
       start: r.start,
       status: r.status,
+      stale: r.stale === 1,
       distanceKm: r.distance_km,
       ridingMinutes: r.riding_minutes,
       rating: r.rating,
@@ -702,6 +735,109 @@ export class Store {
       .prepare("UPDATE legs SET rating = ?, notes = coalesce(?, notes) WHERE roadbook_id = ? AND seq = ?")
       .run(rating, notes, rideId, seq);
     return result.changes > 0;
+  }
+
+  /**
+   * Change a roadbook in place: its current design is kept as a version (with
+   * the change that replaced it), the new one takes its place under the same
+   * number. Planned rides move to the new version, their day data stale until
+   * refreshed; ridden rides keep the version they rode. Returns the new version.
+   */
+  reviseRoadbook(id: number, design: RoadbookDesign, change: string): number {
+    const before = this.findRide(String(id));
+    if (!before) throw new Error(`No roadbook #${id}.`);
+    const row = this.#db.prepare("SELECT version FROM roadbooks WHERE id = ?").get(id) as { version: number };
+    const {
+      id: _id,
+      createdAt: _c,
+      rideDayId: _d,
+      rideDate: _r,
+      departure: _p,
+      rating: _g,
+      notes: _n,
+      ...kept
+    } = before;
+    this.#db.exec("BEGIN");
+    try {
+      this.#db
+        .prepare(
+          "INSERT INTO roadbook_versions (roadbook_id, version, created_at, request, snapshot) VALUES (?, ?, ?, ?, ?)",
+        )
+        .run(id, row.version, new Date().toISOString(), change, JSON.stringify(kept));
+      const version = row.version + 1;
+      this.#db
+        .prepare(
+          `UPDATE roadbooks SET name = coalesce(?, name), version = ?, updated_at = ?, waypoints = ?, round_trip = ?,
+             preferences = ?, itinerary = ?, distance_km = ?, riding_minutes = ?, speed_limits = ?, maps_url = ?,
+             cells = ?, shapes = ?, center_lat = ?, center_lon = ?, route_extras = NULL
+           WHERE id = ?`,
+        )
+        .run(
+          design.name?.trim() || null,
+          version,
+          new Date().toISOString(),
+          JSON.stringify(design.waypoints),
+          design.roundTrip ? 1 : 0,
+          JSON.stringify(design.preferences),
+          design.itinerary,
+          design.distanceKm,
+          design.ridingMinutes,
+          JSON.stringify(design.speedLimits),
+          design.mapsUrl,
+          JSON.stringify(design.cells),
+          design.shapes && JSON.stringify(design.shapes),
+          design.centerLat,
+          design.centerLon,
+          id,
+        );
+      this.#db.prepare("DELETE FROM legs WHERE roadbook_id = ?").run(id);
+      const insertLeg = this.#db.prepare(
+        `INSERT INTO legs (roadbook_id, seq, from_label, to_label, from_coords, to_coords, distance_km, riding_minutes, main_roads)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      );
+      for (const leg of design.legs) {
+        insertLeg.run(
+          id,
+          leg.seq,
+          leg.from,
+          leg.to,
+          leg.fromCoords,
+          leg.toCoords,
+          leg.distanceKm,
+          leg.ridingMinutes,
+          JSON.stringify(leg.mainRoads),
+        );
+      }
+      this.#db
+        .prepare("UPDATE rides SET roadbook_version = ?, stale = 1 WHERE roadbook_id = ? AND status = 'planned'")
+        .run(version, id);
+      this.#db.exec("COMMIT");
+      return version;
+    } catch (error) {
+      this.#db.exec("ROLLBACK");
+      throw error;
+    }
+  }
+
+  /** Past states of a roadbook, oldest first. */
+  listVersions(id: number): RoadbookVersion[] {
+    const rows = this.#db
+      .prepare(
+        "SELECT version, created_at, request, snapshot FROM roadbook_versions WHERE roadbook_id = ? ORDER BY version",
+      )
+      .all(id) as Array<{ version: number; created_at: string; request: string; snapshot: string }>;
+    return rows.map((r) => ({
+      version: r.version,
+      replacedAt: r.created_at,
+      change: r.request,
+      design: JSON.parse(r.snapshot),
+    }));
+  }
+
+  /** The roadbook's current version number. */
+  versionOf(id: number): number | undefined {
+    return (this.#db.prepare("SELECT version FROM roadbooks WHERE id = ?").get(id) as { version: number } | undefined)
+      ?.version;
   }
 
   /** Replace a ride's computed figures after re-routing it. Ratings and notes are kept. */

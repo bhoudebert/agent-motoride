@@ -19,7 +19,10 @@ import { describeStopsAt, exportSavedRide, savedRideGpx } from "./gpx.ts";
 import {
   DuplicateRideError,
   enrichRide,
+  copyRoadbook,
   formatRideDetail,
+  formatVersions,
+  restoreVersion,
   formatRideDayPage,
   formatRoadbookPage,
   parseRating,
@@ -79,6 +82,9 @@ const USAGE = `Usage: npm run rides -- <command>
   delete roadbook <id|name> [--yes]     Delete a roadbook with its rides and notes, after you confirm (road ratings stay)
   delete ride <roadbook> <day> [--yes]  Delete one ride of a roadbook, e.g. delete ride 7 2026-10-10, after you confirm
   cancel <roadbook> <day>               Cancel a planned ride: kept, shown as cancelled
+  versions <roadbook>                   Earlier versions of a roadbook: each change keeps the design it replaced
+  restore <roadbook> <version>          Bring back an earlier version; the current one is kept as a version too
+  copy <roadbook> [name]                A separate roadbook with the same design, to change on its own
   tidy                                  Drop expired lookups and compact the library; lists backups and old files, deletes none
   clear-cache                           Drop cached road, route and weather lookups
 
@@ -150,7 +156,7 @@ try {
       break;
     }
     case "show":
-      console.log(args.includes("--md") ? formatRideMarkdown(ride(args[0])) : formatRideDetail(ride(args[0])));
+      console.log(args.includes("--md") ? formatRideMarkdown(ride(args[0])) : formatRideDetail(ride(args[0]), store));
       break;
     case "export-md": {
       const target = ride(args[0]);
@@ -512,6 +518,28 @@ try {
       console.log(
         `Cancelled the ride of ${found.date} from roadbook #${found.saved.id} "${found.saved.name}"; it stays in the list.`,
       );
+      break;
+    }
+    case "versions": {
+      const target = ride(args[0]);
+      const lines = formatVersions(store, target);
+      console.log(lines.length ? lines.join("\n") : `Roadbook #${target.id} "${target.name}" was never changed.`);
+      break;
+    }
+    case "restore": {
+      const target = ride(args[0]);
+      const version = Number(args[1]);
+      if (!Number.isInteger(version)) throw new Error("Usage: npm run rides -- restore <roadbook> <version>");
+      const now = restoreVersion(store, target.id, version);
+      console.log(
+        `Roadbook #${target.id} is back to version ${version}, saved as version ${now}; the one it replaced is kept.`,
+      );
+      break;
+    }
+    case "copy": {
+      const target = ride(args[0]);
+      const id = copyRoadbook(store, target.id, args.slice(1).join(" "));
+      console.log(`Copied roadbook #${target.id} as #${id} "${store.findRide(String(id))!.name}".`);
       break;
     }
     case "tidy":

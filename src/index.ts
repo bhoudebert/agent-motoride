@@ -57,7 +57,8 @@ Env equivalents: RIDE_ALLOW_MOTORWAYS=1, RIDE_MAX_30_PCT, RIDE_MAX_50_PCT.
 Needs ANTHROPIC_API_KEY (see .env.example).`;
 
 function refineHelp(): string {
-  return `  /save [name]          Save the current itinerary (new version if already saved); refused when it duplicates a saved ride, --force to override
+  return `  /save [name]          Save the itinerary; on a saved roadbook, change it in place and keep the previous version.
+                        --copy saves a separate roadbook instead; --force saves one that repeats a roadbook you have
   /roadbooks [page]     Roadbooks (the loops and trips you saved), newest first, 20 per page
   /rides [page]         Rides (a roadbook on a day), latest date first, 20 per page
   /plan <day> [time]    Plan a ride from this saved roadbook on a day (also: "plan a ride on Saturday at 9"); no copy
@@ -211,7 +212,7 @@ try {
   if (values.show) {
     const ride = store.findRide(values.show);
     if (!ride) throw new Error(`No saved ride matches "${values.show}". Run: npm run rides -- roadbooks`);
-    console.log(formatRideDetail(ride));
+    console.log(formatRideDetail(ride, store));
   } else if (hasRequest) {
     let baseRide: SavedRide | undefined;
     if (values.ride) {
@@ -359,7 +360,8 @@ async function plan(
 
   const save = (nameArg?: string) => {
     const force = /(^|\s)--force(\s|$)/.test(nameArg ?? "");
-    const name = (nameArg ?? "").replace(/(^|\s)--force(\s|$)/, " ").trim();
+    const asCopy = /(^|\s)--copy(\s|$)/.test(nameArg ?? "");
+    const name = (nameArg ?? "").replace(/(^|\s)--(force|copy)(?=\s|$)/g, " ").trim();
     const ride = session.current();
     if (!ride) {
       console.log(
@@ -382,6 +384,7 @@ async function plan(
         home,
         usage: session.usage(),
         force,
+        asCopy,
       });
     } catch (error) {
       if (error instanceof DuplicateRideError) {
@@ -392,7 +395,7 @@ async function plan(
     }
     runRideId = id;
     logRun(null);
-    const version = savedId ? ` (new version of #${savedId})` : "";
+    const version = id === savedId ? `, version ${store.versionOf(id)} (the previous one is kept)` : "";
     savedId = id;
     savedItinerary = ride.itinerary;
     console.log(
@@ -502,7 +505,7 @@ async function startMenu(): Promise<
         console.log(`No saved ride matches "${pick}".`);
         continue;
       }
-      console.log(`\n${formatRideDetail(ride)}`);
+      console.log(`\n${formatRideDetail(ride, store)}`);
 
       while (true) {
         const action = await ask(
@@ -678,7 +681,7 @@ async function refineLoop(
             // Without an argument: the ride this session saved or loaded.
             const target = args.length ? args.join(" ") : savedId() !== null ? String(savedId()) : undefined;
             const ride = target ? store.findRide(target) : undefined;
-            console.log(ride ? formatRideDetail(ride) : "Usage: /show <id|name>, see /roadbooks.");
+            console.log(ride ? formatRideDetail(ride, store) : "Usage: /show <id|name>, see /roadbooks.");
             break;
           }
           case "rate": {

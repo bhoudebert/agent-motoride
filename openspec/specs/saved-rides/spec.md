@@ -22,6 +22,19 @@ during a migration SHALL wait for it.
 - **WHEN** a step fails after changing some tables
 - **THEN** the library is at its previous version with its previous content, and the error names the step and the backup
 
+### Requirement: Roadbooks and rides
+
+The library SHALL keep **roadbooks** (the design of a loop or trip) and **rides** (a roadbook on one date). A roadbook SHALL hold the waypoints, legs, route line, grid footprint, road mix, preferences used, cameras and stop candidates, its rating and notes, and its versions. A ride SHALL hold its roadbook and the version it uses, date, departure, start, the day's data (daylight, forecast, conditions, stop plan), status (planned, ridden, cancelled), recorded track, notes and the day's rating. There SHALL be at most one ride per roadbook and date; a ride with no date yet (a plan saved without one) SHALL be allowed. Numbers name roadbooks; a ride is named by its roadbook and its date.
+
+#### Scenario: Same loop, two Saturdays
+
+- **WHEN** the rider rides roadbook 7 on two dates
+- **THEN** the library holds one roadbook and two rides, each with its own forecast and stop plan
+
+### Requirement: Migration of existing libraries
+
+Libraries from before roadbooks SHALL be migrated once (schema step 2): each saved ride becomes a roadbook with the same number; it also becomes a ride with its date and day data; the saved ride's rating and notes go to the roadbook; notes taken during a ride go to the ride of their day, created as ridden when missing; a parent link becomes "variant of"; numbers of deleted rides are never reused. A backup SHALL be written before.
+
 ### Requirement: Saving
 
 A roadbook SHALL be saved only on request, from a route id routed in the session, under a name (default the planner's title), with a first ride, dated when the plan has a date. Saving after a change to the roadbook in hand (opened for a change, or saved earlier in the session) SHALL change it in place (Requirement "Editing a roadbook"); a separate roadbook, recorded as a variant, SHALL be saved only when asked (`/save --copy`, `asCopy`). A new ride planned in the same MCP session SHALL be saved as a new roadbook. Stored: name, home, date, departure, waypoints, legs, speed profile, preferences actually used (including the motorway setting of that trip), requests, itinerary text, map link, route line, 500 m grid footprint, session usage.
@@ -33,7 +46,7 @@ A roadbook SHALL be saved only on request, from a route id routed in the session
 
 ### Requirement: Extras gathered after save and on refresh
 
-Right after a save, and on every `refresh`, the system SHALL gather and store daylight, the forecast (within range), fixed cameras, fuel and café shortlists and the stop plan. A lookup that fails SHALL keep the previous result and record the reason; the view SHALL show it.
+Right after a save, on every `refresh`, when a ride is planned from a roadbook and in the briefing, the system SHALL gather and store what a ride needs: route-bound extras (fixed cameras, fuel and café shortlists) on the roadbook, gathered again when its route changes; day-bound extras (daylight, the forecast within range, conditions, the stop plan) on the ride. A lookup that fails SHALL keep the previous result and record the reason; the view SHALL show it.
 
 ### Requirement: Refresh
 

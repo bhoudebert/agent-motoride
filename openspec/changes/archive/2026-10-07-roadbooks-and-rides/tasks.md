@@ -23,5 +23,12 @@
 - [x] Ride on a date: refresh, briefing on a chosen ride, cancel; stale after an edit
 - [x] Ratings split (roadbook, ride); review stores road ratings on the roadbook
 - [x] Overlap offers a ride of the existing roadbook
-- [ ] CLI, MCP tools and prompts, exports, ride map, memory adapted; reference regenerated
-- [ ] Guide, README, engineering notes, site, roadmap
+- [x] CLI, MCP tools and prompts, exports, ride map, memory adapted; reference regenerated
+- [x] Guide, README, engineering notes, site, roadmap
+- [x] Review with a track records it on the ride of its day, marked ridden
+
+## Folded
+
+Implemented in #51, #53, #54, #55, #57, #59, #60, #62 and the PR that archives
+this change; its requirements now live in `openspec/specs/saved-rides` and
+`openspec/specs/ride-feedback`.

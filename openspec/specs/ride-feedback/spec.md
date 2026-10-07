@@ -14,7 +14,8 @@ The system SHALL accept a note on a ride (a roadbook ridden on a day) from every
 prompt, `rides` command, refine prompt command): free text, an optional rating from 0 (never again) to 5,
 and a look-back window in minutes (default 10). The note SHALL be stored with
 the time it was given. Without an explicit ride, the note SHALL attach to the
-ride dated today, else to the most recently roadbook.
+ride dated today, else to the most recently saved roadbook. The note SHALL
+belong to the ride of the day it was given, which is then marked ridden.
 
 #### Scenario: Quick note at a stop
 
@@ -37,6 +38,11 @@ runs the session), the review SHALL:
   reviewed. A rating the rider gave in the note wins; otherwise one is read
   from its words ("never again" 0, "awesome" 5), or the rider is asked. The
   rider may dismiss a note instead.
+
+The ride of the track's day SHALL be marked ridden with the track's path,
+created when the roadbook had none that day; notes SHALL be placed on the
+route of the ride they were left on, and confirmed road ratings stored on the
+roadbook.
 
 #### Scenario: Detour
 

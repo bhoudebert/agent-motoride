@@ -119,6 +119,14 @@ export function saveCurrentRide(
   return id;
 }
 
+/** After a change: the planned rides now on the new route, to refresh before riding, and how to keep one as it was. */
+export function followingRides(store: Store, id: number): string | null {
+  const moved = store.ridesOf(id).filter((r) => r.status === "planned" && r.stale && !r.passed);
+  if (!moved.length) return null;
+  const days = moved.map((r) => r.rideDate ?? "the ride with no date yet").join(", ");
+  return `Planned rides now following the new route (refresh before riding): ${days}. Rides already done keep their route. To keep one as it was: npm run rides -- keep ${id} <day>, or "keep Saturday's ride on the previous version".`;
+}
+
 /** Bring back an earlier version of a roadbook. The current one is kept as a version too, so nothing is lost. */
 export function restoreVersion(store: Store, id: number, version: number): number {
   const roadbook = store.findRide(String(id));
@@ -234,6 +242,13 @@ export function formatRideLine(ride: SavedRide): string {
   return `#${ride.id}  ${ride.name}${parent}  |  ${ride.distanceKm} km, ${fmtMinutes(ride.ridingMinutes)}, ${avgSpeed(ride.distanceKm, ride.ridingMinutes)}  |  ${ride.rideDate ?? "no date"}  |  from ${startLabel(ride)}  |  ${stars(ride.rating)}`;
 }
 
+/** A ride's status in words: a planned ride whose day has passed asks; one whose roadbook changed says so. */
+function rideStatus(r: { status: RideDay["status"]; stale: boolean; passed: boolean }): string {
+  if (r.passed) return "date passed: ridden or cancelled?";
+  if (r.status === "planned" && r.stale) return "planned, route changed: refresh it";
+  return r.status;
+}
+
 /** The line under a page: where it is, how many there are, how to get the next one. */
 export function formatPageFooter(page: Page<unknown>, noun: string, next: (page: number) => string): string {
   const count = `${page.total} ${noun}${page.total === 1 ? "" : "s"}`;
@@ -261,7 +276,7 @@ export function formatRideDayPage(page: Page<RideDay>, next: (page: number) => s
   const lines = page.items.map((d) => {
     const when = d.rideDate ? `${d.rideDate} ${weekday(d.rideDate)} ${d.departure ?? "--:--"}` : "no date yet         ";
     const rating = d.rating === null ? "" : `  |  ${stars(d.rating)}`;
-    return `${when}  #${d.roadbookId}  ${d.name}  |  ${d.distanceKm} km, ${fmtMinutes(d.ridingMinutes)}  |  ${d.status}${d.stale && d.status === "planned" ? ", route changed: refresh it" : ""}${rating}`;
+    return `${when}  #${d.roadbookId}  ${d.name}  |  ${d.distanceKm} km, ${fmtMinutes(d.ridingMinutes)}  |  ${rideStatus(d)}${rating}`;
   });
   const footer = formatPageFooter(page, "ride", next);
   return lines.length ? [...lines, "", footer].join("\n") : footer;
@@ -298,7 +313,7 @@ export function formatRidesOf(store: Store, roadbook: SavedRide): string[] {
     "Rides:",
     ...rides.map((r) => {
       const when = r.rideDate ? `${r.rideDate} ${r.departure ?? "--:--"}` : "no date yet     ";
-      const status = r.stale && r.status === "planned" ? "planned, route changed: refresh it" : r.status;
+      const status = rideStatus(r);
       const day = r.rating === null ? "" : `  ${stars(r.rating)}${r.notes ? ` "${r.notes}"` : ""}`;
       return `  ${when}  ${status}${day}`;
     }),

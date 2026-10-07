@@ -20,6 +20,7 @@ import {
   DuplicateRideError,
   enrichRide,
   copyRoadbook,
+  followingRides,
   formatRideDetail,
   formatVersions,
   restoreVersion,
@@ -64,7 +65,8 @@ const USAGE = `Usage: npm run rides -- <command>
                                         time as 9, 9:30, 9h30 (default the roadbook's last departure). No copy, no model
   today [roadbook] [day]                Ride-day briefing: weather now, daylight, traffic, stops checked against opening hours, go or no-go
                                         (default the next planned ride; with a day, that ride of the roadbook)
-  show <id|name> [--md]                 One ride: legs, map link, itinerary (--md: as Markdown on stdout)
+  show <id|name> [day] [--md]           One roadbook, or one of its rides with the route it was ridden on (--md: Markdown)
+  keep <roadbook> <day>                 Keep a planned ride on the version it had before the last change
   export-md <id|name> [file.md]         Write the ride as a Markdown document, with its map (default: exports/ in the project)
   map <id|name> [file.png]              A picture of the ride: route, towns, stops, fixed cameras with their limits
   rate <id|name> <0-5> [note]           Rate a roadbook: its roads, for later plans (0 never again, 5 loved)
@@ -173,9 +175,23 @@ try {
       );
       break;
     }
-    case "show":
-      console.log(args.includes("--md") ? formatRideMarkdown(ride(args[0])) : formatRideDetail(ride(args[0]), store));
+    case "show": {
+      // "show 7 saturday": that ride, with the route it was planned or ridden on.
+      const day = args
+        .slice(1)
+        .filter((a) => a !== "--md")
+        .join(" ");
+      const found = day ? rideOnDay(store, args[0] ?? "", day) : undefined;
+      const target = found ? store.rideView(found.saved.id, found.ride.id)! : ride(args[0]);
+      console.log(args.includes("--md") ? formatRideMarkdown(target) : formatRideDetail(target, store));
       break;
+    }
+    case "keep": {
+      const found = rideOnDay(store, args[0] ?? "", args.slice(1).join(" "));
+      const version = store.keepPreviousVersion(found.ride.id);
+      console.log(`The ride of ${found.date} keeps roadbook #${found.saved.id} as it was (version ${version}).`);
+      break;
+    }
     case "export-md": {
       const target = ride(args[0]);
       console.log(`Markdown written: ${writeRideMarkdown(target, args[1])}`);
@@ -552,6 +568,8 @@ try {
       console.log(
         `Roadbook #${target.id} is back to version ${version}, saved as version ${now}; the one it replaced is kept.`,
       );
+      const following = followingRides(store, target.id);
+      if (following) console.log(following);
       break;
     }
     case "copy": {

@@ -24,7 +24,7 @@ during a migration SHALL wait for it.
 
 ### Requirement: Saving
 
-A ride SHALL be saved only on request, from a route id routed in the session, under a name (default the planner's title). Saving again after a change SHALL create a new version linked to its parent; nothing SHALL be overwritten. Stored: name, home, date, departure, waypoints, legs, speed profile, preferences actually used (including the motorway setting of that trip), requests, itinerary text, map link, route line, 500 m grid footprint, session usage.
+A roadbook SHALL be saved only on request, from a route id routed in the session, under a name (default the planner's title), with a first ride, dated when the plan has a date. Saving after a change to the roadbook in hand (opened for a change, or saved earlier in the session) SHALL change it in place (Requirement "Editing a roadbook"); a separate roadbook, recorded as a variant, SHALL be saved only when asked (`/save --copy`, `asCopy`). A new ride planned in the same MCP session SHALL be saved as a new roadbook. Stored: name, home, date, departure, waypoints, legs, speed profile, preferences actually used (including the motorway setting of that trip), requests, itinerary text, map link, route line, 500 m grid footprint, session usage.
 
 #### Scenario: Save with an unknown route id
 
@@ -54,7 +54,19 @@ Rides and legs SHALL be rateable 0 to 5 with a note, from the CLI, the prompt, t
 
 ### Requirement: Editing a roadbook
 
-Opening a roadbook SHALL seed the model with its structured data (not the old conversation); a change or new date re-routes and re-checks weather; a question is answered without replanning; overlap with the ride is expected.
+Opening a roadbook SHALL seed the model with its structured data (not the old conversation); a change or new date re-routes and re-checks weather; a question is answered without replanning; overlap with the roadbook is expected.
+
+Saving a change SHALL replace the roadbook's design (waypoints, legs, route line, figures, itinerary) under the same number, keeping the previous design as a version with the change that replaced it; the roadbook's own rating and notes stay. Leg ratings of the replaced legs SHALL be kept as ratings of those stretches of road. Planned rides SHALL move to the new version, marked as needing a refresh; ridden rides SHALL keep their version. A day named in the change SHALL be planned on the new version. The rider SHALL be able to list versions, bring one back (the current design kept as a version too) and copy a roadbook as a separate variant (`rides versions|restore|copy`, MCP `restoreRoadbook` and `copyRoadbook`, versions shown with the roadbook).
+
+#### Scenario: Longer loop
+
+- **WHEN** the rider opens roadbook 7, asks for 50 km more and saves
+- **THEN** roadbook 7 has the longer route and version 2, version 1 is listed with "50 km longer", and no new roadbook exists
+
+#### Scenario: Undo
+
+- **WHEN** the rider restores version 1 of roadbook 7
+- **THEN** roadbook 7 has the original route again as version 3, and versions 1 and 2 are both kept
 
 ### Requirement: Listing roadbooks and rides
 

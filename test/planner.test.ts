@@ -67,6 +67,10 @@ test("planner: routes, presents a scout's route, saves it; usage and trace are k
     assert.ok(String(api.requests[0].messages[0].content).includes("Start and end point"));
     assert.equal(api.requests[0].output_config.format.type, "json_schema");
     assert.ok(api.requests[0].tools.some((t: any) => t.name === "scoutAreas"));
+    assert.ok(
+      api.requests[0].tools.every((t: any) => !("annotations" in t) && !("hints" in t)),
+      "MCP annotations are not sent to the API",
+    );
     assert.equal(
       api.requests[1].tools.some((t: any) => t.name === "scoutAreas"),
       false,

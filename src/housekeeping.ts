@@ -2,6 +2,7 @@
 // delete and the reports after, shared by the terminal and the MCP server.
 import { readdirSync, statSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
+import { pickRideForToday } from "./briefing.ts";
 import { parseRideDay } from "./planRide.ts";
 import type { SavedRide, Store } from "./store.ts";
 
@@ -41,6 +42,21 @@ export function deleteRideQuestion(found: ReturnType<typeof rideOnDay>): string 
     ? ` Its ${plural(ride.notes, "note")} stay${ride.notes === 1 ? "s" : ""} on the roadbook.`
     : "";
   return `Delete the ride of ${date} (${ride.status}) from roadbook #${saved.id} "${saved.name}"?${notes} The roadbook stays.`;
+}
+
+/**
+ * The ride a briefing is about: a roadbook's ride on a given day, else that
+ * roadbook's shown ride, else the next planned ride of any roadbook.
+ */
+export function rideToBrief(store: Store, today: string, roadbook?: string, day?: string): SavedRide {
+  if (roadbook && day) {
+    const { saved, ride } = rideOnDay(store, roadbook, day);
+    return store.rideView(saved.id, ride.id)!;
+  }
+  if (roadbook) return roadbookOf(store, roadbook);
+  const next = pickRideForToday(store, today);
+  if (!next) throw new Error("No saved roadbook to brief. Save one first.");
+  return next;
 }
 
 /** Other files next to the library: migration backups, old libraries. Listed, never deleted. */

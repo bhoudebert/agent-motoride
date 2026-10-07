@@ -240,7 +240,7 @@ for (const tool of createToolDefinitions(context, { scouts: true })) {
     {
       description: tool.description,
       inputSchema: tool.inputSchema,
-      annotations: tool.hints,
+      annotations: tool.annotations,
     },
     async (args: unknown) => {
       if (!context.home.label) throw new Error("No start point yet: call rideSettings with the rider's home first.");

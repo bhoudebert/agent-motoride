@@ -91,7 +91,11 @@ time against your limits, no motorway when they are forbidden, no repeat of a
 ride you already saved, little or nothing on roads you rated "never again",
 and the distance in the text equal to the routed one. A failed check goes back
 to the planner once; it fixes the ride or says plainly which limit cannot be
-met.
+met. Slow-zone shares are targets, not limits: a ride over one is kept, and you
+are told ("25.3% of the distance in 31-50 zones, over the 20% target").
+
+A departure that has already passed today is refused when the stops are
+planned: asked at 18:00 for "11:00", the planner picks another day or asks you.
 
 ::: info Motorways
 Motorways are never used unless you allow them: `--allow-motorways`,

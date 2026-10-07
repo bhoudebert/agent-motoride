@@ -38,7 +38,8 @@ Each stop has a kind, a name, a km mark, an arrival time and a reason, plus the
 return time with breaks and warnings: no fuel in reach, a long stint, no
 restaurant near midday. Places open at your arrival time are preferred, from
 the opening hours in OpenStreetMap; hours that cannot be read count as "not
-known", never as open.
+known", never as open. Days without hours ("Th-Su") count as closed on the
+other days.
 
 On the bike, the stops are already in your phone: the navigation links carry
 them as waypoints, so they are announced in turn, and the GPX holds them as

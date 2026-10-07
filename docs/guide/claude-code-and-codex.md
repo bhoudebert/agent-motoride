@@ -80,7 +80,9 @@ A new leisure ride explores two to four areas before picking one.
 | An API key, `RIDE_SCOUTS` unset or 1 | The app's scouts, one small model session per area                       | The API key |
 | `RIDE_SCOUTS=0`, or no key           | Claude Code's own subagents, one per area, in parallel, same scout brief | Your plan   |
 
-Without subagents (Codex may not run them the same way), the model explores
+Each subagent leaves its verdict in the road memory, like the app's scouts, so
+the next plan in the region skips areas found poor. Without subagents (Codex
+may not run them the same way), the model explores
 the areas itself, one after the other: slower, a narrower search. Either way
 the rider rules are checked in code on every route. Restart the client after
 changing `.env`.

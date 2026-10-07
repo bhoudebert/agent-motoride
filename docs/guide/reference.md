@@ -111,7 +111,7 @@ reused as building blocks, those rated 0-1 are avoided.
 
 ## Claude Code and Codex (MCP server)
 
-35 tools, 15 prompts. Each tool shows its MCP hints: a client can let read-only tools run without asking.
+36 tools, 15 prompts. Each tool shows its MCP hints: a client can let read-only tools run without asking.
 
 ### Tools
 
@@ -264,6 +264,18 @@ Show or change the rider's settings for this session: start and end point, wheth
 - `pauseEveryMin` (number, optional): Bike profile: pause after this much riding
 - `maxStintMin` (number, optional)
 - `lunch` (boolean, optional): Bike profile: plan a lunch stop when the ride spans midday
+
+#### `reportScout`
+
+_writes · not destructive · not idempotent · uses online services_
+
+For a scout subagent, once, before it answers: its verdict on its area, remembered for later sessions (recallArea lists it with its age). Give the routeId of the best loop it routed, if any: distance, open-road and 50-zone shares and the place of the verdict are taken from that loop, not from your text. Without a loop, the area's central town places it.
+
+- `area` (string): Name of the area scouted, e.g. Condroz
+- `location` (string): Central town of the area, e.g. Ciney
+- `found` (boolean): Whether a loop meeting the rider's hard limits was found
+- `routeId` (string, optional): routeId of the best loop routed with calculateTrip, if any
+- `verdict` (string): One sentence: what the area offers, or why not
 
 #### `checkItinerary`
 

@@ -12,7 +12,8 @@ before costs fewer scouts and road searches.
 The memory SHALL be derived from the library and the traces, never written by
 hand: roadbooks and their legs with ratings and notes, rated road stretches,
 scout verdicts per area (area, date, found, open-road and 50-zone shares,
-verdict, location), and the winding roads of each road search (name or ref,
+verdict, location), from API scouts and from client subagents through
+`reportScout`, and the winding roads of each road search (name or ref,
 curviness, length, coordinates of both ends, date). It SHALL be kept current
 incrementally and SHALL never hold weather.
 

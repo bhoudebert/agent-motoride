@@ -46,7 +46,7 @@ named waypoints with their times.
 
 ## Good to know
 
-- After changing the profile, rebuild the stop plan of a saved ride with
+- After changing the profile, rebuild the stop plan of a roadbook with
   `npm run rides -- refresh 3 --stops` (instant once the stops are cached).
 - Stop timing uses fixed breaks: 10 minutes for fuel, 15 for a pause, 45 for
   lunch.

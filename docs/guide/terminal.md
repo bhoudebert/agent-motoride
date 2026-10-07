@@ -32,7 +32,9 @@ Type a change in plain words ("too long, keep it under 180 km"), or a command:
 | ------------------------------- | -------------------------------------------------------------- |
 | `/save [name]`                  | Save the itinerary; `--force` to keep a repeat of a saved ride |
 | `/show [id\|name]`              | Show a saved ride, by default the one of this session          |
-| `/list`                         | Saved rides                                                    |
+| `/roadbooks [page]`             | Roadbooks (saved loops and trips), 20 per page                 |
+| `/rides [page]`                 | Rides (a roadbook on a day), latest date first, 20 per page    |
+| `/plan <day> [time]`            | A ride from this saved roadbook on a day, no copy, no model    |
 | `/gpx [file]`                   | GPX of the itinerary on screen, saved or not                   |
 | `/md [file]`                    | Markdown document of the saved ride                            |
 | `/qr`, `/share`                 | QR code of the map link, or a page for the phone on your Wi-Fi |

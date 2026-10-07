@@ -105,7 +105,7 @@ test("notes go to today's ride by default and are announced until reviewed", () 
   assert.equal(ride.id, older);
   assert.equal(note.minutesBack, 10);
   assert.throws(() => addRideNote(store, { text: "x", rating: 7 }), /0 \(never again\) to 5/);
-  assert.match(pendingNotesSummary(store)!, /1 ride note waiting for review \(ride #1\)/);
+  assert.match(pendingNotesSummary(store)!, /1 ride note waiting for review \(roadbook #1\)/);
   assert.equal(rideToReview(store, undefined).id, older);
 });
 

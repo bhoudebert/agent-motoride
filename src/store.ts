@@ -181,10 +181,43 @@ export interface SavedRun extends RunRecord {
 
 export interface SavedRide extends Omit<NewRide, "legs"> {
   id: number;
+  /** The ride (day) shown with this roadbook: its date, departure and day data; null if it has none. */
+  rideDayId: number | null;
   createdAt: string;
   rating: number | null;
   notes: string | null;
   legs: SavedLeg[];
+}
+
+/** One page of a list: 20 lines unless asked otherwise. */
+export interface Page<T> {
+  items: T[];
+  page: number;
+  pages: number;
+  total: number;
+}
+
+export const PER_PAGE = 20;
+
+/** A roadbook on one day, as listed: with its roadbook's number, name and figures. */
+export interface RideDay {
+  id: number;
+  roadbookId: number;
+  name: string;
+  rideDate: string | null;
+  departure: string | null;
+  start: string;
+  status: "planned" | "ridden" | "cancelled";
+  distanceKm: number;
+  ridingMinutes: number;
+  rating: number | null;
+}
+
+export interface RoadbookSummary {
+  roadbook: SavedRide;
+  rides: number;
+  /** Earliest planned ride from today on, or null. */
+  nextDate: string | null;
 }
 
 interface RoadbookRow {
@@ -478,20 +511,60 @@ export class Store {
     return Number(lastInsertRowid);
   }
 
-  /** The ride shown with a roadbook: the latest planned one, else the latest. */
+  /** The ride shown with a roadbook: the next planned one, else the latest planned, else the latest. */
   #currentDay(roadbookId: number): DayRow | undefined {
     return this.#db
-      .prepare("SELECT * FROM rides WHERE roadbook_id = ? ORDER BY status = 'planned' DESC, id DESC LIMIT 1")
-      .get(roadbookId) as unknown as DayRow | undefined;
+      .prepare(
+        `SELECT * FROM rides WHERE roadbook_id = ?
+         ORDER BY status = 'planned' AND ride_date >= ? DESC,
+           CASE WHEN status = 'planned' AND ride_date >= ? THEN ride_date END ASC,
+           status = 'planned' DESC, id DESC
+         LIMIT 1`,
+      )
+      .get(roadbookId, localDay(new Date()), localDay(new Date())) as unknown as DayRow | undefined;
   }
 
-  #hydrate(row: RoadbookRow): SavedRide {
+  /**
+   * Plan a ride of a roadbook on a date: the ride already on that date is
+   * updated (departure, planned again), else a new one is added. The roadbook
+   * itself is not touched.
+   */
+  planDay(roadbookId: number, date: string, departure: string): { dayId: number; created: boolean } {
+    const existing = this.#db
+      .prepare("SELECT id FROM rides WHERE roadbook_id = ? AND ride_date = ?")
+      .get(roadbookId, date) as { id: number } | undefined;
+    if (existing) {
+      this.#db
+        .prepare("UPDATE rides SET departure = ?, status = 'planned', stale = 0 WHERE id = ?")
+        .run(departure, existing.id);
+      return { dayId: existing.id, created: false };
+    }
+    const roadbook = this.#db.prepare("SELECT home FROM roadbooks WHERE id = ?").get(roadbookId) as
+      { home: string } | undefined;
+    if (!roadbook) throw new Error(`No roadbook #${roadbookId}.`);
+    return {
+      dayId: this.#addDay(roadbookId, { date, departure, start: roadbook.home, dayExtras: null }),
+      created: true,
+    };
+  }
+
+  /** A roadbook shown with one of its rides instead of the current one. */
+  rideView(roadbookId: number, dayId: number): SavedRide | undefined {
+    const row = this.#db.prepare("SELECT * FROM roadbooks WHERE id = ?").get(roadbookId) as unknown as
+      RoadbookRow | undefined;
+    const day = this.#db.prepare("SELECT * FROM rides WHERE id = ? AND roadbook_id = ?").get(dayId, roadbookId) as
+      DayRow | undefined;
+    return row && day ? this.#hydrate(row, day) : undefined;
+  }
+
+  #hydrate(row: RoadbookRow, shown?: DayRow): SavedRide {
     const legs = this.#db
       .prepare("SELECT * FROM legs WHERE roadbook_id = ? ORDER BY seq")
       .all(row.id) as unknown as SegmentRow[];
-    const day = this.#currentDay(row.id);
+    const day = shown ?? this.#currentDay(row.id);
     return {
       id: row.id,
+      rideDayId: day?.id ?? null,
       name: row.name,
       createdAt: row.created_at,
       parentId: row.variant_of,
@@ -533,6 +606,63 @@ export class Store {
   listRides(): SavedRide[] {
     const rows = this.#db.prepare("SELECT * FROM roadbooks ORDER BY id").all() as unknown as RoadbookRow[];
     return rows.map((row) => this.#hydrate(row));
+  }
+
+  /** Roadbooks, newest first, one page at a time. */
+  listRoadbooks(page = 1, perPage = PER_PAGE): Page<RoadbookSummary> {
+    const total = (this.#db.prepare("SELECT count(*) AS n FROM roadbooks").get() as { n: number }).n;
+    const rows = this.#db
+      .prepare("SELECT * FROM roadbooks ORDER BY id DESC LIMIT ? OFFSET ?")
+      .all(perPage, (page - 1) * perPage) as unknown as RoadbookRow[];
+    const today = localDay(new Date());
+    const counts = this.#db.prepare(
+      `SELECT count(*) AS rides,
+         min(CASE WHEN status = 'planned' AND ride_date >= ? THEN ride_date END) AS next_date
+       FROM rides WHERE roadbook_id = ?`,
+    );
+    const items = rows.map((row) => {
+      const { rides, next_date } = counts.get(today, row.id) as { rides: number; next_date: string | null };
+      return { roadbook: this.#hydrate(row), rides, nextDate: next_date };
+    });
+    return { items, page, pages: Math.max(1, Math.ceil(total / perPage)), total };
+  }
+
+  /** Rides by date, latest first, rides with no date yet last, one page at a time. */
+  listRideDays(page = 1, perPage = PER_PAGE): Page<RideDay> {
+    const total = (this.#db.prepare("SELECT count(*) AS n FROM rides").get() as { n: number }).n;
+    const rows = this.#db
+      .prepare(
+        `SELECT r.id, r.roadbook_id, b.name, r.ride_date, r.departure, r.start, r.status, b.distance_km,
+           b.riding_minutes, r.rating
+         FROM rides r JOIN roadbooks b ON b.id = r.roadbook_id
+         ORDER BY r.ride_date IS NULL, r.ride_date DESC, r.departure DESC, r.id DESC
+         LIMIT ? OFFSET ?`,
+      )
+      .all(perPage, (page - 1) * perPage) as Array<{
+      id: number;
+      roadbook_id: number;
+      name: string;
+      ride_date: string | null;
+      departure: string | null;
+      start: string;
+      status: RideDay["status"];
+      distance_km: number;
+      riding_minutes: number;
+      rating: number | null;
+    }>;
+    const items = rows.map((r) => ({
+      id: r.id,
+      roadbookId: r.roadbook_id,
+      name: r.name,
+      rideDate: r.ride_date,
+      departure: r.departure,
+      start: r.start,
+      status: r.status,
+      distanceKm: r.distance_km,
+      ridingMinutes: r.riding_minutes,
+      rating: r.rating,
+    }));
+    return { items, page, pages: Math.max(1, Math.ceil(total / perPage)), total };
   }
 
   /** Find a ride by numeric id, or by name (exact first, then unique partial match). */
@@ -632,15 +762,19 @@ export class Store {
     }
   }
 
-  setExtras(id: number, extras: RideExtras): void {
+  /** Store gathered extras: route-bound ones on the roadbook, day-bound ones on the given ride, else its current one. */
+  setExtras(id: number, extras: RideExtras, dayId?: number | null): void {
     const { route, day } = splitExtras(extras);
     const roadbook = this.#db
       .prepare("UPDATE roadbooks SET route_extras = ? WHERE id = ? RETURNING home")
       .get(route, id) as { home: string } | undefined;
     if (!roadbook) return;
-    const current = this.#currentDay(id);
-    if (current) this.#db.prepare("UPDATE rides SET day_extras = ? WHERE id = ?").run(day, current.id);
-    else this.#addDay(id, { date: null, departure: null, start: roadbook.home, dayExtras: day });
+    const current = dayId ? { id: dayId } : this.#currentDay(id);
+    if (current) {
+      this.#db
+        .prepare("UPDATE rides SET day_extras = ?, stale = 0 WHERE id = ? AND roadbook_id = ?")
+        .run(day, current.id, id);
+    } else this.#addDay(id, { date: null, departure: null, start: roadbook.home, dayExtras: day });
   }
 
   /** Attach the exact route line to a ride saved without one. */
@@ -661,7 +795,7 @@ export class Store {
     const day = localDay(at);
     const roadbook = this.#db.prepare("SELECT home FROM roadbooks WHERE id = ?").get(note.rideId) as
       { home: string } | undefined;
-    if (!roadbook) throw new Error(`No saved ride #${note.rideId}.`);
+    if (!roadbook) throw new Error(`No roadbook #${note.rideId}.`);
     const existing = this.#db
       .prepare("SELECT id FROM rides WHERE roadbook_id = ? AND ride_date = ?")
       .get(note.rideId, day) as { id: number } | undefined;

@@ -170,7 +170,7 @@ function describeBaseRide(ride: SavedRide): string {
     })),
     originalRequest: ride.request,
   };
-  return `This session evolves saved ride #${ride.id} "${ride.name}". Work from its waypoints rather than searching for a new area. If the message above asks for a change or a new date, route the ride again to get a route ID for this session, check the weather for the day in question, and apply the request, changing only what it asks for. If it is only a question about the ride, answer it from this data and the tools, without replanning. Overlap with this ride is expected.\n${JSON.stringify(data)}`;
+  return `This session evolves roadbook #${ride.id} "${ride.name}". Work from its waypoints rather than searching for a new area. If the message above asks for a change or a new date, route the ride again to get a route ID for this session, check the weather for the day in question, and apply the request, changing only what it asks for. If it is only a question about the ride, answer it from this data and the tools, without replanning. Overlap with this ride is expected.\n${JSON.stringify(data)}`;
 }
 
 export interface RideSession {

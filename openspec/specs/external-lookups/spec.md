@@ -26,4 +26,4 @@ Results SHALL be cached in SQLite with per-tool lifetimes (roads 30 days, routes
 
 ### Requirement: Visible failure
 
-A failed lookup SHALL produce a message naming the instances and reasons, SHALL be stored on the ride with its reason when gathered for a saved ride, and SHALL leave previous results in place.
+A failed lookup SHALL produce a message naming the instances and reasons, SHALL be stored on the ride with its reason when gathered for a roadbook, and SHALL leave previous results in place.

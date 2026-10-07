@@ -39,7 +39,7 @@ export function reviewForm(review: RideReview): ElicitForm | null {
     };
   }
   return {
-    message: `Rate the roads of ride #${review.ride.id} "${review.ride.name}" from your notes. Ratings steer later plans: 0-1 avoided, 4-5 sought out.`,
+    message: `Rate the roads of roadbook #${review.ride.id} "${review.ride.name}" from your notes. Ratings steer later plans: 0-1 avoided, 4-5 sought out.`,
     requestedSchema: { type: "object", properties },
   };
 }

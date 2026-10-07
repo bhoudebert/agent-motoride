@@ -20,7 +20,8 @@ import {
   DuplicateRideError,
   enrichRide,
   formatRideDetail,
-  formatRideList,
+  formatRideDayPage,
+  formatRoadbookPage,
   parseRating,
   replanStops,
   rideNavigation,
@@ -39,19 +40,23 @@ import { otlpEndpoint, otlpHeaders, runToOtlp, sendOtlp } from "./otel.ts";
 import { preferencesFromEnv } from "./preferences.ts";
 import { importRoute, readRouteFile } from "./routeImport.ts";
 import { type RideContext, registerRoute } from "./session.ts";
+import { parsePlanRide, planRideFrom } from "./planRide.ts";
 import { formatTrace } from "./trace.ts";
 import { emptyUsage } from "./usage.ts";
 
 const USAGE = `Usage: npm run rides -- <command>
 
-  list                                  All saved rides
+  roadbooks [--page N]                  Roadbooks (the loops and trips you saved), newest first, 20 per page
+  rides [--page N]                      Rides (a roadbook on a day), latest date first, 20 per page
+  plan <roadbook> <day> [time]          Plan a ride from a roadbook: day as 2026-10-17, 17/10, saturday, tomorrow;
+                                        time as 9, 9:30, 9h30 (default the roadbook's last departure). No copy, no model
   today [id|name]                       Ride-day briefing: weather now, daylight, traffic, stops checked against opening hours, go or no-go
   show <id|name> [--md]                 One ride: legs, map link, itinerary (--md: as Markdown on stdout)
   export-md <id|name> [file.md]         Write the ride as a Markdown document, with its map (default: exports/ in the project)
   map <id|name> [file.png]              A picture of the ride: route, towns, stops, fixed cameras with their limits
   rate <id|name> <1-5> [note]           Rate a ride after riding it
   rate-leg <id|name> <leg> <1-5> [note] Rate one leg of a ride
-  note "<text>" [--rating 0-5] [--back N] [--ride id|name]
+  note "<text>" [--rating 0-5] [--back N] [--roadbook id|name]
                                         During the ride: a note about the last N minutes (default 10), on today's ride
   notes [--all]                         Notes waiting for review (--all: reviewed and dismissed ones too)
   review [id|name] [track.gpx] [--yes]  After the ride: place the notes on the recorded track (or on the plan without one),
@@ -82,14 +87,44 @@ const store = new Store();
 function ride(idOrName: string | undefined) {
   if (!idOrName) throw new Error("Which ride? Give its id or name.");
   const found = store.findRide(idOrName);
-  if (!found) throw new Error(`No saved ride matches "${idOrName}". Run: npm run rides -- list`);
+  if (!found) throw new Error(`No saved ride matches "${idOrName}". Run: npm run rides -- roadbooks`);
   return found;
+}
+
+/** --page N, or 1. */
+function pageArg(args: string[]): number {
+  const at = args.indexOf("--page");
+  if (at === -1) return 1;
+  const page = Number(args[at + 1]);
+  if (!Number.isInteger(page) || page < 1) throw new Error("--page takes a page number: 1, 2, ...");
+  return page;
 }
 
 try {
   switch (command) {
+    case "roadbooks":
+      console.log(
+        formatRoadbookPage(store.listRoadbooks(pageArg(args)), (n) => `npm run rides -- roadbooks --page ${n}`),
+      );
+      break;
     case "list":
-      console.log(formatRideList(store.listRides()));
+      // Kept only to point to the two lists it became.
+      console.log(
+        "Two lists now: npm run rides -- roadbooks (saved loops and trips), npm run rides -- rides (by date).",
+      );
+      break;
+    case "plan": {
+      const [roadbook, ...when] = args;
+      const words = when.join(" ");
+      const parsed = roadbook ? parsePlanRide(`plan roadbook ${roadbook} ${words}`) : null;
+      if (!roadbook || !parsed) {
+        throw new Error("Usage: npm run rides -- plan <roadbook> <day> [time], e.g. plan 7 saturday 9:30");
+      }
+      console.log(await planRideFrom(store, roadbook, parsed.date, parsed.departure));
+      break;
+    }
+    case "rides":
+      console.log(formatRideDayPage(store.listRideDays(pageArg(args)), (n) => `npm run rides -- rides --page ${n}`));
       break;
     case "today": {
       const today = new Date().toISOString().slice(0, 10);
@@ -123,7 +158,7 @@ try {
       const seq = Number(args[1]);
       const { rating, notes } = parseRating(args.slice(2));
       if (!store.rateLeg(target.id, seq, rating, notes)) {
-        throw new Error(`Ride #${target.id} has no leg ${args[1] ?? ""}; it has legs 1 to ${target.legs.length}.`);
+        throw new Error(`Roadbook #${target.id} has no leg ${args[1] ?? ""}; it has legs 1 to ${target.legs.length}.`);
       }
       console.log(`Rated leg ${seq} of #${target.id} "${target.name}" ${rating}/5.`);
       break;
@@ -135,7 +170,7 @@ try {
       };
       const rating = flag("--rating");
       const back = flag("--back");
-      const rideName = flag("--ride");
+      const rideName = flag("--roadbook") ?? flag("--ride");
       const text = args.join(" ").trim();
       if (!text) throw new Error('What about it? e.g. npm run rides -- note "last 10 min awesome" --rating 5');
       const { note, ride: target } = addRideNote(store, {
@@ -156,7 +191,7 @@ try {
       if (!notes.length) console.log("No notes waiting for review.");
       for (const note of notes) {
         console.log(
-          `#${note.id}  ride #${note.rideId}  ${note.createdAt.slice(0, 16).replace("T", " ")} UTC  last ${note.minutesBack} min  ${note.rating ?? "-"}  ${note.status}  "${note.text}"`,
+          `#${note.id}  roadbook #${note.rideId}  ${note.createdAt.slice(0, 16).replace("T", " ")} UTC  last ${note.minutesBack} min  ${note.rating ?? "-"}  ${note.status}  "${note.text}"`,
         );
       }
       break;
@@ -355,7 +390,7 @@ try {
         });
         if (trip.result.legs.length !== target.legs.length) {
           throw new Error(
-            `Ride #${target.id} now routes into ${trip.result.legs.length} legs instead of ${target.legs.length}; not updated.`,
+            `Roadbook #${target.id} now routes into ${trip.result.legs.length} legs instead of ${target.legs.length}; not updated.`,
           );
         }
         store.refreshRide(target.id, tripFigures(trip, routeCells(trip.shapes)));

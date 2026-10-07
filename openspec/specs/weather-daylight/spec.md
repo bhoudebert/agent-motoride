@@ -20,7 +20,7 @@ ride, the daylight frame of the day, and the traffic delay at departure.
 - **WHEN** the date is 21 December in northern France
 - **THEN** sunrise and sunset are given in winter time
 
-### Requirement: Weather on saved rides
+### Requirement: Weather on planned rides
 
 On save and refresh, when the ride date is within forecast range, the forecast SHALL be stored at four points of the route for the hours the rider would be there, stamped with its time; beyond range the previous forecast SHALL be kept and the view SHALL say so.
 
@@ -40,7 +40,7 @@ For a routed trip, a date and a departure time, the system SHALL sample the rout
 - crosswind: the gust component across the direction of travel, from the forecast wind speed, gusts and direction at the nearest forecast point and hour; stretches at 35 km/h or more are flagged, at 50 km/h or more as strong;
 - low sun: stretches where the sun is between 0 and 15 degrees above the horizon and within 30 degrees of the direction of travel at the time of passage.
 
-Results SHALL appear in the ride-day briefing and on saved rides when the date is within forecast range; glare SHALL be computed for any date.
+Results SHALL appear in the ride-day briefing and on planned rides when the date is within forecast range; glare SHALL be computed for any date.
 
 #### Scenario: Low sun ahead on the way home
 

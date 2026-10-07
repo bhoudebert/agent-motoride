@@ -58,7 +58,7 @@ Each leg SHALL carry from and to labels (place names, never bare coordinates), c
 
 ### Requirement: Duplicate verdict
 
-Every routed trip SHALL be compared with saved rides and carry a verdict: new, similar (40% or more shared cells), duplicate (70% or more, rejected unless repeats are allowed), or variant of the ride the session evolves.
+Every routed trip SHALL be compared with roadbooks and carry a verdict: new, similar (40% or more shared cells), duplicate (70% or more, rejected unless repeats are allowed), or variant of the ride the session evolves.
 
 ### Requirement: Road surface
 

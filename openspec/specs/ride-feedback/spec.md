@@ -10,11 +10,11 @@ ratings that steer every later plan.
 
 ### Requirement: Notes during the ride
 
-The system SHALL accept a note on a saved ride from every mode (MCP tool and
+The system SHALL accept a note on a ride (a roadbook ridden on a day) from every mode (MCP tool and
 prompt, `rides` command, refine prompt command): free text, an optional rating from 0 (never again) to 5,
 and a look-back window in minutes (default 10). The note SHALL be stored with
 the time it was given. Without an explicit ride, the note SHALL attach to the
-ride dated today, else to the most recently saved ride.
+ride dated today, else to the most recently roadbook.
 
 #### Scenario: Quick note at a stop
 
@@ -24,7 +24,7 @@ ride dated today, else to the most recently saved ride.
 
 ### Requirement: Review with a recorded track
 
-Given a saved ride and a GPX track with timestamps (a file on the machine that
+Given a roadbook and a GPX track with timestamps (a file on the machine that
 runs the session), the review SHALL:
 
 - place each pending note on the stretch of the track ridden during its window

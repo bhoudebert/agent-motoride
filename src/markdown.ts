@@ -46,7 +46,7 @@ export function formatRideMarkdown(ride: SavedRide, map: string | null = null): 
   const lines: string[] = [];
   const push = (...items: string[]) => lines.push(...items);
 
-  push(`# Ride #${ride.id}: ${ride.name}${ride.parentId ? ` (from #${ride.parentId})` : ""}`, "");
+  push(`# Roadbook #${ride.id}: ${ride.name}${ride.parentId ? ` (from #${ride.parentId})` : ""}`, "");
   push(
     `**${ride.distanceKm} km | ${fmtMinutes(ride.ridingMinutes)} riding | ${avg(ride.distanceKm, ride.ridingMinutes)} km/h average | ${stars(ride.rating)}**`,
     "",

@@ -15,7 +15,7 @@ as many as you say, and goes to the ride dated today.
 ```bash [Terminal]
 npm run rides -- note "last 10 min awesome"
 npm run rides -- note "cobbles, never again" --back 5
-npm run rides -- note "nice bends" --rating 4 --ride 7
+npm run rides -- note "nice bends" --rating 4 --roadbook 7
 
 # in a refine> session: /note last 10 min awesome
 ```
@@ -50,7 +50,7 @@ review my ride with ~/Downloads/track.gpx
 :::
 
 ```text
-Review of ride #7 "Avesnois loop"
+Review of roadbook #7 "Avesnois loop"
 Ridden: 171.2 km, 2 h 51 moving, 60 km/h on average.
 Planned: 167.6 km, 2 h 55, 57 km/h.
 Detours from the plan (2 km or more):

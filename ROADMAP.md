@@ -76,6 +76,11 @@ with a navigation app (Liberty Rider, Google Maps) on the phone.
 
 ## Done lately
 
+- **Roadbooks and rides** (ADR 0022, 0023): versioned library migrations with
+  a backup first; saved rides stored as roadbooks (the design) and rides (a
+  roadbook on a day); both listed 20 per page in the terminal and over MCP.
+  Next: edits in place with versions, a new date as a new ride, ratings split
+  between the road and the day, the start point on the ride.
 - **A map of the ride**: the loop, towns, stops and fixed cameras with their
   limits as a picture, drawn from the ride's own data (`rides map`, `/map`,
   `showRideMap` in Claude Code or Codex, the Markdown export, the share page).

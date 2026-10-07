@@ -16,7 +16,7 @@ In short:
 - **The model decides, tools supply every number, code enforces the rules.**
   Roads, limits and routing come from OpenStreetMap and Valhalla, forecasts from
   Open-Meteo, traffic from TomTom. No motorway unless allowed, no repeat of a
-  saved ride, and every itinerary is checked against your limits before you see
+  roadbook you have, and every itinerary is checked against your limits before you see
   it.
 - **Scouts**: two to four smaller model sessions explore riding areas in
   parallel, and the planner compares what they found.

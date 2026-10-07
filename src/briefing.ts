@@ -32,7 +32,7 @@ export async function rideBriefing(store: Store, ride: SavedRide, today: string)
   const date = ride.rideDate ?? today;
   const departure = ride.departure ?? "09:00";
   lines.push(
-    `Briefing for ride #${ride.id} "${ride.name}", ${date}, departure ${departure} from ${ride.home}`,
+    `Briefing for the ride of ${date} from roadbook #${ride.id} "${ride.name}", departure ${departure} from ${ride.home}`,
     `${ride.distanceKm} km, ${Math.floor(ride.ridingMinutes / 60)}h${String(ride.ridingMinutes % 60).padStart(2, "0")} riding estimated`,
     "",
   );

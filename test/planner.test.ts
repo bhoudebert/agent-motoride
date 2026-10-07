@@ -180,7 +180,7 @@ test("saving a duplicate of a saved ride is refused unless forced; rated roads a
     await second.send("go again");
     const correction = api.requests.at(-1).messages.at(-1).content;
     assert.match(String(correction), /Automatic check by code/);
-    assert.match(String(correction), /repeat: \d+% of the roads of saved ride #1/);
+    assert.match(String(correction), /repeat: \d+% of the roads of roadbook #1/);
     const result = JSON.parse(api.requests.at(-2).messages.at(-1).content[0].content);
     assert.ok(result.savedRides.verdict.startsWith("DUPLICATE"));
     assert.ok(result.ratedRoads.verdict.startsWith("AVOID"), result.ratedRoads.verdict);

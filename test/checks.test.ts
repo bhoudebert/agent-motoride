@@ -119,7 +119,7 @@ test("checks: repeats of saved rides and roads rated never again", () => {
     maxDistanceKm: null,
     maxRidingMinutes: null,
   });
-  assert.match(violations[0]!, /^repeat: 100% of the roads of saved ride #1 "Old loop"/);
+  assert.match(violations[0]!, /^repeat: 100% of the roads of roadbook #1 "Old loop"/);
   assert.match(violations[1]!, /^rated roads: 100% on roads the rider rated 0 or 1/);
   assert.match(correctionMessage(violations), /^\[Automatic check by code, not from the rider\./);
 });

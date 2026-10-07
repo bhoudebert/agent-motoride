@@ -16,6 +16,9 @@ features:
   - title: Plan from one sentence
     details: '"Saturday, no rain, under 250 km, winding roads." Scouts explore several areas, the best loop comes back checked.'
     link: /plan-a-ride
+  - title: Roadbooks and rides
+    details: 'Each loop you keep is a roadbook. "Plan a ride from roadbook 7 on Saturday at 9" rides it again: that day''s forecast, open stops, go or no-go, no copy.'
+    link: /library
   - title: Import a route someone shared
     details: A club's or a friend's GPX or KML, routed so it gets the same figures, stops and checks as your own rides.
     link: /import-a-route

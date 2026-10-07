@@ -37,11 +37,11 @@ their speed limit, km marks, a scale and the ride's figures.
 npm run rides -- map 7                  # writes exports/7-<name>.png
 npm run rides -- map 7 ~/ride-map.png   # or a path you choose
 
-# at the refine> prompt, on a saved ride: /map
+# at the refine> prompt, on a saved roadbook: /map
 ```
 
 ```text [Claude Code / Codex]
-show me ride 7 on a map
+show me roadbook 7 on a map
 
 (the picture shows in the chat)
 ```
@@ -69,7 +69,7 @@ npm run rides -- qr 7       # just the QR code of the map link
 ```
 
 ```text [Claude Code / Codex]
-show ride 7
+show roadbook 7
 
 (from the phone with Remote Control, the links in the answer open directly)
 ```
@@ -91,7 +91,7 @@ npm run rides -- export 7 ~/ride.gpx      # or a path you choose
 ```
 
 ```text [Claude Code / Codex]
-export ride 7 as GPX
+export roadbook 7 as GPX
 ```
 
 :::
@@ -120,7 +120,7 @@ npm run rides -- today 7
 ```
 
 ```text [Claude Code / Codex]
-briefing for ride 7
+briefing for roadbook 7
 
 (or: "can I ride the Avesnois loop today?")
 ```

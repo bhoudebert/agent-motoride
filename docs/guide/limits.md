@@ -11,8 +11,8 @@ the ride and for the local rules, including on speed-camera information.
 - Forecasts change. A ride judged dry on Thursday should be rechecked on the day.
 - Road data comes from OpenStreetMap and can be incomplete or out of date.
   Closures and roadworks are not checked.
-- A saved ride keeps the result, not the conversation: `--ride` starts a new
-  conversation from the stored ride.
+- A roadbook keeps the result, not the conversation: `--roadbook` starts a new
+  conversation from the stored roadbook.
 - Duplicate detection compares road footprints. The way out of and back into
   your home town is shared by most rides and counts toward the overlap.
 - The built-in SQLite module of Node is recent; the file format is standard

@@ -24,7 +24,7 @@ and pick this project.
 :::
 
 Then ask as you would at the computer: "plan me a ride Sunday, under 220 km",
-"briefing for ride 7", "cobbles, never again" at a stop.
+"briefing for roadbook 7", "cobbles, never again" at a stop.
 
 ::: details Codex from the command line (experimental)
 Recent Codex CLI releases have an experimental remote-control daemon:
@@ -56,7 +56,7 @@ desktop-app pairing above is the documented path.
 
 GPX and Markdown are written on the machine that runs the session. At home,
 `npm run rides -- share 7` gives the phone a page with the links and the GPX.
-Away from home, ask to "show ride 7": the Google Maps links in the answer open
+Away from home, ask to "show roadbook 7": the Google Maps links in the answer open
 on the phone directly. A track recorded on the phone has to reach that machine
 for a review.
 

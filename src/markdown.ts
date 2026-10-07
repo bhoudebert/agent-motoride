@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describeParts, formatSurface, gpxStopsAt, rideNavigation } from "./library.ts";
+import { startLabel } from "./start.ts";
 import { exportBase, writeRideMap } from "./rideMap.ts";
 import type { SavedRide } from "./store.ts";
 import { formatUsage } from "./usage.ts";
@@ -53,7 +54,7 @@ export function formatRideMarkdown(ride: SavedRide, map: string | null = null): 
   );
   if (map) push(`![Map of the ride](${encodeURI(map)})`, "");
   push(
-    `Ride date ${ride.rideDate ?? "not set"}, departure ${ride.departure ?? "not set"}, from ${ride.home}. Saved ${ride.createdAt.slice(0, 10)}.`,
+    `Ride date ${ride.rideDate ?? "not set"}, departure ${ride.departure ?? "not set"}, from ${startLabel(ride)}. Saved ${ride.createdAt.slice(0, 10)}.`,
     "",
   );
   if (ride.notes) push(`> ${ride.notes}`, "");

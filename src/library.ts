@@ -3,6 +3,7 @@ import { centroid, decodePolyline, routeCells } from "./geometry.ts";
 import { describeStopsAt, routePointIndex } from "./gpx.ts";
 import { type MapsLink, overviewLink, pinnedMapsParts } from "./maps.ts";
 import { duplicateOf, type RideContext } from "./session.ts";
+import { startLabel, startPoint } from "./start.ts";
 import { analyseConditions, windAlong, type RideConditions } from "./conditions.ts";
 import { formatStopPlan, locateStops, planStops, type StopCandidate } from "./stops.ts";
 import type { NewRide, Page, RideDay, RideExtras, RideWeather, RoadbookSummary, SavedRide, Store } from "./store.ts";
@@ -45,7 +46,7 @@ export class DuplicateRideError extends Error {
   readonly duplicate: { rideId: number; name: string; overlapPct: number };
   constructor(duplicate: { rideId: number; name: string; overlapPct: number }) {
     super(
-      `This ride is ${duplicate.overlapPct}% the same roads as roadbook #${duplicate.rideId} "${duplicate.name}". Not saved. Rate or edit that ride instead, or force the save if it is meant as a copy.`,
+      `This ride is ${duplicate.overlapPct}% the same roads as roadbook #${duplicate.rideId} "${duplicate.name}". Not saved. Ride it again instead ("plan a ride from roadbook ${duplicate.rideId} on Saturday"), change it, or force the save if it is meant as a copy.`,
     );
     this.duplicate = duplicate;
   }
@@ -230,7 +231,7 @@ function formatRoadMix(ride: SavedRide): string | null {
 
 export function formatRideLine(ride: SavedRide): string {
   const parent = ride.parentId ? ` (from #${ride.parentId})` : "";
-  return `#${ride.id}  ${ride.name}${parent}  |  ${ride.distanceKm} km, ${fmtMinutes(ride.ridingMinutes)}, ${avgSpeed(ride.distanceKm, ride.ridingMinutes)}  |  ${ride.rideDate ?? "no date"}  |  from ${ride.home}  |  ${stars(ride.rating)}`;
+  return `#${ride.id}  ${ride.name}${parent}  |  ${ride.distanceKm} km, ${fmtMinutes(ride.ridingMinutes)}, ${avgSpeed(ride.distanceKm, ride.ridingMinutes)}  |  ${ride.rideDate ?? "no date"}  |  from ${startLabel(ride)}  |  ${stars(ride.rating)}`;
 }
 
 /** The line under a page: where it is, how many there are, how to get the next one. */
@@ -293,6 +294,21 @@ function formatLegs(ride: SavedRide): string[] {
   return lines;
 }
 
+/** A roadbook's rides, for its detail view: date, status, the day's rating and words. */
+export function formatRidesOf(store: Store, roadbook: SavedRide): string[] {
+  const rides = store.ridesOf(roadbook.id);
+  if (!rides.length) return [];
+  return [
+    "Rides:",
+    ...rides.map((r) => {
+      const when = r.rideDate ? `${r.rideDate} ${r.departure ?? "--:--"}` : "no date yet     ";
+      const status = r.stale && r.status === "planned" ? "planned, route changed: refresh it" : r.status;
+      const day = r.rating === null ? "" : `  ${stars(r.rating)}${r.notes ? ` "${r.notes}"` : ""}`;
+      return `  ${when}  ${status}${day}`;
+    }),
+  ];
+}
+
 /** Everything about a roadbook; with the store, its earlier versions too. */
 export function formatRideDetail(ride: SavedRide, store?: Store): string {
   return [
@@ -305,6 +321,7 @@ export function formatRideDetail(ride: SavedRide, store?: Store): string {
     formatSurface(ride),
     ride.usage ? `Planned with: ${formatUsage(ride.usage)}` : null,
     ...(store ? formatVersions(store, ride) : []),
+    ...(store ? formatRidesOf(store, ride) : []),
     ...formatExtras(ride),
     "",
     "Legs (estimated riding time from speed limits and bends; no stops, no traffic):",
@@ -357,7 +374,7 @@ export async function stopCandidatesFor(
 /** Rebuild only the stop plan of a saved ride from the current profile, using cached candidates when present. */
 export async function replanStops(store: Store, ride: SavedRide): Promise<RideExtras | null> {
   if (!ride.shapes) return null;
-  await setGeoAnchor(ride.home);
+  await setGeoAnchor(startPoint(ride));
   const legs = ride.legs.map((leg) => ({
     from: leg.from,
     to: leg.to,
@@ -412,7 +429,7 @@ export async function replanStops(store: Store, ride: SavedRide): Promise<RideEx
 export async function enrichRide(store: Store, ride: SavedRide): Promise<RideExtras | null> {
   const shapes = ride.shapes;
   if (!shapes) return null;
-  await setGeoAnchor(ride.home);
+  await setGeoAnchor(startPoint(ride));
   const legs = ride.legs.map((leg) => ({
     from: leg.from,
     to: leg.to,
@@ -438,7 +455,7 @@ export async function enrichRide(store: Store, ride: SavedRide): Promise<RideExt
   // Cameras and stops both go to the OpenStreetMap query server, one at a time
   // (the server rejects parallel requests from one client), so they run in sequence.
   const daylight = ride.rideDate
-    ? await settle("daylight", () => getDaylight({ location: ride.home, date: ride.rideDate! }))
+    ? await settle("daylight", () => getDaylight({ location: startPoint(ride), date: ride.rideDate! }))
     : null;
   const weather = ride.rideDate ? await settle("weather", () => rideWeather(ride, shapes)) : null;
   const conditions = ride.rideDate ? await settle("conditions", () => rideConditions(ride)) : null;

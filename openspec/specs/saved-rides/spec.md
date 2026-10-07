@@ -41,7 +41,7 @@ Right after a save, and on every `refresh`, the system SHALL gather and store da
 
 ### Requirement: Duplicate avoidance
 
-The planner SHALL read the library at the start; candidates sharing 70% or more of their grid cells with a roadbook SHALL be rejected unless repeats are allowed or the ride is the one being evolved; 40% or more SHALL be mentioned as similar. Saving a candidate that duplicates a roadbook outside the session's lineage SHALL be refused unless explicitly forced.
+The planner SHALL read the library at the start; candidates sharing 70% or more of their grid cells with a roadbook SHALL be rejected unless repeats are allowed or the ride is the one being evolved; 40% or more SHALL be mentioned as similar. Saving a candidate that duplicates a roadbook outside the session's lineage SHALL be refused unless explicitly forced. Both the planner's warning and the refusal SHALL offer to ride that roadbook again on the rider's day (planning a ride from it) instead of a new plan.
 
 #### Scenario: Same request twice
 
@@ -50,7 +50,7 @@ The planner SHALL read the library at the start; candidates sharing 70% or more 
 
 ### Requirement: Ratings
 
-Rides and legs SHALL be rateable 0 to 5 with a note, from the CLI, the prompt, the menu and the `rateRide` MCP tool; 0 means never again. A rating SHALL count for the rest of the session at once, in the rated-roads check of the next routed trip. Legs rated 4 or 5 SHALL be offered as building blocks. Every routed trip SHALL report its share of distance on roads from rides or legs rated 0 or 1 (a leg's rating overriding the ride's); 10% or more SHALL make the loop invalid unless nothing else meets the hard limits, in which case the planner SHALL say so.
+Roadbooks and their legs SHALL be rateable 0 to 5 with a note, from the CLI, the prompt, the menu and the `rateRide` MCP tool; 0 means never again. A ride (a roadbook on a day) SHALL be rateable 0 to 5 for how the day went (`rides rate-day`, `rateRide` with `day`); that rating SHALL mark the ride ridden and SHALL NOT count as a rating of the roads, in the rated-roads check or in the road memory. A rating SHALL count for the rest of the session at once, in the rated-roads check of the next routed trip. Legs rated 4 or 5 SHALL be offered as building blocks. Every routed trip SHALL report its share of distance on roads from rides or legs rated 0 or 1 (a leg's rating overriding the ride's); 10% or more SHALL make the loop invalid unless nothing else meets the hard limits, in which case the planner SHALL say so.
 
 ### Requirement: Editing a roadbook
 
@@ -67,6 +67,15 @@ Saving a change SHALL replace the roadbook's design (waypoints, legs, route line
 
 - **WHEN** the rider restores version 1 of roadbook 7
 - **THEN** roadbook 7 has the original route again as version 3, and versions 1 and 2 are both kept
+
+### Requirement: Start point
+
+Where a roadbook starts SHALL be read from its first leg: its coordinates for lookups (daylight, place names, refresh) and its town for labels ("from Thuin"), so a loop started away from the rider's home is not located or labelled at the home. A roadbook without legs SHALL fall back to its saved home. A roadbook's view SHALL list its rides with date, departure, status and the day's rating.
+
+#### Scenario: Loop from Thuin
+
+- **WHEN** a roadbook saved in a session at home starts and ends in Thuin
+- **THEN** lists, the briefing, the GPX and the Markdown say "from Thuin", and daylight is computed at Thuin
 
 ### Requirement: Listing roadbooks and rides
 
@@ -141,7 +150,7 @@ like the terminal app, SHALL remove expired lookups when it starts.
 
 ### Requirement: Ride-day briefing
 
-`today [ride]` SHALL take the given ride, else the next dated ride, and SHALL report daylight and the return time with breaks, the stop plan rebuilt with opening hours at arrival, the forecast now at four points of the route, traffic at departure when available, and the stored cameras, ending with GO, GO with caution or NO-GO and the reasons. It SHALL make no model call.
+`today [roadbook] [day]` and the `rideBriefing` tool (`ride`, `date`) SHALL take that roadbook's ride on that day, else the roadbook's shown ride, else the next planned ride of any roadbook (soonest date, then earliest departure), refresh that ride's day data, and SHALL report daylight and the return time with breaks, the stop plan rebuilt with opening hours at arrival, the forecast now at four points of the route, traffic at departure when available, and the stored cameras, ending with GO, GO with caution or NO-GO and the reasons. It SHALL make no model call.
 
 #### Scenario: Rain likely
 

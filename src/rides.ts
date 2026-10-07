@@ -3,7 +3,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
-import { pickRideForToday, rideBriefing } from "./briefing.ts";
+import { rideBriefing } from "./briefing.ts";
 import {
   addRideNote,
   applyReview,
@@ -31,6 +31,7 @@ import {
   saveCurrentRide,
   tripFigures,
 } from "./library.ts";
+import { startPoint } from "./start.ts";
 import { formatRideMarkdown, writeRideMarkdown } from "./markdown.ts";
 import { rideMapPng, writeRideMap } from "./rideMap.ts";
 import { describeProfile, parseProfileArgs } from "./profile.ts";
@@ -43,8 +44,15 @@ import { otlpEndpoint, otlpHeaders, runToOtlp, sendOtlp } from "./otel.ts";
 import { preferencesFromEnv } from "./preferences.ts";
 import { importRoute, readRouteFile } from "./routeImport.ts";
 import { type RideContext, registerRoute } from "./session.ts";
-import { deleteRideQuestion, deleteRoadbookQuestion, rideOnDay, roadbookOf, tidyLibrary } from "./housekeeping.ts";
-import { parsePlanRide, planRideFrom } from "./planRide.ts";
+import {
+  deleteRideQuestion,
+  deleteRoadbookQuestion,
+  rideOnDay,
+  rideToBrief,
+  roadbookOf,
+  tidyLibrary,
+} from "./housekeeping.ts";
+import { localDay, parsePlanRide, planRideFrom } from "./planRide.ts";
 import { formatTrace } from "./trace.ts";
 import { emptyUsage } from "./usage.ts";
 
@@ -54,11 +62,13 @@ const USAGE = `Usage: npm run rides -- <command>
   rides [--page N]                      Rides (a roadbook on a day), latest date first, 20 per page
   plan <roadbook> <day> [time]          Plan a ride from a roadbook: day as 2026-10-17, 17/10, saturday, tomorrow;
                                         time as 9, 9:30, 9h30 (default the roadbook's last departure). No copy, no model
-  today [id|name]                       Ride-day briefing: weather now, daylight, traffic, stops checked against opening hours, go or no-go
+  today [roadbook] [day]                Ride-day briefing: weather now, daylight, traffic, stops checked against opening hours, go or no-go
+                                        (default the next planned ride; with a day, that ride of the roadbook)
   show <id|name> [--md]                 One ride: legs, map link, itinerary (--md: as Markdown on stdout)
   export-md <id|name> [file.md]         Write the ride as a Markdown document, with its map (default: exports/ in the project)
   map <id|name> [file.png]              A picture of the ride: route, towns, stops, fixed cameras with their limits
-  rate <id|name> <1-5> [note]           Rate a ride after riding it
+  rate <id|name> <0-5> [note]           Rate a roadbook: its roads, for later plans (0 never again, 5 loved)
+  rate-day <roadbook> <day> <0-5> [note]  Rate how a ride went that day (weather, traffic, company); never a road rating
   rate-leg <id|name> <leg> <1-5> [note] Rate one leg of a ride
   note "<text>" [--rating 0-5] [--back N] [--roadbook id|name]
                                         During the ride: a note about the last N minutes (default 10), on today's ride
@@ -149,10 +159,18 @@ try {
       console.log(formatRideDayPage(store.listRideDays(pageArg(args)), (n) => `npm run rides -- rides --page ${n}`));
       break;
     case "today": {
-      const today = new Date().toISOString().slice(0, 10);
-      const target = args[0] ? ride(args[0]) : pickRideForToday(store, today);
-      if (!target) throw new Error("No saved ride to brief. Save one first.");
+      const today = localDay(new Date());
+      const target = rideToBrief(store, today, args[0], args.slice(1).join(" ") || undefined);
       console.log(await rideBriefing(store, target, today));
+      break;
+    }
+    case "rate-day": {
+      const found = rideOnDay(store, args[0] ?? "", args[1] ?? "");
+      const { rating, notes } = parseRating(args.slice(2));
+      store.rateRideDay(found.ride.id, rating, notes);
+      console.log(
+        `Rated the ride of ${found.date} on roadbook #${found.saved.id} ${rating}/5; the roads keep their own rating.`,
+      );
       break;
     }
     case "show":
@@ -404,7 +422,7 @@ try {
         break;
       }
       for (const target of targets) {
-        await setGeoAnchor(target.home);
+        await setGeoAnchor(startPoint(target));
         const trip = await computeTrip({
           waypoints: target.waypoints,
           roundTrip: target.roundTrip,

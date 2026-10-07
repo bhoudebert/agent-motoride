@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { decodePolyline, routeCells } from "./geometry.ts";
 import { navigationPoints } from "./maps.ts";
 import type { SavedRide, Store } from "./store.ts";
+import { startLabel, startPoint } from "./start.ts";
 import { setGeoAnchor } from "./tools/geo.ts";
 import { computeTrip } from "./tools/trip.ts";
 
@@ -154,7 +155,7 @@ export async function savedRideGpx(store: Store, ride: SavedRide): Promise<{ gpx
   let legs: GpxLeg[] = ride.legs;
   const rerouted = !shapes;
   if (!shapes) {
-    await setGeoAnchor(ride.home);
+    await setGeoAnchor(startPoint(ride));
     const trip = await computeTrip({
       waypoints: ride.waypoints,
       roundTrip: ride.roundTrip,
@@ -174,7 +175,7 @@ export async function savedRideGpx(store: Store, ride: SavedRide): Promise<{ gpx
     rerouted,
     gpx: {
       name: ride.name,
-      description: `${ride.distanceKm} km, about ${hours} riding. Planned with agentMotoride from ${ride.home}.`,
+      description: `${ride.distanceKm} km, about ${hours} riding. Planned with agentMotoride from ${startLabel(ride)}.`,
       legs,
       shapes,
       stops,

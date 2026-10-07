@@ -8,7 +8,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { describeSituation, SYSTEM_CORE } from "./agent.ts";
 import { checkItinerary, parseLimits } from "./checks.ts";
-import { pickRideForToday, rideBriefing } from "./briefing.ts";
+import { rideBriefing } from "./briefing.ts";
 import { routeCells } from "./geometry.ts";
 import {
   addRideNote,
@@ -21,10 +21,10 @@ import {
   rideToReview,
 } from "./feedback.ts";
 import { deleteForm, duplicateForm, type ElicitForm, reviewDecisions, reviewForm } from "./elicit.ts";
-import { deleteRideQuestion, deleteRoadbookQuestion, rideOnDay, roadbookOf } from "./housekeeping.ts";
+import { deleteRideQuestion, deleteRoadbookQuestion, rideOnDay, rideToBrief, roadbookOf } from "./housekeeping.ts";
 import { exportSavedRide, writeGpx } from "./gpx.ts";
 import { rideMapPng } from "./rideMap.ts";
-import { parseRideDay, planRideFrom } from "./planRide.ts";
+import { localDay, parseRideDay, planRideFrom } from "./planRide.ts";
 import {
   DuplicateRideError,
   enrichRide,
@@ -39,6 +39,7 @@ import {
   saveCurrentRide,
   tripFigures,
 } from "./library.ts";
+import { startPoint } from "./start.ts";
 import { formatRideMarkdown, writeRideMarkdown } from "./markdown.ts";
 import { SCOUT_MODEL } from "./model.ts";
 import { SCOUT_SYSTEM, type ScoutInput, scoutBrief, scoutStart, scoutsUnavailable } from "./scouts.ts";
@@ -165,7 +166,7 @@ async function clientScouting(input: ScoutInput): Promise<string> {
 // Server instructions reach the client's system prompt at connection time, so
 // the method applies even when the rider types in plain words instead of using
 // the plan-ride command. Kept to the essentials; the command carries the rest.
-const INSTRUCTIONS = `agentMotoride plans one-day motorcycle rides and keeps the rider's library of saved rides. Anything the rider says about rides, trips, loops, routes, the library, stops, cameras, weather for a ride, or a ride-day briefing is a request for this server's tools: showRide, showRideMap, listRoadbooks, listRides, rideBriefing, refreshRide, rateRide, exportGpx, exportMarkdown, planningGuide and the planning tools. Never run shell commands, scripts or web searches for these, and never look for a "ride" program: "ride show 7" or "/ride plan ..." typed by the rider means "use the ride tools" (here: showRide for ride 7). A roadbook is a saved loop or trip, with a number ("roadbook 7"; riders may also say "ride 7" for it); a ride is a roadbook on one day, named by its date ("Saturday's ride"): listRoadbooks lists the first, listRides the second, 20 per page. "Plan a ride from roadbook 7 on Saturday at 9", or "plan a ride on Saturday" once a roadbook is the one being discussed, is planRide: it adds a ride to that roadbook, never a copy; replan or edit the route only when the rider asks for a change. "Not riding Saturday" is cancelRide; deleteRoadbook and deleteRide only when the rider asks to delete, and they ask the rider first. Plain words are enough, slash commands are only shortcuts: before planning any new ride asked in plain words, in any client, call planningGuide with the rider's request and follow it, with ride set when it changes a saved ride (the plan-ride and edit-ride commands already carry that guidance).
+const INSTRUCTIONS = `agentMotoride plans one-day motorcycle rides and keeps the rider's library of saved rides. Anything the rider says about rides, trips, loops, routes, the library, stops, cameras, weather for a ride, or a ride-day briefing is a request for this server's tools: showRide, showRideMap, listRoadbooks, listRides, rideBriefing, refreshRide, rateRide, exportGpx, exportMarkdown, planningGuide and the planning tools. Never run shell commands, scripts or web searches for these, and never look for a "ride" program: "ride show 7" or "/ride plan ..." typed by the rider means "use the ride tools" (here: showRide for ride 7). A roadbook is a saved loop or trip, with a number ("roadbook 7"; riders may also say "ride 7" for it); a ride is a roadbook on one day, named by its date ("Saturday's ride"): listRoadbooks lists the first, listRides the second, 20 per page. "Plan a ride from roadbook 7 on Saturday at 9", or "plan a ride on Saturday" once a roadbook is the one being discussed, is planRide: it adds a ride to that roadbook, never a copy; replan or edit the route only when the rider asks for a change. "Saturday was cold, 3 out of 5" rates the day: rateRide with day, which never marks a road; "never again" about a road rates the roadbook, a leg or a note. "Not riding Saturday" is cancelRide; deleteRoadbook and deleteRide only when the rider asks to delete, and they ask the rider first. Plain words are enough, slash commands are only shortcuts: before planning any new ride asked in plain words, in any client, call planningGuide with the rider's request and follow it, with ride set when it changes a saved ride (the plan-ride and edit-ride commands already carry that guidance).
 For a new leisure ride: call listSavedRides and recallArea around the start (what earlier sessions learnt: scouted areas and their verdicts, known winding roads), then ${scoutsOff ? "scout 2-4 areas with parallel subagents as planningGuide explains (API scouts are off here, scoutAreas cannot run)" : "scoutAreas with 2-4 areas"}, skipping areas recently found poor${scoutsOff ? "" : " (or searchRoads and calculateTrip yourself if scouts are unavailable)"}, pick the best candidate, then finish it: getDaylight, getWeather along the loop for the riding hours, getSpeedCameras, checkConditions (crosswind, low sun) with the date and departure, planStops with the date and departure, getTraffic for the departure. Before presenting it, call checkItinerary with its routeId, the rider's request and your text, and fix what it reports once (or say plainly which limit cannot be met). Present the itinerary in plain text (never JSON) with legs named by towns, the figures from the tools, the stops with times, the navigation links from planStops (and its overviewLink as "Whole ride (overview, not for navigation)" when there are several parts), and end with one line "Route: <routeId>". Save only when the rider asks, with saveRide; after a change to a saved roadbook, saving changes it in place and keeps the previous version (restoreRoadbook undoes it), and asCopy is only for a rider who wants a separate copy. During a ride, a remark about the road ("last 10 min awesome", "cobbles, never again") is a note: call addRideNote at once with the rider's words, and a rating 0-5 only when they gave one. After the ride, reviewRide places the notes on the recorded track (gpxPath) or on the plan, shows detours and pace, and proposes ratings; apply them with reviewRide and decisions only once the rider confirms. If the rider has a route file (GPX or KML, from another app, a club or a friend), call importRoute with its path: it returns a routeId to present, finish and save like a planned ride. If the rider shares an image (photo of a paper map, route screenshot, list of places), read the places on it in order and route them with calculateTrip by name, then finish the ride as usual. For an edit or a question about a saved ride, work from its data (showRide) without replanning. For a practical trip (commute), route point to point, motorways if permitted, with traffic.`;
 
 const server = new McpServer({ name: "agentMotoride", version: "0.1.0" }, { instructions: INSTRUCTIONS });
@@ -447,7 +448,7 @@ server.registerTool(
         throw new Error(`Roadbook #${target.id} has no stored route line; run a full refresh first.`);
       return text(formatStopPlan(extras.stopPlan, target.departure ?? "09:00", target.ridingMinutes).join("\n"));
     }
-    await setGeoAnchor(target.home);
+    await setGeoAnchor(startPoint(target));
     const trip = await computeTrip({
       waypoints: target.waypoints,
       roundTrip: target.roundTrip,
@@ -473,14 +474,16 @@ server.registerTool(
       "Ride-day briefing for a saved ride: forecast along the route now, daylight and return time, traffic at departure, the stops re-planned and checked against opening hours at arrival, fixed cameras, and a go, caution or no-go verdict with reasons. Deterministic; show it as returned. Without a ride, takes the next dated ride.",
     annotations: hintsOf("rideBriefing"),
     inputSchema: z.object({
-      ride: z.string().optional().describe("Roadbook number or name; default the next dated ride"),
+      ride: z.string().optional().describe("Roadbook number or name; default the next planned ride"),
+      date: z
+        .string()
+        .optional()
+        .describe("Day of the ride to brief, with ride: YYYY-MM-DD, today, saturday; default its next planned ride"),
     }),
   },
   async (args) => {
-    const today = new Date().toISOString().slice(0, 10);
-    const target = args.ride ? store.findRide(args.ride) : pickRideForToday(store, today);
-    if (!target) throw new Error(args.ride ? `No saved ride matches "${args.ride}".` : "No saved ride to brief.");
-    return text(await rideBriefing(store, target, today));
+    const today = localDay(new Date());
+    return text(await rideBriefing(store, rideToBrief(store, today, args.ride, args.date), today));
   },
 );
 
@@ -756,6 +759,12 @@ server.registerTool(
       ride: z.string().describe("Roadbook number or name"),
       rating: z.number().int().min(0).max(5).describe("0 never again, 5 loved"),
       leg: z.number().int().min(1).optional().describe("Leg number, to rate one leg instead of the whole ride"),
+      day: z
+        .string()
+        .optional()
+        .describe(
+          "Day of a ride (YYYY-MM-DD, saturday), to rate how that day went (weather, traffic, company) rather than the roads; it never marks a road",
+        ),
       note: z.string().optional().describe("The rider's words, kept with the rating"),
     }),
   },
@@ -763,6 +772,13 @@ server.registerTool(
     const ride = store.findRide(args.ride);
     if (!ride) throw new Error(`No saved ride matches "${args.ride}". Call listRoadbooks.`);
     const note = args.note?.trim() || null;
+    if (args.day !== undefined && args.leg === undefined) {
+      const found = rideOnDay(store, args.ride, args.day);
+      store.rateRideDay(found.ride.id, args.rating, note);
+      return text(
+        `Rated the ride of ${found.date} on roadbook #${ride.id} ${args.rating}/5; the roads keep their own rating.`,
+      );
+    }
     if (args.leg !== undefined) {
       if (!store.rateLeg(ride.id, args.leg, args.rating, note)) {
         throw new Error(`Roadbook #${ride.id} has no leg ${args.leg}; it has legs 1 to ${ride.legs.length}.`);

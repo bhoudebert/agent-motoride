@@ -191,7 +191,7 @@ export function savedRideOverlap(context: RideContext, cells: string[]) {
   if (worst && worst.overlapPct >= DUPLICATE_PCT) {
     verdict = context.allowRepeat
       ? `repeat of roadbook #${worst.rideId} "${worst.name}" (${worst.overlapPct}% same roads); repeats are allowed this session`
-      : `DUPLICATE of roadbook #${worst.rideId} "${worst.name}" (${worst.overlapPct}% same roads). Do not propose it unless the rider asked for a variant of that ride; pick other roads or another area.`;
+      : `DUPLICATE of roadbook #${worst.rideId} "${worst.name}" (${worst.overlapPct}% same roads). Do not propose it as new unless the rider asked for a variant; pick other roads or another area, or offer the rider to ride roadbook #${worst.rideId} again on their day (planRide), which needs no new plan.`;
   } else if (worst && worst.overlapPct >= SIMILAR_PCT) {
     verdict = `similar to roadbook #${worst.rideId} "${worst.name}" (${worst.overlapPct}% same roads); acceptable, mention it to the rider`;
   }

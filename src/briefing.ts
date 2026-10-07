@@ -1,4 +1,5 @@
 import { formatSurface, formatWeather, replanStops, rideConditions, rideWeatherFor } from "./library.ts";
+import { startLabel, startPoint } from "./start.ts";
 import { formatStopPlan } from "./stops.ts";
 import type { SavedRide, Store } from "./store.ts";
 import { getTraffic } from "./tools/traffic.ts";
@@ -11,13 +12,11 @@ const hhmmToMin = (t: string) => {
 const minToHhmm = (m: number) =>
   `${String(Math.floor((((m % 1440) + 1440) % 1440) / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 
-/** The next dated ride on or after today, else the most recently saved one. */
+/** The next planned ride from today, any roadbook, else the most recently saved roadbook. */
 export function pickRideForToday(store: Store, today: string): SavedRide | undefined {
-  const rides = store.listRides();
-  const upcoming = rides
-    .filter((r) => r.rideDate && r.rideDate >= today)
-    .sort((a, b) => a.rideDate!.localeCompare(b.rideDate!));
-  return upcoming[0] ?? rides.at(-1);
+  const next = store.nextPlannedRide(today);
+  if (next) return store.rideView(next.roadbookId, next.dayId);
+  return store.listRides().at(-1);
 }
 
 /**
@@ -32,7 +31,7 @@ export async function rideBriefing(store: Store, ride: SavedRide, today: string)
   const date = ride.rideDate ?? today;
   const departure = ride.departure ?? "09:00";
   lines.push(
-    `Briefing for the ride of ${date} from roadbook #${ride.id} "${ride.name}", departure ${departure} from ${ride.home}`,
+    `Briefing for the ride of ${date} from roadbook #${ride.id} "${ride.name}", departure ${departure} from ${startLabel(ride)}`,
     `${ride.distanceKm} km, ${Math.floor(ride.ridingMinutes / 60)}h${String(ride.ridingMinutes % 60).padStart(2, "0")} riding estimated`,
     "",
   );
@@ -41,7 +40,7 @@ export async function rideBriefing(store: Store, ride: SavedRide, today: string)
   // Daylight and return time.
   let lastLight: string | null = null;
   try {
-    const d = await getDaylight({ location: ride.home, date });
+    const d = await getDaylight({ location: startPoint(ride), date });
     lastLight = d.lastLight;
     lines.push(`Daylight: sunrise ${d.sunrise}, sunset ${d.sunset}, usable light ${d.firstLight} to ${d.lastLight}`);
   } catch (error) {

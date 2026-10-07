@@ -951,6 +951,64 @@ export class Store {
       { id: number; departure: string | null; status: RideDay["status"]; notes: number } | undefined;
   }
 
+  /**
+   * Rate how a ride went, the day itself (weather, traffic, company): it marks
+   * the ride ridden and never counts as a rating of the roads.
+   */
+  rateRideDay(dayId: number, rating: number, notes: string | null): boolean {
+    return (
+      this.#db
+        .prepare("UPDATE rides SET rating = ?, notes = coalesce(?, notes), status = 'ridden' WHERE id = ?")
+        .run(rating, notes, dayId).changes > 0
+    );
+  }
+
+  /** The rides of one roadbook, latest date first, undated last. */
+  ridesOf(roadbookId: number): Array<{
+    id: number;
+    rideDate: string | null;
+    departure: string | null;
+    status: RideDay["status"];
+    stale: boolean;
+    rating: number | null;
+    notes: string | null;
+  }> {
+    const rows = this.#db
+      .prepare(
+        `SELECT id, ride_date, departure, status, stale, rating, notes FROM rides WHERE roadbook_id = ?
+         ORDER BY ride_date IS NULL, ride_date DESC, id DESC`,
+      )
+      .all(roadbookId) as Array<{
+      id: number;
+      ride_date: string | null;
+      departure: string | null;
+      status: RideDay["status"];
+      stale: number;
+      rating: number | null;
+      notes: string | null;
+    }>;
+    return rows.map((r) => ({
+      id: r.id,
+      rideDate: r.ride_date,
+      departure: r.departure,
+      status: r.status,
+      stale: r.stale === 1,
+      rating: r.rating,
+      notes: r.notes,
+    }));
+  }
+
+  /** The next planned ride from a day on, any roadbook: the soonest date, then the earliest departure. */
+  nextPlannedRide(today: string): { roadbookId: number; dayId: number } | undefined {
+    const row = this.#db
+      .prepare(
+        `SELECT roadbook_id, id FROM rides WHERE status = 'planned' AND ride_date >= ?
+         ORDER BY ride_date, departure, id LIMIT 1`,
+      )
+      .get(today) as { roadbook_id: number; id: number } | undefined;
+    return row && { roadbookId: row.roadbook_id, dayId: row.id };
+  }
+
   /** Cancel a ride: kept, shown as cancelled. */
   cancelRide(dayId: number): boolean {
     return this.#db.prepare("UPDATE rides SET status = 'cancelled' WHERE id = ?").run(dayId).changes > 0;

@@ -170,7 +170,10 @@ test("mcp: saving a repeat of an earlier ride asks the rider; yes keeps a copy, 
   });
   try {
     assert.match(await planAndSave(today), /chose not to keep a copy/);
-    assert.match(asked[0]!, /same roads as roadbook #2[\s\S]*Save it anyway/);
+    assert.match(
+      asked[0]!,
+      /same roads as roadbook #2 "Flandre"\. Not saved\. Ride it again instead \("plan a ride from roadbook 2 on Saturday"\)[\s\S]*Save it anyway/,
+    );
     assert.match(await planAndSave(today), /Saved as roadbook #3/);
   } finally {
     await today.close();
@@ -364,6 +367,14 @@ test("mcp: every tool answers when called by name through a client", async () =>
     await call("rideBriefing", { ride: "2" });
     await call("showRide", { ride: "2" });
     await call("rateRide", { ride: "2", rating: 4, note: "nice" });
+    assert.match(
+      await call("rateRide", { ride: "2", rating: 2, day: "2026-10-10", note: "cold" }),
+      /^Rated the ride of 2026-10-10 on roadbook #2 2\/5; the roads keep their own rating\./,
+    );
+    assert.match(
+      await call("rideBriefing", { ride: "2", date: "2026-10-10" }),
+      /^Briefing for the ride of 2026-10-10 from roadbook #2 /,
+    );
     called.add("showRideMap");
     const map = (await client.callTool({ name: "showRideMap", arguments: { ride: "2" } })) as {
       isError?: boolean;

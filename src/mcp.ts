@@ -769,7 +769,10 @@ server.registerTool(
   async (args) => {
     if (args.decisions) return text(applyReview(store, args.decisions).join("\n"));
     const ride = rideToReview(store, args.ride);
-    const review = await reviewRide(store, ride, { track: args.gpxPath ? readTrack(args.gpxPath) : undefined });
+    const review = await reviewRide(store, ride, {
+      track: args.gpxPath ? readTrack(args.gpxPath) : undefined,
+      trackPath: args.gpxPath,
+    });
     const form = canElicit() ? reviewForm(review) : null;
     if (!form) return text(formatReview(review));
     // The rider rates in the client's form; the model never rates on their behalf.

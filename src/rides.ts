@@ -256,7 +256,10 @@ try {
       const trackFile = args.find((a) => a.toLowerCase().endsWith(".gpx"));
       const rideName = args.find((a) => a !== trackFile && !a.startsWith("--"));
       const target = rideToReview(store, rideName);
-      const review = await reviewRide(store, target, { track: trackFile ? readTrack(trackFile) : undefined });
+      const review = await reviewRide(store, target, {
+        track: trackFile ? readTrack(trackFile) : undefined,
+        trackPath: trackFile ? resolve(trackFile) : undefined,
+      });
       console.log(formatReview(review));
       const placed = review.notes.filter((n) => n.placement);
       if (!placed.length) break;

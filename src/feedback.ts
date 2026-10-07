@@ -245,7 +245,7 @@ async function findDetours(track: TrackPoint[], ride: SavedRide, timezone: strin
 export async function reviewRide(
   store: Store,
   ride: SavedRide,
-  options: { track?: TrackPoint[]; timezone?: string } = {},
+  options: { track?: TrackPoint[]; trackPath?: string; timezone?: string } = {},
 ): Promise<RideReview> {
   const timezone = options.timezone ?? systemTimezone();
   const { track } = options;
@@ -273,9 +273,11 @@ export async function reviewRide(
       plannedMinutes: ride.ridingMinutes,
       plannedAvgKmh: Math.round(ride.distanceKm / (ride.ridingMinutes / 60)),
     };
-    // The track is compared with the route of the ride of its day, when there is one.
+    // The track is compared with the route of the ride of its day, when there is one,
+    // and that ride is now known as ridden, with its track.
     const day = dayAt(track[0]!.time, timezone);
     const ridden = store.findRideOn(ride.id, day);
+    if (options.trackPath) store.recordRidden(ride.id, day, options.trackPath);
     review.detours = await findDetours(track, ridden ? planOf(ridden.id).plan : ride, timezone);
   }
 

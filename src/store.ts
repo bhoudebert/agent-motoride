@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, renameSync } from "node:fs";
+import { existsSync, mkdirSync, renameSync, statSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
@@ -365,10 +365,12 @@ export class Store {
     return Number(lastInsertRowid);
   }
 
+  /** Update a run; a roadbook deleted meanwhile (from another process) is simply not linked. */
   updateRun(id: number, run: RunRecord): void {
     this.#db
       .prepare(
-        "UPDATE runs SET request = ?, usage = ?, cost_usd = ?, result = ?, roadbook_id = ?, error = ? WHERE id = ?",
+        `UPDATE runs SET request = ?, usage = ?, cost_usd = ?, result = ?,
+           roadbook_id = (SELECT id FROM roadbooks WHERE id = ?), error = ? WHERE id = ?`,
       )
       .run(
         run.request,
@@ -784,8 +786,62 @@ export class Store {
       .run(JSON.stringify(shapes), JSON.stringify(cells), id);
   }
 
+  /** Delete a roadbook with its legs, rides and notes; road ratings stay, they are about the roads. */
   deleteRide(id: number): boolean {
     return this.#db.prepare("DELETE FROM roadbooks WHERE id = ?").run(id).changes > 0;
+  }
+
+  /** What deleting a roadbook takes with it, and what stays. */
+  roadbookImpact(id: number): { rides: number; notes: number; roadRatings: number } {
+    const count = (sql: string) => (this.#db.prepare(sql).get(id) as { n: number }).n;
+    return {
+      rides: count("SELECT count(*) AS n FROM rides WHERE roadbook_id = ?"),
+      notes: count("SELECT count(*) AS n FROM ride_notes WHERE roadbook_id = ?"),
+      roadRatings: count("SELECT count(*) AS n FROM road_ratings WHERE roadbook_id = ?"),
+    };
+  }
+
+  /** The ride of a roadbook on a day, if there is one. */
+  findRideOn(
+    roadbookId: number,
+    date: string,
+  ): { id: number; departure: string | null; status: RideDay["status"]; notes: number } | undefined {
+    return this.#db
+      .prepare(
+        `SELECT id, departure, status, (SELECT count(*) FROM ride_notes n WHERE n.ride_id = rides.id) AS notes
+         FROM rides WHERE roadbook_id = ? AND ride_date = ?`,
+      )
+      .get(roadbookId, date) as
+      { id: number; departure: string | null; status: RideDay["status"]; notes: number } | undefined;
+  }
+
+  /** Cancel a ride: kept, shown as cancelled. */
+  cancelRide(dayId: number): boolean {
+    return this.#db.prepare("UPDATE rides SET status = 'cancelled' WHERE id = ?").run(dayId).changes > 0;
+  }
+
+  /** Delete one ride; its notes stay on the roadbook. */
+  deleteRideDay(dayId: number): boolean {
+    return this.#db.prepare("DELETE FROM rides WHERE id = ?").run(dayId).changes > 0;
+  }
+
+  /**
+   * Drop expired lookups, fold the journal into the file and compact it. Traces
+   * and everything saved are kept. Sizes are of the file and its journal.
+   */
+  tidy(): { expired: number; beforeBytes: number; afterBytes: number } {
+    const size = () =>
+      this.path === ":memory:"
+        ? 0
+        : ["", "-wal"].reduce(
+            (sum, suffix) => sum + (existsSync(this.path + suffix) ? statSync(this.path + suffix).size : 0),
+            0,
+          );
+    const beforeBytes = size();
+    const expired = Number(this.#db.prepare("DELETE FROM tool_cache WHERE expires_at <= ?").run(Date.now()).changes);
+    this.#db.exec("VACUUM");
+    this.#db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+    return { expired, beforeBytes, afterBytes: size() };
   }
 
   addNote(note: { rideId: number; text: string; rating: number | null; minutesBack: number; at?: Date }): RideNote {

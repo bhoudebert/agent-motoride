@@ -54,6 +54,18 @@ export function reviewDecisions(review: RideReview, content: Record<string, unkn
   });
 }
 
+/** A yes/no question before a delete, "no" filled in. */
+export function deleteForm(question: string): ElicitForm {
+  return {
+    message: question,
+    requestedSchema: {
+      type: "object",
+      properties: { delete: { type: "boolean", title: "Delete", default: false } },
+      required: ["delete"],
+    },
+  };
+}
+
 /** The question asked before saving a ride that repeats a saved one. */
 export function duplicateForm(reason: string): ElicitForm {
   return {

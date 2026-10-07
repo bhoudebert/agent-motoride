@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.5.0](https://github.com/bhoudebert/agent-motoride/compare/v1.4.0...v1.5.0) (2026-10-07)
+
+
+### Features
+
+* **cli:** page the start menu's roadbooks, 20 at a time; attach the newest 20 over MCP ([#61](https://github.com/bhoudebert/agent-motoride/issues/61)) ([1b603b7](https://github.com/bhoudebert/agent-motoride/commit/1b603b7ac3d89f9edd32714afde0e4e81f636cd8))
+* **library:** change a roadbook in place and keep versions; restore and copy ([#59](https://github.com/bhoudebert/agent-motoride/issues/59)) ([1309290](https://github.com/bhoudebert/agent-motoride/commit/130929084a0e001f6a8cfa5bf455632adc1b567b))
+* **library:** delete roadbooks and rides once confirmed, cancel rides, tidy the library ([#57](https://github.com/bhoudebert/agent-motoride/issues/57)) ([2e70bbc](https://github.com/bhoudebert/agent-motoride/commit/2e70bbcf5d6822105a7d38ba3f6a524ca9d8d1b1))
+* **library:** plan a ride from a roadbook on a day, in a sentence or a command, no copy ([#55](https://github.com/bhoudebert/agent-motoride/issues/55)) ([1b3b627](https://github.com/bhoudebert/agent-motoride/commit/1b3b627f88b4b03d60e0642382d9cd4ab360234d))
+* **library:** the start from the first leg, the day's own rating, the briefing on a chosen ride ([#60](https://github.com/bhoudebert/agent-motoride/issues/60)) ([8be2af4](https://github.com/bhoudebert/agent-motoride/commit/8be2af4907dd16c9f0348e906e13beab3997e9bf))
+* **store:** store saved rides as roadbooks and rides, behaviour unchanged ([#53](https://github.com/bhoudebert/agent-motoride/issues/53)) ([3f41b47](https://github.com/bhoudebert/agent-motoride/commit/3f41b4798a18c6bed10261a034f7f22dd83e8b0c))
+* **store:** versioned schema migrations, each in a transaction after a backup ([#51](https://github.com/bhoudebert/agent-motoride/issues/51)) ([8944c76](https://github.com/bhoudebert/agent-motoride/commit/8944c7631657359aa10014a1708eb97336375438))
+
+
+### Bug Fixes
+
+* findings from the Valenciennes run: past departures, opening days, town names, slow-zone targets ([#58](https://github.com/bhoudebert/agent-motoride/issues/58)) ([109c67a](https://github.com/bhoudebert/agent-motoride/commit/109c67a5713dff7de00c58467a4299ac314fe4f8))
+* **mcp:** write the four hints on every shared tool, so a source scan sees them ([#56](https://github.com/bhoudebert/agent-motoride/issues/56)) ([2d3beb8](https://github.com/bhoudebert/agent-motoride/commit/2d3beb878f35621a08827926fe52d8918e39df27))
+
 ## [1.4.0](https://github.com/bhoudebert/agent-motoride/compare/v1.3.0...v1.4.0) (2026-10-06)
 
 

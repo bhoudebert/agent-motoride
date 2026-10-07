@@ -68,11 +68,13 @@ Usage: npm run rides -- <command>
   rides [--page N]                      Rides (a roadbook on a day), latest date first, 20 per page
   plan <roadbook> <day> [time]          Plan a ride from a roadbook: day as 2026-10-17, 17/10, saturday, tomorrow;
                                         time as 9, 9:30, 9h30 (default the roadbook's last departure). No copy, no model
-  today [id|name]                       Ride-day briefing: weather now, daylight, traffic, stops checked against opening hours, go or no-go
+  today [roadbook] [day]                Ride-day briefing: weather now, daylight, traffic, stops checked against opening hours, go or no-go
+                                        (default the next planned ride; with a day, that ride of the roadbook)
   show <id|name> [--md]                 One ride: legs, map link, itinerary (--md: as Markdown on stdout)
   export-md <id|name> [file.md]         Write the ride as a Markdown document, with its map (default: exports/ in the project)
   map <id|name> [file.png]              A picture of the ride: route, towns, stops, fixed cameras with their limits
-  rate <id|name> <1-5> [note]           Rate a ride after riding it
+  rate <id|name> <0-5> [note]           Rate a roadbook: its roads, for later plans (0 never again, 5 loved)
+  rate-day <roadbook> <day> <0-5> [note]  Rate how a ride went that day (weather, traffic, company); never a road rating
   rate-leg <id|name> <leg> <1-5> [note] Rate one leg of a ride
   note "<text>" [--rating 0-5] [--back N] [--roadbook id|name]
                                         During the ride: a note about the last N minutes (default 10), on today's ride
@@ -313,7 +315,8 @@ _read-only · uses online services_
 
 Ride-day briefing for a saved ride: forecast along the route now, daylight and return time, traffic at departure, the stops re-planned and checked against opening hours at arrival, fixed cameras, and a go, caution or no-go verdict with reasons. Deterministic; show it as returned. Without a ride, takes the next dated ride.
 
-- `ride` (string, optional): Roadbook number or name; default the next dated ride
+- `ride` (string, optional): Roadbook number or name; default the next planned ride
+- `date` (string, optional): Day of the ride to brief, with ride: YYYY-MM-DD, today, saturday; default its next planned ride
 
 #### `planRide`
 
@@ -427,6 +430,7 @@ Rate a saved ride after riding it, or one of its legs: 0 (never again) to 5 (lov
 - `ride` (string): Roadbook number or name
 - `rating` (integer): 0 never again, 5 loved
 - `leg` (integer, optional): Leg number, to rate one leg instead of the whole ride
+- `day` (string, optional): Day of a ride (YYYY-MM-DD, saturday), to rate how that day went (weather, traffic, company) rather than the roads; it never marks a road
 - `note` (string, optional): The rider's words, kept with the rating
 
 #### `listRoadbooks`

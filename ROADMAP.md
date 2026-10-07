@@ -76,6 +76,10 @@ with a navigation app (Liberty Rider, Google Maps) on the phone.
 
 ## Done lately
 
+- **The day of a ride**: a ride's own rating that never marks a road, the briefing
+  on a chosen ride (`today 7 saturday`), the start of a loop read from its first
+  leg ("from Thuin", daylight at Thuin), and a repeat offering to ride the
+  roadbook again.
 - **Roadbooks change in place**: a saved change keeps the roadbook's number and
   its previous version (`versions`, `restore`, `copy`); planned rides follow,
   marked to refresh; leg ratings become road ratings so nothing rated is lost.
@@ -88,8 +92,8 @@ with a navigation app (Liberty Rider, Google Maps) on the phone.
   a backup first; saved rides stored as roadbooks (the design) and rides (a
   roadbook on a day); both listed 20 per page in the terminal and over MCP.
   Edits in place with versions and a new date as a new ride are done (below).
-  Next: ratings split between the road and the day, the start point on the
-  ride, the briefing on a chosen ride.
+  Done since: the day's own rating, the start read from the first leg, the
+  briefing on a chosen ride, overlap offering to ride the roadbook again.
 - **A map of the ride**: the loop, towns, stops and fixed cameras with their
   limits as a picture, drawn from the ride's own data (`rides map`, `/map`,
   `showRideMap` in Claude Code or Codex, the Markdown export, the share page).

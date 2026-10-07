@@ -41,7 +41,7 @@ Right after a save, and on every `refresh`, the system SHALL gather and store da
 
 ### Requirement: Duplicate avoidance
 
-The planner SHALL read the library at the start; candidates sharing 70% or more of their grid cells with a roadbook SHALL be rejected unless repeats are allowed or the ride is the one being evolved; 40% or more SHALL be mentioned as similar. Saving a candidate that duplicates a roadbook outside the session's lineage SHALL be refused unless explicitly forced.
+The planner SHALL read the library at the start; candidates sharing 70% or more of their grid cells with a roadbook SHALL be rejected unless repeats are allowed or the ride is the one being evolved; 40% or more SHALL be mentioned as similar. Saving a candidate that duplicates a roadbook outside the session's lineage SHALL be refused unless explicitly forced. Both the planner's warning and the refusal SHALL offer to ride that roadbook again on the rider's day (planning a ride from it) instead of a new plan.
 
 #### Scenario: Same request twice
 

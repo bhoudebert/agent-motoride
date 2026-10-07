@@ -115,12 +115,14 @@ of 40") and where it is in words.
 ::: code-group
 
 ```bash [Terminal]
-npm run rides -- today       # the next dated ride
-npm run rides -- today 7
+npm run rides -- today                 # the next planned ride, any roadbook
+npm run rides -- today 7               # roadbook 7's next ride
+npm run rides -- today 7 saturday      # roadbook 7's ride on Saturday
 ```
 
 ```text [Claude Code / Codex]
 briefing for roadbook 7
+briefing for Saturday's ride of roadbook 7
 
 (or: "can I ride the Avesnois loop today?")
 ```

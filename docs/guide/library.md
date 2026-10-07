@@ -135,19 +135,24 @@ copy roadbook 3 as Drôme short
 ::: code-group
 
 ```bash [Terminal]
-npm run rides -- rate 3 5 "superb, Col de Rousset empty"
+npm run rides -- rate 3 5 "superb, Col de Rousset empty"     # the roads
 npm run rides -- rate-leg 3 2 0 "gravel, never again"
+npm run rides -- rate-day 3 saturday 2 "freezing fog"        # the day, not the roads
 ```
 
 ```text [Claude Code / Codex]
-rate ride 3 five, Col de Rousset was empty
-leg 2 of ride 3: never again, gravel
+rate roadbook 3 five, Col de Rousset was empty
+leg 2 of roadbook 3: never again, gravel
+Saturday on roadbook 3 was cold and foggy, 2 out of 5
 ```
 
 :::
 
-Ratings run from 0 ("never again") to 5. For the details of a ride, notes
-during the ride work better: see [Notes and review](/notes-and-review).
+Ratings run from 0 ("never again") to 5. A roadbook's rating, and its legs',
+are about the roads and steer later plans. A day's rating is about how that
+ride went (weather, traffic, company): it shows with the ride and never marks a
+road, so a cold Saturday does not hurt a good loop. For the details of a ride,
+notes during the ride work better: see [Notes and review](/notes-and-review).
 
 ## How the library shapes later plans
 
@@ -155,7 +160,8 @@ during the ride work better: see [Notes and review](/notes-and-review).
   rides by the share of its 500 m grid cells they already cover. At 70% or more
   it is a duplicate: the planner must look elsewhere, and a save is refused
   (`/save --force`, or saying yes when Claude Code or Codex asks, keeps a
-  deliberate copy). From 40% it is mentioned as similar. The same roads in the opposite
+  deliberate copy). The planner offers instead to ride that roadbook again on
+  your day. From 40% it is mentioned as similar. The same roads in the opposite
   direction count as the same ride.
 - **Ratings steer the choice.** Rides, legs and road stretches rated 4 or 5 are
   reused as building blocks. Those rated 0 or 1 are avoided: a loop with 10% or

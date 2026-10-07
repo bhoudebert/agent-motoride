@@ -398,6 +398,12 @@ A change saved on a roadbook goes through `Store.reviseRoadbook`: the design
 previous one stored as a JSON snapshot in `roadbook_versions` with the change
 that replaced it, `version` incremented, route-bound extras cleared to be
 gathered again, and planned rides moved to the new version with `stale` set.
+Where a roadbook starts is read from its first leg (`src/start.ts`): its
+coordinates for lookups, its town for labels, so a loop saved in a session at
+home but starting in Thuin is located and labelled in Thuin. A ride's own
+`rating` (`rides.rating`) is read by nothing that plans: only roadbook, leg and
+road ratings feed the rated-roads check and the memory.
+
 Leg ratings of the replaced legs are first copied to `road_ratings` with the
 leg's cells, so the rated-roads check and the memory keep them. Restoring a
 version is itself a revision, so nothing is ever lost.

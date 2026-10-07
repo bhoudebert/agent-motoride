@@ -22,6 +22,6 @@
 - [x] Plan a ride from a roadbook on a date, in a sentence and by command, no copy
 - [x] Ride on a date: refresh, briefing on a chosen ride, cancel; stale after an edit
 - [x] Ratings split (roadbook, ride); review stores road ratings on the roadbook
-- [ ] Overlap offers a ride of the existing roadbook
+- [x] Overlap offers a ride of the existing roadbook
 - [ ] CLI, MCP tools and prompts, exports, ride map, memory adapted; reference regenerated
 - [ ] Guide, README, engineering notes, site, roadmap

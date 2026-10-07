@@ -9,7 +9,6 @@ import {
   enrichRide,
   formatRideDetail,
   formatRideDayPage,
-  formatRideList,
   formatRoadbookPage,
   parseRating,
   rideNavigation,
@@ -453,7 +452,7 @@ async function startMenu(): Promise<
     const rides = store.listRides();
     const pending = pendingNotesSummary(store);
     console.log(
-      `\nagentMotoride   (motorways ${motorwayDefault() ? "permitted" : "forbidden"} by default)\n  1. Plan a new ride\n  2. Open a saved ride (${rides.length} saved)\n  q. Quit`,
+      `\nagentMotoride   (motorways ${motorwayDefault() ? "permitted" : "forbidden"} by default)\n  1. Plan a new ride\n  2. Open a roadbook (${rides.length} saved)\n  q. Quit`,
     );
     if (pending) console.log(`\n${pending}: npm run rides -- review [track.gpx]`);
     const choice = await ask("\n> ");
@@ -490,8 +489,19 @@ async function startMenu(): Promise<
         console.log("\nNo saved rides yet. Plan one, then /save it.");
         continue;
       }
-      console.log(`\n${formatRideList(rides)}`);
-      const pick = await ask("\nRide id or name (Enter to go back): ");
+      // 20 at a time, newest first: n and p turn the pages.
+      let page = 1;
+      let pick: string | typeof QUIT | typeof BACK;
+      while (true) {
+        const listed = store.listRoadbooks(page);
+        console.log(`\n${formatRoadbookPage(listed, () => "n")}`);
+        const turn = listed.page < listed.pages ? ", n next page" : "";
+        const back = listed.page > 1 ? ", p previous page" : "";
+        pick = await ask(`\nRoadbook number or name${turn}${back} (Enter to go back): `);
+        if (typeof pick === "string" && pick.toLowerCase() === "n" && turn) page++;
+        else if (typeof pick === "string" && pick.toLowerCase() === "p" && back) page--;
+        else break;
+      }
       if (pick === QUIT) return undefined;
       if (pick === BACK || !pick) continue;
       let ride: SavedRide | undefined;
@@ -509,7 +519,7 @@ async function startMenu(): Promise<
 
       while (true) {
         const action = await ask(
-          "\n[e] edit: open the prompt on this ride  [g] export GPX  [r] rate it  [b] back  [q] quit\n> ",
+          "\n[e] edit: open the prompt on this roadbook  [g] export GPX  [r] rate it  [b] back  [q] quit\n> ",
         );
         if (action === QUIT) return undefined;
         if (action === BACK) break;
@@ -517,7 +527,7 @@ async function startMenu(): Promise<
         if (key === "q") return undefined;
         if (key === "b" || key === "") break;
         if (key === "r") {
-          const answer = await ask("Rating 1-5, optionally followed by a note: ");
+          const answer = await ask("Rating 0-5 (0 never again), optionally followed by a note: ");
           if (answer === QUIT) return undefined;
           if (answer === BACK || !answer) continue;
           try {

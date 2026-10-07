@@ -70,7 +70,8 @@ Usage: npm run rides -- <command>
                                         time as 9, 9:30, 9h30 (default the roadbook's last departure). No copy, no model
   today [roadbook] [day]                Ride-day briefing: weather now, daylight, traffic, stops checked against opening hours, go or no-go
                                         (default the next planned ride; with a day, that ride of the roadbook)
-  show <id|name> [--md]                 One ride: legs, map link, itinerary (--md: as Markdown on stdout)
+  show <id|name> [day] [--md]           One roadbook, or one of its rides with the route it was ridden on (--md: Markdown)
+  keep <roadbook> <day>                 Keep a planned ride on the version it had before the last change
   export-md <id|name> [file.md]         Write the ride as a Markdown document, with its map (default: exports/ in the project)
   map <id|name> [file.png]              A picture of the ride: route, towns, stops, fixed cameras with their limits
   rate <id|name> <0-5> [note]           Rate a roadbook: its roads, for later plans (0 never again, 5 loved)
@@ -110,7 +111,7 @@ reused as building blocks, those rated 0-1 are avoided.
 
 ## Claude Code and Codex (MCP server)
 
-34 tools, 15 prompts. Each tool shows its MCP hints: a client can let read-only tools run without asking.
+35 tools, 15 prompts. Each tool shows its MCP hints: a client can let read-only tools run without asking.
 
 ### Tools
 
@@ -381,6 +382,16 @@ _read-only · local only_
 Full view of one saved ride, as the rider sees it in the app: figures, road mix, time at 70+, daylight, fixed cameras, fuel and café stops, legs with names, main roads, times and ratings, map link and the itinerary text. Show it to the rider as is; do not rebuild it from other tools.
 
 - `ride` (string): Roadbook number or name
+- `date` (string, optional): Day of one of its rides (YYYY-MM-DD, saturday): that ride, with the route it was ridden on
+
+#### `keepRideVersion`
+
+_writes · not destructive · not idempotent · local only_
+
+Keep a planned ride on the roadbook as it was before the last change: for a ride already settled when the rider changed the roadbook for later ones. "Keep Saturday's ride on the previous version". Rides already done always keep their route.
+
+- `roadbook` (string): Roadbook number or name
+- `date` (string): Day of the planned ride: YYYY-MM-DD, saturday
 
 #### `showRideMap`
 

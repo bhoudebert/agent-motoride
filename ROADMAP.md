@@ -76,6 +76,9 @@ with a navigation app (Liberty Rider, Google Maps) on the phone.
 
 ## Done lately
 
+- **Rides keep what was ridden**: a change moves only rides still ahead and names
+  them; rides done or past are shown, exported and reviewed with their own
+  version; `keep` holds a planned ride on the previous version.
 - **The day of a ride**: a ride's own rating that never marks a road, the briefing
   on a chosen ride (`today 7 saturday`), the start of a loop read from its first
   leg ("from Thuin", daylight at Thuin), and a repeat offering to ride the

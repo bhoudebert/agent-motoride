@@ -9,7 +9,8 @@ agentMotoride: an agentic motorcycle ride planner. `README.md` explains the prod
 and the two modes (API and MCP); the rider's guide in `docs/guide/` explains how
 to use every feature; `docs/ENGINEERING.md` how it is built. `openspec/project.md` holds the conventions
 and the domain vocabulary; `openspec/specs/<capability>/spec.md` describe the
-behaviour as requirements with scenarios.
+behaviour as requirements with scenarios. It is open source (MIT) on open data;
+`CONTRIBUTING.md` says which contributions help most.
 
 ## Rules
 

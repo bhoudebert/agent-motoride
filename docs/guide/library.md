@@ -174,14 +174,14 @@ notes during the ride work better: see [Notes and review](/notes-and-review).
   reused as building blocks. Those rated 0 or 1 are avoided: a loop with 10% or
   more on them is only offered when nothing else fits, and the planner must
   say so. A leg's own rating wins over the ride's.
-- **Weather is never reused.** A saved ride shows the last forecast gathered,
+- **Weather is never reused.** A ride shows the last forecast gathered,
   for reading; a plan or a change always checks the forecast afresh.
 
 ## What the app remembers
 
 Every session leaves something behind, and the next one starts from it. Before
 scouting, the planner asks the road memory what is already known around the
-start: your saved rides and their ratings, the stretches you loved or never
+start: your roadbooks and their ratings, the stretches you loved or never
 want again, the areas scouts already visited with their verdict and how long
 ago, and the winding roads earlier searches found, with their coordinates. So
 an area found poor last week is not scouted again for nothing, and known
@@ -226,7 +226,7 @@ A refresh keeps the ride as it is: same waypoints, same motorway setting, with
 the figures recomputed from today's map data.
 
 ::: tip Attach a ride in Claude Code
-Type `@` then pick `ride:ride://ride/3` to put a saved ride into the
+Type `@` then pick `ride:ride://ride/3` to put a roadbook into the
 conversation, or `ride:ride://library` for the whole list.
 :::
 

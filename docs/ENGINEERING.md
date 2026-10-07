@@ -29,10 +29,10 @@ CLI (src/index.ts)
    the results, until the model answers without calling a tool. The loop is
    capped at 40 rounds per turn.
 4. For a new leisure ride the model first calls `scoutAreas` with two to four
-   candidate areas. Each scout is a separate, cheaper model session with three
-   tools, running in parallel with the others; it finds roads, assembles and
-   routes a loop, checks the weather, and reports a candidate with its route
-   id. The planner compares the reports, confirms what matters, and presents
+   candidate areas. Each scout is a separate, cheaper model session with four
+   tools, running in parallel with the others; it asks the road memory first,
+   finds roads, assembles and routes a loop, checks the weather, and reports a
+   candidate with its route id. The planner compares the reports, confirms what matters, and presents
    the best. Scouts are not used for edits, questions or commutes.
 5. The final answer is not free text: the API validates it against a schema
    (`src/schema.ts`) with two fields, the message for the rider and the routed
@@ -45,6 +45,15 @@ CLI (src/index.ts)
 The model is instructed to treat your constraints as hard limits, to state
 only what the tools returned, and to say so when something could not be
 verified.
+
+The code then checks what it presents (`src/checks.ts`): the distance and
+riding-time caps read from the rider's words, no motorway when forbidden, no
+repeat of a roadbook, under 10% on roads rated 0-1, the stated distance equal
+to the routed one, and, while motorways are forbidden, fast expressways under
+the rider's ceiling (`maxFastPct`, 25% by default, 100 for none). A failure goes
+back to the planner once. A slow-zone share over its target is not a failure:
+it comes back as a note to say, with no second model call. `planStops` refuses
+a departure already past, by the session's clock.
 
 The planner uses adaptive thinking and enables the API's server-side refusal
 fallback, which reruns the request on another model if a safety classifier

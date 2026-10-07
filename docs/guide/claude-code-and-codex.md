@@ -37,7 +37,7 @@ Plain words are enough, in both:
 
 ```text
 plan me a ride this Saturday, no rain, under 250 km, winding roads
-show ride 7
+show roadbook 7
 make ride 7 50 km longer
 briefing for ride 7
 export ride 7 as GPX
@@ -45,7 +45,7 @@ export ride 7 as GPX
 
 The server tells the model that anything about rides goes to its tools, and to
 fetch the full planning guidance before planning. In Codex, `ride show 7` can be
-taken for a shell command: say "show saved ride 7", or add "using the ride
+taken for a shell command: say "show roadbook 7", or add "using the ride
 tools".
 
 ## Shortcuts (Claude Code)
@@ -56,13 +56,13 @@ Slash commands are optional shortcuts; `/mcp__ride__help` lists them.
 | ------------------------------------------------- | ---------------------------------------------------- |
 | `/mcp__ride__plan-ride <request>`                 | Plan a new leisure ride                              |
 | `/mcp__ride__commute <destination> <when> [from]` | Practical trip, motorways permitted, traffic checked |
-| `/mcp__ride__edit-ride <id\|name> <change>`       | Change a saved ride, or ask about it                 |
+| `/mcp__ride__edit-ride <id\|name> <change>`       | Change a roadbook, or ask about it                   |
 | `/mcp__ride__save-ride [name]`                    | Save the itinerary on the table                      |
 | `/mcp__ride__show-ride <id\|name>`                | Everything stored about one ride                     |
 | `/mcp__ride__plan-from <roadbook> <day> [time]`   | A ride from a saved roadbook on a day, no copy       |
 | `/mcp__ride__today [id\|name]`                    | Ride-day briefing with a go or no-go                 |
 | `/mcp__ride__refresh <id\|name>`                  | Recompute a ride without changing it                 |
-| `/mcp__ride__export-gpx [id\|name]`               | GPX file of the current or a saved ride              |
+| `/mcp__ride__export-gpx [id\|name]`               | GPX file of the current ride or a roadbook           |
 | `/mcp__ride__export-md <id\|name> [file]`         | Markdown document of a ride                          |
 | `/mcp__ride__list-roadbooks [page]`               | Saved loops and trips, 20 per page                   |
 | `/mcp__ride__list-rides [page]`                   | Rides by date, latest first, 20 per page             |
@@ -103,7 +103,7 @@ Every tool, prompt and resource, with its inputs: see the
 - **The client's model plans**, so quality and cost follow that model, not
   `RIDE_MODEL`.
 - **One session per server process**: routed trips and settings last until the
-  client restarts the server; saved rides, the cache and traces are on disk.
+  client restarts the server; roadbooks, rides, the cache and traces are on disk.
 - **After updating agentMotoride**, quit and relaunch Claude Code or Codex: it keeps the
   old server process otherwise.
 - Every session is logged: `npm run rides -- runs` shows an `mcp-client` run,

@@ -390,8 +390,17 @@ on a day: date (or none yet), departure, start, status (planned, ridden,
 cancelled), the day-bound extras (daylight, forecast, stop plan, conditions)
 and later the track and the day's rating. Notes point to both; road ratings
 and runs to the roadbook. Until the commands know both levels, `Store` shows a
-roadbook with its current ride (the latest planned, else the latest) as one
-saved ride, as before.
+roadbook with its current ride (the next planned, else the latest planned, else
+the latest) as one saved ride, as before.
+
+A change saved on a roadbook goes through `Store.reviseRoadbook`: the design
+(waypoints, legs, route line, figures, itinerary) is replaced in place, the
+previous one stored as a JSON snapshot in `roadbook_versions` with the change
+that replaced it, `version` incremented, route-bound extras cleared to be
+gathered again, and planned rides moved to the new version with `stale` set.
+Leg ratings of the replaced legs are first copied to `road_ratings` with the
+leg's cells, so the rated-roads check and the memory keep them. Restoring a
+version is itself a revision, so nothing is ever lost.
 
 ## Lookup cache
 
@@ -421,6 +430,7 @@ clear-cache` empties it.
 | `saveRide`                                                                   | Save an itinerary to the library, from a route id of this session                                                                                                             |
 | `exportGpx`                                                                  | GPX file from a route id or a roadbook                                                                                                                                        |
 | `showRide`                                                                   | Full view of one roadbook, as in the CLI: road mix, daylight, cameras, stops, legs, itinerary                                                                                 |
+| `restoreRoadbook`, `copyRoadbook`                                            | An earlier version back (the current one kept), or a separate variant                                                                                                         |
 | `cancelRide`                                                                 | A planned ride kept, marked cancelled                                                                                                                                         |
 | `deleteRide`, `deleteRoadbook`                                               | Destructive, after the rider confirms (dialog, else a second call with `confirm`); road ratings stay                                                                          |
 | `planRide`                                                                   | A ride from a roadbook on a day: added or updated, day data gathered, briefing and links; no copy                                                                             |

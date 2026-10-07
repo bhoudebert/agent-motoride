@@ -31,7 +31,8 @@ Options:
                         5 MB max; repeatable). The planner reads the places on it and routes them.
 
 At the "refine>" prompt, type a change in plain words, or a command:
-  /save [name]          Save the current itinerary (new version if already saved); refused when it duplicates a saved ride, --force to override
+  /save [name]          Save the itinerary; on a saved roadbook, change it in place and keep the previous version.
+                        --copy saves a separate roadbook instead; --force saves one that repeats a roadbook you have
   /roadbooks [page]     Roadbooks (the loops and trips you saved), newest first, 20 per page
   /rides [page]         Rides (a roadbook on a day), latest date first, 20 per page
   /plan <day> [time]    Plan a ride from this saved roadbook on a day (also: "plan a ride on Saturday at 9"); no copy
@@ -95,6 +96,9 @@ Usage: npm run rides -- <command>
   delete roadbook <id|name> [--yes]     Delete a roadbook with its rides and notes, after you confirm (road ratings stay)
   delete ride <roadbook> <day> [--yes]  Delete one ride of a roadbook, e.g. delete ride 7 2026-10-10, after you confirm
   cancel <roadbook> <day>               Cancel a planned ride: kept, shown as cancelled
+  versions <roadbook>                   Earlier versions of a roadbook: each change keeps the design it replaced
+  restore <roadbook> <version>          Bring back an earlier version; the current one is kept as a version too
+  copy <roadbook> [name]                A separate roadbook with the same design, to change on its own
   tidy                                  Drop expired lookups and compact the library; lists backups and old files, deletes none
   clear-cache                           Drop cached road, route and weather lookups
 
@@ -104,7 +108,7 @@ reused as building blocks, those rated 0-1 are avoided.
 
 ## Claude Code and Codex (MCP server)
 
-32 tools, 15 prompts. Each tool shows its MCP hints: a client can let read-only tools run without asking.
+34 tools, 15 prompts. Each tool shows its MCP hints: a client can let read-only tools run without asking.
 
 ### Tools
 
@@ -281,6 +285,7 @@ Save an itinerary to the rider's library. Only when the rider asks to save. rout
 - `itinerary` (string): The itinerary text as presented to the rider
 - `request` (string): What the rider asked for, in one line
 - `force` (boolean, optional): Save even if it duplicates a saved ride; only on the rider's explicit wish
+- `asCopy` (boolean, optional): Save as a separate roadbook instead of changing the one being worked on; only when the rider wants a copy or variant
 
 #### `exportGpx`
 
@@ -338,6 +343,24 @@ Delete one ride (a roadbook on a day), after the rider confirms. The roadbook an
 - `roadbook` (string): Roadbook number or name
 - `date` (string): Day of the ride: YYYY-MM-DD, 10/10, today, or a weekday
 - `confirm` (boolean, optional): Only after the rider said yes to the question a first call returned, in clients without dialogs
+
+#### `restoreRoadbook`
+
+_writes · not destructive · not idempotent · local only_
+
+Bring back an earlier version of a roadbook, listed under Versions in showRide. The current design is kept as a version too, so nothing is lost. For "undo that change" or "go back to the original".
+
+- `roadbook` (string): Roadbook number or name
+- `version` (integer): Version to bring back
+
+#### `copyRoadbook`
+
+_writes · not destructive · not idempotent · local only_
+
+Make a separate roadbook with the same design, recorded as a variant of the original, to change on its own: "copy 7 as Avesnois short". Changes to a roadbook otherwise happen in place.
+
+- `roadbook` (string): Roadbook number or name
+- `name` (string, optional): Name of the copy
 
 #### `cancelRide`
 

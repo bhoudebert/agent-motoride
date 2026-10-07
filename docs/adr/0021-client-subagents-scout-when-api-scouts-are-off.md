@@ -36,8 +36,10 @@ Parallel scouting at no API cost in Claude Code. It depends on the client: a
 client without subagents explores alone, and the client's model decides how
 closely it follows the brief. Rider rules stay enforced in code by
 `calculateTrip` and `checkItinerary`, whoever calls them. Subagents use more
-of the rider's plan quota. Their road searches reach the road memory; their
-verdicts do not, since only API scouts' reports are traced as scout answers.
+of the rider's plan quota. Their road searches reach the road memory, and so
+do their verdicts since 2026-10-07: each subagent calls `reportScout` before
+answering, and the server traces it as a scout's report, with the figures taken
+from the loop it routed rather than from its text.
 
 ## Alternatives considered
 

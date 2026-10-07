@@ -58,7 +58,12 @@ The server SHALL work with any MCP client over stdio. The rider SHALL get the sa
 
 ### Requirement: Client scouting when API scouts are off
 
-When scouts cannot run (`RIDE_SCOUTS=0` or no API credentials), the server instructions and the planning guidance SHALL say so and SHALL give the client a scout brief: start one subagent per area, in parallel, when the client can, each following the scout method (road memory first, then roads, route, weather) and reporting a route id; otherwise explore the areas itself. `scoutAreas` called anyway SHALL answer with the same guidance. When scouts can run, the guidance SHALL be unchanged. The terminal planner's instructions SHALL NOT change.
+When scouts cannot run (`RIDE_SCOUTS=0` or no API credentials), the server instructions and the planning guidance SHALL say so and SHALL give the client a scout brief: start one subagent per area, in parallel, when the client can, each following the scout method (road memory first, then roads, route, weather) and reporting a route id; otherwise explore the areas itself. `scoutAreas` called anyway SHALL answer with the same guidance. When scouts can run, the guidance SHALL be unchanged. The terminal planner's instructions SHALL NOT change. Each subagent SHALL end by calling `reportScout` with its area, whether it found a loop, the routeId of its best loop if any, and a one-sentence verdict. The server SHALL take the figures (distance, open-road and 50-zone shares) and the place of the report from that routed loop, never from the text, or from the area's location when no loop was routed, and SHALL trace it as a scout's report, so the road memory learns it like an API scout's.
+
+#### Scenario: A subagent's verdict is remembered
+
+- **WHEN** a subagent scouting the Condroz reports no good loop, with the routeId of the loop it tried
+- **THEN** the next `recallArea` around the Condroz lists that area as scouted, not found, with that loop's open-road share and its age
 
 #### Scenario: Scouts off in Claude Code
 

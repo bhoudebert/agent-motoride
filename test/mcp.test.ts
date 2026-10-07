@@ -260,6 +260,7 @@ test("mcp: with API scouts off, the client is told to scout with parallel subage
     const guide = textOf(await off.callTool({ name: "planningGuide", arguments: { request: "a twisty loop" } }));
     assert.match(guide, /start one subagent per area in the same turn/);
     assert.match(guide, /Scout brief:\nYou scout one area for a one-day motorcycle loop/);
+    assert.match(guide, /call reportScout once with your area/);
     assert.ok(guide.indexOf("Scout brief:") < guide.indexOf("Rider's request: a twisty loop"), "with the rules");
     const edit = textOf(
       await off.callTool({ name: "planningGuide", arguments: { request: "50 km longer", ride: "1" } }),
@@ -354,6 +355,40 @@ test("mcp: every tool answers when called by name through a client", async () =>
       }),
       /API scouts are off here \(disabled by RIDE_SCOUTS=0\)[\s\S]*"brief":"Area to scout: Flandre \(around Cassel\)\.\\nStart and end point of the loop: 50\.3397,4\.2869/,
     );
+    // A subagent's verdict, with the loop it routed: figures from the loop, remembered for later sessions.
+    assert.match(
+      await call("reportScout", {
+        area: "Flandre",
+        location: "Cassel",
+        found: false,
+        routeId,
+        verdict: "too many villages on the way",
+      }),
+      /^Remembered: Flandre, nothing good found, 135 km, [\d.]+% open road, [\d.]+% in 50 zones\. too many villages/,
+    );
+    const recalled = JSON.parse(await call("recallArea", { location: "Cassel", radiusKm: 40 })) as {
+      scoutedAreas: Array<{
+        area: string;
+        found: boolean;
+        distanceKm: number;
+        verdict: string;
+        scoutedDaysAgo: number;
+      }>;
+    };
+    assert.deepEqual(
+      recalled.scoutedAreas.map((a) => [a.area, a.found, a.distanceKm, a.verdict, a.scoutedDaysAgo]),
+      [["Flandre", false, 135, "too many villages on the way", 0]],
+    );
+    assert.match(
+      await call("reportScout", { area: "Hills", location: "Cassel", found: false, verdict: "all gravel" }),
+      /^Remembered: Hills, nothing good found\. all gravel/,
+      "without a loop, placed at the area's town",
+    );
+    const unknown = await client.callTool({
+      name: "reportScout",
+      arguments: { area: "X", location: "Cassel", found: true, routeId: "r99", verdict: "made up" },
+    });
+    assert.ok(unknown.isError, "a routeId must come from calculateTrip");
     await call("checkItinerary", { routeId, request: "under 200 km", itinerary: "Loop, 135 km." });
     assert.match(
       await call("saveRide", {

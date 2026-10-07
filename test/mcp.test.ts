@@ -345,7 +345,7 @@ test("mcp: every tool answers when called by name through a client", async () =>
     assert.match(
       await call("scoutAreas", {
         areas: [{ name: "Flandre", location: "Cassel" }],
-        rideDate: "2026-10-10",
+        rideDate: ahead,
         departure: "09:00",
         maxDistanceKm: 200,
         maxRidingMinutes: null,
@@ -359,7 +359,7 @@ test("mcp: every tool answers when called by name through a client", async () =>
       await call("saveRide", {
         routeId,
         name: "Flandre",
-        rideDate: "2026-10-10",
+        rideDate: ahead,
         departure: "09:00",
         itinerary: "135 km",
         request: "loop",
@@ -376,12 +376,19 @@ test("mcp: every tool answers when called by name through a client", async () =>
         itinerary: "135 km, v2",
         request: "tweak",
       }),
-      /^Roadbook #2 changed in place, now version 2; the previous version is kept/,
+      new RegExp(
+        `^Roadbook #2 changed in place, now version 2; the previous version is kept .*Planned rides now following the new route \\(refresh before riding\\): ${ahead}\\..*keepRideVersion`,
+      ),
     );
     assert.match(
       await call("restoreRoadbook", { roadbook: "2", version: 1 }),
       /^Roadbook #2 is back to version 1, saved as version 3/,
     );
+    assert.match(
+      await call("keepRideVersion", { roadbook: "2", date: ahead }),
+      new RegExp(`^The ride of ${ahead} keeps roadbook #2 as it was \\(version 2\\)\\.`),
+    );
+    assert.match(await call("showRide", { ride: "2", date: ahead }), /135 km, v2/, "that ride, with its version");
     assert.match(
       await call("copyRoadbook", { roadbook: "2", name: "Flandre bis" }),
       /^Copied roadbook #2 as #3 "Flandre bis"/,
@@ -393,12 +400,12 @@ test("mcp: every tool answers when called by name through a client", async () =>
     await call("showRide", { ride: "2" });
     await call("rateRide", { ride: "2", rating: 4, note: "nice" });
     assert.match(
-      await call("rateRide", { ride: "2", rating: 2, day: "2026-10-10", note: "cold" }),
-      /^Rated the ride of 2026-10-10 on roadbook #2 2\/5; the roads keep their own rating\./,
+      await call("rateRide", { ride: "2", rating: 2, day: ahead, note: "cold" }),
+      new RegExp(`^Rated the ride of ${ahead} on roadbook #2 2/5; the roads keep their own rating\\.`),
     );
     assert.match(
-      await call("rideBriefing", { ride: "2", date: "2026-10-10" }),
-      /^Briefing for the ride of 2026-10-10 from roadbook #2 /,
+      await call("rideBriefing", { ride: "2", date: ahead }),
+      new RegExp(`^Briefing for the ride of ${ahead} from roadbook #2 `),
     );
     called.add("showRideMap");
     const map = (await client.callTool({ name: "showRideMap", arguments: { ride: "2" } })) as {

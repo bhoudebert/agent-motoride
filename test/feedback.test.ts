@@ -187,3 +187,49 @@ test("review without a track: notes placed on the plan by elapsed time, marked a
   assert.match(applyReview(store, [{ noteId: late.id }])[0]!, /not placed yet/);
   assert.equal(store.listRoadRatings()[0]!.approximate, true);
 });
+
+test("review after a change: notes are placed on the route of the ride they were left on", async () => {
+  const store = new Store(":memory:");
+  const id = saveRide(store);
+  const { note } = addRideNote(store, { ride: String(id), text: "nice bends", at: at(15) });
+  // Changed after the ride: a longer route, further east.
+  const east = [encodePolyline(bentLine({ lat: 50.4, lon: 3.5 }, { lat: 50.8, lon: 3.5 }, 200))];
+  store.reviseRoadbook(
+    id,
+    {
+      waypoints: ["A", "C"],
+      roundTrip: false,
+      preferences: { avoidMotorways: true, max30Pct: 3, max50Pct: 20 },
+      itinerary: "east",
+      distanceKm: 44.5,
+      ridingMinutes: 60,
+      speedLimits: {},
+      mapsUrl: "m2",
+      cells: routeCells(east),
+      shapes: east,
+      centerLat: 50.6,
+      centerLon: 3.5,
+      legs: [
+        {
+          seq: 1,
+          from: "A",
+          to: "C",
+          fromCoords: "50.4,3.5",
+          toCoords: "50.8,3.5",
+          distanceKm: 44.5,
+          ridingMinutes: 60,
+          mainRoads: [],
+        },
+      ],
+    },
+    "moved east",
+  );
+  const review = await reviewRide(store, store.findRide(String(id))!, { timezone: TZ });
+  const placement = review.notes.find((n) => n.note.id === note.id)!.placement!;
+  const ridden = new Set(routeCells(shapes));
+  assert.ok(
+    placement.cells.every((cell) => ridden.has(cell)),
+    "on the original route, not the eastern one",
+  );
+  assert.ok(Math.abs(placement.km - 7.4) < 0.5, `at the original pace, got ${placement.km} km`);
+});

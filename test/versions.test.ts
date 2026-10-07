@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { copyRoadbook, formatRideDayPage, formatVersions, restoreVersion } from "../src/library.ts";
+import { copyRoadbook, followingRides, formatRideDayPage, formatVersions, restoreVersion } from "../src/library.ts";
 import { DEFAULT_PREFERENCES } from "../src/preferences.ts";
 import { type NewRide, type RoadbookDesign, Store } from "../src/store.ts";
 import { bentLine, encodePolyline } from "./helpers/polyline.ts";
@@ -173,4 +173,41 @@ test("versions: a copy is a separate roadbook, a variant of its origin, without 
   );
   assert.equal(copyRoadbook(store, id).toString(), "3");
   assert.equal(store.findRide("3")!.name, "Monts de Flandre (copy)");
+});
+
+test("versions: a ride done keeps its route and is shown with it; a past planned ride asks; keep goes back", () => {
+  const store = new Store(":memory:");
+  const id = store.saveRide(original());
+  store.planDay(id, "2099-05-09", "10:00");
+  store.planDay(id, "2020-01-05", "09:00");
+  store.reviseRoadbook(id, longer, "50 km longer");
+  assert.deepEqual(
+    rides(store),
+    [
+      ["2099-05-02", "planned", 2, 1],
+      ["2099-05-09", "planned", 2, 1],
+      ["2020-01-05", "planned", 1, 0],
+    ],
+    "a ride whose date has passed keeps its version",
+  );
+  const past = store.findRideOn(id, "2020-01-05")!;
+  const shown = store.rideView(id, past.id)!;
+  assert.deepEqual([shown.distanceKm, shown.legs[0]!.to, shown.rideDate], [90, "Cassel", "2020-01-05"]);
+  assert.equal(store.findRide(String(id))!.distanceKm, 140, "the roadbook itself is the new design");
+  assert.match(formatRideDayPage(store.listRideDays(), String), /^2099-05-09 Sat 10:00 .* 140 km, 2h50 /m);
+  assert.match(
+    formatRideDayPage(store.listRideDays(), String),
+    /^2020-01-05 Sun 09:00 {2}#1 {2}Monts de Flandre {2}\| {2}90 km, 1h50 {2}\| {2}date passed: ridden or cancelled\?$/m,
+  );
+  assert.equal(
+    followingRides(store, id),
+    'Planned rides now following the new route (refresh before riding): 2099-05-09, 2099-05-02. Rides already done keep their route. To keep one as it was: npm run rides -- keep 1 <day>, or "keep Saturday\'s ride on the previous version".',
+  );
+  const saturday = store.findRideOn(id, "2099-05-02")!;
+  assert.equal(store.keepPreviousVersion(saturday.id), 1);
+  assert.equal(store.rideView(id, saturday.id)!.distanceKm, 90, "kept as it was");
+  assert.match(followingRides(store, id)!, /: 2099-05-09\. /);
+  assert.throws(() => store.keepPreviousVersion(saturday.id), /no earlier version/);
+  store.rateRideDay(past.id, 3, null);
+  assert.throws(() => store.keepPreviousVersion(past.id), /This ride is ridden/);
 });

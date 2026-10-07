@@ -34,4 +34,7 @@ features:
   - title: Notes and review
     details: '"Cobbles, never again", said at a stop. After the ride, notes land on the road you really rode and steer the next plans.'
     link: /notes-and-review
+  - title: Open source, on open data
+    details: MIT, built on OpenStreetMap and Open-Meteo, runs on your machine with no telemetry. A country's speed rule or a fix in the map helps every rider.
+    link: /open-source
 ---

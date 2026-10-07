@@ -68,5 +68,8 @@
     "type": "git",
     "url": "git+https://github.com/bhoudebert/agent-motoride.git"
   },
-  "author": "Benjamin Houdebert"
+  "author": "Benjamin Houdebert",
+  "overrides": {
+    "vite": "^6.4.3"
+  }
 }

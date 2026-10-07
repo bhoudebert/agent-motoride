@@ -26,6 +26,8 @@ Options:
                         Also switchable during a session with /motorways on|off.
   --max-30-pct <n>      Target max % of distance in zones of 30 km/h or less. Default 3.
   --max-50-pct <n>      Target max % of distance in 31-50 km/h zones. Default 20.
+  --max-fast-pct <n>    Max % of a leisure ride on fast expressways (100 km/h or more, not motorways); the code
+                        check sends a plan back above it. Default 25; 100 turns the check off.
   --once                Print the itinerary and exit, without the refine prompt.
   --image <file>        Attach a photo of a map, a screenshot of a route or a list of places (PNG, JPEG, WebP, GIF,
                         5 MB max; repeatable). The planner reads the places on it and routes them.
@@ -46,7 +48,8 @@ At the "refine>" prompt, type a change in plain words, or a command:
   /note <text> [--rating 0-5] [--back N]  During the ride: note about the last N minutes (default 10), reviewed after the ride
   /image <file> [text]  Attach a map photo or route screenshot: the planner reads the places on it and routes them
   /motorways on|off     Permit or forbid motorways from now on (default off)
-  /settings             Show current settings: motorways, slow-zone targets, traffic
+  /fast <0-100>         Max % of a leisure ride on fast expressways (default 25; 100 turns the check off)
+  /settings             Show current settings: motorways, slow-zone targets, fast expressways, traffic
   /bike [range=250 ...] Show or set the bike profile (range, reserve, pause, stint, lunch) used for stops
   /usage                Model, tokens, time and estimated cost of this session so far
   /trace                Replay this session's steps so far (tool calls, scouts, answers)
@@ -55,7 +58,7 @@ At the "refine>" prompt, type a change in plain words, or a command:
   /help                 This list
 
 Saved rides are managed with: npm run rides -- roadbooks | rides | show | rate | rate-leg | note | review | delete
-Env equivalents: RIDE_ALLOW_MOTORWAYS=1, RIDE_MAX_30_PCT, RIDE_MAX_50_PCT.
+Env equivalents: RIDE_ALLOW_MOTORWAYS=1, RIDE_MAX_30_PCT, RIDE_MAX_50_PCT, RIDE_MAX_FAST_PCT.
 Needs ANTHROPIC_API_KEY (see .env.example).
 ```
 
@@ -258,6 +261,7 @@ Show or change the rider's settings for this session: start and end point, wheth
 - `allowMotorways` (boolean, optional)
 - `max30Pct` (number, optional)
 - `max50Pct` (number, optional)
+- `maxFastPct` (number, optional): Max % of a leisure ride on fast expressways (100 km/h or more, not motorways); 100 turns the check off
 - `allowRepeat` (boolean, optional): Accept rides that repeat saved ones
 - `tankRangeKm` (number, optional): Bike profile: realistic range on a full tank
 - `reserveKm` (number, optional): Bike profile: fuel this many km before the range runs out
@@ -522,6 +526,7 @@ Slash commands in Claude Code (`/mcp__ride__<name>`); plain words do the same in
 | `RIDE_ALLOW_MOTORWAYS` | `0`                 | 1 permits motorways by default (--allow-motorways, /motorways on\|off per session)                                                                                                            |
 | `RIDE_MAX_30_PCT`      | `3`                 | Target max % of distance in zones of 30 km/h or less (--max-30-pct)                                                                                                                           |
 | `RIDE_MAX_50_PCT`      | `20`                | Target max % of distance in 31-50 km/h zones (--max-50-pct)                                                                                                                                   |
+| `RIDE_MAX_FAST_PCT`    | `25`                | Max % of a leisure ride on fast expressways, 100 km/h or more but not motorways (--max-fast-pct); 100 turns the check off                                                                     |
 | `RIDE_DB`              | unset               | Saved rides and lookup cache, one SQLite file; default data/agentmotoride.db in the project                                                                                                   |
 | `RIDE_SHARE_PORT`      | `8787`              | Port of the phone share page (/share, rides share)                                                                                                                                            |
 | `RIDE_MODEL`           | `claude-opus-5-5`   | Model of the terminal app's planner; cheaper: claude-sonnet-5-5 (half price), claude-haiku-4-5 (quarter)                                                                                      |

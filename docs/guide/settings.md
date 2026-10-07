@@ -29,13 +29,32 @@ are now limited to 70 to 90, and those are ordinary roads here. The ones at
 motorway 0 km  |  fast expressway (100+) 12 km, 6%
 ```
 
-|                              | Motorway                             | Fast expressway (100+) | Other roads |
-| ---------------------------- | ------------------------------------ | ---------------------- | ----------- |
-| Routing, motorways forbidden | avoided wherever another road exists | discouraged            | normal      |
-| Code check, leisure ride     | forbidden                            | sent back once at 25%  | none        |
+|                              | Motorway                             | Fast expressway (100+)               | Other roads |
+| ---------------------------- | ------------------------------------ | ------------------------------------ | ----------- |
+| Routing, motorways forbidden | avoided wherever another road exists | discouraged                          | normal      |
+| Code check, leisure ride     | forbidden                            | sent back once at 25% (your setting) | none        |
 
 "Never motorways" is a strong penalty in the router, not an absolute ban: when
 no other road exists, it takes one and the itinerary says so.
+
+### How much fast expressway
+
+A leisure ride is sent back once when 25% or more of it is on fast
+expressways. The share is yours to set, like the slow-zone targets; it is saved
+with each roadbook, and 100 turns the check off:
+
+::: code-group
+
+```bash [Terminal]
+npm run ride -- --max-fast-pct 40 "a quick loop to the Ardennes and back"
+# or RIDE_MAX_FAST_PCT=40 in .env; at the refine> prompt: /fast 40
+```
+
+```text [Claude Code / Codex]
+allow up to 40% of fast expressways for this ride
+```
+
+:::
 
 ## Allowing motorways
 

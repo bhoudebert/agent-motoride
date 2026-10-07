@@ -22,7 +22,7 @@ After an itinerary the prompt SHALL stay open for changes and questions, SHALL s
 
 ### Requirement: Settings visibility
 
-Session start SHALL print start point, motorway state, slow-zone targets, traffic availability, model and effort, and the bike profile.
+Session start SHALL print start point, motorway state, slow-zone targets, the fast-expressway ceiling, traffic availability, model and effort, and the bike profile.
 
 ### Requirement: Library command
 

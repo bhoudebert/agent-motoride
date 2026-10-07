@@ -20,7 +20,7 @@ import { overviewLink, pinnedMapsLinks } from "./maps.ts";
 import { writeRideMarkdown } from "./markdown.ts";
 import { rideMapPng, writeRideMap } from "./rideMap.ts";
 import { parsePlanRide, planRideFrom } from "./planRide.ts";
-import { DEFAULT_PREFERENCES, preferencesFromEnv } from "./preferences.ts";
+import { DEFAULT_MAX_FAST_PCT, DEFAULT_PREFERENCES, preferencesFromEnv } from "./preferences.ts";
 import { describeProfile, parseProfileArgs } from "./profile.ts";
 import { printQr, type Shared, startShareServer } from "./share.ts";
 import { type SavedRide, Store } from "./store.ts";
@@ -45,6 +45,8 @@ Options:
                         Also switchable during a session with /motorways on|off.
   --max-30-pct <n>      Target max % of distance in zones of 30 km/h or less. Default ${DEFAULT_PREFERENCES.max30Pct}.
   --max-50-pct <n>      Target max % of distance in 31-50 km/h zones. Default ${DEFAULT_PREFERENCES.max50Pct}.
+  --max-fast-pct <n>    Max % of a leisure ride on fast expressways (100 km/h or more, not motorways); the code
+                        check sends a plan back above it. Default ${DEFAULT_MAX_FAST_PCT}; 100 turns the check off.
   --once                Print the itinerary and exit, without the refine prompt.
   --image <file>        Attach a photo of a map, a screenshot of a route or a list of places (PNG, JPEG, WebP, GIF,
                         5 MB max; repeatable). The planner reads the places on it and routes them.
@@ -53,7 +55,7 @@ At the "refine>" prompt, type a change in plain words, or a command:
 ${refineHelp()}
 
 Saved rides are managed with: npm run rides -- roadbooks | rides | show | rate | rate-leg | note | review | delete
-Env equivalents: RIDE_ALLOW_MOTORWAYS=1, RIDE_MAX_30_PCT, RIDE_MAX_50_PCT.
+Env equivalents: RIDE_ALLOW_MOTORWAYS=1, RIDE_MAX_30_PCT, RIDE_MAX_50_PCT, RIDE_MAX_FAST_PCT.
 Needs ANTHROPIC_API_KEY (see .env.example).`;
 
 function refineHelp(): string {
@@ -72,7 +74,8 @@ function refineHelp(): string {
   /note <text> [--rating 0-5] [--back N]  During the ride: note about the last N minutes (default 10), reviewed after the ride
   /image <file> [text]  Attach a map photo or route screenshot: the planner reads the places on it and routes them
   /motorways on|off     Permit or forbid motorways from now on (default off)
-  /settings             Show current settings: motorways, slow-zone targets, traffic
+  /fast <0-100>         Max % of a leisure ride on fast expressways (default 25; 100 turns the check off)
+  /settings             Show current settings: motorways, slow-zone targets, fast expressways, traffic
   /bike [range=250 ...] Show or set the bike profile (range, reserve, pause, stint, lunch) used for stops
   /usage                Model, tokens, time and estimated cost of this session so far
   /trace                Replay this session's steps so far (tool calls, scouts, answers)
@@ -92,6 +95,7 @@ const { values, positionals } = parseArgs({
     "allow-motorways": { type: "boolean" },
     "max-30-pct": { type: "string" },
     "max-50-pct": { type: "string" },
+    "max-fast-pct": { type: "string" },
     once: { type: "boolean" },
     image: { type: "string", multiple: true },
     help: { type: "boolean", short: "h" },
@@ -117,13 +121,14 @@ const motorwayDefault = () => Boolean(values["allow-motorways"] ?? !preferencesF
 /** One line stating the settings a session runs with, so nothing is implicit. */
 function describeSettings(
   home: string,
-  preferences: { avoidMotorways: boolean; max30Pct: number; max50Pct: number },
+  preferences: { avoidMotorways: boolean; max30Pct: number; max50Pct: number; maxFastPct?: number },
 ): string {
   return [
     `Start: ${home}`,
     `motorways: ${preferences.avoidMotorways ? "FORBIDDEN" : "PERMITTED"}`,
     `30 zones: aim <= ${preferences.max30Pct}%`,
     `50 zones: aim <= ${preferences.max50Pct}%`,
+    `fast expressway: <= ${preferences.maxFastPct ?? DEFAULT_MAX_FAST_PCT}%`,
     `traffic check: ${process.env.TOMTOM_API_KEY ? "on" : "off (no TOMTOM_API_KEY)"}`,
     `model: ${process.env.RIDE_MODEL || "claude-opus-5-5"}, effort ${process.env.RIDE_EFFORT || "high"}`,
   ].join("  |  ");
@@ -277,6 +282,7 @@ async function plan(
     ),
     max30Pct: percent("--max-30-pct", values["max-30-pct"], fromEnv.max30Pct),
     max50Pct: percent("--max-50-pct", values["max-50-pct"], fromEnv.max50Pct),
+    maxFastPct: percent("--max-fast-pct", values["max-fast-pct"], fromEnv.maxFastPct ?? DEFAULT_MAX_FAST_PCT),
   };
 
   if (baseRide) console.error(`Working on roadbook #${baseRide.id} "${baseRide.name}".`);
@@ -746,6 +752,20 @@ async function refineLoop(
             console.log(
               `Motorways ${preferences.avoidMotorways ? "forbidden" : "permitted"} from now on. Ask for the change you want, e.g. "route it with motorways".`,
             );
+            break;
+          }
+          case "fast": {
+            const preferences = session.context.preferences;
+            const pct = Number(args[0]);
+            if (!args[0] || !Number.isFinite(pct) || pct < 0 || pct > 100) {
+              console.log(
+                `Fast expressways: at most ${preferences.maxFastPct ?? DEFAULT_MAX_FAST_PCT}% of a leisure ride. Use /fast <0-100>; 100 turns the check off.`,
+              );
+              break;
+            }
+            preferences.maxFastPct = pct;
+            pendingNote = `[Setting changed by the rider: fast expressways (not motorways, 100 km/h or more) may now be at most ${pct}% of a leisure ride${pct >= 100 ? ", with no ceiling" : ""}.]`;
+            console.log(`Fast expressways: at most ${pct}% from now on.`);
             break;
           }
           case "settings":

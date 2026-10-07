@@ -10,6 +10,7 @@ import { ElicitRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { addRideNote } from "../src/feedback.ts";
 import { routeCells } from "../src/geometry.ts";
 import { DEFAULT_PREFERENCES } from "../src/preferences.ts";
+import { copyRoadbook } from "../src/library.ts";
 import { Store } from "../src/store.ts";
 import { bentLine, encodePolyline } from "./helpers/polyline.ts";
 
@@ -135,6 +136,30 @@ test("mcp: saved rides and rated roads are published as resources", async () => 
     assert.match((ride.contents[0] as { text: string }).text, /Straight north/);
     const rated = await client.readResource({ uri: "ride://roads/rated" });
     assert.equal((rated.contents[0] as { text: string }).text, "Nothing rated yet.");
+  } finally {
+    await client.close();
+  }
+});
+
+test("mcp: a large library is attached 20 roadbooks at a time; any one still opens by its number", async () => {
+  const db = library();
+  const store = new Store(db);
+  for (let i = 0; i < 22; i++) copyRoadbook(store, 1, `Copy ${i + 1}`);
+  store.close();
+  const client = await connect(db, false);
+  try {
+    const library = ((await client.readResource({ uri: "ride://library" })).contents[0] as { text: string }).text.split(
+      "\n",
+    );
+    assert.equal(library.filter((line) => line.startsWith("#")).length, 20);
+    assert.match(library[0]!, /^#23 {2}Copy 22 \(from #1\)/, "newest first");
+    assert.equal(library.at(-1), "Page 1 of 2 (23 roadbooks). Next: call listRoadbooks with page 2");
+    const offered = (await client.listResources()).resources.filter((r) => r.uri.startsWith("ride://ride/"));
+    assert.equal(offered.length, 20);
+    assert.match(
+      ((await client.readResource({ uri: "ride://ride/1" })).contents[0] as { text: string }).text,
+      /Straight north/,
+    );
   } finally {
     await client.close();
   }

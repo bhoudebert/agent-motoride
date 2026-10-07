@@ -70,8 +70,11 @@ and ask it to start one subagent per area in parallel (Claude Code's Agent
 tool), on the rider's plan. The subagents call this same server, so their
 routeIds are valid for the planner; `scoutAreas` called anyway returns the
 guidance and each area's brief (ADR 0021). Their road searches reach the road
-memory; their verdicts are not traced as scout reports. The terminal planner
-is untouched.
+memory, and so do their verdicts: the brief asks each subagent to call
+`reportScout` before answering, and the server traces that as a scout's report
+(`scout:<area>`, kind `answer`), with distance, open-road and 50-zone shares and
+the place taken from the routed loop it names (or the area's town when none),
+never from the text. The terminal planner is untouched.
 
 ### Replaying a session
 

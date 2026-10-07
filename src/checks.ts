@@ -87,12 +87,13 @@ export function checkItinerary(
   // A rider who permits motorways is on a practical trip, where they are fine.
   const fast = (trip.speedLimits as { fastExpressway?: { pct: number; longest: Array<{ road: string }> } } | undefined)
     ?.fastExpressway;
-  if (context.preferences.avoidMotorways && fast && fast.pct >= FAST_EXPRESSWAY_MAX_PCT) {
+  const ceiling = context.preferences.maxFastPct ?? FAST_EXPRESSWAY_MAX_PCT;
+  if (context.preferences.avoidMotorways && fast && ceiling < 100 && fast.pct >= ceiling) {
     violations.push(
       `fast expressway: ${fast.pct}% of the ride on roads limited to 100 km/h or more that are not motorways (${fast.longest
         .slice(0, 2)
         .map((r) => r.road)
-        .join(", ")}); route around them for a leisure ride, or say why not`,
+        .join(", ")}), over the rider's ${ceiling}% ceiling; route around them for a leisure ride, or say why not`,
     );
   }
   // Slow-zone shares are targets, not limits: a loop over one stands, without a retry, but the rider is told.

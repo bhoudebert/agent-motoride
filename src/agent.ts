@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { checkItinerary, correctionMessage, parseLimits, type RequestLimits } from "./checks.ts";
 import type { RideImage } from "./images.ts";
 import { EFFORT, isLegacyThinking, MODEL, requestSettings } from "./model.ts";
-import { DEFAULT_PREFERENCES, type RidePreferences } from "./preferences.ts";
+import { DEFAULT_MAX_FAST_PCT, DEFAULT_PREFERENCES, type RidePreferences } from "./preferences.ts";
 import { RideAnswer } from "./schema.ts";
 import type { RegisteredRoute, RideContext, TraceEvent } from "./session.ts";
 import type { SavedRide, Store } from "./store.ts";
@@ -147,7 +147,13 @@ export function describePreferences(p: RidePreferences): string {
     "- Goal: as much riding as possible on open road outside towns and villages.",
     `- Zones limited to 30 km/h or less: minimise, aim for at most ${p.max30Pct}% of the distance.`,
     `- Zones limited to 31-50 km/h: fine to get through a town, minimise overall, aim for at most ${p.max50Pct}% of the distance.`,
-  ].join("\n");
+    // Said only when the rider changed it: the default is enforced by the code check alone.
+    p.maxFastPct !== undefined && p.maxFastPct !== DEFAULT_MAX_FAST_PCT && p.avoidMotorways
+      ? `- Fast expressways (not motorways, 100 km/h or more): at most ${p.maxFastPct}% of the distance${p.maxFastPct >= 100 ? " (no ceiling)" : ""}.`
+      : null,
+  ]
+    .filter((line) => line !== null)
+    .join("\n");
 }
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];

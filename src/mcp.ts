@@ -265,6 +265,14 @@ server.registerTool(
       allowMotorways: z.boolean().optional(),
       max30Pct: z.number().min(0).max(100).optional(),
       max50Pct: z.number().min(0).max(100).optional(),
+      maxFastPct: z
+        .number()
+        .min(0)
+        .max(100)
+        .optional()
+        .describe(
+          "Max % of a leisure ride on fast expressways (100 km/h or more, not motorways); 100 turns the check off",
+        ),
       allowRepeat: z.boolean().optional().describe("Accept rides that repeat saved ones"),
       tankRangeKm: z.number().positive().optional().describe("Bike profile: realistic range on a full tank"),
       reserveKm: z.number().positive().optional().describe("Bike profile: fuel this many km before the range runs out"),
@@ -282,6 +290,7 @@ server.registerTool(
     if (args.allowMotorways !== undefined) context.preferences.avoidMotorways = !args.allowMotorways;
     if (args.max30Pct !== undefined) context.preferences.max30Pct = args.max30Pct;
     if (args.max50Pct !== undefined) context.preferences.max50Pct = args.max50Pct;
+    if (args.maxFastPct !== undefined) context.preferences.maxFastPct = args.maxFastPct;
     if (args.allowRepeat !== undefined) context.allowRepeat = args.allowRepeat;
     return text(settingsText());
   },

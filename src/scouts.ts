@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { requestSettings, SCOUT_EFFORT, SCOUT_MODEL } from "./model.ts";
+import { DEFAULT_MAX_FAST_PCT } from "./preferences.ts";
 import { ScoutReport } from "./schema.ts";
 import type { RideContext } from "./session.ts";
 import { type Point, resolvePoint } from "./tools/geo.ts";
@@ -58,6 +59,12 @@ export function scoutBrief(
     input.maxRidingMinutes ? `Hard limit: riding time at most ${input.maxRidingMinutes} minutes.` : "",
     `Rider's constraints and preferences: ${input.constraints}`,
     `Motorways: ${context.preferences.avoidMotorways ? "never" : "permitted to reach the area"}. Targets: at most ${context.preferences.max30Pct}% of distance in zones of 30 km/h or less, at most ${context.preferences.max50Pct}% in 31-50 zones, as much open road as possible.`,
+    // Only when the rider changed it, so a scout's brief stays as recorded otherwise.
+    context.preferences.avoidMotorways &&
+    context.preferences.maxFastPct !== undefined &&
+    context.preferences.maxFastPct !== DEFAULT_MAX_FAST_PCT
+      ? `Fast expressways (not motorways, 100 km/h or more): at most ${context.preferences.maxFastPct}% of the distance.`
+      : "",
   ]
     .filter(Boolean)
     .join("\n");

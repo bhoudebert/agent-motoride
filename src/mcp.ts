@@ -48,7 +48,7 @@ import { describeProfile } from "./profile.ts";
 import type { RideContext } from "./session.ts";
 import { formatStopPlan } from "./stops.ts";
 import { Store } from "./store.ts";
-import { setGeoAnchor, usePersistentGeoCache } from "./tools/geo.ts";
+import { resolvePoint, setGeoAnchor, usePersistentGeoCache } from "./tools/geo.ts";
 import { createToolDefinitions } from "./tools/index.ts";
 import { computeTrip } from "./tools/trip.ts";
 import { emptyUsage, estimateCostUsd } from "./usage.ts";
@@ -151,7 +151,7 @@ const CLIENT_SCOUTS = `API scouts are off here (${scoutsOff}), so scoutAreas can
 
 Scout brief:
 ${SCOUT_SYSTEM}
-Use only the agentMotoride tools (recallArea, searchRoads, calculateTrip, getWeather), never shell commands, scripts or web search. End with a short report: area, found (yes or no), routeId, distance, riding time, open-road and 50-zone shares, weather, verdict in one sentence.`;
+Use only the agentMotoride tools (recallArea, searchRoads, calculateTrip, getWeather, reportScout), never shell commands, scripts or web search. Before answering, call reportScout once with your area, its central town, whether you found a loop, the routeId of your best loop if you routed one, and your verdict in one sentence: later sessions remember it. Then end with a short report: area, found (yes or no), routeId, distance, riding time, open-road and 50-zone shares, weather, verdict in one sentence.`;
 
 /** scoutAreas without API scouts: the way to scout with subagents, and each area's brief ready to hand over. */
 async function clientScouting(input: ScoutInput): Promise<string> {
@@ -225,6 +225,8 @@ const HINTS: Record<string, ToolAnnotations> = {
   restoreRoadbook: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   copyRoadbook: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   keepRideVersion: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  // Adds a remembered verdict; may resolve the area's town through a public geocoder.
+  reportScout: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
   planningGuide: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
 };
 const hintsOf = (name: string): ToolAnnotations => {
@@ -284,6 +286,59 @@ server.registerTool(
     if (args.max50Pct !== undefined) context.preferences.max50Pct = args.max50Pct;
     if (args.allowRepeat !== undefined) context.allowRepeat = args.allowRepeat;
     return text(settingsText());
+  },
+);
+
+// Client subagents scout without the API scouts' session, so their verdict is
+// handed in here and traced like an API scout's report: the road memory learns it.
+server.registerTool(
+  "reportScout",
+  {
+    description:
+      "For a scout subagent, once, before it answers: its verdict on its area, remembered for later sessions (recallArea lists it with its age). Give the routeId of the best loop it routed, if any: distance, open-road and 50-zone shares and the place of the verdict are taken from that loop, not from your text. Without a loop, the area's central town places it.",
+    annotations: hintsOf("reportScout"),
+    inputSchema: z.object({
+      area: z.string().describe("Name of the area scouted, e.g. Condroz"),
+      location: z.string().describe("Central town of the area, e.g. Ciney"),
+      found: z.boolean().describe("Whether a loop meeting the rider's hard limits was found"),
+      routeId: z.string().optional().describe("routeId of the best loop routed with calculateTrip, if any"),
+      verdict: z.string().describe("One sentence: what the area offers, or why not"),
+    }),
+  },
+  async (args) => {
+    if (!context.home.label) throw new Error("No start point yet: call rideSettings with the rider's home first.");
+    const route = args.routeId ? context.routes.get(args.routeId) : undefined;
+    if (args.routeId && !route) {
+      throw new Error(`Unknown routeId ${args.routeId}; it must come from calculateTrip in this session.`);
+    }
+    let waypoints: string[];
+    let figures: { distanceKm?: number; openRoadPct?: number | null; pct50?: number | null } = {};
+    if (route) {
+      const { legs, totalDistanceKm, speedLimits } = route.trip.result;
+      const shares = speedLimits as { openRoadPct?: number; limit31to50?: { pct: number } } | undefined;
+      waypoints = [...legs.map((leg) => leg.fromCoords), legs.at(-1)!.toCoords];
+      figures = {
+        distanceKm: totalDistanceKm,
+        openRoadPct: shares?.openRoadPct ?? null,
+        pct50: shares?.limit31to50?.pct ?? null,
+      };
+    } else {
+      const place = await resolvePoint(args.location);
+      waypoints = [`${place.lat},${place.lon}`];
+    }
+    const verdict = args.verdict.trim().slice(0, 300);
+    context.trace({
+      scope: `scout:${args.area}`,
+      kind: "answer",
+      name: "report",
+      payload: { area: args.area, found: args.found, routeId: args.routeId ?? null, waypoints, ...figures, verdict },
+    });
+    usage.toolCalls++;
+    syncRun();
+    const shown = route
+      ? `, ${figures.distanceKm} km, ${figures.openRoadPct ?? "?"}% open road, ${figures.pct50 ?? "?"}% in 50 zones`
+      : "";
+    return text(`Remembered: ${args.area}, ${args.found ? "a loop found" : "nothing good found"}${shown}. ${verdict}`);
   },
 );
 

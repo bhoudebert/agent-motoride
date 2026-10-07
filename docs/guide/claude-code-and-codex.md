@@ -91,7 +91,7 @@ changing `.env`.
   per note; saving a ride that repeats one you have asks "save a copy anyway?".
   Other clients ask in the chat.
 - **Attach a ride** with `@`: `@ride:ride://library`, `@ride:ride://ride/7`,
-  `@ride:ride://roads/rated`.
+  `@ride:ride://roads/rated`. The library attachment carries the 20 newest roadbooks; ask for "more" to page through the rest.
 
 Every tool, prompt and resource, with its inputs: see the
 [reference](/reference), generated from the server itself.

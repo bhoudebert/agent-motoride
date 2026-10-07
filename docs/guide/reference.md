@@ -482,11 +482,11 @@ Slash commands in Claude Code (`/mcp__ride__<name>`); plain words do the same in
 
 ### Resources
 
-| Resource             | About                                                                       |
-| -------------------- | --------------------------------------------------------------------------- |
-| `ride://library`     | The rider's library, one line per ride                                      |
-| `ride://roads/rated` | Rides, legs and road stretches the rider rated: 0-1 avoided, 4-5 sought out |
-| `ride://ride/{id}`   | Everything stored about one saved ride                                      |
+| Resource             | About                                                                          |
+| -------------------- | ------------------------------------------------------------------------------ |
+| `ride://library`     | The rider's newest roadbooks, 20 at most; listRoadbooks pages through the rest |
+| `ride://roads/rated` | Rides, legs and road stretches the rider rated: 0-1 avoided, 4-5 sought out    |
+| `ride://ride/{id}`   | Everything stored about one roadbook and its rides                             |
 
 ## Settings (`.env`)
 

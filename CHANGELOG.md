@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.7.0](https://github.com/bhoudebert/agent-motoride/compare/v1.6.0...v1.7.0) (2026-10-07)
+
+
+### Features
+
+* **mcp:** client subagents report their verdict with reportScout, remembered like a scout's ([#68](https://github.com/bhoudebert/agent-motoride/issues/68)) ([4420e3c](https://github.com/bhoudebert/agent-motoride/commit/4420e3c7d022768483dc15395b2b528528e04e77))
+* **planner:** the fast-expressway ceiling as a setting, 25% by default ([#69](https://github.com/bhoudebert/agent-motoride/issues/69)) ([4fec6ec](https://github.com/bhoudebert/agent-motoride/commit/4fec6eca5088a51279f4f2ec6aea0b0785810c57))
+
+
+### Bug Fixes
+
+* **mcp:** name the shared tools' hints annotations, as MCP does, so a source scan finds them ([#66](https://github.com/bhoudebert/agent-motoride/issues/66)) ([283d602](https://github.com/bhoudebert/agent-motoride/commit/283d6026e6cdd4291e998c82b2e12cb17235c56b))
+
 ## [1.6.0](https://github.com/bhoudebert/agent-motoride/compare/v1.5.0...v1.6.0) (2026-10-07)
 
 

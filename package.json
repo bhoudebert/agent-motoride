@@ -1,6 +1,6 @@
 {
   "name": "agent-motoride",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "Agentic motorcycle road-trip planner: Claude + weather/roads/routing/traffic tools",
   "type": "module",
   "private": true,

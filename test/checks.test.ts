@@ -24,7 +24,7 @@ test("limits: caps read from the rider's words, wishes ignored", () => {
   }
 });
 
-function setup(options: { avoidMotorways?: boolean } = {}) {
+function setup(options: { avoidMotorways?: boolean; maxFastPct?: number } = {}) {
   const store = new Store(":memory:");
   const shapes = [encodePolyline(bentLine({ lat: 50.4, lon: 3 }, { lat: 50.6, lon: 3.3 }, 80, 0.02))];
   const route = {
@@ -38,7 +38,11 @@ function setup(options: { avoidMotorways?: boolean } = {}) {
   } as unknown as RegisteredRoute;
   const context = {
     store,
-    preferences: { ...DEFAULT_PREFERENCES, avoidMotorways: options.avoidMotorways ?? true },
+    preferences: {
+      ...DEFAULT_PREFERENCES,
+      avoidMotorways: options.avoidMotorways ?? true,
+      ...(options.maxFastPct === undefined ? {} : { maxFastPct: options.maxFastPct }),
+    },
     allowRepeat: false,
     lineage: new Set<number>(),
   } as unknown as RideContext;
@@ -140,10 +144,17 @@ test("checks: a leisure ride mostly on fast expressways goes back; a practical t
   const limits = { maxDistanceKm: null, maxRidingMinutes: null };
   const leisure = checkItinerary(setup().context, fast, "Loop, 214 km.", limits);
   assert.deepEqual(leisure.violations, [
-    "fast expressway: 42% of the ride on roads limited to 100 km/h or more that are not motorways (N 41, N 17); route around them for a leisure ride, or say why not",
+    "fast expressway: 42% of the ride on roads limited to 100 km/h or more that are not motorways (N 41, N 17), over the rider's 25% ceiling; route around them for a leisure ride, or say why not",
   ]);
   const practical = checkItinerary(setup({ avoidMotorways: false }).context, fast, "Trip, 214 km.", limits);
   assert.deepEqual(practical.violations, []);
+  // The ceiling is the rider's: 50% lets this ride through, 40% does not, 100 turns the check off.
+  assert.deepEqual(checkItinerary(setup({ maxFastPct: 50 }).context, fast, "Loop, 214 km.", limits).violations, []);
+  assert.match(
+    checkItinerary(setup({ maxFastPct: 40 }).context, fast, "Loop, 214 km.", limits).violations[0]!,
+    /over the rider's 40% ceiling/,
+  );
+  assert.deepEqual(checkItinerary(setup({ maxFastPct: 100 }).context, fast, "Loop, 214 km.", limits).violations, []);
 });
 
 test("checks: over a slow-zone target is a note to say, not a failure", () => {

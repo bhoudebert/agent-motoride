@@ -114,11 +114,10 @@ with a navigation app (Liberty Rider, Google Maps) on the phone.
 
 ## Open questions
 
-- **How strict on fast expressways.** Today a leisure ride is sent back at 25%
-  of roads that are not motorways but are limited to 100 km/h or more. To
-  discuss: a setting like the slow-zone targets (`RIDE_MAX_FAST_EXPRESSWAY_PCT`),
-  whether 100 or 110 is the right threshold per country, and whether "no
-  motorways" should steer the router harder off them than its half weight.
+- **How strict on fast expressways.** The ceiling is now a setting (25% by
+  default: `--max-fast-pct`, `RIDE_MAX_FAST_PCT`, `/fast`, `maxFastPct`). Still
+  open: whether 100 or 110 km/h is the right threshold per country, and whether
+  "no motorways" should steer the router harder off them than its half weight.
 
 ## Smaller items
 

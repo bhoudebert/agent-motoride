@@ -100,7 +100,32 @@ go to the planner as a change.
 
 ### Requirement: Library management
 
-The CLI SHALL list, show (plain or Markdown), rate, rate a leg, export, refresh, delete rides and clear the cache without a model call.
+The CLI SHALL list, show (plain or Markdown), rate, rate a leg, export, refresh, delete, cancel, tidy and clear the cache without a model call.
+
+### Requirement: Deleting and cancelling
+
+The rider SHALL be able, in the terminal and over MCP, to delete a roadbook,
+to cancel a planned ride (kept, shown as cancelled) and to delete a ride, a
+ride being named by its roadbook and its day. Before a delete, the rider SHALL
+be told what goes with it (the roadbook's rides and notes) and that road
+ratings stay, since they are about the roads; the delete SHALL happen only
+once the rider confirms: a yes/no question in the terminal (`--yes` to skip
+it; refused without a terminal and without `--yes`), a dialog in MCP clients
+that have one, else a second call with `confirm` after the rider said yes in
+the chat. MCP delete tools SHALL be marked destructive.
+
+#### Scenario: Delete a roadbook in Claude Code
+
+- **WHEN** the rider says "delete roadbook 7"
+- **THEN** a dialog names roadbook 7, its 3 rides and 2 notes, and nothing is deleted unless the rider confirms
+
+### Requirement: Tidy
+
+`rides tidy` SHALL remove expired lookups from the cache, fold the journal
+into the library file and compact it, report the size before and after, and
+list the other files in the data folder (migration backups, old libraries)
+with their sizes, without deleting them. Traces SHALL be kept. The MCP server,
+like the terminal app, SHALL remove expired lookups when it starts.
 
 ### Requirement: Ride-day briefing
 

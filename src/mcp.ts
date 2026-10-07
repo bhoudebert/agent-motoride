@@ -20,7 +20,8 @@ import {
   reviewRide,
   rideToReview,
 } from "./feedback.ts";
-import { duplicateForm, type ElicitForm, reviewDecisions, reviewForm } from "./elicit.ts";
+import { deleteForm, duplicateForm, type ElicitForm, reviewDecisions, reviewForm } from "./elicit.ts";
+import { deleteRideQuestion, deleteRoadbookQuestion, rideOnDay, roadbookOf } from "./housekeeping.ts";
 import { exportSavedRide, writeGpx } from "./gpx.ts";
 import { rideMapPng } from "./rideMap.ts";
 import { parseRideDay, planRideFrom } from "./planRide.ts";
@@ -50,6 +51,8 @@ import { computeTrip } from "./tools/trip.ts";
 import { emptyUsage, estimateCostUsd } from "./usage.ts";
 
 const store = new Store();
+// Lookups past their time are never read again; the terminal app drops them at start too.
+store.cachePurgeExpired();
 // Place names for coordinates never change: keep them across sessions.
 usePersistentGeoCache({
   get: (key) => store.cacheGet<string>(key),
@@ -157,7 +160,7 @@ async function clientScouting(input: ScoutInput): Promise<string> {
 // Server instructions reach the client's system prompt at connection time, so
 // the method applies even when the rider types in plain words instead of using
 // the plan-ride command. Kept to the essentials; the command carries the rest.
-const INSTRUCTIONS = `agentMotoride plans one-day motorcycle rides and keeps the rider's library of saved rides. Anything the rider says about rides, trips, loops, routes, the library, stops, cameras, weather for a ride, or a ride-day briefing is a request for this server's tools: showRide, showRideMap, listRoadbooks, listRides, rideBriefing, refreshRide, rateRide, exportGpx, exportMarkdown, planningGuide and the planning tools. Never run shell commands, scripts or web searches for these, and never look for a "ride" program: "ride show 7" or "/ride plan ..." typed by the rider means "use the ride tools" (here: showRide for ride 7). A roadbook is a saved loop or trip, with a number ("roadbook 7"; riders may also say "ride 7" for it); a ride is a roadbook on one day, named by its date ("Saturday's ride"): listRoadbooks lists the first, listRides the second, 20 per page. "Plan a ride from roadbook 7 on Saturday at 9", or "plan a ride on Saturday" once a roadbook is the one being discussed, is planRide: it adds a ride to that roadbook, never a copy; replan or edit the route only when the rider asks for a change. Plain words are enough, slash commands are only shortcuts: before planning any new ride asked in plain words, in any client, call planningGuide with the rider's request and follow it, with ride set when it changes a saved ride (the plan-ride and edit-ride commands already carry that guidance).
+const INSTRUCTIONS = `agentMotoride plans one-day motorcycle rides and keeps the rider's library of saved rides. Anything the rider says about rides, trips, loops, routes, the library, stops, cameras, weather for a ride, or a ride-day briefing is a request for this server's tools: showRide, showRideMap, listRoadbooks, listRides, rideBriefing, refreshRide, rateRide, exportGpx, exportMarkdown, planningGuide and the planning tools. Never run shell commands, scripts or web searches for these, and never look for a "ride" program: "ride show 7" or "/ride plan ..." typed by the rider means "use the ride tools" (here: showRide for ride 7). A roadbook is a saved loop or trip, with a number ("roadbook 7"; riders may also say "ride 7" for it); a ride is a roadbook on one day, named by its date ("Saturday's ride"): listRoadbooks lists the first, listRides the second, 20 per page. "Plan a ride from roadbook 7 on Saturday at 9", or "plan a ride on Saturday" once a roadbook is the one being discussed, is planRide: it adds a ride to that roadbook, never a copy; replan or edit the route only when the rider asks for a change. "Not riding Saturday" is cancelRide; deleteRoadbook and deleteRide only when the rider asks to delete, and they ask the rider first. Plain words are enough, slash commands are only shortcuts: before planning any new ride asked in plain words, in any client, call planningGuide with the rider's request and follow it, with ride set when it changes a saved ride (the plan-ride and edit-ride commands already carry that guidance).
 For a new leisure ride: call listSavedRides and recallArea around the start (what earlier sessions learnt: scouted areas and their verdicts, known winding roads), then ${scoutsOff ? "scout 2-4 areas with parallel subagents as planningGuide explains (API scouts are off here, scoutAreas cannot run)" : "scoutAreas with 2-4 areas"}, skipping areas recently found poor${scoutsOff ? "" : " (or searchRoads and calculateTrip yourself if scouts are unavailable)"}, pick the best candidate, then finish it: getDaylight, getWeather along the loop for the riding hours, getSpeedCameras, checkConditions (crosswind, low sun) with the date and departure, planStops with the date and departure, getTraffic for the departure. Before presenting it, call checkItinerary with its routeId, the rider's request and your text, and fix what it reports once (or say plainly which limit cannot be met). Present the itinerary in plain text (never JSON) with legs named by towns, the figures from the tools, the stops with times, the navigation links from planStops (and its overviewLink as "Whole ride (overview, not for navigation)" when there are several parts), and end with one line "Route: <routeId>". Save only when the rider asks, with saveRide. During a ride, a remark about the road ("last 10 min awesome", "cobbles, never again") is a note: call addRideNote at once with the rider's words, and a rating 0-5 only when they gave one. After the ride, reviewRide places the notes on the recorded track (gpxPath) or on the plan, shows detours and pace, and proposes ratings; apply them with reviewRide and decisions only once the rider confirms. If the rider has a route file (GPX or KML, from another app, a club or a friend), call importRoute with its path: it returns a routeId to present, finish and save like a planned ride. If the rider shares an image (photo of a paper map, route screenshot, list of places), read the places on it in order and route them with calculateTrip by name, then finish the ride as usual. For an edit or a question about a saved ride, work from its data (showRide) without replanning. For a practical trip (commute), route point to point, motorways if permitted, with traffic.`;
 
 const server = new McpServer({ name: "agentMotoride", version: "0.1.0" }, { instructions: INSTRUCTIONS });
@@ -208,6 +211,10 @@ const HINTS: Record<string, ToolAnnotations> = {
   listRoadbooks: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   // Adds or updates a ride; the same call again changes nothing more. Reads forecasts and map data.
   planRide: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  cancelRide: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  // Deletes, once the rider confirmed; the same call again finds nothing more to delete.
+  deleteRoadbook: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+  deleteRide: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
   planningGuide: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
 };
 const hintsOf = (name: string): ToolAnnotations => {
@@ -458,6 +465,91 @@ server.registerTool(
     const date = parseRideDay(args.date);
     if (!date) throw new Error(`"${args.date}" is not a day: give YYYY-MM-DD, or today, tomorrow, saturday, 17/10.`);
     return text(await planRideFrom(store, args.roadbook, date, args.departure ?? null));
+  },
+);
+
+/**
+ * Delete only once the rider said yes: in the client's dialog when it has one,
+ * else in the chat, the model calling again with confirm.
+ */
+async function confirmedDelete(question: string, confirm: boolean | undefined, tool: string, act: () => string) {
+  if (canElicit()) {
+    const answer = await ask(deleteForm(question));
+    return text(answer?.delete === true ? act() : "Not deleted: the rider said no.");
+  }
+  if (confirm !== true) {
+    return text(
+      `${question}\nNothing deleted yet. Ask the rider this question; call ${tool} again with confirm true only if they say yes.`,
+    );
+  }
+  return text(act());
+}
+
+const confirmInput = z
+  .boolean()
+  .optional()
+  .describe("Only after the rider said yes to the question a first call returned, in clients without dialogs");
+
+server.registerTool(
+  "deleteRoadbook",
+  {
+    description:
+      "Delete a saved roadbook with its rides and notes, after the rider confirms (a dialog, or a question in the chat). Road ratings stay: they are about the roads. Only when the rider asks to delete it.",
+    annotations: hintsOf("deleteRoadbook"),
+    inputSchema: z.object({ roadbook: z.string().describe("Roadbook number or name"), confirm: confirmInput }),
+  },
+  async (args) => {
+    const saved = roadbookOf(store, args.roadbook);
+    return confirmedDelete(deleteRoadbookQuestion(store, saved), args.confirm, "deleteRoadbook", () => {
+      store.deleteRide(saved.id);
+      // This session's run no longer points to it.
+      if (lastSavedId === saved.id) {
+        lastSavedId = null;
+        syncRun();
+      }
+      return `Deleted roadbook #${saved.id} "${saved.name}".`;
+    });
+  },
+);
+
+server.registerTool(
+  "deleteRide",
+  {
+    description:
+      "Delete one ride (a roadbook on a day), after the rider confirms. The roadbook and the ride's notes stay. To keep the ride but mark it called off, use cancelRide instead.",
+    annotations: hintsOf("deleteRide"),
+    inputSchema: z.object({
+      roadbook: z.string().describe("Roadbook number or name"),
+      date: z.string().describe("Day of the ride: YYYY-MM-DD, 10/10, today, or a weekday"),
+      confirm: confirmInput,
+    }),
+  },
+  async (args) => {
+    const found = rideOnDay(store, args.roadbook, args.date);
+    return confirmedDelete(deleteRideQuestion(found), args.confirm, "deleteRide", () => {
+      store.deleteRideDay(found.ride.id);
+      return `Deleted the ride of ${found.date} from roadbook #${found.saved.id}.`;
+    });
+  },
+);
+
+server.registerTool(
+  "cancelRide",
+  {
+    description:
+      'Cancel a planned ride (a roadbook on a day): it stays in the list, shown as cancelled. For "I\'m not riding Saturday".',
+    annotations: hintsOf("cancelRide"),
+    inputSchema: z.object({
+      roadbook: z.string().describe("Roadbook number or name"),
+      date: z.string().describe("Day of the ride: YYYY-MM-DD, 10/10, today, or a weekday"),
+    }),
+  },
+  async (args) => {
+    const found = rideOnDay(store, args.roadbook, args.date);
+    store.cancelRide(found.ride.id);
+    return text(
+      `Cancelled the ride of ${found.date} from roadbook #${found.saved.id} "${found.saved.name}"; it stays in the list.`,
+    );
   },
 );
 

@@ -374,6 +374,14 @@ versioning, written with `IF NOT EXISTS` so older libraries pass through it.
 A released step is never edited: changes go in a new step, with a test that
 builds a library at the previous version and migrates it.
 
+Size: a few MB for a rider's first weeks, most of it the lookup cache, whose
+entries expire (roads 30 days, weather an hour) and are dropped when the
+terminal app or the MCP server starts; traces grow by tens of KB per session
+and are kept, since the road memory learns from them. `rides tidy` drops
+expired lookups, folds the journal into the file and compacts it with
+`VACUUM`; it lists backups and old libraries next to it without deleting
+them. SQLite itself is far from any limit at this scale.
+
 Step 2 splits saved rides into roadbooks and rides (ADR 0023). `roadbooks`
 holds the design with the same ids as before (waypoints, route line, figures,
 cameras and stop candidates in `route_extras`, ratings), `legs` its legs, and
@@ -413,6 +421,8 @@ clear-cache` empties it.
 | `saveRide`                                                                   | Save an itinerary to the library, from a route id of this session                                                                                                             |
 | `exportGpx`                                                                  | GPX file from a route id or a roadbook                                                                                                                                        |
 | `showRide`                                                                   | Full view of one roadbook, as in the CLI: road mix, daylight, cameras, stops, legs, itinerary                                                                                 |
+| `cancelRide`                                                                 | A planned ride kept, marked cancelled                                                                                                                                         |
+| `deleteRide`, `deleteRoadbook`                                               | Destructive, after the rider confirms (dialog, else a second call with `confirm`); road ratings stay                                                                          |
 | `planRide`                                                                   | A ride from a roadbook on a day: added or updated, day data gathered, briefing and links; no copy                                                                             |
 | `rideBriefing`                                                               | Ride-day briefing: weather now, daylight, traffic, stops checked against opening hours, go or no-go                                                                           |
 | `planningGuide`                                                              | The planning guidance as text, fetched before any new ride asked in plain words, in every client (the plan-ride prompt carries the same text)                                 |
@@ -534,6 +544,7 @@ src/
   conditions.ts     Crosswind and low-sun checks along a route, solar position
   briefing.ts       Ride-day briefing
   planRide.ts       A ride from a roadbook on a day: the sentence, the day and time, no model call
+  housekeeping.ts   Questions before a delete, a ride by roadbook and day, tidy and the files next to the library
   check.ts          Environment check (npm run check)
   preferences.ts    Rider preferences and their defaults
   usage.ts          Per-session token and time accounting, cost estimate

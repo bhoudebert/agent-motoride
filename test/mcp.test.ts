@@ -184,6 +184,27 @@ test("mcp: saving a repeat of an earlier ride asks the rider; yes keeps a copy, 
   }
 });
 
+test("mcp: a delete is asked in a dialog; no keeps everything, yes deletes, road ratings stay", async () => {
+  const db = library();
+  const client = await connect(db, true);
+  const answers = [false, true];
+  const asked: string[] = [];
+  client.setRequestHandler(ElicitRequestSchema, async (request) => {
+    asked.push((request.params as { message: string }).message);
+    return { action: "accept", content: { delete: answers.shift() } };
+  });
+  try {
+    const remove = async () => textOf(await client.callTool({ name: "deleteRoadbook", arguments: { roadbook: "1" } }));
+    assert.equal(await remove(), "Not deleted: the rider said no.");
+    assert.match(asked[0]!, /^Delete roadbook #1 "Straight north", its 1 ride and 1 note\?/);
+    assert.match(await remove(), /^Deleted roadbook #1 "Straight north"\.$/);
+    const list = textOf(await client.callTool({ name: "listRoadbooks", arguments: {} }));
+    assert.doesNotMatch(list, /#1 /);
+  } finally {
+    await client.close();
+  }
+});
+
 test("mcp: plain words get the full guidance, in any client", async () => {
   const client = await connect(library(), false);
   try {
@@ -337,6 +358,18 @@ test("mcp: every tool answers when called by name through a client", async () =>
       /^Ride planned from roadbook #1 .* leaving at 09:30\. The roadbook is unchanged\./,
     );
     assert.match(await call("listRoadbooks", {}), /^#2 [\s\S]*#1 .*2 rides/m, "a ride added, no copy");
+    assert.match(
+      await call("cancelRide", { roadbook: "1", date: "tomorrow" }),
+      /^Cancelled the ride of .* stays in the list/,
+    );
+    assert.match(
+      await call("deleteRide", { roadbook: "1", date: "tomorrow" }),
+      /^Delete the ride of .* \(cancelled\) from roadbook #1 .*\nNothing deleted yet\. Ask the rider/,
+      "without a dialog: the question first, nothing deleted",
+    );
+    assert.match(await call("deleteRide", { roadbook: "1", date: "tomorrow", confirm: true }), /^Deleted the ride of /);
+    assert.match(await call("deleteRoadbook", { roadbook: "2" }), /^Delete roadbook #2 .*\?[\s\S]*Nothing deleted yet/);
+    assert.match(await call("deleteRoadbook", { roadbook: "2", confirm: true }), /^Deleted roadbook #2 /);
     await call("planningGuide", { request: "plan me a ride" });
 
     // A new tool must come with its line above.

@@ -76,6 +76,11 @@ with a navigation app (Liberty Rider, Google Maps) on the phone.
 
 ## Done lately
 
+- **Delete, cancel, tidy**: deleting a roadbook or a ride asks first and says
+  what goes (road ratings stay); a planned ride can be cancelled and kept;
+  `rides tidy` drops expired lookups and compacts the library, listing
+  backups without deleting them; the MCP server drops expired lookups at
+  start.
 - **Roadbooks and rides** (ADR 0022, 0023): versioned library migrations with
   a backup first; saved rides stored as roadbooks (the design) and rides (a
   roadbook on a day); both listed 20 per page in the terminal and over MCP.

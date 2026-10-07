@@ -40,6 +40,7 @@ import { otlpEndpoint, otlpHeaders, runToOtlp, sendOtlp } from "./otel.ts";
 import { preferencesFromEnv } from "./preferences.ts";
 import { importRoute, readRouteFile } from "./routeImport.ts";
 import { type RideContext, registerRoute } from "./session.ts";
+import { deleteRideQuestion, deleteRoadbookQuestion, rideOnDay, roadbookOf, tidyLibrary } from "./housekeeping.ts";
 import { parsePlanRide, planRideFrom } from "./planRide.ts";
 import { formatTrace } from "./trace.ts";
 import { emptyUsage } from "./usage.ts";
@@ -75,7 +76,10 @@ const USAGE = `Usage: npm run rides -- <command>
   import <file.gpx|file.kml> [name] [--force]
                                         Save a route someone shared: routed like a planned ride (figures, stops, cameras),
                                         with waypoints added until it follows the file; --force saves a duplicate anyway
-  delete <id|name>                      Remove a ride and its legs
+  delete roadbook <id|name> [--yes]     Delete a roadbook with its rides and notes, after you confirm (road ratings stay)
+  delete ride <roadbook> <day> [--yes]  Delete one ride of a roadbook, e.g. delete ride 7 2026-10-10, after you confirm
+  cancel <roadbook> <day>               Cancel a planned ride: kept, shown as cancelled
+  tidy                                  Drop expired lookups and compact the library; lists backups and old files, deletes none
   clear-cache                           Drop cached road, route and weather lookups
 
 Ratings steer later planning: legs, rides and road stretches rated 4-5 are
@@ -89,6 +93,18 @@ function ride(idOrName: string | undefined) {
   const found = store.findRide(idOrName);
   if (!found) throw new Error(`No saved ride matches "${idOrName}". Run: npm run rides -- roadbooks`);
   return found;
+}
+
+/** Ask before deleting; --yes answers for scripts. Without a terminal and without --yes, nothing is deleted. */
+async function confirm(question: string, yes: boolean): Promise<boolean> {
+  if (yes) return true;
+  if (!process.stdin.isTTY) throw new Error(`${question}\nNot deleted: add --yes to confirm without a terminal.`);
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  const answer = await rl.question(`${question} [y/N] `);
+  rl.close();
+  if (/^y(es)?$/i.test(answer.trim())) return true;
+  console.log("Not deleted.");
+  return false;
 }
 
 /** --page N, or 1. */
@@ -474,11 +490,33 @@ try {
       break;
     }
     case "delete": {
-      const target = ride(args[0]);
+      const yes = args.includes("--yes");
+      const words = args.filter((a) => a !== "--yes");
+      if (words[0] === "ride") {
+        const found = rideOnDay(store, words[1] ?? "", words.slice(2).join(" "));
+        if (!(await confirm(deleteRideQuestion(found), yes))) break;
+        store.deleteRideDay(found.ride.id);
+        console.log(`Deleted the ride of ${found.date} from roadbook #${found.saved.id}.`);
+        break;
+      }
+      // "delete roadbook 7", or "delete 7" as before.
+      const target = roadbookOf(store, (words[0] === "roadbook" ? words.slice(1) : words).join(" "));
+      if (!(await confirm(deleteRoadbookQuestion(store, target), yes))) break;
       store.deleteRide(target.id);
-      console.log(`Deleted #${target.id} "${target.name}".`);
+      console.log(`Deleted roadbook #${target.id} "${target.name}".`);
       break;
     }
+    case "cancel": {
+      const found = rideOnDay(store, args[0] ?? "", args.slice(1).join(" "));
+      store.cancelRide(found.ride.id);
+      console.log(
+        `Cancelled the ride of ${found.date} from roadbook #${found.saved.id} "${found.saved.name}"; it stays in the list.`,
+      );
+      break;
+    }
+    case "tidy":
+      console.log(tidyLibrary(store));
+      break;
     case "clear-cache":
       console.log(`Removed ${store.cacheClear()} cached lookups.`);
       break;

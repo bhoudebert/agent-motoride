@@ -180,13 +180,12 @@ are always checked fresh.
 npm run rides -- refresh 3            # route again: times, road mix, leg names, daylight, weather, cameras, stops
 npm run rides -- refresh 3 --stops    # only the stop plan, after a bike profile change
 npm run rides -- refresh all
-npm run rides -- export-md 3          # the ride as a Markdown document with its map, for your notes
-npm run rides -- delete 3
+npm run rides -- export-md 3          # the roadbook as a Markdown document with its map, for your notes
 ```
 
 ```text [Claude Code / Codex]
-refresh ride 3
-export ride 3 as Markdown
+refresh roadbook 3
+export roadbook 3 as Markdown
 ```
 
 :::
@@ -198,3 +197,34 @@ the figures recomputed from today's map data.
 Type `@` then pick `ride:ride://ride/3` to put a saved ride into the
 conversation, or `ride:ride://library` for the whole list.
 :::
+
+## Delete, cancel, tidy
+
+::: code-group
+
+```bash [Terminal]
+npm run rides -- cancel 3 saturday           # not riding: kept, shown as cancelled
+npm run rides -- delete ride 3 2026-10-10    # a ride entered by mistake
+npm run rides -- delete roadbook 3           # the loop, its rides and notes
+npm run rides -- tidy                        # drop expired lookups, compact the file
+```
+
+```text [Claude Code / Codex]
+I'm not riding Saturday
+delete Saturday's ride of roadbook 3
+delete roadbook 3
+```
+
+:::
+
+A delete always asks first and says what goes with it: "Delete roadbook #3
+"Avesnois loop", its 2 rides and 1 note? Its 1 road rating stays". Road
+ratings stay because they are about the roads and keep steering your plans. In
+the terminal, answer `y`, or add `--yes` in a script; in Claude Code the
+question is a dialog, in other clients a question in the chat.
+
+`tidy` keeps your traces and everything you saved. The library stays small (a
+few MB, most of it a cache of map lookups that expire on their own), so tidy
+is occasional housekeeping, not a need. It also lists other files next to the
+library, such as the backup a migration wrote (`agentmotoride.db.bak-v1`),
+and leaves them for you to delete once all is well.

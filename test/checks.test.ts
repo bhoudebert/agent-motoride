@@ -145,3 +145,24 @@ test("checks: a leisure ride mostly on fast expressways goes back; a practical t
   const practical = checkItinerary(setup({ avoidMotorways: false }).context, fast, "Trip, 214 km.", limits);
   assert.deepEqual(practical.violations, []);
 });
+
+test("checks: over a slow-zone target is a note to say, not a failure", () => {
+  const { route, context } = setup();
+  const slow = {
+    ...route,
+    trip: {
+      ...route.trip,
+      result: {
+        ...route.trip.result,
+        usesMotorway: false,
+        speedLimits: { limit31to50: { pct: 25.3 }, limit30OrLess: { pct: 1 } },
+      },
+    },
+  } as typeof route;
+  const limits = { maxDistanceKm: null, maxRidingMinutes: null };
+  const quiet = checkItinerary(context, slow, "Loop, 214 km.", limits);
+  assert.deepEqual(quiet.violations, []);
+  assert.deepEqual(quiet.notes, ["25.3% of the distance in 31-50 zones, over the 20% target"]);
+  assert.deepEqual(checkItinerary(context, slow, "Loop, 214 km, 25% in 50 zones.", limits).notes, [], "already said");
+  assert.deepEqual(checkItinerary(context, slow, "Loop, 214 km, a bit over the target in towns.", limits).notes, []);
+});

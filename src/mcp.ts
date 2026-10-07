@@ -292,11 +292,17 @@ server.registerTool(
   async (args) => {
     const route = context.routes.get(args.routeId);
     if (!route) throw new Error(`Unknown routeId ${args.routeId}; it must come from calculateTrip in this session.`);
-    const { violations, acknowledged } = checkItinerary(context, route, args.itinerary, parseLimits(args.request));
+    const { violations, acknowledged, notes } = checkItinerary(
+      context,
+      route,
+      args.itinerary,
+      parseLimits(args.request),
+    );
     context.trace({ scope: "main", kind: "check", name: violations.length ? "failed" : "passed", payload: violations });
-    if (!violations.length) return text("PASS");
+    const say = notes.length ? `\nSay it in the answer:\n${notes.map((n) => `- ${n}`).join("\n")}` : "";
+    if (!violations.length) return text(`PASS${say}`);
     return text(
-      `${acknowledged ? "Failed, but your text already says a limit is missed; present it if that is the closest option." : "FAILED:"}\n${violations.map((v) => `- ${v}`).join("\n")}`,
+      `${acknowledged ? "Failed, but your text already says a limit is missed; present it if that is the closest option." : "FAILED:"}\n${violations.map((v) => `- ${v}`).join("\n")}${say}`,
     );
   },
 );

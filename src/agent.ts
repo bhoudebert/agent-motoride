@@ -393,6 +393,8 @@ export async function openRide(request: RideRequest): Promise<RideSession> {
   async function selfCheck(): Promise<void> {
     const shown = current!;
     const first = checkItinerary(context, shown.route, shown.itinerary, limits);
+    // Over a target is not a failure: said under the itinerary, no second model call.
+    if (first.notes.length) console.log(`\nFrom the code check:\n${first.notes.map((n) => `- ${n}`).join("\n")}`);
     if (first.violations.length === 0) return;
     context.trace({
       scope: "main",

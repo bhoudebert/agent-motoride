@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.6.0](https://github.com/bhoudebert/agent-motoride/compare/v1.5.0...v1.6.0) (2026-10-07)
+
+
+### Features
+
+* **feedback:** close the roadbooks change: the reviewed track kept on its ride; specs folded ([#64](https://github.com/bhoudebert/agent-motoride/issues/64)) ([641c06d](https://github.com/bhoudebert/agent-motoride/commit/641c06d3e75456339b157451b098d898b4541b3a))
+* **library:** rides keep the version they rode; a change names the rides that follow ([#62](https://github.com/bhoudebert/agent-motoride/issues/62)) ([eb5532d](https://github.com/bhoudebert/agent-motoride/commit/eb5532dc29d2063ed9f26bd71f1abcba7286c9ca))
+
 ## [1.5.0](https://github.com/bhoudebert/agent-motoride/compare/v1.4.0...v1.5.0) (2026-10-07)
 
 

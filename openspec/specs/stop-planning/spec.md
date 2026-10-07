@@ -26,7 +26,12 @@ Fuel stations, cafés, bakeries and restaurants within a detour of the route SHA
 
 ### Requirement: Opening hours at arrival
 
-When the ride date is known, each candidate SHALL be checked against its opening_hours tag at the arrival time; open places SHALL be preferred, unknown hours accepted, closed places chosen only as a last resort with a warning. Each planned stop SHALL carry "open", "closed" or "unknown" at arrival. A tag the reader cannot parse SHALL yield "unknown", never "open".
+When the ride date is known, each candidate SHALL be checked against its opening_hours tag at the arrival time; open places SHALL be preferred, unknown hours accepted, closed places chosen only as a last resort with a warning. Each planned stop SHALL carry "open", "closed" or "unknown" at arrival. A tag the reader cannot parse SHALL yield "unknown", never "open". A rule of days without hours ("Th-Su") SHALL mean "unknown" on those days and "closed" on the others, unless another rule covers them.
+
+#### Scenario: Restaurant open Thursday to Sunday
+
+- **WHEN** a lunch candidate is tagged "Th-Su" and the ride is on a Tuesday
+- **THEN** it is closed at arrival, and an open or unknown restaurant is preferred
 
 #### Scenario: Sunday bakery
 

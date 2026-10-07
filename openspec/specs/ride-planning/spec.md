@@ -21,6 +21,15 @@ The planner SHALL accept a free-text request plus a start point, road preference
 - **WHEN** a roadbook is opened for editing
 - **THEN** the prompt opens with the ride loaded and no model call is made until the rider types
 
+### Requirement: No departure in the past
+
+`planStops` SHALL refuse a ride date and departure already past, by the session's clock (the recorded time when an eval replays a session), naming the time now. MCP clients SHALL be told the local time with the date; a departure already past today means another day unless the rider says otherwise.
+
+#### Scenario: Asked at 18:24 for "11:00"
+
+- **WHEN** the plan's stops are asked for today at 11:00 and it is 18:24
+- **THEN** planStops refuses, and the planner plans another day or asks the rider
+
 ### Requirement: Hard limits and targets
 
 The planner SHALL treat distance caps, riding-time caps and "dry" as hard limits, and the 30 and 50 km/h zone shares as targets to minimise. When nothing satisfies every hard limit, it SHALL say so and offer the closest option naming the broken limit.
@@ -32,7 +41,7 @@ The planner SHALL treat distance caps, riding-time caps and "dry" as hard limits
 
 ### Requirement: Itinerary checked by code
 
-Every itinerary SHALL be checked by code before it is shown: routed distance and riding time against the caps read from the rider's words, no motorway when forbidden, no repeat of a roadbook unless repeats are allowed, less than 10% on roads rated 0-1, the distance stated in the answer equal to the routed one within 1.5 km, and, while motorways are forbidden, less than 25% of fast expressway (roads that are not motorways, limited to 100 km/h or more). In API mode a failed check SHALL be sent back to the planner once, marked as an automatic check, unless the answer already acknowledges the breach; checks still failing after that SHALL be shown to the rider under the itinerary. In MCP mode the checks SHALL be available as the `checkItinerary` tool.
+Every itinerary SHALL be checked by code before it is shown: routed distance and riding time against the caps read from the rider's words, no motorway when forbidden, no repeat of a roadbook unless repeats are allowed, less than 10% on roads rated 0-1, the distance stated in the answer equal to the routed one within 1.5 km, and, while motorways are forbidden, less than 25% of fast expressway (roads that are not motorways, limited to 100 km/h or more). A slow-zone share over its target SHALL not fail the check: it SHALL be reported as a note for the rider (under the itinerary in API mode, after PASS in MCP mode), unless the answer already gives the share or speaks of the target. In API mode a failed check SHALL be sent back to the planner once, marked as an automatic check, unless the answer already acknowledges the breach; checks still failing after that SHALL be shown to the rider under the itinerary. In MCP mode the checks SHALL be available as the `checkItinerary` tool.
 
 #### Scenario: Over the cap
 

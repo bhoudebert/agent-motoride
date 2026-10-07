@@ -92,7 +92,10 @@ Usage: npm run rides -- <command>
   import <file.gpx|file.kml> [name] [--force]
                                         Save a route someone shared: routed like a planned ride (figures, stops, cameras),
                                         with waypoints added until it follows the file; --force saves a duplicate anyway
-  delete <id|name>                      Remove a ride and its legs
+  delete roadbook <id|name> [--yes]     Delete a roadbook with its rides and notes, after you confirm (road ratings stay)
+  delete ride <roadbook> <day> [--yes]  Delete one ride of a roadbook, e.g. delete ride 7 2026-10-10, after you confirm
+  cancel <roadbook> <day>               Cancel a planned ride: kept, shown as cancelled
+  tidy                                  Drop expired lookups and compact the library; lists backups and old files, deletes none
   clear-cache                           Drop cached road, route and weather lookups
 
 Ratings steer later planning: legs, rides and road stretches rated 4-5 are
@@ -101,7 +104,7 @@ reused as building blocks, those rated 0-1 are avoided.
 
 ## Claude Code and Codex (MCP server)
 
-29 tools, 15 prompts. Each tool shows its MCP hints: a client can let read-only tools run without asking.
+32 tools, 15 prompts. Each tool shows its MCP hints: a client can let read-only tools run without asking.
 
 ### Tools
 
@@ -316,6 +319,34 @@ Plan a ride from a saved roadbook on a date, without copying it: "plan a ride fr
 - `roadbook` (string): Roadbook number or name
 - `date` (string): Day of the ride: YYYY-MM-DD, or in words: today, tomorrow, saturday, 17/10
 - `departure` (string, optional): Departure time, e.g. 09:00; default the roadbook's last departure
+
+#### `deleteRoadbook`
+
+_writes · may overwrite · idempotent · local only_
+
+Delete a saved roadbook with its rides and notes, after the rider confirms (a dialog, or a question in the chat). Road ratings stay: they are about the roads. Only when the rider asks to delete it.
+
+- `roadbook` (string): Roadbook number or name
+- `confirm` (boolean, optional): Only after the rider said yes to the question a first call returned, in clients without dialogs
+
+#### `deleteRide`
+
+_writes · may overwrite · idempotent · local only_
+
+Delete one ride (a roadbook on a day), after the rider confirms. The roadbook and the ride's notes stay. To keep the ride but mark it called off, use cancelRide instead.
+
+- `roadbook` (string): Roadbook number or name
+- `date` (string): Day of the ride: YYYY-MM-DD, 10/10, today, or a weekday
+- `confirm` (boolean, optional): Only after the rider said yes to the question a first call returned, in clients without dialogs
+
+#### `cancelRide`
+
+_writes · not destructive · idempotent · local only_
+
+Cancel a planned ride (a roadbook on a day): it stays in the list, shown as cancelled. For "I'm not riding Saturday".
+
+- `roadbook` (string): Roadbook number or name
+- `date` (string): Day of the ride: YYYY-MM-DD, 10/10, today, or a weekday
 
 #### `showRide`
 

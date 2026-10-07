@@ -109,9 +109,13 @@ make roadbook 3 50 km longer, lunch in Die
 
 A change works from the saved waypoints instead of searching a new area, and
 checks the weather for the new day. Save the result: roadbook 3 is changed in
-place, still number 3, and the design it replaced is kept as a version. Planned
-rides of roadbook 3 follow the change and are marked "route changed: refresh
-it"; rides already ridden keep the version they rode. A leg you rated keeps its
+place, still number 3, and the design it replaced is kept as a version. Rides
+still ahead follow the change: the save names them ("now following the new
+route, refresh before riding") and the list marks them "route changed: refresh
+it". Rides already done, or whose date has passed, keep the route they had:
+showing, exporting or reviewing them uses that route, not the new one. A ride
+from last Sunday you never marked shows "date passed: ridden or cancelled?" until
+you rate its day, review it or cancel it. A leg you rated keeps its
 rating as a rating of that road, so "never again" still counts.
 
 ::: code-group
@@ -120,12 +124,15 @@ rating as a rating of that road, so "never again" still counts.
 npm run rides -- versions 3              # v1 90 km, replaced by "50 km longer"; v2 140 km, current
 npm run rides -- restore 3 1             # back to the original; the longer one is kept too
 npm run rides -- copy 3 "Drôme short"    # a separate roadbook to change on its own
+npm run rides -- keep 3 saturday         # Saturday's ride stays on the route it had before the change
+npm run rides -- show 3 saturday         # that ride, with the route it has
 # at the refine> prompt: /save --copy "Drôme short" saves the change as a copy instead
 ```
 
 ```text [Claude Code / Codex]
 undo that change on roadbook 3
 copy roadbook 3 as Drôme short
+keep Saturday's ride of roadbook 3 on the previous version
 ```
 
 :::

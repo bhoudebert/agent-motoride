@@ -408,6 +408,15 @@ Leg ratings of the replaced legs are first copied to `road_ratings` with the
 leg's cells, so the rated-roads check and the memory keep them. Restoring a
 version is itself a revision, so nothing is ever lost.
 
+A ride references its version (`rides.roadbook_version`). A change moves only
+planned rides dated today or later (or undated); rides done or past keep theirs.
+`Store.rideView` builds a ride on an earlier version from that version's
+snapshot (route, legs, figures, route-bound extras) with the ride's own day
+data, and the rides list reads that version's figures; the review places each
+note on the version of the ride it was left on, and compares a track with the
+version of its day's ride. Versions are never changed, only added, so what a
+ride references stays as it was.
+
 ## Lookup cache
 
 Tool results are cached in the same file so repeated planning does not hit the

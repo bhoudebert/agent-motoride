@@ -132,7 +132,10 @@ export interface RunRecord {
 /** A note left during a ride: what the rider said, about the last few minutes. */
 export interface RideNote {
   id: number;
+  /** The roadbook. */
   rideId: number;
+  /** The ride (the day) it was left on, if known. */
+  dayId: number | null;
   /** ISO time the note was left: its window ends there. */
   createdAt: string;
   text: string;
@@ -210,6 +213,8 @@ export interface RideDay {
   status: "planned" | "ridden" | "cancelled";
   /** The roadbook changed since this ride's day data was gathered. */
   stale: boolean;
+  /** Still planned, but its date has passed: ridden or cancelled, the rider has not said. */
+  passed: boolean;
   distanceKm: number;
   ridingMinutes: number;
   rating: number | null;
@@ -285,6 +290,7 @@ interface DayRow {
   start: string;
   status: "planned" | "ridden" | "cancelled";
   day_extras: string | null;
+  roadbook_version: number;
 }
 
 interface RunRow {
@@ -587,7 +593,24 @@ export class Store {
       RoadbookRow | undefined;
     const day = this.#db.prepare("SELECT * FROM rides WHERE id = ? AND roadbook_id = ?").get(dayId, roadbookId) as
       DayRow | undefined;
-    return row && day ? this.#hydrate(row, day) : undefined;
+    if (!row || !day) return undefined;
+    const current = this.#hydrate(row, day);
+    if (day.roadbook_version >= row.version) return current;
+    // A ride on an earlier version is shown with the design it was planned and ridden on.
+    const old = this.#db
+      .prepare("SELECT snapshot FROM roadbook_versions WHERE roadbook_id = ? AND version = ?")
+      .get(roadbookId, day.roadbook_version) as { snapshot: string } | undefined;
+    if (!old) return current;
+    const design = JSON.parse(old.snapshot) as Omit<
+      SavedRide,
+      "id" | "createdAt" | "rideDayId" | "rideDate" | "departure" | "rating" | "notes"
+    >;
+    const route = design.extras ? JSON.stringify({ cameras: design.extras.cameras, stops: design.extras.stops }) : null;
+    return {
+      ...current,
+      ...design,
+      extras: joinExtras(route, day.day_extras),
+    };
   }
 
   #hydrate(row: RoadbookRow, shown?: DayRow): SavedRide {
@@ -662,12 +685,16 @@ export class Store {
 
   /** Rides by date, latest first, rides with no date yet last, one page at a time. */
   listRideDays(page = 1, perPage = PER_PAGE): Page<RideDay> {
+    const today = localDay(new Date());
     const total = (this.#db.prepare("SELECT count(*) AS n FROM rides").get() as { n: number }).n;
     const rows = this.#db
       .prepare(
-        `SELECT r.id, r.roadbook_id, b.name, r.ride_date, r.departure, r.start, r.status, r.stale, b.distance_km,
-           b.riding_minutes, r.rating
+        // A ride on an earlier version is listed with that version's figures.
+        `SELECT r.id, r.roadbook_id, b.name, r.ride_date, r.departure, r.start, r.status, r.stale,
+           coalesce(json_extract(v.snapshot, '$.distanceKm'), b.distance_km) AS distance_km,
+           coalesce(json_extract(v.snapshot, '$.ridingMinutes'), b.riding_minutes) AS riding_minutes, r.rating
          FROM rides r JOIN roadbooks b ON b.id = r.roadbook_id
+         LEFT JOIN roadbook_versions v ON v.roadbook_id = r.roadbook_id AND v.version = r.roadbook_version
          ORDER BY r.ride_date IS NULL, r.ride_date DESC, r.departure DESC, r.id DESC
          LIMIT ? OFFSET ?`,
       )
@@ -693,6 +720,7 @@ export class Store {
       start: r.start,
       status: r.status,
       stale: r.stale === 1,
+      passed: r.status === "planned" && r.ride_date !== null && r.ride_date < today,
       distanceKm: r.distance_km,
       ridingMinutes: r.riding_minutes,
       rating: r.rating,
@@ -809,14 +837,34 @@ export class Store {
         );
       }
       this.#db
-        .prepare("UPDATE rides SET roadbook_version = ?, stale = 1 WHERE roadbook_id = ? AND status = 'planned'")
-        .run(version, id);
+        // Only rides still ahead follow; a ride done, or whose day has passed, keeps what it was.
+        .prepare(
+          `UPDATE rides SET roadbook_version = ?, stale = 1
+           WHERE roadbook_id = ? AND status = 'planned' AND (ride_date IS NULL OR ride_date >= ?)`,
+        )
+        .run(version, id, localDay(new Date()));
       this.#db.exec("COMMIT");
       return version;
     } catch (error) {
       this.#db.exec("ROLLBACK");
       throw error;
     }
+  }
+
+  /**
+   * Put a planned ride back on the version it had before the last change, for a
+   * ride already settled when the roadbook was changed for later ones.
+   */
+  keepPreviousVersion(dayId: number): number {
+    const ride = this.#db.prepare("SELECT * FROM rides WHERE id = ?").get(dayId) as DayRow | undefined;
+    if (!ride) throw new Error("No such ride.");
+    if (ride.status !== "planned") throw new Error(`This ride is ${ride.status}: it already keeps its version.`);
+    const previous = this.#db
+      .prepare("SELECT max(version) AS v FROM roadbook_versions WHERE roadbook_id = ? AND version < ?")
+      .get(ride.roadbook_id, ride.roadbook_version) as { v: number | null };
+    if (previous.v === null) throw new Error("The roadbook has no earlier version for this ride.");
+    this.#db.prepare("UPDATE rides SET roadbook_version = ?, stale = 0 WHERE id = ?").run(previous.v, dayId);
+    return previous.v;
   }
 
   /** Past states of a roadbook, oldest first. */
@@ -970,9 +1018,11 @@ export class Store {
     departure: string | null;
     status: RideDay["status"];
     stale: boolean;
+    passed: boolean;
     rating: number | null;
     notes: string | null;
   }> {
+    const today = localDay(new Date());
     const rows = this.#db
       .prepare(
         `SELECT id, ride_date, departure, status, stale, rating, notes FROM rides WHERE roadbook_id = ?
@@ -993,6 +1043,7 @@ export class Store {
       departure: r.departure,
       status: r.status,
       stale: r.stale === 1,
+      passed: r.status === "planned" && r.ride_date !== null && r.ride_date < today,
       rating: r.rating,
       notes: r.notes,
     }));
@@ -1060,6 +1111,7 @@ export class Store {
     return {
       id: Number(lastInsertRowid),
       rideId: note.rideId,
+      dayId: ride,
       createdAt,
       text: note.text,
       rating: note.rating,
@@ -1078,6 +1130,7 @@ export class Store {
       .all(options.rideId ?? null, options.rideId ?? null, options.all ? 1 : 0) as Array<{
       id: number;
       roadbook_id: number;
+      ride_id: number | null;
       created_at: string;
       text: string;
       rating: number | null;
@@ -1088,6 +1141,7 @@ export class Store {
     return rows.map((row) => ({
       id: row.id,
       rideId: row.roadbook_id,
+      dayId: row.ride_id,
       createdAt: row.created_at,
       text: row.text,
       rating: row.rating,

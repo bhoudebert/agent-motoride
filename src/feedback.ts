@@ -250,7 +250,16 @@ export async function reviewRide(
   const timezone = options.timezone ?? systemTimezone();
   const { track } = options;
   const notes = store.listNotes({ rideId: ride.id });
-  const line = planLine(ride);
+  // Each note is placed on the route of the ride it was left on: after a change to
+  // the roadbook, an earlier ride keeps the version it rode.
+  const plans = new Map<number | null, { plan: SavedRide; line: ReturnType<typeof planLine> }>();
+  const planOf = (dayId: number | null) => {
+    if (!plans.has(dayId)) {
+      const plan = (dayId !== null && store.rideView(ride.id, dayId)) || ride;
+      plans.set(dayId, { plan, line: planLine(plan) });
+    }
+    return plans.get(dayId)!;
+  };
   const review: RideReview = { ride: { id: ride.id, name: ride.name }, track: null, notes: [], detours: [] };
 
   if (track) {
@@ -264,7 +273,10 @@ export async function reviewRide(
       plannedMinutes: ride.ridingMinutes,
       plannedAvgKmh: Math.round(ride.distanceKm / (ride.ridingMinutes / 60)),
     };
-    review.detours = await findDetours(track, ride, timezone);
+    // The track is compared with the route of the ride of its day, when there is one.
+    const day = dayAt(track[0]!.time, timezone);
+    const ridden = store.findRideOn(ride.id, day);
+    review.detours = await findDetours(track, ridden ? planOf(ridden.id).plan : ride, timezone);
   }
 
   for (const note of notes) {
@@ -278,13 +290,14 @@ export async function reviewRide(
     if (ridden.length >= 2) {
       placement = await placeStretch(ridden, window, false, note);
     } else {
-      const departure = departureMs(ride, dayAt(end, timezone), timezone);
+      const { plan, line } = planOf(note.dayId);
+      const departure = departureMs(plan, dayAt(end, timezone), timezone);
       if (!line.length) problem = "the ride has no stored route line; refresh it, or give the recorded track";
       else if (departure === null) problem = "the ride has no departure time; give the recorded track";
       else {
         // The plan's pace, without stops: notes late in the day land a little too far along.
         const kmAt = (ms: number) =>
-          Math.min(Math.max(((ms - departure) / 60_000 / ride.ridingMinutes) * line.at(-1)!.km, 0), line.at(-1)!.km);
+          Math.min(Math.max(((ms - departure) / 60_000 / plan.ridingMinutes) * line.at(-1)!.km, 0), line.at(-1)!.km);
         const [a, b] = [kmAt(start), kmAt(end)];
         const stretch = line.filter((p) => p.km >= a && p.km <= b);
         if (stretch.length < 2) problem = `${window} falls outside the planned riding time`;

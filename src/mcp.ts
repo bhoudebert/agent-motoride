@@ -29,6 +29,7 @@ import {
   DuplicateRideError,
   enrichRide,
   copyRoadbook,
+  followingRides,
   formatRideDetail,
   restoreVersion,
   formatRatedRoads,
@@ -223,6 +224,7 @@ const HINTS: Record<string, ToolAnnotations> = {
   // The replaced design is kept as a version: nothing is lost, but each call adds one.
   restoreRoadbook: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   copyRoadbook: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  keepRideVersion: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   planningGuide: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
 };
 const hintsOf = (name: string): ToolAnnotations => {
@@ -380,7 +382,12 @@ server.registerTool(
     void enrichRide(store, store.findRide(String(id))!).catch(() => undefined);
     if (revised) {
       return text(
-        `Roadbook #${id} changed in place, now version ${store.versionOf(id)}; the previous version is kept (restoreRoadbook brings it back).`,
+        `Roadbook #${id} changed in place, now version ${store.versionOf(id)}; the previous version is kept (restoreRoadbook brings it back).${(() => {
+          const following = followingRides(store, id);
+          return following
+            ? ` ${following.replace(/ To keep one as it was: .*$/, " To keep one as it was: keepRideVersion.")}`
+            : "";
+        })()}`,
       );
     }
     return text(`Saved as roadbook #${id} "${args.name}". Export with exportGpx, or: npm run rides -- show ${id}`);
@@ -585,8 +592,9 @@ server.registerTool(
   async (args) => {
     const saved = roadbookOf(store, args.roadbook);
     const now = restoreVersion(store, saved.id, args.version);
+    const following = followingRides(store, saved.id);
     return text(
-      `Roadbook #${saved.id} is back to version ${args.version}, saved as version ${now}; the one it replaced is kept.`,
+      `Roadbook #${saved.id} is back to version ${args.version}, saved as version ${now}; the one it replaced is kept.${following ? ` ${following.replace(/ To keep one as it was: .*$/, " To keep one as it was: keepRideVersion.")}` : ""}`,
     );
   },
 );
@@ -635,12 +643,40 @@ server.registerTool(
     description:
       "Full view of one saved ride, as the rider sees it in the app: figures, road mix, time at 70+, daylight, fixed cameras, fuel and café stops, legs with names, main roads, times and ratings, map link and the itinerary text. Show it to the rider as is; do not rebuild it from other tools.",
     annotations: hintsOf("showRide"),
-    inputSchema: z.object({ ride: z.string().describe("Roadbook number or name") }),
+    inputSchema: z.object({
+      ride: z.string().describe("Roadbook number or name"),
+      date: z
+        .string()
+        .optional()
+        .describe("Day of one of its rides (YYYY-MM-DD, saturday): that ride, with the route it was ridden on"),
+    }),
   },
   async (args) => {
+    if (args.date) {
+      const found = rideOnDay(store, args.ride, args.date);
+      return text(formatRideDetail(store.rideView(found.saved.id, found.ride.id)!, store));
+    }
     const ride = store.findRide(args.ride);
     if (!ride) throw new Error(`No saved ride matches "${args.ride}". Call listRoadbooks.`);
     return text(formatRideDetail(ride, store));
+  },
+);
+
+server.registerTool(
+  "keepRideVersion",
+  {
+    description:
+      'Keep a planned ride on the roadbook as it was before the last change: for a ride already settled when the rider changed the roadbook for later ones. "Keep Saturday\'s ride on the previous version". Rides already done always keep their route.',
+    annotations: hintsOf("keepRideVersion"),
+    inputSchema: z.object({
+      roadbook: z.string().describe("Roadbook number or name"),
+      date: z.string().describe("Day of the planned ride: YYYY-MM-DD, saturday"),
+    }),
+  },
+  async (args) => {
+    const found = rideOnDay(store, args.roadbook, args.date);
+    const version = store.keepPreviousVersion(found.ride.id);
+    return text(`The ride of ${found.date} keeps roadbook #${found.saved.id} as it was (version ${version}).`);
   },
 );
 

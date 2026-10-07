@@ -7,6 +7,7 @@ import { exportSavedRide, savedRideGpx, writeGpx } from "./gpx.ts";
 import {
   DuplicateRideError,
   enrichRide,
+  followingRides,
   formatRideDetail,
   formatRideDayPage,
   formatRoadbookPage,
@@ -400,6 +401,8 @@ async function plan(
     console.log(
       `Saved as #${id} "${store.findRide(String(id))!.name}"${version}, ${ride.route.trip.result.totalDistanceKm} km.`,
     );
+    const following = version ? followingRides(store, id) : null;
+    if (following) console.log(following);
     // Daylight, cameras and stops for the ride view; cached lookups, so quick after a plan.
     void enrichRide(store, store.findRide(String(id))!).catch(() => undefined);
   };

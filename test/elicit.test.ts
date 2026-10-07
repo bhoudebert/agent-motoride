@@ -16,6 +16,7 @@ const placement = (proposedRating: number | null) => ({
 const note = (id: number, text: string) => ({
   id,
   rideId: 1,
+  dayId: null,
   createdAt: "",
   text,
   rating: null,

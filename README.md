@@ -148,6 +148,29 @@ and data sources, the riding-time model, model choice and cost benchmark,
 evals, observability, scripts and project layout. Every significant choice has
 a decision record in [`docs/adr/`](docs/adr/).
 
+## Open source, on open data
+
+agentMotoride is **MIT-licensed and built in the open**, on top of open data.
+
+- **On open data.** Roads, speed limits, cameras and stops come from
+  OpenStreetMap, routing from Valhalla, forecasts from Open-Meteo, addresses
+  from Photon and Nominatim: projects run by communities and open to anyone.
+  When a plan is wrong because a limit or a camera is missing, the fix belongs
+  in OpenStreetMap, and every rider using it benefits.
+- **Yours to run.** It runs on your machine. Your library of roadbooks, rides
+  and notes is one SQLite file that stays there. The app sends no telemetry:
+  it calls the data services above, TomTom when you add a traffic key, and
+  the model you chose; session traces go to an OpenTelemetry tool only if you
+  point them at one.
+- **Built in the open.** Every requirement is written down (`openspec/`),
+  every significant choice has a decision record (`docs/adr/`), the agent is
+  evaluated on recorded sessions anyone can replay for free (`evals/`), and
+  every change is a public pull request with what was and was not verified.
+- **Easy to help.** The most useful contributions are small: a country's legal
+  speed defaults, a new eval case, a bug report with its trace, a fix in
+  OpenStreetMap. See [CONTRIBUTING.md](CONTRIBUTING.md#what-helps-most) and the
+  [guide](https://bhoudebert.github.io/agent-motoride/guide/open-source).
+
 ## Requirements
 
 - Node.js 24 or newer. The TypeScript sources run directly, there is no build step.
@@ -158,7 +181,8 @@ a decision record in [`docs/adr/`](docs/adr/).
 
 ## Licence, data and disclaimer
 
-Open source under the MIT licence. The planner relies on public data and
+Open source under the MIT licence: use it, change it, share it; contributions
+are accepted under the same licence. The planner relies on public data and
 services with their own licences, in particular OpenStreetMap (© OpenStreetMap
 contributors, ODbL) and Open-Meteo (CC BY 4.0); see `NOTICE.md` for the full
 list, the attribution each requires, and the usage policies of the public

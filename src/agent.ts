@@ -126,10 +126,17 @@ export function describeSituation(
   start: { label: string; lat: number; lon: number } | undefined,
   preferences: RidePreferences,
   now = new Date(),
+  // The clock time, for MCP clients. The terminal planner's first message stays
+  // as recorded in the evals; planStops refuses a past departure in code either way.
+  withTime = false,
 ): string {
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const where = start?.label ? `${home} (${start.label}, ${start.lat},${start.lon})` : "NOT SET";
-  return `Start and end point: ${where}\nRoad preferences:\n${describePreferences(preferences)}\nToday is ${WEEKDAYS[now.getDay()]} ${today}.`;
+  const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  const clock = withTime
+    ? `, ${time} local time: a departure already past today means another day, unless the rider says otherwise`
+    : "";
+  return `Start and end point: ${where}\nRoad preferences:\n${describePreferences(preferences)}\nToday is ${WEEKDAYS[now.getDay()]} ${today}${clock}.`;
 }
 
 export function describePreferences(p: RidePreferences): string {
@@ -218,6 +225,7 @@ export async function openRide(request: RideRequest): Promise<RideSession> {
     error: null,
   });
   const context: RideContext = {
+    now: () => now,
     store: request.store,
     // Copied, so a mid-session switch does not leak into the caller's object.
     preferences: { ...preferences },

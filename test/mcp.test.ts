@@ -304,7 +304,15 @@ test("mcp: every tool answers when called by name through a client", async () =>
     await call("getDaylight", { location: "Lille", date: "2026-10-10" });
     await call("getSpeedCameras", { routeId });
     await call("findStops", { routeId });
-    await call("planStops", { routeId, departure: "09:00", date: "2026-10-10" });
+    // Any day from tomorrow: a departure already past is refused.
+    const ahead = new Intl.DateTimeFormat("en-CA").format(Date.now() + 2 * 86_400_000);
+    await call("planStops", { routeId, departure: "9:00", date: ahead });
+    const past = await client.callTool({
+      name: "planStops",
+      arguments: { routeId, departure: "09:00", date: "2026-10-01" },
+    });
+    assert.ok(past.isError);
+    assert.match(textOf(past), /Departure 2026-10-01 09:00 is already past \(now /);
     await call("checkConditions", { routeId, date: "2026-10-10", departure: "09:00" });
     assert.match(
       await call("scoutAreas", {

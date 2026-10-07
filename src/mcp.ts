@@ -134,7 +134,7 @@ async function setHome(location: string): Promise<string> {
 
 const settingsText = () => {
   const pending = pendingNotesSummary(store);
-  return `${describeSituation(homeInput, context.home.label ? context.home : undefined, context.preferences)}\nBike: ${describeProfile(store.getProfile())}.\nSaved rides: ${store.listRides().length}. Trace run id: ${runId}.${pending ? `\n${pending}: offer to review them (reviewRide).` : ""}`;
+  return `${describeSituation(homeInput, context.home.label ? context.home : undefined, context.preferences, new Date(), true)}\nBike: ${describeProfile(store.getProfile())}.\nSaved rides: ${store.listRides().length}. Trace run id: ${runId}.${pending ? `\n${pending}: offer to review them (reviewRide).` : ""}`;
 };
 
 // API scouts need a key of their own. Without them, a client that runs

@@ -62,6 +62,8 @@ Notes:
 
 Each note lands on the stretch you actually rode in its time window, so a
 detour you took on a whim is the one rated, not the planned road you skipped.
+That day's ride is marked ridden and keeps the track's path; if you changed
+the roadbook since, your notes still land on the route you rode that day.
 
 ## Confirm the ratings
 

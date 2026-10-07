@@ -1060,6 +1060,33 @@ export class Store {
     return row && { roadbookId: row.roadbook_id, dayId: row.id };
   }
 
+  /**
+   * A ride was ridden on this day with this recorded track: its ride is marked
+   * ridden with the track's path, created when the roadbook had none that day.
+   */
+  recordRidden(roadbookId: number, date: string, trackPath: string): number {
+    const existing = this.findRideOn(roadbookId, date);
+    const dayId =
+      existing?.id ??
+      this.#addDay(roadbookId, {
+        date,
+        departure: null,
+        start: (this.#db.prepare("SELECT home FROM roadbooks WHERE id = ?").get(roadbookId) as { home: string }).home,
+        dayExtras: null,
+        ridden: true,
+      });
+    this.#db.prepare("UPDATE rides SET status = 'ridden', track = ? WHERE id = ?").run(trackPath, dayId);
+    return dayId;
+  }
+
+  /** The recorded track of a ride, as the path it was reviewed from. */
+  trackOf(dayId: number): string | null {
+    return (
+      (this.#db.prepare("SELECT track FROM rides WHERE id = ?").get(dayId) as { track: string | null } | undefined)
+        ?.track ?? null
+    );
+  }
+
   /** Cancel a ride: kept, shown as cancelled. */
   cancelRide(dayId: number): boolean {
     return this.#db.prepare("UPDATE rides SET status = 'cancelled' WHERE id = ?").run(dayId).changes > 0;

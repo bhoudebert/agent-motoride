@@ -3,7 +3,8 @@
 `specs/<capability>/spec.md` describes what the system does today, as
 requirements with scenarios. `changes/` holds proposals that add or modify
 requirements before they are implemented; once merged into the code, the
-change is folded into the specs.
+change is folded into the specs and its folder moves to `changes/archive/`
+(dated), kept as the record of how it was decided.
 
 | Capability       | Covers                                                                                                    |
 | ---------------- | --------------------------------------------------------------------------------------------------------- |

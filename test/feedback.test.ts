@@ -123,9 +123,13 @@ test("review with a track: notes on the road ridden, detour flagged, pace measur
 
   const review = await reviewRide(store, store.findRide(String(id))!, {
     track: parseGpxTrack(recordedGpx()),
+    trackPath: "/rides/2026-10-04.gpx",
     timezone: TZ,
   });
 
+  const day = store.findRideOn(id, "2026-10-04")!;
+  assert.equal(day.status, "ridden", "a reviewed track marks its day's ride ridden");
+  assert.equal(store.trackOf(day.id), "/rides/2026-10-04.gpx");
   assert.equal(review.track!.points, 181);
   assert.ok(review.track!.km > 22.2, "the detour adds distance");
   assert.equal(review.track!.movingMinutes, 30);
@@ -232,4 +236,19 @@ test("review after a change: notes are placed on the route of the ride they were
     "on the original route, not the eastern one",
   );
   assert.ok(Math.abs(placement.km - 7.4) < 0.5, `at the original pace, got ${placement.km} km`);
+});
+
+test("review with a track on a day without a ride: the ride is recorded, ridden, with its track", () => {
+  const store = new Store(":memory:");
+  const id = saveRide(store, "2026-10-04");
+  const dayId = store.recordRidden(id, "2026-10-11", "/rides/2026-10-11.gpx");
+  assert.deepEqual(
+    store.ridesOf(id).map((r) => [r.rideDate, r.status]),
+    [
+      ["2026-10-11", "ridden"],
+      ["2026-10-04", "planned"],
+    ],
+  );
+  assert.equal(store.trackOf(dayId), "/rides/2026-10-11.gpx");
+  assert.equal(store.recordRidden(id, "2026-10-11", "/rides/again.gpx"), dayId, "the same day again: the same ride");
 });

@@ -13,7 +13,7 @@ The server SHALL speak the protocol over stdio with all logging on stderr, SHALL
 
 ### Requirement: Tools
 
-The server SHALL expose the planner's tools (`listSavedRides`, `getWeather`, `searchRoads`, `calculateTrip`, `getTraffic`, `getDaylight`, `getSpeedCameras`, `findStops`, `planStops`, `scoutAreas`) and the library tools `rideSettings`, `saveRide` (route id of the session only), `showRide`, `refreshRide` (full or stops only), `rideBriefing`, `exportGpx`, `exportMarkdown`, `listRoadbooks` and `listRides` (the rides by date), both paged with `page`, `planRide` (a ride from a roadbook on a day), `cancelRide`, and the destructive `deleteRoadbook` and `deleteRide`, confirmed by the rider.
+The server SHALL expose the planner's tools (`listSavedRides`, `getWeather`, `searchRoads`, `calculateTrip`, `getTraffic`, `getDaylight`, `getSpeedCameras`, `findStops`, `planStops`, `scoutAreas`) and the library tools `rideSettings`, `saveRide` (route id of the session only), `showRide`, `refreshRide` (full or stops only), `rideBriefing`, `exportGpx`, `exportMarkdown`, `listRoadbooks` and `listRides` (the rides by date), both paged with `page`, `planRide` (a ride from a roadbook on a day), `cancelRide`, `restoreRoadbook`, `copyRoadbook`, and the destructive `deleteRoadbook` and `deleteRide`, confirmed by the rider.
 
 ### Requirement: Prompts
 

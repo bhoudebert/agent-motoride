@@ -338,6 +338,26 @@ test("mcp: every tool answers when called by name through a client", async () =>
       }),
       /Saved as roadbook #2/,
     );
+    // Saving again changes roadbook 2 in place; restoring brings version 1 back as version 3.
+    assert.match(
+      await call("saveRide", {
+        routeId,
+        name: "Flandre",
+        rideDate: null,
+        departure: null,
+        itinerary: "135 km, v2",
+        request: "tweak",
+      }),
+      /^Roadbook #2 changed in place, now version 2; the previous version is kept/,
+    );
+    assert.match(
+      await call("restoreRoadbook", { roadbook: "2", version: 1 }),
+      /^Roadbook #2 is back to version 1, saved as version 3/,
+    );
+    assert.match(
+      await call("copyRoadbook", { roadbook: "2", name: "Flandre bis" }),
+      /^Copied roadbook #2 as #3 "Flandre bis"/,
+    );
     await call("exportGpx", { rideId: 2, file: join(dir, "ride.gpx") });
     await call("exportMarkdown", { ride: "2", file: join(dir, "ride.md") });
     await call("refreshRide", { ride: "2", stopsOnly: true });
@@ -356,16 +376,16 @@ test("mcp: every tool answers when called by name through a client", async () =>
     await call("addRideNote", { text: "nice bends", ride: "2" });
     await call("reviewRide", { ride: "1" });
     assert.match(await call("listRides", {}), /#\d+ {2}.*\| {2}(planned|ridden)[\s\S]*Page 1 of 1 \(\d+ rides?\)\.$/);
-    assert.match(await call("listRoadbooks", { page: 1 }), /^#2 {2}[\s\S]*Page 1 of 1 \(2 roadbooks\)\.$/);
+    assert.match(await call("listRoadbooks", { page: 1 }), /^#3 {2}[\s\S]*Page 1 of 1 \(3 roadbooks\)\.$/);
     assert.match(
       await call("listRoadbooks", { page: 3 }),
-      /Page 3 does not exist: the last is page 1 \(2 roadbooks\)\./,
+      /Page 3 does not exist: the last is page 1 \(3 roadbooks\)\./,
     );
     assert.match(
       await call("planRide", { roadbook: "1", date: "tomorrow", departure: "9:30" }),
       /^Ride planned from roadbook #1 .* leaving at 09:30\. The roadbook is unchanged\./,
     );
-    assert.match(await call("listRoadbooks", {}), /^#2 [\s\S]*#1 .*2 rides/m, "a ride added, no copy");
+    assert.match(await call("listRoadbooks", {}), /^#3 [\s\S]*#1 .*2 rides/m, "a ride added, no copy");
     assert.match(
       await call("cancelRide", { roadbook: "1", date: "tomorrow" }),
       /^Cancelled the ride of .* stays in the list/,

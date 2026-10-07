@@ -1,5 +1,5 @@
 import type { CurrentRide } from "./agent.ts";
-import { centroid, decodePolyline } from "./geometry.ts";
+import { centroid, decodePolyline, routeCells } from "./geometry.ts";
 import { describeStopsAt, routePointIndex } from "./gpx.ts";
 import { type MapsLink, overviewLink, pinnedMapsParts } from "./maps.ts";
 import { duplicateOf, type RideContext } from "./session.ts";
@@ -51,17 +51,51 @@ export class DuplicateRideError extends Error {
   }
 }
 
-/** Store the current itinerary and its routed trip. Returns the new ride id. */
+/**
+ * Store the current itinerary and its routed trip. With a roadbook in hand
+ * (parentId: the one opened or saved in this session), the roadbook is changed
+ * in place and its previous design kept as a version; asCopy saves a separate
+ * roadbook instead, recorded as a variant. Returns the roadbook's number.
+ */
 export function saveCurrentRide(
   context: RideContext,
   ride: CurrentRide,
-  options: { name?: string; request: string; parentId: number | null; home: string; usage?: RunUsage; force?: boolean },
+  options: {
+    name?: string;
+    request: string;
+    parentId: number | null;
+    home: string;
+    usage?: RunUsage;
+    force?: boolean;
+    asCopy?: boolean;
+  },
 ): number {
   const { trip, cells } = ride.route;
   // The library exists so that rides differ; a copy of a saved ride is refused unless forced.
   const duplicate = duplicateOf(context, cells);
   if (duplicate && !options.force) {
     throw new DuplicateRideError(duplicate);
+  }
+  const store = context.store;
+  const inHand = options.parentId !== null && !options.asCopy ? store.findRide(String(options.parentId)) : undefined;
+  if (inHand) {
+    keepLegRatings(store, inHand);
+    store.reviseRoadbook(
+      inHand.id,
+      {
+        name: options.name,
+        waypoints: trip.waypoints,
+        roundTrip: trip.roundTrip,
+        preferences: { ...context.preferences, avoidMotorways: trip.avoidMotorways },
+        itinerary: ride.itinerary,
+        ...tripFigures(trip, cells),
+      },
+      options.request,
+    );
+    // A change that also names a day plans that day's ride on the new version.
+    if (ride.rideDate) store.planDay(inHand.id, ride.rideDate, ride.departure ?? inHand.departure ?? "09:00");
+    context.lineage.add(inHand.id);
+    return inHand.id;
   }
   const id = context.store.saveRide({
     name: options.name?.trim() || ride.title,
@@ -82,6 +116,91 @@ export function saveCurrentRide(
   // Later versions in this session should not be rejected for resembling this one.
   context.lineage.add(id);
   return id;
+}
+
+/** Bring back an earlier version of a roadbook. The current one is kept as a version too, so nothing is lost. */
+export function restoreVersion(store: Store, id: number, version: number): number {
+  const roadbook = store.findRide(String(id));
+  if (!roadbook) throw new Error(`No roadbook #${id}.`);
+  const old = store.listVersions(id).find((v) => v.version === version);
+  if (!old) {
+    const known = store.listVersions(id).map((v) => v.version);
+    throw new Error(
+      `Roadbook #${id} has no version ${version}${known.length ? `; its earlier versions: ${known.join(", ")}` : "; it was never changed"}.`,
+    );
+  }
+  keepLegRatings(store, roadbook);
+  const d = old.design;
+  return store.reviseRoadbook(
+    id,
+    {
+      name: d.name,
+      waypoints: d.waypoints,
+      roundTrip: d.roundTrip,
+      preferences: d.preferences,
+      itinerary: d.itinerary,
+      distanceKm: d.distanceKm,
+      ridingMinutes: d.ridingMinutes,
+      speedLimits: d.speedLimits,
+      mapsUrl: d.mapsUrl,
+      cells: d.cells,
+      shapes: d.shapes,
+      centerLat: d.centerLat,
+      centerLon: d.centerLon,
+      legs: d.legs,
+    },
+    `restored version ${version}`,
+  );
+}
+
+/** A separate roadbook with the same design, recorded as a variant of its origin: for "copy 7 as …". */
+export function copyRoadbook(store: Store, id: number, name?: string): number {
+  const r = store.findRide(String(id));
+  if (!r) throw new Error(`No roadbook #${id}.`);
+  return store.saveRide({
+    ...r,
+    name: name?.trim() || `${r.name} (copy)`,
+    parentId: r.id,
+    rideDate: null,
+    departure: null,
+    extras: null,
+    legs: r.legs.map(({ rating: _rating, notes: _notes, ...leg }) => leg),
+  });
+}
+
+/** "v1 2026-10-03, replaced 2026-10-07 by "50 km longer": 182 km" for each earlier version, then the current one. */
+export function formatVersions(store: Store, roadbook: SavedRide): string[] {
+  const versions = store.listVersions(roadbook.id);
+  if (!versions.length) return [];
+  return [
+    "Versions:",
+    ...versions.map(
+      (v) =>
+        `  v${v.version}  ${v.design.distanceKm} km, ${fmtMinutes(v.design.ridingMinutes)}  replaced ${v.replacedAt.slice(0, 10)} by "${v.change}"`,
+    ),
+    `  v${store.versionOf(roadbook.id)}  ${roadbook.distanceKm} km, ${fmtMinutes(roadbook.ridingMinutes)}  current`,
+  ];
+}
+
+/**
+ * Leg ratings belong to legs that a change replaces: keep each as a rating of
+ * that stretch of road, so a "never again" still steers the next plans.
+ */
+function keepLegRatings(store: Store, roadbook: SavedRide): void {
+  for (const leg of roadbook.legs) {
+    if (leg.rating === null) continue;
+    const shape = roadbook.shapes?.[leg.seq - 1];
+    if (!shape) continue;
+    store.addRoadRating({
+      rideId: roadbook.id,
+      noteId: null,
+      road: leg.mainRoads.length ? leg.mainRoads.join(" / ") : `${leg.from} to ${leg.to}`,
+      rating: leg.rating,
+      reason: leg.notes ?? `leg ${leg.seq} of an earlier version`,
+      approximate: false,
+      cells: routeCells([shape]),
+    });
+  }
 }
 
 /** One line on where the ride's distance is spent, when the profile was recorded. */
@@ -141,7 +260,7 @@ export function formatRideDayPage(page: Page<RideDay>, next: (page: number) => s
   const lines = page.items.map((d) => {
     const when = d.rideDate ? `${d.rideDate} ${weekday(d.rideDate)} ${d.departure ?? "--:--"}` : "no date yet         ";
     const rating = d.rating === null ? "" : `  |  ${stars(d.rating)}`;
-    return `${when}  #${d.roadbookId}  ${d.name}  |  ${d.distanceKm} km, ${fmtMinutes(d.ridingMinutes)}  |  ${d.status}${rating}`;
+    return `${when}  #${d.roadbookId}  ${d.name}  |  ${d.distanceKm} km, ${fmtMinutes(d.ridingMinutes)}  |  ${d.status}${d.stale && d.status === "planned" ? ", route changed: refresh it" : ""}${rating}`;
   });
   const footer = formatPageFooter(page, "ride", next);
   return lines.length ? [...lines, "", footer].join("\n") : footer;
@@ -174,7 +293,8 @@ function formatLegs(ride: SavedRide): string[] {
   return lines;
 }
 
-export function formatRideDetail(ride: SavedRide): string {
+/** Everything about a roadbook; with the store, its earlier versions too. */
+export function formatRideDetail(ride: SavedRide, store?: Store): string {
   return [
     formatRideLine(ride),
     `Saved ${ride.createdAt.slice(0, 10)}, departure ${ride.departure ?? "not set"}`,
@@ -184,6 +304,7 @@ export function formatRideDetail(ride: SavedRide): string {
     formatRoadMix(ride),
     formatSurface(ride),
     ride.usage ? `Planned with: ${formatUsage(ride.usage)}` : null,
+    ...(store ? formatVersions(store, ride) : []),
     ...formatExtras(ride),
     "",
     "Legs (estimated riding time from speed limits and bends; no stops, no traffic):",

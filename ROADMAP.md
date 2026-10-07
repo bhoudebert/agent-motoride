@@ -76,6 +76,9 @@ with a navigation app (Liberty Rider, Google Maps) on the phone.
 
 ## Done lately
 
+- **Roadbooks change in place**: a saved change keeps the roadbook's number and
+  its previous version (`versions`, `restore`, `copy`); planned rides follow,
+  marked to refresh; leg ratings become road ratings so nothing rated is lost.
 - **Delete, cancel, tidy**: deleting a roadbook or a ride asks first and says
   what goes (road ratings stay); a planned ride can be cancelled and kept;
   `rides tidy` drops expired lookups and compacts the library, listing
@@ -84,8 +87,9 @@ with a navigation app (Liberty Rider, Google Maps) on the phone.
 - **Roadbooks and rides** (ADR 0022, 0023): versioned library migrations with
   a backup first; saved rides stored as roadbooks (the design) and rides (a
   roadbook on a day); both listed 20 per page in the terminal and over MCP.
-  Next: edits in place with versions, a new date as a new ride, ratings split
-  between the road and the day, the start point on the ride.
+  Edits in place with versions and a new date as a new ride are done (below).
+  Next: ratings split between the road and the day, the start point on the
+  ride, the briefing on a chosen ride.
 - **A map of the ride**: the loop, towns, stops and fixed cameras with their
   limits as a picture, drawn from the ride's own data (`rides map`, `/map`,
   `showRideMap` in Claude Code or Codex, the Markdown export, the share page).

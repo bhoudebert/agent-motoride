@@ -56,6 +56,16 @@ interface NominatimResult {
   display_name: string;
 }
 
+/** A place name compared without case, accents, hyphens or apostrophes: "Saint-Étienne" is "saint etienne". */
+const sameName = (name: string) =>
+  name
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .replace(/[-'’]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
 /** Towns and villages (Open-Meteo). Returns undefined when nothing fits the name and its qualifiers. */
 async function geocodeTown(location: string): Promise<Point | undefined> {
   const [name = "", ...qualifiers] = location.split(",").map((part) => part.trim());
@@ -79,12 +89,16 @@ async function geocodeTown(location: string): Promise<Point | undefined> {
           return wanted.every((q) => fields.includes(q));
         });
   const origin = anchor;
-  // Near the start point wins, but a real town beats a namesake hamlet that is
-  // only slightly closer: distance is discounted by the size of the place.
+  // The town of that very name before towns that only contain it ("Le Quesnoy",
+  // not Quesnoy-sur-Deûle); then near the start point wins, but a real town
+  // beats a namesake hamlet that is only slightly closer: distance is
+  // discounted by the size of the place.
+  const asked = sameName(name);
+  const exact = (r: (typeof results)[number]) => (sameName(r.name) === asked ? 0 : 1);
   const score = (r: (typeof results)[number]) =>
     origin ? haversineKm(origin, { lat: r.latitude, lon: r.longitude }) / Math.log10((r.population ?? 0) + 10) : 0;
   // Results arrive ranked by relevance; the stable sort keeps that order when there is no anchor.
-  const best = [...candidates].sort((a, b) => score(a) - score(b))[0];
+  const best = [...candidates].sort((a, b) => exact(a) - exact(b) || score(a) - score(b))[0];
   return (
     best && {
       lat: best.latitude,

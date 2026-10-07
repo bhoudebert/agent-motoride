@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { buildGpx, describeStopsAt, routePointIndex } from "../src/gpx.ts";
-import { formatExtras, formatRideDetail, formatRideList, formatWeather, parseRating } from "../src/library.ts";
+import { formatExtras, formatRideDetail, formatRideLine, formatWeather, parseRating } from "../src/library.ts";
 import { formatRideMarkdown } from "../src/markdown.ts";
 import { Store } from "../src/store.ts";
 import { bentLine, encodePolyline } from "./helpers/polyline.ts";
@@ -148,7 +148,7 @@ function savedRide(store: Store) {
 test("ride view: list line, road mix, daylight, weather, cameras, stop plan, legs", () => {
   const store = new Store(":memory:");
   const ride = savedRide(store);
-  assert.match(formatRideList([ride]), /Test loop .* 120 km, 2h10/);
+  assert.match(formatRideLine(ride), /Test loop .* 120 km, 2h10/);
   const view = formatRideDetail(ride);
   for (const part of [
     "Road mix: 75% open road",

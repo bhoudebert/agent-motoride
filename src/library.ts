@@ -267,10 +267,6 @@ export function formatRideDayPage(page: Page<RideDay>, next: (page: number) => s
   return lines.length ? [...lines, "", footer].join("\n") : footer;
 }
 
-export function formatRideList(rides: SavedRide[]): string {
-  return rides.length === 0 ? "No saved rides yet." : rides.map(formatRideLine).join("\n");
-}
-
 const avgSpeed = (km: number, minutes: number) => (minutes > 0 ? `${Math.round(km / (minutes / 60))} km/h` : "-");
 
 /** "Grenoble, Rhône-Alpes, France" -> "Grenoble"; coordinates are kept whole. */

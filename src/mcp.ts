@@ -33,7 +33,6 @@ import {
   restoreVersion,
   formatRatedRoads,
   formatRideDayPage,
-  formatRideList,
   formatRoadbookPage,
   replanStops,
   saveCurrentRide,
@@ -822,19 +821,34 @@ server.registerTool(
 server.registerResource(
   "library",
   "ride://library",
-  { title: "Saved rides", description: "The rider's library, one line per ride", mimeType: "text/plain" },
-  async (uri) => ({ contents: [{ uri: uri.href, mimeType: "text/plain", text: formatRideList(store.listRides()) }] }),
+  {
+    title: "Roadbooks",
+    description: "The rider's newest roadbooks, 20 at most; listRoadbooks pages through the rest",
+    mimeType: "text/plain",
+  },
+  async (uri) => ({
+    contents: [
+      {
+        uri: uri.href,
+        mimeType: "text/plain",
+        text: formatRoadbookPage(store.listRoadbooks(1), (n) => `call listRoadbooks with page ${n}`),
+      },
+    ],
+  }),
 );
 server.registerResource(
   "ride",
   new ResourceTemplate("ride://ride/{id}", {
+    // The newest 20 offered for attaching; any other number opens by its address.
     list: async () => ({
-      resources: store
-        .listRides()
-        .map((r) => ({ uri: `ride://ride/${r.id}`, name: `#${r.id} ${r.name}`, mimeType: "text/plain" })),
+      resources: store.listRoadbooks(1).items.map(({ roadbook: r }) => ({
+        uri: `ride://ride/${r.id}`,
+        name: `#${r.id} ${r.name}`,
+        mimeType: "text/plain",
+      })),
     }),
   }),
-  { title: "Saved ride", description: "Everything stored about one saved ride", mimeType: "text/plain" },
+  { title: "Roadbook", description: "Everything stored about one roadbook and its rides", mimeType: "text/plain" },
   async (uri, { id }) => {
     const ride = store.findRide(String(id));
     if (!ride) throw new Error(`No roadbook #${String(id)}`);

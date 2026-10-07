@@ -35,7 +35,7 @@ When the client advertises form elicitation, `reviewRide` SHALL ask the rider in
 
 ### Requirement: Resources
 
-The server SHALL publish, as text: `ride://library` (the roadbooks, one line each), `ride://ride/{id}` (one roadbook, as `showRide` returns it, listed for every roadbook), and `ride://roads/rated` (road stretches, rides and legs rated, with their ratings).
+The server SHALL publish, as text: `ride://library` (the 20 newest roadbooks, one line each, ending with how to page through the rest with `listRoadbooks`), `ride://ride/{id}` (one roadbook, as `showRide` returns it, offered for the 20 newest and readable for any), and `ride://roads/rated` (road stretches, rides and legs rated, with their ratings).
 
 ### Requirement: Client portability
 

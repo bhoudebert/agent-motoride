@@ -7,7 +7,7 @@ API key; the library commands (`npm run rides -- ...`) never call a model.
 ## Planning: `npm run ride`
 
 ```bash
-npm run ride                      # start menu: plan a new ride, or open a saved one
+npm run ride                      # start menu: plan a new ride, or open a roadbook (20 per page, n and p to turn)
 npm run ride -- [options] "..."   # plan directly
 ```
 

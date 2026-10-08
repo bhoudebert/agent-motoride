@@ -3,6 +3,16 @@
 Not commitments. Ordered by expected value for a rider who plans here and rides
 with a navigation app (Liberty Rider, Google Maps) on the phone.
 
+## Help wanted
+
+Open to anyone, no API key needed for most (see `CONTRIBUTING.md`):
+
+- **Legal speed defaults** for countries and regions missing from
+  `RURAL_DEFAULT_KMH` (`src/tools/trip.ts`), with their source.
+- **Eval cases** for requests the agent handles badly: a mountain pass closed
+  in winter, a ride across a border, a group with two starts.
+- **Another traffic source** next to TomTom, behind the same `getTraffic`.
+
 ## Learn from what was actually ridden
 
 - **Recorded tracks**: notes during the ride and a review against the

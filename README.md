@@ -100,8 +100,9 @@ Details for each mode: [the terminal app](https://bhoudebert.github.io/agent-mot
 
 - **An itinerary** built from real data: legs with town names and main roads, distance, estimated riding time and average speed, open-road share, time at 70 km/h or more, slow-zone shares against your targets, daylight, weather by time of day, traffic, fixed cameras, a stop plan with times, navigation links.
 - **Roadbooks and rides**: every loop you keep is a roadbook (points, legs, route line, ratings), ridden on as many days as you like. "Plan a ride from roadbook 7 on Saturday at 9" adds a ride with that day's forecast, open stops and go or no-go, without copying the loop and, in the terminal, without a model call. Lists of both, 20 per page; a rule keeps new plans from repeating a roadbook you have.
+- **Changes that keep history**: "make roadbook 7 50 km longer" changes it in place and keeps the previous version (`versions`, `restore`, `copy` for a real variant). Rides already done keep the route they rode, for viewing, exports and the review; rides still ahead follow, and the save names them. A day has its own rating ("Saturday was cold, 2/5"), apart from the roads'. Deletes ask first and keep your road ratings; a planned ride can be cancelled; `tidy` compacts the library.
 - **Rides from anywhere**: a sentence, a GPX or KML file someone shared, or a photo of a map.
-- **Checked before you see it**: your distance and time limits, motorways, repeats and rated roads verified by code, not by the model.
+- **Checked before you see it**: your distance and time limits, motorways, fast expressways (25% by default, your setting), repeats, rated roads and a departure already past verified by code, not by the model; a slow-zone share over its target is said, not hidden.
 - **Feedback from the road**: say "last 10 minutes awesome" or "cobbles, never again" while riding; after the ride the notes land on the road you actually rode, from any app's recorded track, and become ratings the next plans follow.
 - **Exports**: a map picture of the ride with its stops and cameras, Google Maps links pinned to the chosen roads, GPX for navigation apps (Liberty Rider, Kurviger, Garmin, TomTom), a Markdown document per ride, a QR code and a phone page on your Wi-Fi.
 - **Accounting**: every run logged with tokens, cost and result; every step replayable; a model benchmark with recommendations.
@@ -127,9 +128,13 @@ Codex side by side: **[the rider's guide](https://bhoudebert.github.io/agent-mot
   (no motorways, no repeats, the limits in the request) are checked in code,
   and a failed itinerary goes back to the planner once.
 - **Scouts and memory**: two to four cheaper model sessions explore riding
-  areas in parallel; before they go, a road memory built from past sessions
-  (rides, ratings, scout verdicts, known winding roads), recalled by place and
-  by words with SQLite FTS5, tells the planner what is already known.
+  areas in parallel, or in Claude Code its own subagents at no API cost; before
+  they go, a road memory built from past sessions (rides, ratings, scout
+  verdicts from both kinds of scouts, known winding roads), recalled by place
+  and by words with SQLite FTS5, tells the planner what is already known.
+- **A library that evolves safely**: one SQLite file with versioned
+  migrations, each in a transaction after a backup; roadbooks keep their
+  versions, rides point to the one they used.
 - **Two modes, one toolbox**: the terminal app runs the agent on the Anthropic
   API with a schema-validated answer; Claude Code and Codex use the same tools
   as an MCP server, with forms (elicitation) for the rider's decisions.
@@ -143,6 +148,29 @@ and data sources, the riding-time model, model choice and cost benchmark,
 evals, observability, scripts and project layout. Every significant choice has
 a decision record in [`docs/adr/`](docs/adr/).
 
+## Open source, on open data
+
+agentMotoride is **MIT-licensed and built in the open**, on top of open data.
+
+- **On open data.** Roads, speed limits, cameras and stops come from
+  OpenStreetMap, routing from Valhalla, forecasts from Open-Meteo, addresses
+  from Photon and Nominatim: projects run by communities and open to anyone.
+  When a plan is wrong because a limit or a camera is missing, the fix belongs
+  in OpenStreetMap, and every rider using it benefits.
+- **Yours to run.** It runs on your machine. Your library of roadbooks, rides
+  and notes is one SQLite file that stays there. The app sends no telemetry:
+  it calls the data services above, TomTom when you add a traffic key, and
+  the model you chose; session traces go to an OpenTelemetry tool only if you
+  point them at one.
+- **Built in the open.** Every requirement is written down (`openspec/`),
+  every significant choice has a decision record (`docs/adr/`), the agent is
+  evaluated on recorded sessions anyone can replay for free (`evals/`), and
+  every change is a public pull request with what was and was not verified.
+- **Easy to help.** The most useful contributions are small: a country's legal
+  speed defaults, a new eval case, a bug report with its trace, a fix in
+  OpenStreetMap. See [CONTRIBUTING.md](CONTRIBUTING.md#what-helps-most) and the
+  [guide](https://bhoudebert.github.io/agent-motoride/guide/open-source).
+
 ## Requirements
 
 - Node.js 24 or newer. The TypeScript sources run directly, there is no build step.
@@ -153,7 +181,8 @@ a decision record in [`docs/adr/`](docs/adr/).
 
 ## Licence, data and disclaimer
 
-Open source under the MIT licence. The planner relies on public data and
+Open source under the MIT licence: use it, change it, share it; contributions
+are accepted under the same licence. The planner relies on public data and
 services with their own licences, in particular OpenStreetMap (© OpenStreetMap
 contributors, ODbL) and Open-Meteo (CC BY 4.0); see `NOTICE.md` for the full
 list, the attribution each requires, and the usage policies of the public

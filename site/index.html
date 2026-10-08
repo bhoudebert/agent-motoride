@@ -217,6 +217,7 @@
     <li><a href="#after">After the ride</a></li>
     <li><a href="#how">How it works</a></li>
     <li><a href="#run">Run it</a></li>
+    <li><a href="#open">Open source</a></li>
     <li><a href="guide/">Guide</a></li>
     <li><a href="https://github.com/bhoudebert/agent-motoride">GitHub</a></li>
   </ul>
@@ -333,7 +334,7 @@
         <li><b>Import a route someone shared</b>A club's or a friend's GPX or KML, routed so it gets the same figures and checks as your own rides.</li>
         <li><b>Start from a photo of a map</b>A loop drawn on paper or a screenshot: the places on it become the waypoints.</li>
         <li><b>Ride a roadbook again</b>"Plan a ride from roadbook 7 on Saturday at 9": the same loop on a new day, with that day's forecast and open stops, no copy.</li>
-        <li><b>Change a roadbook in words</b>"50 km longer", "leave at 10", "skip Tournai".</li>
+        <li><b>Change a roadbook in words</b>"50 km longer", "skip Tournai": changed in place, the previous version kept, the rides you already rode untouched.</li>
       </ul>
     </div>
     <div class="stage">
@@ -342,7 +343,7 @@
         <li><b>Open road first</b>Share of the ride outside towns, time at 70 km/h or more, slow zones kept small.</li>
         <li><b>Stops from your bike</b>Fuel before the tank runs dry, coffee and lunch when you would want them, open on arrival.</li>
         <li><b>What to watch</b>Fixed speed cameras, crosswind, low sun in your eyes, cobbles and gravel.</li>
-        <li><b>Checked before you see it</b>Code verifies your limits, no motorways, no repeat of a ride you already have.</li>
+        <li><b>Checked before you see it</b>Code verifies your limits, no motorways, fast expressways under your ceiling, no departure already past, no repeat of a loop you already have.</li>
       </ul>
     </div>
     <div class="stage">
@@ -361,7 +362,7 @@
         <li><b>Notes from the saddle</b>"Last 10 minutes awesome", "cobbles, never again", said at a stop.</li>
         <li><b>Review with your recorded track</b>Notes land on the road you really rode, detours and pace included.</li>
         <li><b>Better next time</b>Loved roads come back, "never again" roads are avoided, and no ride is proposed twice.</li>
-        <li><b>Roadbooks and rides</b>Your loops as roadbooks, rated in a word ("rate roadbook 7 five"); each day you ride one is a ride, listed by date, with its own weather and notes.</li>
+        <li><b>Roadbooks and rides</b>Your loops as roadbooks, rated in a word ("rate roadbook 7 five"); each day you ride one is a ride, with its own weather, notes and rating ("Saturday was cold, 2/5"). Cancel a ride, delete with a confirmation, tidy the file.</li>
       </ul>
     </div>
   </div>
@@ -413,7 +414,7 @@
     </div>
   </div>
   <div class="steps">
-    <div><h3>Scout</h3><p>Two to four sub-agents explore candidate regions in parallel: winding roads, a routed loop, the forecast.</p></div>
+    <div><h3>Scout</h3><p>Two to four sub-agents explore candidate regions in parallel: winding roads, a routed loop, the forecast. In Claude Code they can be its own subagents, at no API cost.</p></div>
     <div><h3>Compare</h3><p>The planner weighs the candidates on open road, slow zones, time at speed, weather and your past rides.</p></div>
     <div><h3>Finish</h3><p>The chosen loop gets daylight, fixed cameras, fuel and coffee stops placed from your bike's range, and traffic at departure.</p></div>
     <div><h3>Remember</h3><p>Roadbooks, their ratings and the roads you rated from the saddle shape the next plan. No loop you have is proposed twice.</p></div>
@@ -464,9 +465,10 @@
     <div><dt>Rules in code</dt><dd>No motorways unless allowed, no duplicates, rated roads respected, every itinerary checked against your limits, a stuck agent made to answer.</dd></div>
     <div><dt>Ride-day check</dt><dd>One command on the morning: fresh forecast, daylight, traffic, stops open on arrival, go or no-go.</dd></div>
     <div><dt>Observable</dt><dd>Every session traced and costed, replayable step by step, exportable to any OpenTelemetry tool. Models benchmarked on cost and quality.</dd></div>
-    <div><dt>Memory</dt><dd>Past sessions teach the next: areas already scouted, roads already found, what you rated. Recalled by place and by words.</dd></div>
+    <div><dt>Memory</dt><dd>Past sessions teach the next: areas already scouted (by the app's scouts or Claude Code's subagents), roads already found, what you rated. Recalled by place and by words.</dd></div>
     <div><dt>Evaluated</dt><dd>Scripted rider requests graded by code, recorded once and replayed free on every change.</dd></div>
     <div><dt>Injection-tested</dt><dd>Hostile instructions planted in map names. The rules hold in code whatever the model reads.</dd></div>
+    <div><dt>History kept</dt><dd>One SQLite file with versioned migrations, each in a transaction after a backup. Roadbooks keep their versions; rides keep the one they rode.</dd></div>
     <div><dt>Engineering</dt><dd>Specs per capability, tests with simulated services, CI, CodeQL, release automation. TypeScript, SQLite.</dd></div>
   </dl>
 </section>
@@ -484,6 +486,23 @@
 <span class="p">$ </span>cp .env.example .env      <span class="c"># RIDE_HOME, and ANTHROPIC_API_KEY for the terminal mode</span>
 <span class="p">$ </span>npm run check             <span class="c"># what is ready, what answers</span>
 <span class="p">$ </span>npm run ride              <span class="c"># or open `claude` in this folder</span></pre>
+</section>
+
+<section id="open">
+  <div class="head">
+    <div class="num">09 / open source</div>
+    <div>
+      <h2>Open source, on open data</h2>
+      <p>MIT-licensed, built in the open, and standing on data that communities map and share. Read every line, run it on your machine, send improvements back.</p>
+    </div>
+  </div>
+  <div class="steps">
+    <div><h3>On open data</h3><p>Roads, limits and cameras from OpenStreetMap, routing by Valhalla, forecasts from Open-Meteo. A limit or camera you add to the map improves every plan, for every rider.</p></div>
+    <div><h3>Yours to run</h3><p>Runs on your machine. Your roadbooks and notes stay in one file there. No telemetry: only the data services and the model you chose.</p></div>
+    <div><h3>Built in the open</h3><p>Requirements, decisions, evals you can replay for free, and every change as a public pull request that says what was verified.</p></div>
+    <div><h3>Easy to help</h3><p>Your country's speed rules, a request the agent gets wrong, a bug with its trace, a fix in the map. No API key needed.</p></div>
+  </div>
+  <p class="intro" style="margin-top: 32px"><a href="guide/open-source">How to help</a> · <a href="https://github.com/bhoudebert/agent-motoride/blob/main/CONTRIBUTING.md#what-helps-most">What helps most</a> · <a href="https://github.com/bhoudebert/agent-motoride">Source on GitHub</a></p>
 </section>
 
 <footer>

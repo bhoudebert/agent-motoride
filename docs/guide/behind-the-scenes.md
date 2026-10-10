@@ -25,3 +25,6 @@ In short:
   prompt-injection case planted in map data.
 - **Observable**: every session is traced and costed, can be replayed step by
   step, and exported to any OpenTelemetry tool.
+
+Step by step, with a real sequence of tool calls: [How a plan is made](/how-a-plan-is-made).
+To see what one of your own sessions did: [What a session did](/sessions).

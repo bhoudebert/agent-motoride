@@ -66,6 +66,8 @@ export default defineConfig({
           { text: "Every command, tool and setting", link: "/reference" },
           { text: "The terminal app", link: "/terminal" },
           { text: "Limits and troubleshooting", link: "/limits" },
+          { text: "How a plan is made", link: "/how-a-plan-is-made" },
+          { text: "What a session did", link: "/sessions" },
           { text: "Behind the scenes", link: "/behind-the-scenes" },
           { text: "Open source, and how to help", link: "/open-source" },
         ],

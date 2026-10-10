@@ -53,27 +53,27 @@ in memory only: save the ride to pick it up later with `--roadbook`.
 
 ## The library: `npm run rides -- <command>`
 
-| Command                                                                                | Does                                                                         |
-| -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `roadbooks [--page N]`, `rides [--page N]`                                             | The saved loops, newest first; the rides by date; 20 per page                |
-| `show <roadbook> [day] [--md]`                                                         | One roadbook with its versions and rides, or one ride with the route it rode |
-| `plan <roadbook> <day> [time]`                                                         | A ride from a roadbook on a day, no copy, no model call                      |
-| `today [roadbook] [day]`                                                               | Ride-day briefing: go, caution or no-go (default the next planned ride)      |
-| `rate <roadbook> <0-5> [note]`, `rate-leg <roadbook> <leg> <0-5> [note]`               | Rate the roads: a roadbook or one leg                                        |
-| `rate-day <roadbook> <day> <0-5> [note]`                                               | Rate how a ride went that day, never the roads                               |
-| `note "<text>" [--rating 0-5] [--back N] [--roadbook id]`                              | During the ride: a note                                                      |
-| `notes [--all]`, `review [roadbook] [track.gpx] [--yes]`                               | Notes waiting; review against a recorded track                               |
-| `versions <roadbook>`, `restore <roadbook> <version>`, `copy <roadbook> [name]`        | Earlier versions, bring one back, a separate variant                         |
-| `keep <roadbook> <day>`                                                                | A planned ride stays on the route it had before a change                     |
-| `cancel <roadbook> <day>`                                                              | Not riding: kept, shown as cancelled                                         |
-| `delete roadbook <roadbook>`, `delete ride <roadbook> <day>`                           | Delete, after you confirm (`--yes` in scripts); road ratings stay            |
-| `import <file.gpx\|kml> [name] [--force]`                                              | Save a route someone shared                                                  |
-| `export <roadbook> [file] [--pins N]`, `export-md <roadbook> [file]`, `map <roadbook>` | GPX for a GPS app, Markdown document, map picture                            |
-| `qr <roadbook>`, `share <roadbook>`                                                    | QR code, or the phone page on your Wi-Fi until Ctrl-C                        |
-| `refresh <roadbook\|all> [--stops]`                                                    | Recompute figures, weather, cameras, stops                                   |
-| `bike [range=.. reserve=.. pause=.. stint=.. lunch=..]`                                | Bike profile                                                                 |
-| `runs [--csv]`, `trace <run> [--full]`, `otel <run>`                                   | Sessions with cost, replay one, export it to OpenTelemetry                   |
-| `tidy`, `clear-cache`                                                                  | Drop expired lookups and compact the file; drop all cached lookups           |
+| Command                                                                                | Does                                                                                       |
+| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `roadbooks [--page N]`, `rides [--page N]`                                             | The saved loops, newest first; the rides by date; 20 per page                              |
+| `show <roadbook> [day] [--md]`                                                         | One roadbook with its versions and rides, or one ride with the route it rode               |
+| `plan <roadbook> <day> [time]`                                                         | A ride from a roadbook on a day, no copy, no model call                                    |
+| `today [roadbook] [day]`                                                               | Ride-day briefing: go, caution or no-go (default the next planned ride)                    |
+| `rate <roadbook> <0-5> [note]`, `rate-leg <roadbook> <leg> <0-5> [note]`               | Rate the roads: a roadbook or one leg                                                      |
+| `rate-day <roadbook> <day> <0-5> [note]`                                               | Rate how a ride went that day, never the roads                                             |
+| `note "<text>" [--rating 0-5] [--back N] [--roadbook id]`                              | During the ride: a note                                                                    |
+| `notes [--all]`, `review [roadbook] [track.gpx] [--yes]`                               | Notes waiting; review against a recorded track                                             |
+| `versions <roadbook>`, `restore <roadbook> <version>`, `copy <roadbook> [name]`        | Earlier versions, bring one back, a separate variant                                       |
+| `keep <roadbook> <day>`                                                                | A planned ride stays on the route it had before a change                                   |
+| `cancel <roadbook> <day>`                                                              | Not riding: kept, shown as cancelled                                                       |
+| `delete roadbook <roadbook>`, `delete ride <roadbook> <day>`                           | Delete, after you confirm (`--yes` in scripts); road ratings stay                          |
+| `import <file.gpx\|kml> [name] [--force]`                                              | Save a route someone shared                                                                |
+| `export <roadbook> [file] [--pins N]`, `export-md <roadbook> [file]`, `map <roadbook>` | GPX for a GPS app, Markdown document, map picture                                          |
+| `qr <roadbook>`, `share <roadbook>`                                                    | QR code, or the phone page on your Wi-Fi until Ctrl-C                                      |
+| `refresh <roadbook\|all> [--stops]`                                                    | Recompute figures, weather, cameras, stops                                                 |
+| `bike [range=.. reserve=.. pause=.. stint=.. lunch=..]`                                | Bike profile                                                                               |
+| `runs [--csv]`, `trace <run> [--full]`, `otel <run>`                                   | Sessions with cost, replay one, export it to OpenTelemetry ([how to read them](/sessions)) |
+| `tidy`, `clear-cache`                                                                  | Drop expired lookups and compact the file; drop all cached lookups                         |
 
 ## Checks
 

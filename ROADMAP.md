@@ -13,6 +13,15 @@ Open to anyone, no API key needed for most (see `CONTRIBUTING.md`):
   in winter, a ride across a border, a group with two starts.
 - **Another traffic source** next to TomTom, behind the same `getTraffic`.
 
+## Areas chosen from data
+
+- **An area finder**: today the planner picks the areas to scout from its own
+  knowledge of the region. A tool could propose them from data instead: a grid
+  around the start within the reach of the rider's limits, each cell scored on
+  the density of winding roads and its built-up share from OpenStreetMap, the
+  best cells returned with their central town. The model would arbitrate
+  rather than guess, and the choice would be testable and repeatable.
+
 ## Learn from what was actually ridden
 
 - **Recorded tracks**: notes during the ride and a review against the

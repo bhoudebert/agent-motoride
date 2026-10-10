@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/bhoudebert/agent-motoride/compare/v1.7.0...v1.8.0) (2026-10-10)
+
+
+### Features
+
+* **feedback:** rate a stretch of road directly, list rated roads, remove a stretch rating ([#73](https://github.com/bhoudebert/agent-motoride/issues/73)) ([20e180a](https://github.com/bhoudebert/agent-motoride/commit/20e180afe23b9fb31d96a27f8876577bc746f8ec))
+
 ## [1.7.0](https://github.com/bhoudebert/agent-motoride/compare/v1.6.0...v1.7.0) (2026-10-07)
 
 

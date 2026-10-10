@@ -52,3 +52,23 @@ The most useful contributions are small and need no API key:
 
 How to set up, the commit rules and the pull request template are in
 [CONTRIBUTING.md](https://github.com/bhoudebert/agent-motoride/blob/main/CONTRIBUTING.md).
+
+## Commands for contributors
+
+None of these calls a model unless it says so.
+
+```bash
+npm run check               # what is configured, and whether each data service answers
+npm run smoke               # every tool once against the live services, no model
+npm run mcp:smoke           # the MCP server over stdio, tools and prompts, no model
+npm run quality             # typecheck, lint, format check, tests with coverage: the gate
+npm test                    # unit tests only, against simulated services
+npm run eval                # replay every recorded session: no network, no cost (what CI runs)
+npm run eval -- --update-tools        # replay, fetching new map and weather answers (free)
+npm run eval -- --record [ids] --budget 3   # run cases live on the Claude API and record them (billed)
+npm run docs:reference      # regenerate the reference page after changing a command, tool or setting
+npm run docs:dev            # this guide, locally
+```
+
+What each eval checks, and how recordings work, is in the
+[engineering notes](https://github.com/bhoudebert/agent-motoride/blob/main/docs/ENGINEERING.md#evaluating-the-agent).

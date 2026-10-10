@@ -43,6 +43,7 @@ import {
 import { startPoint } from "./start.ts";
 import { formatRideMarkdown, writeRideMarkdown } from "./markdown.ts";
 import { SCOUT_MODEL } from "./model.ts";
+import { formatForClients } from "./capabilities.ts";
 import { SCOUT_SYSTEM, type ScoutInput, scoutBrief, scoutStart, scoutsUnavailable } from "./scouts.ts";
 import { preferencesFromEnv } from "./preferences.ts";
 import { describeProfile } from "./profile.ts";
@@ -167,7 +168,7 @@ async function clientScouting(input: ScoutInput): Promise<string> {
 // Server instructions reach the client's system prompt at connection time, so
 // the method applies even when the rider types in plain words instead of using
 // the plan-ride command. Kept to the essentials; the command carries the rest.
-const INSTRUCTIONS = `agentMotoride plans one-day motorcycle rides and keeps the rider's library of saved rides. Anything the rider says about rides, trips, loops, routes, the library, stops, cameras, weather for a ride, or a ride-day briefing is a request for this server's tools: showRide, showRideMap, listRoadbooks, listRides, rideBriefing, refreshRide, rateRide, exportGpx, exportMarkdown, planningGuide and the planning tools. Never run shell commands, scripts or web searches for these, and never look for a "ride" program: "ride show 7" or "/ride plan ..." typed by the rider means "use the ride tools" (here: showRide for ride 7). A roadbook is a saved loop or trip, with a number ("roadbook 7"; riders may also say "ride 7" for it); a ride is a roadbook on one day, named by its date ("Saturday's ride"): listRoadbooks lists the first, listRides the second, 20 per page. "Plan a ride from roadbook 7 on Saturday at 9", or "plan a ride on Saturday" once a roadbook is the one being discussed, is planRide: it adds a ride to that roadbook, never a copy; replan or edit the route only when the rider asks for a change. "Saturday was cold, 3 out of 5" rates the day: rateRide with day, which never marks a road; "never again" about a road rates the roadbook, a leg or a note. "That stretch from Ere to Hollain was great, 5" about part of a ride is rateStretch (no roadbook). "Not riding Saturday" is cancelRide; deleteRoadbook and deleteRide only when the rider asks to delete, and they ask the rider first. Plain words are enough, slash commands are only shortcuts: before planning any new ride asked in plain words, in any client, call planningGuide with the rider's request and follow it, with ride set when it changes a saved ride (the plan-ride and edit-ride commands already carry that guidance).
+const INSTRUCTIONS = `agentMotoride plans one-day motorcycle rides and keeps the rider's library of saved rides. Anything the rider says about rides, trips, loops, routes, the library, stops, cameras, weather for a ride, or a ride-day briefing is a request for this server's tools: showRide, showRideMap, listRoadbooks, listRides, rideBriefing, refreshRide, rateRide, exportGpx, exportMarkdown, planningGuide and the planning tools. Never run shell commands, scripts or web searches for these, and never look for a "ride" program: "ride show 7" or "/ride plan ..." typed by the rider means "use the ride tools" (here: showRide for ride 7). A roadbook is a saved loop or trip, with a number ("roadbook 7"; riders may also say "ride 7" for it); a ride is a roadbook on one day, named by its date ("Saturday's ride"): listRoadbooks lists the first, listRides the second, 20 per page. "Plan a ride from roadbook 7 on Saturday at 9", or "plan a ride on Saturday" once a roadbook is the one being discussed, is planRide: it adds a ride to that roadbook, never a copy; replan or edit the route only when the rider asks for a change. "Saturday was cold, 3 out of 5" rates the day: rateRide with day, which never marks a road; "never again" about a road rates the roadbook, a leg or a note. "That stretch from Ere to Hollain was great, 5" about part of a ride is rateStretch (no roadbook). "Not riding Saturday" is cancelRide; deleteRoadbook and deleteRide only when the rider asks to delete, and they ask the rider first. When the rider asks what the app can do or how to do something, call capabilities and show it. Plain words are enough, slash commands are only shortcuts: before planning any new ride asked in plain words, in any client, call planningGuide with the rider's request and follow it, with ride set when it changes a saved ride (the plan-ride and edit-ride commands already carry that guidance).
 For a new leisure ride: call listSavedRides and recallArea around the start (what earlier sessions learnt: scouted areas and their verdicts, known winding roads), then ${scoutsOff ? "scout 2-4 areas with parallel subagents as planningGuide explains (API scouts are off here, scoutAreas cannot run)" : "scoutAreas with 2-4 areas"}, skipping areas recently found poor${scoutsOff ? "" : " (or searchRoads and calculateTrip yourself if scouts are unavailable)"}, pick the best candidate, then finish it: getDaylight, getWeather along the loop for the riding hours, getSpeedCameras, checkConditions (crosswind, low sun) with the date and departure, planStops with the date and departure, getTraffic for the departure. Before presenting it, call checkItinerary with its routeId, the rider's request and your text, and fix what it reports once (or say plainly which limit cannot be met). Present the itinerary in plain text (never JSON) with legs named by towns, the figures from the tools, the stops with times, the navigation links from planStops (and its overviewLink as "Whole ride (overview, not for navigation)" when there are several parts), and end with one line "Route: <routeId>". Save only when the rider asks, with saveRide; after a change to a saved roadbook, saving changes it in place and keeps the previous version (restoreRoadbook undoes it), and asCopy is only for a rider who wants a separate copy. During a ride, a remark about the road ("last 10 min awesome", "cobbles, never again") is a note: call addRideNote at once with the rider's words, and a rating 0-5 only when they gave one. After the ride, reviewRide places the notes on the recorded track (gpxPath) or on the plan, shows detours and pace, and proposes ratings; apply them with reviewRide and decisions only once the rider confirms. If the rider has a route file (GPX or KML, from another app, a club or a friend), call importRoute with its path: it returns a routeId to present, finish and save like a planned ride. If the rider shares an image (photo of a paper map, route screenshot, list of places), read the places on it in order and route them with calculateTrip by name, then finish the ride as usual. For an edit or a question about a saved ride, work from its data (showRide) without replanning. For a practical trip (commute), route point to point, motorways if permitted, with traffic.`;
 
 const server = new McpServer({ name: "agentMotoride", version: "0.1.0" }, { instructions: INSTRUCTIONS });
@@ -231,6 +232,7 @@ const HINTS: Record<string, ToolAnnotations> = {
   // Routes the stretch on the public router, then stores a rating: each call adds one.
   rateStretch: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
   listRatedRoads: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  capabilities: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   deleteStretchRating: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
   planningGuide: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
 };
@@ -928,6 +930,18 @@ server.registerTool(
   },
 );
 
+// For clients without slash commands (Codex) and for "what can you do?".
+server.registerTool(
+  "capabilities",
+  {
+    description:
+      "Everything agentMotoride does, grouped by moment (plan, ride day, on the road, after the ride, library, settings), with what to say for each and the Claude Code shortcut. Call it when the rider asks what the app can do or how to do something, and show it as returned.",
+    annotations: hintsOf("capabilities"),
+    inputSchema: z.object({}),
+  },
+  async () => text(formatForClients()),
+);
+
 server.registerTool(
   "listRatedRoads",
   {
@@ -1308,6 +1322,41 @@ server.registerPrompt(
 );
 
 server.registerPrompt(
+  "rate",
+  {
+    title: "Rate a roadbook",
+    description: "Rate a saved roadbook 0 (never again) to 5 (loved), with your words: it steers later plans.",
+    argsSchema: {
+      roadbook: z.string().describe("Roadbook number or name"),
+      rating: z.string().describe("0 to 5"),
+      note: z.string().optional().describe("Your words, e.g. superb, Col de Rousset empty"),
+    },
+  },
+  ({ roadbook, rating, note }) =>
+    userMessage(
+      `Call rateRide with ride ${JSON.stringify(roadbook)}, rating ${Number(rating)}${note ? `, note ${JSON.stringify(note)}` : ""}, and show the result.`,
+    ),
+);
+
+server.registerPrompt(
+  "rate-stretch",
+  {
+    title: "Rate a stretch of road",
+    description: "Rate a stretch you rode, from its two ends, without a roadbook.",
+    argsSchema: {
+      from: z.string().describe('Where it starts: an address with its village, a town, or "lat,lon"'),
+      to: z.string().describe("Where it ends"),
+      rating: z.string().describe("0 to 5"),
+      note: z.string().optional().describe("Your words"),
+    },
+  },
+  ({ from, to, rating, note }) =>
+    userMessage(
+      `Call rateStretch with from ${JSON.stringify(from)}, to ${JSON.stringify(to)}, rating ${Number(rating)}${note ? `, note ${JSON.stringify(note)}` : ""}. Show the result with its map link and ask the rider to check it is the road they rode.`,
+    ),
+);
+
+server.registerPrompt(
   "list-roadbooks",
   {
     title: "List roadbooks",
@@ -1321,32 +1370,16 @@ server.registerPrompt(
   "help",
   {
     title: "What the ride server can do",
-    description: "Commands and tools of agentMotoride, no tool call.",
+    description: "Everything agentMotoride does, what to say and the shortcuts, no tool call.",
     argsSchema: {},
   },
   () =>
     userMessage(`Show the rider this text as is, without calling any tool:
 
-agentMotoride commands (slash commands):
-  /mcp__ride__plan-ride <request>        plan a new leisure ride (scouts, weather, roads, slow zones, cameras, stops)
-  /mcp__ride__commute <destination> <when> [from]   practical trip, motorways permitted, traffic checked
-  /mcp__ride__edit-ride <id|name> <change>          change or question a saved ride
-  /mcp__ride__save-ride [name]           save the itinerary on the table
-  /mcp__ride__export-gpx [id|name]       GPX file for a GPS app
-  /mcp__ride__export-md <id|name> [file] Markdown document of a ride, the standard full view
-  /mcp__ride__show-ride <id|name>        everything stored about one ride (daylight, cameras, stops, legs)
-  /mcp__ride__today [id|name]            ride-day briefing: weather now, daylight, traffic, stops open or not, go/no-go
-  /mcp__ride__refresh <id|name>          recompute a ride: figures, weather, cameras, stops, stop plan (no replanning)
-  /mcp__ride__list-roadbooks [page]      the saved loops and trips, 20 per page
-  /mcp__ride__list-rides [page]          the rides by date, latest first, 20 per page
-  /mcp__ride__plan-from <roadbook> <day> [time]  a ride from a saved roadbook on a day, no copy (also in words: "plan a ride from roadbook 7 on Saturday at 9")
-  /mcp__ride__note <text>                during the ride: a note about the last 10 minutes ("awesome", "never again")
-  /mcp__ride__review [gpxPath] [ride]    after the ride: notes placed on the recorded track, detours, pace, confirm ratings
-  /mcp__ride__help                       this text
+${formatForClients()}
 
-Attach a saved ride with @ in the prompt: @ride:ride://library, @ride:ride://ride/<id>, @ride:ride://roads/rated.
-Things to say in plain words: "show me ride 7 on a map", "rate ride 7 five, superb", "leg 2 of ride 7: never again, gravel", "import ~/Downloads/route.gpx", "allow motorways", "no repeats of saved rides", "aim for 10% in 50 zones" (settings), "where are the speed cameras", "find a fuel stop and a café", "when does the sun set".
-Outside Claude Code: npm run rides -- roadbooks | rides | show | rate | note | review | import | export | qr | share | trace | runs.
+Attach a roadbook with @ in the prompt: @ride:ride://library, @ride:ride://ride/<id>, @ride:ride://roads/rated.
+From the terminal: npm run rides -- help.
 
 Current settings:
 ${settingsText()}`),

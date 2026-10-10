@@ -43,6 +43,12 @@ written first and reviewed with the code in the same pull request.
     updated when the model should use it.
   - CLI: a `npm run rides -- <command>` and/or a `/command` at the refine
     prompt; listed in `--help`.
+  - **The catalogue**: an entry in `src/capabilities.ts` (what it does, what
+    to say, the commands, the shortcut, the tools). The MCP help, the
+    `capabilities` tool, `rides help`, the guide's "Everything you can do"
+    page and the site's list are all rendered from it; a test fails when a
+    tool, a prompt or a command is missing from it, and `npm run
+docs:reference -- --check` when the page or the site list is stale.
 - **Rules in code.** Anything that must always hold is enforced in the tool or
   the store, never only in a prompt.
 - **Tests with the code.** Deterministic logic gets unit tests in `test/`;

@@ -70,6 +70,22 @@ When scouts cannot run (`RIDE_SCOUTS=0` or no API credentials), the server instr
 - **WHEN** `.env` sets `RIDE_SCOUTS=0` and the rider asks for a new leisure ride
 - **THEN** the planning guidance asks for parallel subagents with the scout brief, and their routes are presented with route ids of the session
 
+### Requirement: Everything discoverable
+
+Every capability SHALL be listed once, in a catalogue in the code (what it
+does, what to say, the terminal commands, the shortcut, the MCP tools), and
+the help SHALL be rendered from it: the `help` prompt, a read-only
+`capabilities` tool for clients without slash commands and for "what can you
+do?", `rides help` in the terminal, the guide's "Everything you can do" page
+and the project site's list. A tool, a prompt, a `rides` command or a
+`refine>` command missing from the catalogue SHALL fail the tests; a stale page
+or site list SHALL fail the documentation check.
+
+#### Scenario: A new feature
+
+- **WHEN** a contributor adds an MCP tool or a terminal command without a catalogue entry
+- **THEN** the tests fail, naming it
+
 ### Requirement: Run accounting
 
 MCP runs SHALL record the prompt requests, the ride figures from the saved or last routed trip, and the scouts' tokens and cost; the client's own tokens SHALL be reported as unknown.

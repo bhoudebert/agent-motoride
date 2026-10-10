@@ -58,6 +58,12 @@ npm run codex:register  # once per machine, then start codex anywhere
 
 :::
 
+## Find your way
+
+Everything the app does, by moment, with what to say and the command for each:
+[Everything you can do](/everything). From the app itself: ask "what can you
+do?" in Claude Code or Codex, or run `npm run rides -- help` in the terminal.
+
 ## Your first ride
 
 ::: code-group

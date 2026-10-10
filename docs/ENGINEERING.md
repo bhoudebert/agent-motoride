@@ -447,6 +447,18 @@ public servers again:
 A cached lookup shows as `(from cache)` in the trace. `npm run rides --
 clear-cache` empties it.
 
+## The capability catalogue
+
+`src/capabilities.ts` lists everything a rider can do, by moment: what it does,
+what to say, the terminal commands, the Claude Code shortcut and the MCP tools
+behind it. The MCP `help` prompt and `capabilities` tool, `rides help`, the
+guide's "Everything you can do" page and the site's list are rendered from it
+(`npm run docs:reference` writes the page and the site list; `--check` fails
+in CI when either is stale). `test/capabilities.test.ts` lists the server's
+tools and prompts through an MCP client and parses the `rides` and `refine>`
+help, and fails when any of them is missing from the catalogue: a feature
+cannot ship without being discoverable.
+
 ## MCP server: tools and prompts
 
 | Tool                                                                         | Purpose                                                                                                                                                                                              |

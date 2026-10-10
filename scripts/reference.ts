@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import prettier from "prettier";
+import { CAPABILITIES, MOMENTS } from "../src/capabilities.ts";
 import { cell } from "../src/markdown.ts";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -162,19 +163,87 @@ ${[
 
 ${settings()}`;
 
-const formatted = await prettier.format(text, {
-  ...(await prettier.resolveConfig(page)),
-  filepath: page,
-});
+// The same catalogue the MCP help and `rides help` use, as a guide page and a
+// list on the project site, so neither can fall behind the code.
+const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const everythingPage = join(root, "docs/guide/everything.md");
+const everything = `# Everything you can do
+
+<!-- Generated from src/capabilities.ts by npm run docs:reference. Do not edit by hand. -->
+
+Every feature of agentMotoride, by moment. In Claude Code or Codex, say it in
+plain words (the **Say** column); in Claude Code, slash commands are
+shortcuts. In the terminal, use the commands; \`npm run rides -- help\` prints
+this list, and \`/mcp__ride__help\` (or asking "what can you do?") shows it in
+Claude Code or Codex. Every option is in the [reference](/reference).
+
+${MOMENTS.map(
+  (moment) => `## ${moment}
+
+| What | Say | Terminal | Shortcut |
+| --- | --- | --- | --- |
+${CAPABILITIES.filter((c) => c.moment === moment)
+  .map(
+    (c) =>
+      `| ${td(c.what)} | "${td(c.say)}" | ${c.terminal.map((t) => `\`${td(t)}\``).join("<br>")} | ${c.slash ? `\`/mcp__ride__${td(c.slash)}\`` : ""} |`,
+  )
+  .join("\n")}`,
+).join("\n\n")}
+`;
+const sitePage = join(root, "site/index.html");
+const START = "<!-- capabilities:start -->";
+const END = "<!-- capabilities:end -->";
+const siteList = `${START}
+  <div class="everything">
+${MOMENTS.map(
+  (moment) => `    <div>
+      <h3>${esc(moment)}</h3>
+      <ul>
+${CAPABILITIES.filter((c) => c.moment === moment)
+  .map((c) => `        <li>${esc(c.what)}<q>${esc(c.say)}</q></li>`)
+  .join("\n")}
+      </ul>
+    </div>`,
+).join("\n")}
+  </div>
+  ${END}`;
+const site = readFileSync(sitePage, "utf8");
+if (!site.includes(START) || !site.includes(END)) throw new Error(`site/index.html lacks the ${START} markers`);
+const siteNext = site.replace(new RegExp(`${START}[\\s\\S]*?${END}`), siteList);
+
+const outputs = [
+  {
+    path: page,
+    content: await prettier.format(text, { ...(await prettier.resolveConfig(page)), filepath: page }),
+  },
+  {
+    path: everythingPage,
+    content: await prettier.format(everything, {
+      ...(await prettier.resolveConfig(everythingPage)),
+      filepath: everythingPage,
+    }),
+  },
+  { path: sitePage, content: siteNext },
+];
 
 if (process.argv.includes("--check")) {
-  const current = readFileSync(page, "utf8");
-  if (current !== formatted) {
-    console.error("docs/guide/reference.md is out of date with the code. Run: npm run docs:reference");
+  const stale = outputs.filter((o) => {
+    try {
+      return readFileSync(o.path, "utf8") !== o.content;
+    } catch {
+      return true;
+    }
+  });
+  if (stale.length) {
+    console.error(
+      `Out of date with the code: ${stale.map((o) => o.path.replace(`${root}/`, "")).join(", ")}. Run: npm run docs:reference`,
+    );
     process.exit(1);
   }
-  console.log("Reference matches the code.");
+  console.log("Reference, capabilities page and site list match the code.");
 } else {
-  writeFileSync(page, formatted);
-  console.log(`Wrote docs/guide/reference.md: ${tools.length} tools, ${prompts.length} prompts.`);
+  for (const o of outputs) writeFileSync(o.path, o.content);
+  console.log(
+    `Wrote docs/guide/reference.md (${tools.length} tools, ${prompts.length} prompts), docs/guide/everything.md and the site list (${CAPABILITIES.length} capabilities).`,
+  );
 }

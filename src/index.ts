@@ -28,7 +28,9 @@ import { usePersistentGeoCache } from "./tools/geo.ts";
 import { formatTrace } from "./trace.ts";
 import { estimateCostUsd, formatUsage, isKnownModel } from "./usage.ts";
 
-const USAGE = `Usage: npm run ride                              Start menu: plan a new ride or open a saved one
+const USAGE = `Everything the app does, by moment: npm run rides -- help
+
+Usage: npm run ride                              Start menu: plan a new ride or open a saved one
        npm run ride -- [options] "<what you want>"  Plan a ride directly
 
   npm run ride -- --from "Grenoble" "Roadtrip moto this Saturday, no rain, <250km, winding roads, give me an itinerary"

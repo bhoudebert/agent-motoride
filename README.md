@@ -112,6 +112,10 @@ Details for each mode: [the terminal app](https://bhoudebert.github.io/agent-mot
 
 How to use every feature, one task per page, the terminal and Claude Code or
 Codex side by side: **[the rider's guide](https://bhoudebert.github.io/agent-motoride/guide/)**.
+Every feature on one page, with what to say and the command for each:
+**[Everything you can do](https://bhoudebert.github.io/agent-motoride/guide/everything)**.
+From the app itself: ask "what can you do?" in Claude Code or Codex, or run
+`npm run rides -- help`.
 
 | Before the ride                                                                         | Ride day                                                                                    | Back home                                                                              | Reference                                                                                        |
 | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |

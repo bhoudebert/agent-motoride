@@ -9,6 +9,8 @@ task pages of this guide.
 ### `npm run ride`
 
 ```text
+Everything the app does, by moment: npm run rides -- help
+
 Usage: npm run ride                              Start menu: plan a new ride or open a saved one
        npm run ride -- [options] "<what you want>"  Plan a ride directly
 
@@ -65,61 +67,116 @@ Needs ANTHROPIC_API_KEY (see .env.example).
 ### `npm run rides`
 
 ```text
-Usage: npm run rides -- <command>
+Everything agentMotoride does, from the terminal. Full options: npm run rides -- --help, npm run ride -- --help
 
-  roadbooks [--page N]                  Roadbooks (the loops and trips you saved), newest first, 20 per page
-  rides [--page N]                      Rides (a roadbook on a day), latest date first, 20 per page
-  plan <roadbook> <day> [time]          Plan a ride from a roadbook: day as 2026-10-17, 17/10, saturday, tomorrow;
-                                        time as 9, 9:30, 9h30 (default the roadbook's last departure). No copy, no model
-  today [roadbook] [day]                Ride-day briefing: weather now, daylight, traffic, stops checked against opening hours, go or no-go
-                                        (default the next planned ride; with a day, that ride of the roadbook)
-  show <id|name> [day] [--md]           One roadbook, or one of its rides with the route it was ridden on (--md: Markdown)
-  keep <roadbook> <day>                 Keep a planned ride on the version it had before the last change
-  export-md <id|name> [file.md]         Write the ride as a Markdown document, with its map (default: exports/ in the project)
-  map <id|name> [file.png]              A picture of the ride: route, towns, stops, fixed cameras with their limits
-  rate <id|name> <0-5> [note]           Rate a roadbook: its roads, for later plans (0 never again, 5 loved)
-  rate-day <roadbook> <day> <0-5> [note]  Rate how a ride went that day (weather, traffic, company); never a road rating
-  rate-stretch "<from>" "<to>" <0-5> [note] [--via "<place>"]
-                                        Rate a stretch of road you rode, outside any roadbook: routed, stored as a
-                                        road rating, no roadbook added. Prints the map link to check it
-  rated                                 Every rating that steers planning: roadbooks, legs, stretches (with their id)
-  unrate-stretch <id> [--yes]           Remove a stretch rating, after you confirm
-  rate-leg <id|name> <leg> <1-5> [note] Rate one leg of a ride
-  note "<text>" [--rating 0-5] [--back N] [--roadbook id|name]
-                                        During the ride: a note about the last N minutes (default 10), on today's ride
-  notes [--all]                         Notes waiting for review (--all: reviewed and dismissed ones too)
-  review [id|name] [track.gpx] [--yes]  After the ride: place the notes on the recorded track (or on the plan without one),
-                                        show detours and pace, then confirm a rating per road stretch (--yes: accept all proposals)
-  export <id|name> [file.gpx] [--pins N]  Write the ride as a GPX file (default: exports/ in the project); --pins caps the route points
-  qr <id|name>                          QR code of the ride's Google Maps link
-  share <id|name>                       Serve the ride to the phone on the local Wi-Fi (QR code), until Ctrl-C
-  trace <run> [--full]                  Replay a planning session step by step (run ids from "runs")
-  otel <run|last> [--content] [--file out.json]
-                                        Export a session as OpenTelemetry traces to OTEL_EXPORTER_OTLP_ENDPOINT, else to a file;
-                                        --content adds prompts, answers and tool data (they hold your places and routes)
-  bike [range=250 reserve=40 pause=75 stint=90 lunch=yes]   Show or set the bike profile used to plan stops
-  runs [--csv]                          Every planning session with model, effort, tokens, cost and result
-  refresh <id|name|all> [--stops]       Route a saved ride again: distance, times, road mix, leg names, daylight, cameras, stops
-                                        --stops: only rebuild the stop plan from the bike profile (instant when the stops are cached)
-  import <file.gpx|file.kml> [name] [--force]
-                                        Save a route someone shared: routed like a planned ride (figures, stops, cameras),
-                                        with waypoints added until it follows the file; --force saves a duplicate anyway
-  delete roadbook <id|name> [--yes]     Delete a roadbook with its rides and notes, after you confirm (road ratings stay)
-  delete ride <roadbook> <day> [--yes]  Delete one ride of a roadbook, e.g. delete ride 7 2026-10-10, after you confirm
-  cancel <roadbook> <day>               Cancel a planned ride: kept, shown as cancelled
-  versions <roadbook>                   Earlier versions of a roadbook: each change keeps the design it replaced
-  restore <roadbook> <version>          Bring back an earlier version; the current one is kept as a version too
-  copy <roadbook> [name]                A separate roadbook with the same design, to change on its own
-  tidy                                  Drop expired lookups and compact the library; lists backups and old files, deletes none
-  clear-cache                           Drop cached road, route and weather lookups
+PLAN
+- Plan a new ride from one sentence: scouts explore two to four areas, the best loop comes back checked
+    npm run ride -- "<request>"
+    npm run ride (menu)
+- Ride a saved roadbook again on a day: that day's forecast, open stops and a go or no-go, no copy
+    npm run rides -- plan <roadbook> <day> [time]
+    /plan <day> [time]
+- A practical trip: point to point, motorways allowed, traffic checked
+    npm run ride -- --allow-motorways "<trip>"
+- Change a roadbook in words: changed in place, the previous version kept, rides already ridden untouched
+    npm run ride -- --roadbook <id> "<change>"
+- Import a route someone shared (GPX or KML): routed and measured like your own
+    npm run rides -- import <file.gpx|kml> [name]
+- Plan from a photo of a map, a route screenshot or a list of places
+    npm run ride -- --image <file>
+    /image <file>
+- Save the itinerary on the table as a roadbook
+    /save [name]
+    /save --copy [name]
 
-Ratings steer later planning: legs, rides and road stretches rated 4-5 are
-reused as building blocks, those rated 0-1 are avoided.
+RIDE DAY
+- Morning briefing: fresh forecast, daylight, traffic, stops open at arrival, go or no-go
+    npm run rides -- today [roadbook] [day]
+- The whole ride on one map: the loop, towns, stops and every fixed camera with its limit
+    npm run rides -- map <roadbook>
+    /map
+- For the GPS and the phone: GPX, navigation links, a QR code, a page on your Wi-Fi
+    npm run rides -- export <roadbook>
+    npm run rides -- qr <roadbook>
+    npm run rides -- share <roadbook>
+    /gpx
+    /qr
+    /share
+- A Markdown document of the ride, with its map, for your notes
+    npm run rides -- export-md <roadbook>
+    /md
+
+ON THE ROAD
+- A note about the last minutes, said at a stop: placed on the road after the ride
+    npm run rides -- note "<text>" [--rating 0-5]
+    /note <text>
+
+AFTER THE RIDE
+- Review with your recorded track: notes placed on the road you rode, detours, pace, ratings to confirm
+    npm run rides -- review [roadbook] [track.gpx]
+    npm run rides -- notes
+- Rate a roadbook or one of its legs: 4-5 sought out by later plans, 0-1 avoided
+    npm run rides -- rate <roadbook> <0-5> [note]
+    npm run rides -- rate-leg <roadbook> <leg> <0-5> [note]
+    /rate
+- Rate how the day went (weather, traffic, company), apart from the roads
+    npm run rides -- rate-day <roadbook> <day> <0-5> [note]
+- Rate a stretch of road you rode, outside any roadbook
+    npm run rides -- rate-stretch "<from>" "<to>" <0-5> [note]
+- See every rating that steers your plans, and remove a stretch rating
+    npm run rides -- rated
+    npm run rides -- unrate-stretch <id>
+
+YOUR LIBRARY
+- Your roadbooks (saved loops) and your rides (a roadbook on a day), 20 per page
+    npm run rides -- roadbooks [--page N]
+    npm run rides -- rides [--page N]
+    /roadbooks
+    /rides
+- Everything about a roadbook (versions, rides), or one ride with the route it rode
+    npm run rides -- show <roadbook> [day]
+    /show
+- Versions of a roadbook: bring one back, copy it as a variant, keep a planned ride on the previous one
+    npm run rides -- versions <roadbook>
+    npm run rides -- restore <roadbook> <version>
+    npm run rides -- copy <roadbook> [name]
+    npm run rides -- keep <roadbook> <day>
+- Recompute a roadbook with today's map data, or only its stop plan
+    npm run rides -- refresh <roadbook|all> [--stops]
+- Cancel a planned ride, delete a ride or a roadbook (asked first; road ratings stay), tidy the file
+    npm run rides -- cancel <roadbook> <day>
+    npm run rides -- delete roadbook <roadbook>
+    npm run rides -- delete ride <roadbook> <day>
+    npm run rides -- tidy
+    npm run rides -- clear-cache
+
+SETTINGS
+- Start point, motorways, slow-zone targets, the fast-expressway ceiling, repeats
+    npm run ride -- --from <place> --allow-motorways --max-fast-pct <n>
+    /motorways on|off
+    /fast <n>
+    /settings
+- Your bike: tank range, reserve, pause interval, lunch
+    npm run rides -- bike [range=… reserve=… pause=… stint=… lunch=…]
+    /bike
+
+UNDER THE HOOD
+- What each session did and cost, step by step, and its export to an observability tool
+    npm run rides -- runs [--csv]
+    npm run rides -- trace <run> [--full]
+    npm run rides -- otel <run>
+    /usage
+    /trace
+- This list
+    npm run rides -- help
+    /help
+    /back
+    /quit
 ```
 
 ## Claude Code and Codex (MCP server)
 
-39 tools, 15 prompts. Each tool shows its MCP hints: a client can let read-only tools run without asking.
+40 tools, 17 prompts. Each tool shows its MCP hints: a client can let read-only tools run without asking.
 
 ### Tools
 
@@ -477,6 +534,14 @@ Rate a stretch of road the rider rode, outside any roadbook: "Rue de Longuesault
 - `rating` (integer): 0 never again, 5 loved
 - `note` (string, optional): The rider's words, kept with the rating
 
+#### `capabilities`
+
+_read-only · local only_
+
+Everything agentMotoride does, grouped by moment (plan, ride day, on the road, after the ride, library, settings), with what to say for each and the Claude Code shortcut. Call it when the rider asks what the app can do or how to do something, and show it as returned.
+
+No input.
+
 #### `listRatedRoads`
 
 _read-only · local only_
@@ -523,23 +588,25 @@ The full planning guidance for a new ride (how to search, what to check, how to 
 
 Slash commands in Claude Code (`/mcp__ride__<name>`); plain words do the same in any client.
 
-| Prompt           | Arguments                                | Does                                                                                                      |
-| ---------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `plan-ride`      | `request`                                | Plan a one-day ride with the agentMotoride tools: what the rider wants, in one sentence.                  |
-| `commute`        | `destination`, `when`, `from` (optional) | Point to point, quickest sensible route, motorways permitted, with weather and traffic for the departure. |
-| `edit-ride`      | `ride`, `change`                         | Load a saved ride and apply a change: new date, longer, skip a town, or just a question about it.         |
-| `save-ride`      | `name` (optional)                        | Store the itinerary on the table in the library, under a name.                                            |
-| `export-gpx`     | `ride` (optional)                        | GPX file of the current itinerary or of a saved ride, for a GPS app.                                      |
-| `show-ride`      | `ride`                                   | Everything stored about one ride: figures, daylight, cameras, stops, legs, itinerary.                     |
-| `export-md`      | `ride`, `file` (optional)                | The ride's standard Markdown document, written to a file and shown.                                       |
-| `today`          | `ride` (optional)                        | Weather now, daylight, traffic, stops checked against opening hours, go or no-go for a saved ride.        |
-| `refresh`        | `ride`                                   | Recompute a ride's figures, weather, cameras, stops and stop plan, without changing the ride.             |
-| `note`           | `text`                                   | During the ride: "last 10 min awesome", "cobbles, never again". Reviewed after the ride.                  |
-| `review`         | `gpxPath` (optional), `ride` (optional)  | Place your ride notes on the road ridden (recorded GPX track) or on the plan, then confirm ratings.       |
-| `list-rides`     | `page` (optional)                        | The rider's rides by date, latest first, 20 per page.                                                     |
-| `plan-from`      | `roadbook`, `day`, `time` (optional)     | A ride from a saved roadbook on a day, without copying it: forecast, stops, verdict, links.               |
-| `list-roadbooks` | `page` (optional)                        | The rider's saved loops and trips, newest first, 20 per page.                                             |
-| `help`           | none                                     | Commands and tools of agentMotoride, no tool call.                                                        |
+| Prompt           | Arguments                                 | Does                                                                                                      |
+| ---------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `plan-ride`      | `request`                                 | Plan a one-day ride with the agentMotoride tools: what the rider wants, in one sentence.                  |
+| `commute`        | `destination`, `when`, `from` (optional)  | Point to point, quickest sensible route, motorways permitted, with weather and traffic for the departure. |
+| `edit-ride`      | `ride`, `change`                          | Load a saved ride and apply a change: new date, longer, skip a town, or just a question about it.         |
+| `save-ride`      | `name` (optional)                         | Store the itinerary on the table in the library, under a name.                                            |
+| `export-gpx`     | `ride` (optional)                         | GPX file of the current itinerary or of a saved ride, for a GPS app.                                      |
+| `show-ride`      | `ride`                                    | Everything stored about one ride: figures, daylight, cameras, stops, legs, itinerary.                     |
+| `export-md`      | `ride`, `file` (optional)                 | The ride's standard Markdown document, written to a file and shown.                                       |
+| `today`          | `ride` (optional)                         | Weather now, daylight, traffic, stops checked against opening hours, go or no-go for a saved ride.        |
+| `refresh`        | `ride`                                    | Recompute a ride's figures, weather, cameras, stops and stop plan, without changing the ride.             |
+| `note`           | `text`                                    | During the ride: "last 10 min awesome", "cobbles, never again". Reviewed after the ride.                  |
+| `review`         | `gpxPath` (optional), `ride` (optional)   | Place your ride notes on the road ridden (recorded GPX track) or on the plan, then confirm ratings.       |
+| `list-rides`     | `page` (optional)                         | The rider's rides by date, latest first, 20 per page.                                                     |
+| `plan-from`      | `roadbook`, `day`, `time` (optional)      | A ride from a saved roadbook on a day, without copying it: forecast, stops, verdict, links.               |
+| `rate`           | `roadbook`, `rating`, `note` (optional)   | Rate a saved roadbook 0 (never again) to 5 (loved), with your words: it steers later plans.               |
+| `rate-stretch`   | `from`, `to`, `rating`, `note` (optional) | Rate a stretch you rode, from its two ends, without a roadbook.                                           |
+| `list-roadbooks` | `page` (optional)                         | The rider's saved loops and trips, newest first, 20 per page.                                             |
+| `help`           | none                                      | Everything agentMotoride does, what to say and the shortcuts, no tool call.                               |
 
 ### Resources
 

@@ -4,6 +4,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { rideBriefing } from "./briefing.ts";
+import { formatForTerminal } from "./capabilities.ts";
 import {
   addRideNote,
   applyReview,
@@ -60,6 +61,8 @@ import { formatTrace } from "./trace.ts";
 import { emptyUsage } from "./usage.ts";
 
 const USAGE = `Usage: npm run rides -- <command>
+
+  help                                  Everything the app does, by moment, with the command for each
 
   roadbooks [--page N]                  Roadbooks (the loops and trips you saved), newest first, 20 per page
   rides [--page N]                      Rides (a roadbook on a day), latest date first, 20 per page
@@ -143,6 +146,9 @@ function pageArg(args: string[]): number {
 
 try {
   switch (command) {
+    case "help":
+      console.log(formatForTerminal());
+      break;
     case "roadbooks":
       console.log(
         formatRoadbookPage(store.listRoadbooks(pageArg(args)), (n) => `npm run rides -- roadbooks --page ${n}`),

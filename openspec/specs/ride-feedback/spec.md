@@ -55,6 +55,31 @@ Without a track, the review SHALL place notes on the planned route by elapsed
 time since departure, at the plan's pace without stops, and mark them
 approximate. A note outside the planned riding time is reported, not placed.
 
+### Requirement: Rating a stretch directly
+
+The rider SHALL be able to rate a stretch of road they rode, outside any
+roadbook, from two places (and optional places between): `rides rate-stretch
+"<from>" "<to>" <0-5> [note] [--via "<place>"]` and the MCP tool
+`rateStretch`. The stretch SHALL be routed without motorways and stored as a
+road rating (its roads, its cells, the rating, the rider's words), creating
+no roadbook and no ride. The answer SHALL give its length, its main roads and a
+map link so the rider can check it is the road they rode. A stretch under
+300 m SHALL be refused, asking for the villages or a point between; one over
+60 km SHALL be refused as a ride, to be saved as a roadbook and rated. Rated
+roads SHALL be listable with an id (`rides rated`, `listRatedRoads`), and a
+stretch rating removable after the rider confirms (`rides unrate-stretch <id>`,
+`deleteStretchRating`).
+
+#### Scenario: A nice stretch from a ride
+
+- **WHEN** the rider rates the stretch from Rue de Longuesault 1, Tournai, to a point near Hollain 5, "very nice"
+- **THEN** a 7 km road rating is stored with its roads, no roadbook is added, and the next plans around Tournai treat those roads as loved
+
+#### Scenario: Two addresses next to each other
+
+- **WHEN** the two places resolve 100 m apart
+- **THEN** nothing is stored and the rider is asked for the villages or a point between
+
 ### Requirement: Road ratings steer planning
 
 Road ratings SHALL count in the rated-roads check of every routed trip like

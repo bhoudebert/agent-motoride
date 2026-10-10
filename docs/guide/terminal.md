@@ -61,6 +61,8 @@ in memory only: save the ride to pick it up later with `--roadbook`.
 | `today [roadbook] [day]`                                                               | Ride-day briefing: go, caution or no-go (default the next planned ride)                    |
 | `rate <roadbook> <0-5> [note]`, `rate-leg <roadbook> <leg> <0-5> [note]`               | Rate the roads: a roadbook or one leg                                                      |
 | `rate-day <roadbook> <day> <0-5> [note]`                                               | Rate how a ride went that day, never the roads                                             |
+| `rate-stretch "<from>" "<to>" <0-5> [note] [--via "<place>"]`                          | Rate a stretch of road you rode, without a roadbook                                        |
+| `rated`, `unrate-stretch <id> [--yes]`                                                 | Every rating that steers plans; remove a stretch rating                                    |
 | `note "<text>" [--rating 0-5] [--back N] [--roadbook id]`                              | During the ride: a note                                                                    |
 | `notes [--all]`, `review [roadbook] [track.gpx] [--yes]`                               | Notes waiting; review against a recorded track                                             |
 | `versions <roadbook>`, `restore <roadbook> <version>`, `copy <roadbook> [name]`        | Earlier versions, bring one back, a separate variant                                       |

@@ -11,6 +11,8 @@ export interface FakeApi {
   overpass: unknown[];
   /** Road segments of every routed leg, instead of the default two; cleared by setting undefined. */
   edges?: Array<Record<string, unknown>>;
+  /** Length in km of every routed leg, instead of 40, 45, 50…; cleared by setting undefined. */
+  legKm?: number;
 }
 
 const PLACES: Record<string, { lat: number; lon: number; name: string }> = {
@@ -84,7 +86,7 @@ export function installFakeServices(): FakeApi {
         const line = bentLine(from, to, 40, 0.02);
         return {
           shape: encodePolyline(line),
-          summary: { length: 40 + i * 5, time: 3000 + i * 300, has_highway: false, has_toll: false },
+          summary: { length: api.legKm ?? 40 + i * 5, time: 3000 + i * 300, has_highway: false, has_toll: false },
         };
       });
       return json({

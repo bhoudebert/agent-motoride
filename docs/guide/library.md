@@ -145,6 +145,7 @@ keep Saturday's ride of roadbook 3 on the previous version
 npm run rides -- rate 3 5 "superb, Col de Rousset empty"     # the roads
 npm run rides -- rate-leg 3 2 0 "gravel, never again"
 npm run rides -- rate-day 3 saturday 2 "freezing fog"        # the day, not the roads
+npm run rides -- rate-stretch "Ere" "Hollain" 5 "lovely"      # part of a ride, without a roadbook
 ```
 
 ```text [Claude Code / Codex]

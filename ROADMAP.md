@@ -95,6 +95,9 @@ Open to anyone, no API key needed for most (see `CONTRIBUTING.md`):
 
 ## Done lately
 
+- **Rate a stretch you rode** (`rate-stretch`, `rateStretch`): two ends, routed and
+  shown to check, kept as a road rating with no roadbook; listed with `rated`,
+  removable.
 - **Rides keep what was ridden**: a change moves only rides still ahead and names
   them; rides done or past are shown, exported and reviewed with their own
   version; `keep` holds a planned ride on the previous version.

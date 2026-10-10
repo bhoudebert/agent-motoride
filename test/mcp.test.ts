@@ -434,6 +434,22 @@ test("mcp: every tool answers when called by name through a client", async () =>
     await call("rideBriefing", { ride: "2" });
     await call("showRide", { ride: "2" });
     await call("rateRide", { ride: "2", rating: 4, note: "nice" });
+    // A stretch rated outside any roadbook: listed with its id, removed after the rider confirms.
+    const stretch = await call("rateStretch", { from: "Lille", to: "Cassel", rating: 5, note: "great bends" });
+    assert.match(
+      stretch,
+      /^Rated 5\/5 \(#(\d+)\): .*, "great bends"\. These roads are now sought out by later plans; no roadbook was added\.\nRoads: .*\nCheck it is the road you rode: https:\/\/www\.google\.com\/maps\/dir\//,
+    );
+    const stretchId = Number(/\(#(\d+)\)/.exec(stretch)![1]);
+    assert.match(await call("listRatedRoads", {}), new RegExp(`stretch #${stretchId} .*: 5/5, "great bends"`));
+    assert.match(
+      await call("deleteStretchRating", { id: stretchId }),
+      /^Remove the rating 5\/5 of .*\?\nNothing deleted yet/,
+    );
+    assert.match(
+      await call("deleteStretchRating", { id: stretchId, confirm: true }),
+      new RegExp(`^Removed stretch rating #${stretchId}\\.`),
+    );
     assert.match(
       await call("rateRide", { ride: "2", rating: 2, day: ahead, note: "cold" }),
       new RegExp(`^Rated the ride of ${ahead} on roadbook #2 2/5; the roads keep their own rating\\.`),

@@ -1207,6 +1207,11 @@ export class Store {
     return Number(lastInsertRowid);
   }
 
+  /** Remove one road rating, e.g. a stretch rated by mistake. */
+  deleteRoadRating(id: number): boolean {
+    return this.#db.prepare("DELETE FROM road_ratings WHERE id = ?").run(id).changes > 0;
+  }
+
   listRoadRatings(): RoadRating[] {
     const rows = this.#db.prepare("SELECT * FROM road_ratings ORDER BY id").all() as Array<{
       id: number;

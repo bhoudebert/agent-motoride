@@ -2,6 +2,7 @@ import type { CurrentRide } from "./agent.ts";
 import { centroid, decodePolyline, routeCells } from "./geometry.ts";
 import { describeStopsAt, routePointIndex } from "./gpx.ts";
 import { type MapsLink, overviewLink, pinnedMapsParts } from "./maps.ts";
+import { townOf } from "./rideMap.ts";
 import { duplicateOf, type RideContext } from "./session.ts";
 import { startLabel, startPoint } from "./start.ts";
 import { analyseConditions, windAlong, type RideConditions } from "./conditions.ts";
@@ -9,7 +10,7 @@ import { formatStopPlan, locateStops, planStops, type StopCandidate } from "./st
 import type { NewRide, Page, RideDay, RideExtras, RideWeather, RoadbookSummary, SavedRide, Store } from "./store.ts";
 import { type StopKind, speedCamerasAlong, stopsAlong } from "./tools/along.ts";
 import { haversineKm, setGeoAnchor } from "./tools/geo.ts";
-import type { TripComputation } from "./tools/trip.ts";
+import { computeTrip, type TripComputation } from "./tools/trip.ts";
 import { getDaylight, getWeather, utcOffsetSecondsOn } from "./tools/weather.ts";
 import { formatUsage, type RunUsage } from "./usage.ts";
 
@@ -755,6 +756,65 @@ export function formatSurface(ride: SavedRide): string | null {
 }
 
 /** Everything the rider rated, as the planner weighs it: rides, legs and road stretches. */
+/** Shorter than this, the two places are a corner, not a stretch; longer, it is a ride. */
+export const MIN_STRETCH_KM = 0.3;
+export const MAX_STRETCH_KM = 60;
+
+/**
+ * Rate a stretch of road the rider rode, outside any roadbook: route it without
+ * motorways from the two places (and any between), and store it as a road
+ * rating. No roadbook, no ride. The caller sets the geocoding anchor.
+ */
+export async function rateStretch(
+  store: Store,
+  input: { from: string; to: string; via?: string[]; rating: number; reason: string | null },
+): Promise<{ id: number; text: string }> {
+  if (!Number.isInteger(input.rating) || input.rating < 0 || input.rating > 5) {
+    throw new Error(`Rating must be a whole number from 0 (never again) to 5, got "${input.rating}".`);
+  }
+  const trip = await computeTrip({
+    waypoints: [input.from, ...(input.via ?? []), input.to],
+    roundTrip: false,
+    avoidMotorways: true,
+  });
+  const { legs, totalDistanceKm: km, mapsUrl } = trip.result;
+  if (km < MIN_STRETCH_KM) {
+    throw new Error(
+      `"${input.from}" and "${input.to}" are only ${Math.round(km * 1000)} m apart by road: nothing rated. Give the villages ("…, Hollain"), or a point between with via.`,
+    );
+  }
+  if (km > MAX_STRETCH_KM) {
+    throw new Error(
+      `That is ${km} km: a ride rather than a stretch. Save it as a roadbook and rate it, or rate a shorter part of it.`,
+    );
+  }
+  // "Rue de Longuesault (2.6 km)" -> the names, longest first, as the stretch's label.
+  const roads = [...new Set(legs.flatMap((leg) => leg.mainRoads.map((r) => r.replace(/\s*\([\d.]+ km\)$/, ""))))];
+  const ends = [townOf(legs[0]!.from), townOf(legs.at(-1)!.to)].filter((t): t is string => Boolean(t));
+  const road = [roads.slice(0, 2).join(" / ") || "unnamed roads", ends.length === 2 ? `${ends[0]} to ${ends[1]}` : ""]
+    .filter(Boolean)
+    .join(", ");
+  const id = store.addRoadRating({
+    rideId: null,
+    noteId: null,
+    road,
+    rating: input.rating,
+    reason: input.reason,
+    approximate: false,
+    cells: routeCells(trip.shapes),
+  });
+  const effect =
+    input.rating >= 4 ? "sought out by later plans" : input.rating <= 1 ? "avoided by later plans" : "noted";
+  return {
+    id,
+    text: [
+      `Rated ${input.rating}/5 (#${id}): ${road}, ${km} km${input.reason ? `, "${input.reason}"` : ""}. These roads are now ${effect}; no roadbook was added.`,
+      `Roads: ${legs.flatMap((leg) => leg.mainRoads).join(", ") || "not named"}`,
+      `Check it is the road you rode: ${mapsUrl}`,
+    ].join("\n"),
+  };
+}
+
 export function formatRatedRoads(store: Store): string {
   const lines: string[] = [];
   for (const ride of store.listRides()) {
@@ -770,7 +830,7 @@ export function formatRatedRoads(store: Store): string {
   }
   for (const road of store.listRoadRatings()) {
     lines.push(
-      `${road.road}: ${road.rating}/5${road.reason ? `, "${road.reason}"` : ""}${road.approximate ? " (approximate)" : ""}`,
+      `stretch #${road.id} ${road.road}: ${road.rating}/5${road.reason ? `, "${road.reason}"` : ""}${road.approximate ? " (approximate)" : ""}`,
     );
   }
   return lines.length ? `${lines.join("\n")}\n\n0-1 avoided by later plans, 4-5 sought out.` : "Nothing rated yet.";

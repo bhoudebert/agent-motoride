@@ -21,8 +21,10 @@ import {
   enrichRide,
   copyRoadbook,
   followingRides,
+  formatRatedRoads,
   formatRideDetail,
   formatVersions,
+  rateStretch,
   restoreVersion,
   formatRideDayPage,
   formatRoadbookPage,
@@ -71,6 +73,11 @@ const USAGE = `Usage: npm run rides -- <command>
   map <id|name> [file.png]              A picture of the ride: route, towns, stops, fixed cameras with their limits
   rate <id|name> <0-5> [note]           Rate a roadbook: its roads, for later plans (0 never again, 5 loved)
   rate-day <roadbook> <day> <0-5> [note]  Rate how a ride went that day (weather, traffic, company); never a road rating
+  rate-stretch "<from>" "<to>" <0-5> [note] [--via "<place>"]
+                                        Rate a stretch of road you rode, outside any roadbook: routed, stored as a
+                                        road rating, no roadbook added. Prints the map link to check it
+  rated                                 Every rating that steers planning: roadbooks, legs, stretches (with their id)
+  unrate-stretch <id> [--yes]           Remove a stretch rating, after you confirm
   rate-leg <id|name> <leg> <1-5> [note] Rate one leg of a ride
   note "<text>" [--rating 0-5] [--back N] [--roadbook id|name]
                                         During the ride: a note about the last N minutes (default 10), on today's ride
@@ -164,6 +171,33 @@ try {
       const today = localDay(new Date());
       const target = rideToBrief(store, today, args[0], args.slice(1).join(" ") || undefined);
       console.log(await rideBriefing(store, target, today));
+      break;
+    }
+    case "rate-stretch": {
+      const via: string[] = [];
+      const rest: string[] = [];
+      for (let i = 2; i < args.length; i++) {
+        if (args[i] === "--via" && args[i + 1]) via.push(args[++i]!);
+        else rest.push(args[i]!);
+      }
+      const [from, to] = args;
+      if (!from || !to)
+        throw new Error('Usage: npm run rides -- rate-stretch "<from>" "<to>" <0-5> [note] [--via "<place>"]');
+      const { rating, notes } = parseRating(rest);
+      await setGeoAnchor(from);
+      console.log((await rateStretch(store, { from, to, via, rating, reason: notes })).text);
+      break;
+    }
+    case "rated":
+      console.log(formatRatedRoads(store));
+      break;
+    case "unrate-stretch": {
+      const id = Number(args[0]);
+      const stretch = store.listRoadRatings().find((r) => r.id === id);
+      if (!stretch) throw new Error(`No stretch rating #${args[0] ?? ""}. List them with: npm run rides -- rated`);
+      if (!(await confirm(`Remove the rating ${stretch.rating}/5 of ${stretch.road}?`, args.includes("--yes")))) break;
+      store.deleteRoadRating(id);
+      console.log(`Removed stretch rating #${id}.`);
       break;
     }
     case "rate-day": {

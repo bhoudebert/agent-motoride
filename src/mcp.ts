@@ -31,6 +31,7 @@ import {
   copyRoadbook,
   followingRides,
   formatRideDetail,
+  rateStretch,
   restoreVersion,
   formatRatedRoads,
   formatRideDayPage,
@@ -166,7 +167,7 @@ async function clientScouting(input: ScoutInput): Promise<string> {
 // Server instructions reach the client's system prompt at connection time, so
 // the method applies even when the rider types in plain words instead of using
 // the plan-ride command. Kept to the essentials; the command carries the rest.
-const INSTRUCTIONS = `agentMotoride plans one-day motorcycle rides and keeps the rider's library of saved rides. Anything the rider says about rides, trips, loops, routes, the library, stops, cameras, weather for a ride, or a ride-day briefing is a request for this server's tools: showRide, showRideMap, listRoadbooks, listRides, rideBriefing, refreshRide, rateRide, exportGpx, exportMarkdown, planningGuide and the planning tools. Never run shell commands, scripts or web searches for these, and never look for a "ride" program: "ride show 7" or "/ride plan ..." typed by the rider means "use the ride tools" (here: showRide for ride 7). A roadbook is a saved loop or trip, with a number ("roadbook 7"; riders may also say "ride 7" for it); a ride is a roadbook on one day, named by its date ("Saturday's ride"): listRoadbooks lists the first, listRides the second, 20 per page. "Plan a ride from roadbook 7 on Saturday at 9", or "plan a ride on Saturday" once a roadbook is the one being discussed, is planRide: it adds a ride to that roadbook, never a copy; replan or edit the route only when the rider asks for a change. "Saturday was cold, 3 out of 5" rates the day: rateRide with day, which never marks a road; "never again" about a road rates the roadbook, a leg or a note. "Not riding Saturday" is cancelRide; deleteRoadbook and deleteRide only when the rider asks to delete, and they ask the rider first. Plain words are enough, slash commands are only shortcuts: before planning any new ride asked in plain words, in any client, call planningGuide with the rider's request and follow it, with ride set when it changes a saved ride (the plan-ride and edit-ride commands already carry that guidance).
+const INSTRUCTIONS = `agentMotoride plans one-day motorcycle rides and keeps the rider's library of saved rides. Anything the rider says about rides, trips, loops, routes, the library, stops, cameras, weather for a ride, or a ride-day briefing is a request for this server's tools: showRide, showRideMap, listRoadbooks, listRides, rideBriefing, refreshRide, rateRide, exportGpx, exportMarkdown, planningGuide and the planning tools. Never run shell commands, scripts or web searches for these, and never look for a "ride" program: "ride show 7" or "/ride plan ..." typed by the rider means "use the ride tools" (here: showRide for ride 7). A roadbook is a saved loop or trip, with a number ("roadbook 7"; riders may also say "ride 7" for it); a ride is a roadbook on one day, named by its date ("Saturday's ride"): listRoadbooks lists the first, listRides the second, 20 per page. "Plan a ride from roadbook 7 on Saturday at 9", or "plan a ride on Saturday" once a roadbook is the one being discussed, is planRide: it adds a ride to that roadbook, never a copy; replan or edit the route only when the rider asks for a change. "Saturday was cold, 3 out of 5" rates the day: rateRide with day, which never marks a road; "never again" about a road rates the roadbook, a leg or a note. "That stretch from Ere to Hollain was great, 5" about part of a ride is rateStretch (no roadbook). "Not riding Saturday" is cancelRide; deleteRoadbook and deleteRide only when the rider asks to delete, and they ask the rider first. Plain words are enough, slash commands are only shortcuts: before planning any new ride asked in plain words, in any client, call planningGuide with the rider's request and follow it, with ride set when it changes a saved ride (the plan-ride and edit-ride commands already carry that guidance).
 For a new leisure ride: call listSavedRides and recallArea around the start (what earlier sessions learnt: scouted areas and their verdicts, known winding roads), then ${scoutsOff ? "scout 2-4 areas with parallel subagents as planningGuide explains (API scouts are off here, scoutAreas cannot run)" : "scoutAreas with 2-4 areas"}, skipping areas recently found poor${scoutsOff ? "" : " (or searchRoads and calculateTrip yourself if scouts are unavailable)"}, pick the best candidate, then finish it: getDaylight, getWeather along the loop for the riding hours, getSpeedCameras, checkConditions (crosswind, low sun) with the date and departure, planStops with the date and departure, getTraffic for the departure. Before presenting it, call checkItinerary with its routeId, the rider's request and your text, and fix what it reports once (or say plainly which limit cannot be met). Present the itinerary in plain text (never JSON) with legs named by towns, the figures from the tools, the stops with times, the navigation links from planStops (and its overviewLink as "Whole ride (overview, not for navigation)" when there are several parts), and end with one line "Route: <routeId>". Save only when the rider asks, with saveRide; after a change to a saved roadbook, saving changes it in place and keeps the previous version (restoreRoadbook undoes it), and asCopy is only for a rider who wants a separate copy. During a ride, a remark about the road ("last 10 min awesome", "cobbles, never again") is a note: call addRideNote at once with the rider's words, and a rating 0-5 only when they gave one. After the ride, reviewRide places the notes on the recorded track (gpxPath) or on the plan, shows detours and pace, and proposes ratings; apply them with reviewRide and decisions only once the rider confirms. If the rider has a route file (GPX or KML, from another app, a club or a friend), call importRoute with its path: it returns a routeId to present, finish and save like a planned ride. If the rider shares an image (photo of a paper map, route screenshot, list of places), read the places on it in order and route them with calculateTrip by name, then finish the ride as usual. For an edit or a question about a saved ride, work from its data (showRide) without replanning. For a practical trip (commute), route point to point, motorways if permitted, with traffic.`;
 
 const server = new McpServer({ name: "agentMotoride", version: "0.1.0" }, { instructions: INSTRUCTIONS });
@@ -227,6 +228,10 @@ const HINTS: Record<string, ToolAnnotations> = {
   keepRideVersion: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   // Adds a remembered verdict; may resolve the area's town through a public geocoder.
   reportScout: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  // Routes the stretch on the public router, then stores a rating: each call adds one.
+  rateStretch: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  listRatedRoads: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  deleteStretchRating: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
   planningGuide: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
 };
 const hintsOf = (name: string): ToolAnnotations => {
@@ -891,6 +896,69 @@ server.registerTool(
     const leg = args.leg === undefined ? undefined : ride.legs.find((l) => l.seq === args.leg);
     return text(
       `Rated ${leg ? `leg ${leg.seq} (${leg.from} -> ${leg.to}) of ` : ""}#${ride.id} "${ride.name}" ${args.rating}/5.`,
+    );
+  },
+);
+
+server.registerTool(
+  "rateStretch",
+  {
+    description:
+      'Rate a stretch of road the rider rode, outside any roadbook: "Rue de Longuesault from Ere to Hollain was very nice, 5". Routes it without motorways from the two places (and any via), and stores a road rating that steers later plans (0-1 avoided, 4-5 sought out); no roadbook or ride is created. Show the rider the length, roads and map link it returns so they can check it is the road they rode. Use the rider\'s own rating and words; ask when they gave no rating. For a whole ride, save it and use rateRide instead.',
+    annotations: hintsOf("rateStretch"),
+    inputSchema: z.object({
+      from: z.string().describe('Where the stretch starts: an address with its village, a town, or "lat,lon"'),
+      to: z.string().describe("Where it ends, the same way"),
+      via: z.array(z.string()).optional().describe("Places between, when the router could take another road"),
+      rating: z.number().int().min(0).max(5).describe("0 never again, 5 loved"),
+      note: z.string().optional().describe("The rider's words, kept with the rating"),
+    }),
+  },
+  async (args) => {
+    const { text: summary } = await rateStretch(store, {
+      from: args.from,
+      to: args.to,
+      via: args.via,
+      rating: args.rating,
+      reason: args.note?.trim() || null,
+    });
+    // The next routed trip of this session must see the new rating.
+    context.ratedRoads = undefined;
+    return text(summary);
+  },
+);
+
+server.registerTool(
+  "listRatedRoads",
+  {
+    description:
+      "Every rating that steers planning: roadbooks and legs rated, and stretches rated directly or from reviewed notes, each stretch with its id (for deleteStretchRating).",
+    annotations: hintsOf("listRatedRoads"),
+    inputSchema: z.object({}),
+  },
+  async () => text(formatRatedRoads(store)),
+);
+
+server.registerTool(
+  "deleteStretchRating",
+  {
+    description:
+      "Remove a stretch rating (id from listRatedRoads), e.g. one rated by mistake, after the rider confirms (a dialog, or a question in the chat).",
+    annotations: hintsOf("deleteStretchRating"),
+    inputSchema: z.object({ id: z.number().int().describe("Stretch id, from listRatedRoads"), confirm: confirmInput }),
+  },
+  async (args) => {
+    const stretch = store.listRoadRatings().find((r) => r.id === args.id);
+    if (!stretch) throw new Error(`No stretch rating #${args.id}. Call listRatedRoads.`);
+    return confirmedDelete(
+      `Remove the rating ${stretch.rating}/5 of ${stretch.road}?`,
+      args.confirm,
+      "deleteStretchRating",
+      () => {
+        store.deleteRoadRating(args.id);
+        context.ratedRoads = undefined;
+        return `Removed stretch rating #${args.id}.`;
+      },
     );
   },
 );

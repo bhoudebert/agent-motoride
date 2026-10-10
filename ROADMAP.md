@@ -95,6 +95,9 @@ Open to anyone, no API key needed for most (see `CONTRIBUTING.md`):
 
 ## Done lately
 
+- **Everything in one place**: a capability catalogue in the code drives the MCP
+  help and `capabilities` tool, `rides help`, the guide page and the site list;
+  a test fails when a tool or command is not in it.
 - **Rate a stretch you rode** (`rate-stretch`, `rateStretch`): two ends, routed and
   shown to check, kept as a road rating with no roadbook; listed with `rated`,
   removable.

@@ -148,6 +148,11 @@
   .stage li code { font-family: var(--mono); font-size: 12.5px; background: var(--paper-2); padding: 1px 5px; }
 
   /* How it thinks */
+  .everything { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 32px 40px; }
+  .everything h3 { margin: 0 0 10px; font-family: var(--mono); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--rust); }
+  .everything ul { list-style: none; margin: 0; padding: 0; }
+  .everything li { padding: 8px 0; border-top: 1px solid var(--rule); line-height: 1.45; }
+  .everything q { display: block; margin-top: 2px; color: var(--ink-2); font-style: italic; quotes: "\201C" "\201D"; }
   .steps { display: grid; grid-template-columns: repeat(4, 1fr); counter-reset: s; }
   .steps div { padding: 0 24px 0 0; }
   .steps div + div { padding-left: 24px; border-left: 1px solid var(--rule); }
@@ -217,6 +222,7 @@
     <li><a href="#after">After the ride</a></li>
     <li><a href="#how">How it works</a></li>
     <li><a href="#run">Run it</a></li>
+    <li><a href="#everything">Everything</a></li>
     <li><a href="#open">Open source</a></li>
     <li><a href="guide/">Guide</a></li>
     <li><a href="https://github.com/bhoudebert/agent-motoride">GitHub</a></li>
@@ -488,9 +494,84 @@
 <span class="p">$ </span>npm run ride              <span class="c"># or open `claude` in this folder</span></pre>
 </section>
 
+<section id="everything">
+  <div class="head">
+    <div class="num">09 / everything it does</div>
+    <div>
+      <h2>Everything it does, in your words</h2>
+      <p>Say it in plain words in Claude Code or Codex, or use the terminal. The full list, with every command and shortcut, is in the <a href="guide/everything">guide</a>; "what can you do?" shows it in your client.</p>
+    </div>
+  </div>
+  <!-- capabilities:start -->
+  <div class="everything">
+    <div>
+      <h3>Plan</h3>
+      <ul>
+        <li>Plan a new ride from one sentence: scouts explore two to four areas, the best loop comes back checked<q>a twisty loop on Saturday, no rain, under 200 km, leaving at 9</q></li>
+        <li>Ride a saved roadbook again on a day: that day's forecast, open stops and a go or no-go, no copy<q>plan a ride from roadbook 7 on Saturday at 9</q></li>
+        <li>A practical trip: point to point, motorways allowed, traffic checked<q>I need to be in Brussels by 9 on Monday</q></li>
+        <li>Change a roadbook in words: changed in place, the previous version kept, rides already ridden untouched<q>make roadbook 7 50 km longer, lunch in Die</q></li>
+        <li>Import a route someone shared (GPX or KML): routed and measured like your own<q>import ~/Downloads/route.gpx</q></li>
+        <li>Plan from a photo of a map, a route screenshot or a list of places<q>(attach the picture) plan this loop</q></li>
+        <li>Save the itinerary on the table as a roadbook<q>save it as Monts de Flandre</q></li>
+      </ul>
+    </div>
+    <div>
+      <h3>Ride day</h3>
+      <ul>
+        <li>Morning briefing: fresh forecast, daylight, traffic, stops open at arrival, go or no-go<q>briefing for Saturday's ride of roadbook 7</q></li>
+        <li>The whole ride on one map: the loop, towns, stops and every fixed camera with its limit<q>show me roadbook 7 on a map</q></li>
+        <li>For the GPS and the phone: GPX, navigation links, a QR code, a page on your Wi-Fi<q>export roadbook 7 as GPX</q></li>
+        <li>A Markdown document of the ride, with its map, for your notes<q>export roadbook 7 as Markdown</q></li>
+      </ul>
+    </div>
+    <div>
+      <h3>On the road</h3>
+      <ul>
+        <li>A note about the last minutes, said at a stop: placed on the road after the ride<q>last 10 minutes awesome</q></li>
+      </ul>
+    </div>
+    <div>
+      <h3>After the ride</h3>
+      <ul>
+        <li>Review with your recorded track: notes placed on the road you rode, detours, pace, ratings to confirm<q>review my ride with ~/Downloads/track.gpx</q></li>
+        <li>Rate a roadbook or one of its legs: 4-5 sought out by later plans, 0-1 avoided<q>rate roadbook 7 five, superb; leg 2: never again, gravel</q></li>
+        <li>Rate how the day went (weather, traffic, company), apart from the roads<q>Saturday on roadbook 7 was cold, 2 out of 5</q></li>
+        <li>Rate a stretch of road you rode, outside any roadbook<q>the stretch from Rue de Longuesault 1, Tournai to Hollain was very nice, 5</q></li>
+        <li>See every rating that steers your plans, and remove a stretch rating<q>which roads have I rated?</q></li>
+      </ul>
+    </div>
+    <div>
+      <h3>Your library</h3>
+      <ul>
+        <li>Your roadbooks (saved loops) and your rides (a roadbook on a day), 20 per page<q>list my roadbooks; my latest rides</q></li>
+        <li>Everything about a roadbook (versions, rides), or one ride with the route it rode<q>show roadbook 7; show Saturday's ride of roadbook 7</q></li>
+        <li>Versions of a roadbook: bring one back, copy it as a variant, keep a planned ride on the previous one<q>undo that change on roadbook 7; copy roadbook 7 as Short Flandre</q></li>
+        <li>Recompute a roadbook with today's map data, or only its stop plan<q>refresh roadbook 7</q></li>
+        <li>Cancel a planned ride, delete a ride or a roadbook (asked first; road ratings stay), tidy the file<q>I'm not riding Saturday; delete roadbook 7</q></li>
+      </ul>
+    </div>
+    <div>
+      <h3>Settings</h3>
+      <ul>
+        <li>Start point, motorways, slow-zone targets, the fast-expressway ceiling, repeats<q>allow motorways; aim for 10% in 50 zones; allow up to 40% of fast expressways</q></li>
+        <li>Your bike: tank range, reserve, pause interval, lunch<q>my bike does 300 km on a tank, pause every hour and a half</q></li>
+      </ul>
+    </div>
+    <div>
+      <h3>Under the hood</h3>
+      <ul>
+        <li>What each session did and cost, step by step, and its export to an observability tool<q>(terminal) npm run rides -- runs</q></li>
+        <li>This list<q>what can you do?</q></li>
+      </ul>
+    </div>
+  </div>
+  <!-- capabilities:end -->
+</section>
+
 <section id="open">
   <div class="head">
-    <div class="num">09 / open source</div>
+    <div class="num">10 / open source</div>
     <div>
       <h2>Open source, on open data</h2>
       <p>MIT-licensed, built in the open, and standing on data that communities map and share. Read every line, run it on your machine, send improvements back.</p>

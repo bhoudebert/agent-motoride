@@ -10,8 +10,8 @@ hero:
       text: Getting started
       link: /getting-started
     - theme: alt
-      text: Plan a ride
-      link: /plan-a-ride
+      text: Everything you can do
+      link: /everything
 features:
   - title: Plan from one sentence
     details: '"Saturday, no rain, under 250 km, winding roads." Scouts explore several areas, the best loop comes back checked.'

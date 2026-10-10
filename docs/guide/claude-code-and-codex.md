@@ -48,28 +48,18 @@ fetch the full planning guidance before planning. In Codex, `ride show 7` can be
 taken for a shell command: say "show roadbook 7", or add "using the ride
 tools".
 
-## Shortcuts (Claude Code)
+## Find everything it can do
 
-Slash commands are optional shortcuts; `/mcp__ride__help` lists them.
+Ask **"what can you do?"**, in Claude Code or Codex: the server answers with
+every feature, grouped by moment (plan, ride day, on the road, after the ride,
+library, settings), each with what to say. In Claude Code, `/mcp__ride__help`
+shows the same list, and slash commands are shortcuts for the most frequent
+ones (`/mcp__ride__plan-ride`, `/mcp__ride__plan-from`, `/mcp__ride__today`,
+`/mcp__ride__rate-stretch` and others). Codex has no slash commands for MCP
+servers: plain words do everything.
 
-| Command                                           | Does                                                 |
-| ------------------------------------------------- | ---------------------------------------------------- |
-| `/mcp__ride__plan-ride <request>`                 | Plan a new leisure ride                              |
-| `/mcp__ride__commute <destination> <when> [from]` | Practical trip, motorways permitted, traffic checked |
-| `/mcp__ride__edit-ride <id\|name> <change>`       | Change a roadbook, or ask about it                   |
-| `/mcp__ride__save-ride [name]`                    | Save the itinerary on the table                      |
-| `/mcp__ride__show-ride <id\|name>`                | Everything stored about one ride                     |
-| `/mcp__ride__plan-from <roadbook> <day> [time]`   | A ride from a saved roadbook on a day, no copy       |
-| `/mcp__ride__today [id\|name]`                    | Ride-day briefing with a go or no-go                 |
-| `/mcp__ride__refresh <id\|name>`                  | Recompute a ride without changing it                 |
-| `/mcp__ride__export-gpx [id\|name]`               | GPX file of the current ride or a roadbook           |
-| `/mcp__ride__export-md <id\|name> [file]`         | Markdown document of a ride                          |
-| `/mcp__ride__list-roadbooks [page]`               | Saved loops and trips, 20 per page                   |
-| `/mcp__ride__list-rides [page]`                   | Rides by date, latest first, 20 per page             |
-| `/mcp__ride__note <text>`                         | During the ride: a note about the last 10 minutes    |
-| `/mcp__ride__review [gpxPath] [ride]`             | After the ride: place the notes, confirm the ratings |
-
-Codex has no slash commands for MCP servers; plain words do the same.
+The same list, with the terminal command and the shortcut for each:
+[Everything you can do](/everything).
 
 ## Scouts, with or without a key
 

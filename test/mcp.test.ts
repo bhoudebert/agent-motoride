@@ -493,6 +493,10 @@ test("mcp: every tool answers when called by name through a client", async () =>
     assert.match(await call("deleteRoadbook", { roadbook: "2" }), /^Delete roadbook #2 .*\?[\s\S]*Nothing deleted yet/);
     assert.match(await call("deleteRoadbook", { roadbook: "2", confirm: true }), /^Deleted roadbook #2 /);
     await call("planningGuide", { request: "plan me a ride" });
+    assert.match(
+      await call("capabilities", {}),
+      /^Everything agentMotoride does\.[\s\S]*AFTER THE RIDE[\s\S]*rate-stretch/,
+    );
 
     // A new tool must come with its line above.
     const listed = (await client.listTools()).tools.map((t) => t.name).sort();

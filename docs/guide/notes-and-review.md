@@ -88,6 +88,34 @@ and a box to dismiss each one. Submit to store, close to keep them pending.
 Proposals come from your words: "never again" is 0, "awesome" is 5. A rating
 you said yourself always wins.
 
+## Rate a stretch you rode
+
+No note taken, no recorded track, just a stretch you enjoyed (or never want to
+see again)? Rate it from its two ends. It is routed, shown to you to check,
+and kept as a rating of those roads, without adding a roadbook:
+
+::: code-group
+
+```bash [Terminal]
+npm run rides -- rate-stretch "Rue de Longuesault 1, Tournai" "50.5393,3.4250" 5 "very nice through the fields"
+npm run rides -- rate-stretch "Ere" "Hollain" 1 "potholes" --via "Jollain-Merlin"   # when the router could take another road
+npm run rides -- rated               # every rating that steers plans, stretches with their id
+npm run rides -- unrate-stretch 4    # remove one, after you confirm
+```
+
+```text [Claude Code / Codex]
+the stretch from Rue de Longuesault 1, Tournai to 50.5393,3.4250 was very nice, 5
+which roads have I rated?
+remove that last stretch rating
+```
+
+:::
+
+The answer gives the length, the roads and a map link: check it is the road you
+rode, and add a place in between if not. Two places closer than 300 m are
+refused (give the villages: a street name can exist in several villages of the
+same town); a stretch over 60 km is a ride, to save and rate as a roadbook.
+
 ## What it changes
 
 Every confirmed note becomes a rated stretch of road. From then on, every plan

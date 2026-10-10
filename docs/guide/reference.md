@@ -79,6 +79,11 @@ Usage: npm run rides -- <command>
   map <id|name> [file.png]              A picture of the ride: route, towns, stops, fixed cameras with their limits
   rate <id|name> <0-5> [note]           Rate a roadbook: its roads, for later plans (0 never again, 5 loved)
   rate-day <roadbook> <day> <0-5> [note]  Rate how a ride went that day (weather, traffic, company); never a road rating
+  rate-stretch "<from>" "<to>" <0-5> [note] [--via "<place>"]
+                                        Rate a stretch of road you rode, outside any roadbook: routed, stored as a
+                                        road rating, no roadbook added. Prints the map link to check it
+  rated                                 Every rating that steers planning: roadbooks, legs, stretches (with their id)
+  unrate-stretch <id> [--yes]           Remove a stretch rating, after you confirm
   rate-leg <id|name> <leg> <1-5> [note] Rate one leg of a ride
   note "<text>" [--rating 0-5] [--back N] [--roadbook id|name]
                                         During the ride: a note about the last N minutes (default 10), on today's ride
@@ -114,7 +119,7 @@ reused as building blocks, those rated 0-1 are avoided.
 
 ## Claude Code and Codex (MCP server)
 
-36 tools, 15 prompts. Each tool shows its MCP hints: a client can let read-only tools run without asking.
+39 tools, 15 prompts. Each tool shows its MCP hints: a client can let read-only tools run without asking.
 
 ### Tools
 
@@ -459,6 +464,35 @@ Rate a saved ride after riding it, or one of its legs: 0 (never again) to 5 (lov
 - `leg` (integer, optional): Leg number, to rate one leg instead of the whole ride
 - `day` (string, optional): Day of a ride (YYYY-MM-DD, saturday), to rate how that day went (weather, traffic, company) rather than the roads; it never marks a road
 - `note` (string, optional): The rider's words, kept with the rating
+
+#### `rateStretch`
+
+_writes · not destructive · not idempotent · uses online services_
+
+Rate a stretch of road the rider rode, outside any roadbook: "Rue de Longuesault from Ere to Hollain was very nice, 5". Routes it without motorways from the two places (and any via), and stores a road rating that steers later plans (0-1 avoided, 4-5 sought out); no roadbook or ride is created. Show the rider the length, roads and map link it returns so they can check it is the road they rode. Use the rider's own rating and words; ask when they gave no rating. For a whole ride, save it and use rateRide instead.
+
+- `from` (string): Where the stretch starts: an address with its village, a town, or "lat,lon"
+- `to` (string): Where it ends, the same way
+- `via` (string[], optional): Places between, when the router could take another road
+- `rating` (integer): 0 never again, 5 loved
+- `note` (string, optional): The rider's words, kept with the rating
+
+#### `listRatedRoads`
+
+_read-only · local only_
+
+Every rating that steers planning: roadbooks and legs rated, and stretches rated directly or from reviewed notes, each stretch with its id (for deleteStretchRating).
+
+No input.
+
+#### `deleteStretchRating`
+
+_writes · may overwrite · idempotent · local only_
+
+Remove a stretch rating (id from listRatedRoads), e.g. one rated by mistake, after the rider confirms (a dialog, or a question in the chat).
+
+- `id` (integer): Stretch id, from listRatedRoads
+- `confirm` (boolean, optional): Only after the rider said yes to the question a first call returned, in clients without dialogs
 
 #### `listRoadbooks`
 

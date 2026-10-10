@@ -26,7 +26,7 @@ Session start SHALL print start point, motorway state, slow-zone targets, the fa
 
 ### Requirement: Library command
 
-`npm run rides` SHALL provide roadbooks and rides, each with `--page N` (`list` only points to these two), plan, delete (roadbook or ride, confirmed), cancel, versions, restore, copy, rate-day, rate-stretch, rated, unrate-stretch, today with a day, tidy, show, export, export-md, qr, share, rate, rate-leg, refresh (with `--stops`), bike, trace, runs, delete, clear-cache.
+`npm run rides` SHALL provide help (everything, by moment, from the catalogue), roadbooks and rides, each with `--page N` (`list` only points to these two), plan, delete (roadbook or ride, confirmed), cancel, versions, restore, copy, rate-day, rate-stretch, rated, unrate-stretch, today with a day, tidy, show, export, export-md, qr, share, rate, rate-leg, refresh (with `--stops`), bike, trace, runs, delete, clear-cache.
 
 ### Requirement: Safety
 

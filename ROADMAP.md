@@ -95,6 +95,11 @@ Open to anyone, no API key needed for most (see `CONTRIBUTING.md`):
 
 ## Done lately
 
+- **Long straights** (ADR 0025): every plan measures the stretches that keep to
+  one straight line for 2 km or more and names the longest; fewer of them wins
+  before fewer 31-50 zones; a target in every mode (`/straights`). Next:
+  calibrate the 50 m and 2 km thresholds on reviewed rides, and let the area
+  finder use the measure.
 - **Ratings by precision** (ADR 0024): a stretch wins over its leg, a leg over
   its roadbook, then the most recent; a roadbook rated 0-1 asks whether the
   roads or the loop were bad, and a loop much like a disliked one is sent back;

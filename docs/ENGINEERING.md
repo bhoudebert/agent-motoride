@@ -51,8 +51,16 @@ riding-time caps read from the rider's words, no motorway when forbidden, no
 repeat of a roadbook, under 10% on roads rated 0-1, the stated distance equal
 to the routed one, and, while motorways are forbidden, fast expressways under
 the rider's ceiling (`maxFastPct`, 25% by default, 100 for none). A failure goes
-back to the planner once. A slow-zone share over its target is not a failure:
-it comes back as a note to say, with no second model call. `planStops` refuses
+back to the planner once. A slow-zone or long-straight share over its target is not a failure:
+it comes back as a note to say, with no second model call.
+
+Long straights (ADR 0025) are measured in `profileLegs` (`src/tools/trip.ts`)
+on the route line of each leg by `straightRuns` (`src/geometry.ts`): greedy
+runs whose points all stay within 50 m of the chord from the run's first point,
+ending where the line leaves that corridor or turns back, kept from 2 km
+(chord length). Each is named after the road its edges mostly carry. The
+target (`maxStraightPct`, 15%) ranks above the 50 zones in the planner's and
+scouts' instructions and in the order of scout reports. `planStops` refuses
 a departure already past, by the session's clock.
 
 The planner uses adaptive thinking and enables the API's server-side refusal

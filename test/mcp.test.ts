@@ -233,6 +233,36 @@ test("mcp: a delete is asked in a dialog; no keeps everything, yes deletes, road
   }
 });
 
+test("mcp: a low roadbook rating asks in a dialog whether the roads or the loop were bad", async () => {
+  const db = library();
+  const client = await connect(db, true);
+  const answers: Array<{ action: string; content?: { roads: boolean } }> = [
+    { action: "cancel" },
+    { action: "accept", content: { roads: false } },
+    { action: "accept", content: { roads: true } },
+  ];
+  const asked: string[] = [];
+  client.setRequestHandler(ElicitRequestSchema, async (request) => {
+    asked.push((request.params as { message: string }).message);
+    return answers.shift()! as never;
+  });
+  const rate = async () =>
+    textOf(await client.callTool({ name: "rateRide", arguments: { ride: "1", rating: 1, note: "dull" } }));
+  try {
+    assert.equal(await rate(), "Not rated: the rider closed the question.");
+    assert.match(asked[0]!, /^What was bad about "Straight north": the roads themselves, or the way the loop/);
+    assert.match(await rate(), /^Rated #1 "Straight north" 1\/5 as a loop: its roads stay usable/);
+    assert.match(await rate(), /^Rated #1 "Straight north" 1\/5, and its \d+ leg\(s\): their roads are avoided/);
+    const scoped = textOf(
+      await client.callTool({ name: "rateRide", arguments: { ride: "1", rating: 0, scope: "loop" } }),
+    );
+    assert.match(scoped, /as a loop/, "a scope given up front asks nothing");
+    assert.equal(asked.length, 3);
+  } finally {
+    await client.close();
+  }
+});
+
 test("mcp: plain words get the full guidance, in any client", async () => {
   const client = await connect(library(), false);
   try {
@@ -519,7 +549,17 @@ test("mcp: rating a ride or a leg is stored and counts at once in the next route
     });
     assert.match(
       textOf(await client.callTool({ name: "rateRide", arguments: { ride: "2", rating: 0, note: "never again" } })),
-      /Rated #2 "Flandre" 0\/5/,
+      /^Not rated yet\. What was bad about "Flandre": the roads themselves, or the way the loop was put together/,
+      "a low roadbook rating asks what was bad",
+    );
+    assert.match(
+      textOf(
+        await client.callTool({
+          name: "rateRide",
+          arguments: { ride: "2", rating: 0, note: "never again", scope: "roads" },
+        }),
+      ),
+      /^Rated #2 "Flandre" 0\/5, and its 3 leg\(s\): their roads are avoided by later plans\./,
     );
     // The same session routes the same roads again: they now count as rated never again.
     const again = JSON.parse(textOf(await client.callTool({ name: "calculateTrip", arguments: loop })));

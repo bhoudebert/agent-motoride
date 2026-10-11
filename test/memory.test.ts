@@ -70,6 +70,8 @@ function library() {
     reason: "last 10 min awesome",
     approximate: false,
     cells: routeCells([encodePolyline(bentLine({ lat: 50.33, lon: 4.88 }, { lat: 50.29, lon: 4.9 }, 10))]),
+    fromCoords: "50.33,4.88",
+    toCoords: "50.29,4.9",
   });
   // Two earlier sessions: a scout report and a road search, as the trace keeps them.
   const run = store.startRun({
@@ -144,8 +146,9 @@ test("memory: what is known around a place, with ages, stretches and roads ready
     [["Meuse valley loop", 4]],
   );
   assert.deepEqual(
-    known.lovedStretches.map((s) => s.road),
-    ["N92, Yvoir to Anhée"],
+    known.lovedStretches.map((s) => [s.road, s.fromCoords, s.toCoords]),
+    [["N92, Yvoir to Anhée", "50.33,4.88", "50.29,4.9"]],
+    "a loved stretch comes with its ends, ready to route through",
   );
   assert.equal(known.avoidedStretches.length, 1);
   assert.match(JSON.stringify(known.avoidedStretches[0]), /cobbles through Godinne/);

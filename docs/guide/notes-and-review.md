@@ -121,7 +121,10 @@ same town); a stretch over 60 km is a ride, to save and rate as a roadbook.
 Every confirmed note becomes a rated stretch of road. From then on, every plan
 reports how much of a candidate runs on roads you rated: **0 or 1** are
 avoided, and a loop with 10% or more on them is only offered when nothing else
-fits; **4 or 5** are sought out as building blocks.
+fits; **4 or 5** are sought out as building blocks. A stretch is the most
+precise rating there is: it wins over the leg and the roadbook it lies in, so
+one bad village inside a loop you loved is avoided without losing the loop
+([what steers your plans](/library#what-steers-your-plans)).
 
 ::: tip No track?
 `review 7` without a file places the notes on the planned route by the time

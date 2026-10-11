@@ -25,7 +25,10 @@ import {
   formatRatedRoads,
   formatRideDetail,
   formatVersions,
+  rateRoadbook,
   rateStretch,
+  type RatingScope,
+  scopeQuestion,
   restoreVersion,
   formatRideDayPage,
   formatRoadbookPage,
@@ -74,7 +77,9 @@ const USAGE = `Usage: npm run rides -- <command>
   keep <roadbook> <day>                 Keep a planned ride on the version it had before the last change
   export-md <id|name> [file.md]         Write the ride as a Markdown document, with its map (default: exports/ in the project)
   map <id|name> [file.png]              A picture of the ride: route, towns, stops, fixed cameras with their limits
-  rate <id|name> <0-5> [note]           Rate a roadbook: its roads, for later plans (0 never again, 5 loved)
+  rate <id|name> <0-5> [note] [--roads|--loop]
+                                        Rate a roadbook (0 never again, 5 loved). For 0-1, say what was bad: the roads
+                                        (its legs are rated too and avoided) or the loop as built (asked when not given)
   rate-day <roadbook> <day> <0-5> [note]  Rate how a ride went that day (weather, traffic, company); never a road rating
   rate-stretch "<from>" "<to>" <0-5> [note] [--via "<place>"]
                                         Rate a stretch of road you rode, outside any roadbook: routed, stored as a
@@ -244,9 +249,22 @@ try {
     }
     case "rate": {
       const target = ride(args[0]);
-      const { rating, notes } = parseRating(args.slice(1));
-      store.rateRide(target.id, rating, notes);
-      console.log(`Rated #${target.id} "${target.name}" ${rating}/5.`);
+      const rest = args.slice(1);
+      let scope: RatingScope | undefined = rest.includes("--roads")
+        ? "roads"
+        : rest.includes("--loop")
+          ? "loop"
+          : undefined;
+      const { rating, notes } = parseRating(rest.filter((a) => a !== "--roads" && a !== "--loop"));
+      if (rating <= 1 && !scope) {
+        if (!process.stdin.isTTY) throw new Error(`${scopeQuestion(target.name)} Add --roads or --loop.`);
+        const rl = createInterface({ input: process.stdin, output: process.stdout });
+        const which = await rl.question(`${scopeQuestion(target.name)} [r] the roads  [l] the loop: `);
+        rl.close();
+        if (!/^[rl]/i.test(which.trim())) throw new Error("Not rated: answer r (the roads) or l (the loop).");
+        scope = /^r/i.test(which.trim()) ? "roads" : "loop";
+      }
+      console.log(rateRoadbook(store, target, rating, notes, scope));
       break;
     }
     case "rate-leg": {

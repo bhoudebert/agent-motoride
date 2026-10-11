@@ -7,7 +7,7 @@ process.env.RIDE_MODEL = "claude-sonnet-5-5";
 const api = installFakeServices();
 const { openRide } = await import("../src/agent.ts");
 const { Store } = await import("../src/store.ts");
-const { saveCurrentRide } = await import("../src/library.ts");
+const { rateRoadbook, saveCurrentRide } = await import("../src/library.ts");
 
 const quiet = () => {
   api.requests = [];
@@ -176,7 +176,7 @@ test("saving a duplicate of a saved ride is refused unless forced; rated roads a
     const first = await openRide({ home: "Lille", store });
     await first.send("go");
     const id = saveCurrentRide(first.context, first.current()!, { request: "go", parentId: null, home: "Lille" });
-    store.rateRide(id, 0, "never again");
+    rateRoadbook(store, store.findRide(String(id))!, 0, "never again", "roads");
 
     // The second session presents the same loop: the code check sends it back once.
     api.script = [toolUse("calculateTrip", { waypoints: ["Lille", "Cassel"], roundTrip: true }), answer, answer];

@@ -416,6 +416,16 @@ home but starting in Thuin is located and labelled in Thuin. A ride's own
 `rating` (`rides.rating`) is read by nothing that plans: only roadbook, leg and
 road ratings feed the rated-roads check and the memory.
 
+`ratedRoads` (`src/session.ts`) resolves them cell by cell (ADR 0024): a road
+rating (level 3) over a leg (2) over a roadbook rated 4-5 (1), then the most
+recent `rated_at` or `created_at`. A roadbook rated 0-1 marks no road; with
+`scope: "roads"` its legs are rated with it (`rateRoadbook`, `src/library.ts`),
+with `"loop"` it feeds `dislikedOf` instead: a candidate sharing 50% or more of
+its cells (below the 70% of a duplicate) gets the `LIKE A LOOP THE RIDER
+DISLIKED` verdict and a `disliked loop` violation. Migration step 3 dated the
+existing ratings and copied each roadbook's 0-1 onto its unrated legs, since
+those were given when they meant the roads.
+
 Leg ratings of the replaced legs are first copied to `road_ratings` with the
 leg's cells, so the rated-roads check and the memory keep them. Restoring a
 version is itself a revision, so nothing is ever lost.

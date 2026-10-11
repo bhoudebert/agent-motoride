@@ -46,6 +46,9 @@ model presents.
 
 - **Roadbook**: a loop or trip as designed and kept: waypoints, legs, route line, road mix, cameras, stop candidates, road and leg ratings. Numbers name roadbooks ("roadbook 7"; riders may say "ride 7").
 - **Ride**: a roadbook on one day: date (or none yet), departure, start, forecast, daylight, stop plan, traffic, status (planned, ridden, cancelled), notes. Named by its roadbook and date ("Saturday's ride"); its id stays internal. "Plan a ride from roadbook 7 on Saturday" adds one, never a copy.
+- **Leg**: the road between two waypoints of a roadbook, with its own rating.
+- **Stretch**: a piece of road the rider rated, from a reviewed note or from its two ends (`rateStretch`); stored as a road rating with its cells and its ends, with or without a roadbook.
+- **Rating levels**: stretch over leg over roadbook, then the most recent (ADR 0024). A roadbook rated 4-5 lifts its roads; rated 0-1 it judges the loop unless the rider said the roads were bad, which rates its legs. A ride's own rating judges the day and steers nothing.
 - **Itinerary**: the text presented to the rider.
 
 - "Open road" is distance outside built-up areas and off motorways; the rider's yardstick is time at 70 km/h or more.

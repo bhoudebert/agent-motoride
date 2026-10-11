@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { checkItinerary, correctionMessage, parseLimits } from "../src/checks.ts";
 import { routeCells } from "../src/geometry.ts";
+import { rateRoadbook } from "../src/library.ts";
 import { DEFAULT_PREFERENCES } from "../src/preferences.ts";
 import type { RegisteredRoute, RideContext } from "../src/session.ts";
 import { Store } from "../src/store.ts";
@@ -118,7 +119,8 @@ test("checks: repeats of saved rides and roads rated never again", () => {
       },
     ],
   });
-  store.rateRide(id, 0, "never again");
+  // "Never again" about its roads: its legs are rated too (ADR 0024).
+  rateRoadbook(store, store.findRide(String(id))!, 0, "never again", "roads");
   const { violations } = checkItinerary(context, route, "Loop, 214 km.", {
     maxDistanceKm: null,
     maxRidingMinutes: null,

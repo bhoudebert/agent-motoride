@@ -82,8 +82,11 @@ stretch rating removable after the rider confirms (`rides unrate-stretch <id>`,
 
 ### Requirement: Road ratings steer planning
 
-Road ratings SHALL count in the rated-roads check of every routed trip like
-leg ratings: 0 or 1 avoid, 4 or 5 loved.
+Road ratings (stretches) SHALL count in the rated-roads check of every routed
+trip as the narrowest ratings (saved-rides, "Ratings by precision"): 0 or 1
+avoid, 4 or 5 loved. A stretch SHALL keep its two ends as coordinates (from the
+route for a directly rated stretch, from its first and last squares for a
+reviewed note), returned by the road memory with loved and avoided stretches.
 
 ### Requirement: Nothing to remember
 

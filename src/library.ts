@@ -756,6 +756,43 @@ export function formatSurface(ride: SavedRide): string | null {
 }
 
 /** Everything the rider rated, as the planner weighs it: rides, legs and road stretches. */
+/** What a low roadbook rating is about: its roads, or the way the loop was put together (ADR 0024). */
+export type RatingScope = "loop" | "roads";
+
+/** The question asked when a roadbook is rated 0-1 without saying what was bad. */
+export const scopeQuestion = (name: string) =>
+  `What was bad about "${name}": the roads themselves, or the way the loop was put together (too many villages, a dull way back, the wrong order)?`;
+
+/**
+ * Rate a roadbook. Rated 0-1, it judges the loop unless the rider says the
+ * roads were bad, in which case every leg gets the rating too and its roads
+ * are avoided. Throws when a 0-1 comes without a scope: ask scopeQuestion first.
+ */
+export function rateRoadbook(
+  store: Store,
+  roadbook: SavedRide,
+  rating: number,
+  notes: string | null,
+  scope?: RatingScope,
+): string {
+  if (!Number.isInteger(rating) || rating < 0 || rating > 5) {
+    throw new Error(`Rating must be a whole number from 0 (never again) to 5, got "${rating}".`);
+  }
+  if (rating <= 1 && !scope) throw new Error(scopeQuestion(roadbook.name));
+  store.rateRide(roadbook.id, rating, notes);
+  const what = `#${roadbook.id} "${roadbook.name}" ${rating}/5`;
+  if (rating <= 1 && scope === "roads") {
+    for (const leg of roadbook.legs) store.rateLeg(roadbook.id, leg.seq, rating, notes);
+    return `Rated ${what}, and its ${roadbook.legs.length} leg(s): their roads are avoided by later plans.`;
+  }
+  if (rating <= 1) {
+    return `Rated ${what} as a loop: its roads stay usable, and loops much like it are not proposed again.`;
+  }
+  return rating >= 4
+    ? `Rated ${what}: its roads are sought out by later plans (a leg or a stretch rated on its own wins).`
+    : `Rated ${what}.`;
+}
+
 /** Shorter than this, the two places are a corner, not a stretch; longer, it is a ride. */
 export const MIN_STRETCH_KM = 0.3;
 export const MAX_STRETCH_KM = 60;
@@ -802,6 +839,8 @@ export async function rateStretch(
     reason: input.reason,
     approximate: false,
     cells: routeCells(trip.shapes),
+    fromCoords: legs[0]!.fromCoords,
+    toCoords: legs.at(-1)!.toCoords,
   });
   const effect =
     input.rating >= 4 ? "sought out by later plans" : input.rating <= 1 ? "avoided by later plans" : "noted";

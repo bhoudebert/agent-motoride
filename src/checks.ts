@@ -1,6 +1,6 @@
 // Code checks of an itinerary before the rider sees it: the hard limits read
 // from the rider's own words, and the rules the code enforces elsewhere.
-import { duplicateOf, type RegisteredRoute, type RideContext, ratedOverlap } from "./session.ts";
+import { dislikedOf, duplicateOf, type RegisteredRoute, type RideContext, ratedOverlap } from "./session.ts";
 
 export interface RequestLimits {
   maxDistanceKm: number | null;
@@ -78,6 +78,12 @@ export function checkItinerary(
     violations.push("motorways: the route uses a motorway, and the rider forbids them");
   }
   const duplicate = context.allowRepeat ? undefined : duplicateOf(context, route.cells);
+  const disliked = context.allowRepeat || duplicate ? undefined : dislikedOf(context, route.cells);
+  if (disliked) {
+    violations.push(
+      `disliked loop: ${disliked.overlapPct}% the same roads as roadbook #${disliked.rideId} "${disliked.name}", which the rider rated ${disliked.rating}${disliked.notes ? ` ("${disliked.notes}")` : ""}; change what they disliked or pick other roads, or say why this one`,
+    );
+  }
   if (duplicate) {
     violations.push(
       `repeat: ${duplicate.overlapPct}% of the roads of roadbook #${duplicate.rideId} "${duplicate.name}"`,

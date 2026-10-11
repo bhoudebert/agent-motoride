@@ -133,7 +133,45 @@ export const MIGRATIONS: Migration[] = [
     rebuild: true,
     up: roadbooksAndRides,
   },
+  {
+    version: 3,
+    name: "when ratings were given, and the ends of stretches",
+    up: ratingsByPrecision,
+  },
 ];
+
+/**
+ * Step 3 (ADR 0024): ratings record when they were given, so the most recent
+ * wins between equals; stretches keep their two ends. A roadbook rating of 0-1
+ * was given when it meant its roads: it is copied onto its legs that have none,
+ * since from now on a roadbook rating judges the loop.
+ */
+function ratingsByPrecision(db: DatabaseSync): void {
+  db.exec(`
+ALTER TABLE roadbooks ADD COLUMN rated_at TEXT;
+ALTER TABLE legs ADD COLUMN rated_at TEXT;
+ALTER TABLE road_ratings ADD COLUMN from_coords TEXT;
+ALTER TABLE road_ratings ADD COLUMN to_coords TEXT;
+UPDATE roadbooks SET rated_at = updated_at WHERE rating IS NOT NULL;
+UPDATE legs SET rated_at = (SELECT b.updated_at FROM roadbooks b WHERE b.id = legs.roadbook_id) WHERE rating IS NOT NULL;
+UPDATE legs SET
+  rating = (SELECT b.rating FROM roadbooks b WHERE b.id = legs.roadbook_id),
+  notes = coalesce(notes, (SELECT b.notes FROM roadbooks b WHERE b.id = legs.roadbook_id)),
+  rated_at = (SELECT b.updated_at FROM roadbooks b WHERE b.id = legs.roadbook_id)
+WHERE rating IS NULL AND (SELECT b.rating FROM roadbooks b WHERE b.id = legs.roadbook_id) <= 1;
+`);
+  // A stretch's ends, from its first and last 500 m squares (frozen with this step).
+  const center = (cell: string) => {
+    const [i = 0, j = 0] = cell.split(":").map(Number);
+    return `${((i + 0.5) * 0.0045).toFixed(5)},${((j + 0.5) * 0.0064).toFixed(5)}`;
+  };
+  const rows = db.prepare("SELECT id, cells FROM road_ratings").all() as Array<{ id: number; cells: string }>;
+  const set = db.prepare("UPDATE road_ratings SET from_coords = ?, to_coords = ? WHERE id = ?");
+  for (const row of rows) {
+    const cells = JSON.parse(row.cells) as string[];
+    if (cells.length) set.run(center(cells[0]!), center(cells.at(-1)!), row.id);
+  }
+}
 
 // Frozen with step 2: later code may change, this must not.
 const pad = (n: number) => String(n).padStart(2, "0");

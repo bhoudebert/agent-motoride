@@ -95,6 +95,10 @@ Open to anyone, no API key needed for most (see `CONTRIBUTING.md`):
 
 ## Done lately
 
+- **Ratings by precision** (ADR 0024): a stretch wins over its leg, a leg over
+  its roadbook, then the most recent; a roadbook rated 0-1 asks whether the
+  roads or the loop were bad, and a loop much like a disliked one is sent back;
+  loved stretches reach the planner with their ends.
 - **Everything in one place**: a capability catalogue in the code drives the MCP
   help and `capabilities` tool, `rides help`, the guide page and the site list;
   a test fails when a tool or command is not in it.

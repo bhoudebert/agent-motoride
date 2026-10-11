@@ -3,7 +3,7 @@
 // then confirmed by the rider as road ratings that steer future planning.
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { cellOfPoint, decodePolyline, type LatLon, pointCells, widenCells } from "./geometry.ts";
+import { cellCenter, cellOfPoint, decodePolyline, type LatLon, pointCells, widenCells } from "./geometry.ts";
 import type { NotePlacement, RideNote, SavedRide, Store } from "./store.ts";
 import { describeCoords, haversineKm } from "./tools/geo.ts";
 import { roadsAlong } from "./tools/trip.ts";
@@ -59,6 +59,11 @@ export function parseGpxTrack(xml: string): TrackPoint[] {
 export function readTrack(path: string): TrackPoint[] {
   return parseGpxTrack(readFileSync(path.replace(/^~(?=\/)/, homedir()), "utf8"));
 }
+
+const fmtCell = (cell: string) => {
+  const { lat, lon } = cellCenter(cell);
+  return `${lat.toFixed(5)},${lon.toFixed(5)}`;
+};
 
 /** The ride a note belongs to: the one named, else the ride dated today, else the last saved. */
 export function rideForNote(store: Store, ride: string | undefined, today: string): SavedRide {
@@ -345,6 +350,13 @@ export function applyReview(store: Store, decisions: ReviewDecision[]): string[]
       reason: note.text,
       approximate: placement.approximate,
       cells: placement.cells,
+      // The ends of the stretch, from its first and last squares.
+      ...(placement.cells.length
+        ? {
+            fromCoords: fmtCell(placement.cells[0]!),
+            toCoords: fmtCell(placement.cells.at(-1)!),
+          }
+        : {}),
     });
     store.setNoteStatus(note.id, "reviewed");
     return `Rated ${rating}: ${placement.road}, ${placement.from} to ${placement.to}${placement.approximate ? " (approximate)" : ""}.`;

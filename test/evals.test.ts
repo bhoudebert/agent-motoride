@@ -85,7 +85,7 @@ test("evals: seeded rides count for duplicates and rated roads", async () => {
     id: "fake-seed",
     request: "Sunday loop",
     home: "Lille",
-    seed: [{ name: "Old loop", waypoints: LOOP.waypoints, rating: 0 }],
+    seed: [{ name: "Old loop", waypoints: LOOP.waypoints, rating: 0, scope: "roads" }],
     expect: { itinerary: "any", maxDistanceKm: 150 },
   });
   assert.equal(run.scores["no-duplicate"], false);

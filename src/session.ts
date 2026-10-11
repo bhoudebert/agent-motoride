@@ -10,6 +10,8 @@ import type { RunUsage } from "./usage.ts";
 export const DUPLICATE_PCT = 70;
 /** A candidate above this share is worth mentioning as similar. */
 export const SIMILAR_PCT = 40;
+/** A candidate sharing this much with a loop the rider rated 0-1 is that loop again (ADR 0024). */
+export const DISLIKED_PCT = 50;
 
 /** One step of a planning session, kept for replay. */
 export interface TraceEvent {
@@ -73,35 +75,64 @@ export interface RatedRoads {
  */
 export function ratedRoads(context: RideContext): RatedRoads {
   if (context.ratedRoads) return context.ratedRoads;
-  const avoid = new Set<string>();
-  const loved = new Set<string>();
-  const avoidFrom: string[] = [];
-  const lovedFrom: string[] = [];
+  // Square by square, the narrowest rating wins (a stretch over a leg over a
+  // roadbook), then the most recent (ADR 0024). A roadbook rated 0-1 judges the
+  // loop, not its roads: only a loved roadbook lifts its roads, as the weakest source.
+  const best = new Map<string, { level: number; at: string; rating: number; label: string }>();
+  const offer = (cells: Iterable<string>, source: { level: number; at: string; rating: number; label: string }) => {
+    for (const cell of cells) {
+      const held = best.get(cell);
+      if (!held || source.level > held.level || (source.level === held.level && source.at > held.at)) {
+        best.set(cell, source);
+      }
+    }
+  };
   for (const ride of context.store.listRides()) {
     if (!ride.shapes) continue;
     ride.legs.forEach((leg, i) => {
-      const rating = leg.rating ?? ride.rating;
-      if (rating === null || rating === undefined) return;
       const shape = ride.shapes![i];
       if (!shape) return;
-      const target = rating <= 1 ? avoid : rating >= 4 ? loved : null;
-      if (!target) return;
-      for (const cell of routeCells([shape])) target.add(cell);
-      (rating <= 1 ? avoidFrom : lovedFrom).push(
-        `#${ride.id} leg ${leg.seq} (${leg.from} -> ${leg.to}, rated ${rating})`,
-      );
+      const label = `#${ride.id} leg ${leg.seq} (${leg.from} -> ${leg.to}`;
+      if (leg.rating !== null && leg.rating !== undefined) {
+        offer(routeCells([shape]), {
+          level: 2,
+          at: leg.ratedAt ?? ride.createdAt,
+          rating: leg.rating,
+          label: `${label}, rated ${leg.rating})`,
+        });
+      } else if (ride.rating !== null && ride.rating >= 4) {
+        offer(routeCells([shape]), {
+          level: 1,
+          at: ride.ratedAt ?? ride.createdAt,
+          rating: ride.rating,
+          label: `${label}, its roadbook rated ${ride.rating})`,
+        });
+      }
     });
   }
-  // Stretches rated from notes after a ride, on the road actually ridden.
+  // Stretches: rated directly, or from notes after a ride on the road actually ridden.
   for (const road of context.store.listRoadRatings()) {
-    const target = road.rating <= 1 ? avoid : road.rating >= 4 ? loved : null;
-    if (!target) continue;
-    for (const cell of road.cells) target.add(cell);
-    (road.rating <= 1 ? avoidFrom : lovedFrom).push(
-      `${road.road} (rated ${road.rating}${road.reason ? `: "${road.reason}"` : ""})`,
-    );
+    offer(road.cells, {
+      level: 3,
+      at: road.createdAt,
+      rating: road.rating,
+      label: `${road.road} (rated ${road.rating}${road.reason ? `: "${road.reason}"` : ""})`,
+    });
   }
-  context.ratedRoads = { avoid, avoidFrom, loved, lovedFrom };
+  const avoid = new Set<string>();
+  const loved = new Set<string>();
+  const avoidFrom = new Set<string>();
+  const lovedFrom = new Set<string>();
+  for (const [cell, source] of best) {
+    if (source.rating <= 1) {
+      avoid.add(cell);
+      avoidFrom.add(source.label);
+    } else if (source.rating >= 4) {
+      loved.add(cell);
+      lovedFrom.add(source.label);
+    }
+  }
+  context.ratedRoads = { avoid, avoidFrom: [...avoidFrom], loved, lovedFrom: [...lovedFrom] };
   return context.ratedRoads;
 }
 
@@ -133,6 +164,21 @@ export function duplicateOf(
     if (context.lineage.has(ride.id)) continue;
     const pct = overlapPct(cells, new Set(ride.cells));
     if (pct >= DUPLICATE_PCT) return { rideId: ride.id, name: ride.name, overlapPct: pct };
+  }
+  return undefined;
+}
+
+/** A roadbook rated 0-1 this candidate would largely repeat, outside the session's lineage. */
+export function dislikedOf(
+  context: RideContext,
+  cells: string[],
+): { rideId: number; name: string; overlapPct: number; rating: number; notes: string | null } | undefined {
+  for (const ride of context.store.listRides()) {
+    if (context.lineage.has(ride.id) || ride.rating === null || ride.rating > 1) continue;
+    const pct = overlapPct(cells, new Set(ride.cells));
+    if (pct >= DISLIKED_PCT) {
+      return { rideId: ride.id, name: ride.name, overlapPct: pct, rating: ride.rating, notes: ride.notes };
+    }
   }
   return undefined;
 }
@@ -192,6 +238,9 @@ export function savedRideOverlap(context: RideContext, cells: string[]) {
     verdict = context.allowRepeat
       ? `repeat of roadbook #${worst.rideId} "${worst.name}" (${worst.overlapPct}% same roads); repeats are allowed this session`
       : `DUPLICATE of roadbook #${worst.rideId} "${worst.name}" (${worst.overlapPct}% same roads). Do not propose it as new unless the rider asked for a variant; pick other roads or another area, or offer the rider to ride roadbook #${worst.rideId} again on their day (planRide), which needs no new plan.`;
+  } else if (!context.allowRepeat && dislikedOf(context, cells)) {
+    const disliked = dislikedOf(context, cells)!;
+    verdict = `LIKE A LOOP THE RIDER DISLIKED: ${disliked.overlapPct}% the same roads as roadbook #${disliked.rideId} "${disliked.name}", rated ${disliked.rating}${disliked.notes ? ` ("${disliked.notes}")` : ""}. Not a valid proposal as new unless the rider asked for it: change what they disliked, or pick other roads.`;
   } else if (worst && worst.overlapPct >= SIMILAR_PCT) {
     verdict = `similar to roadbook #${worst.rideId} "${worst.name}" (${worst.overlapPct}% same roads); acceptable, mention it to the rider`;
   }

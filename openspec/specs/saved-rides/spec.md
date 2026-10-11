@@ -63,7 +63,44 @@ The planner SHALL read the library at the start; candidates sharing 70% or more 
 
 ### Requirement: Ratings
 
-Roadbooks and their legs SHALL be rateable 0 to 5 with a note, from the CLI, the prompt, the menu and the `rateRide` MCP tool; 0 means never again. A ride (a roadbook on a day) SHALL be rateable 0 to 5 for how the day went (`rides rate-day`, `rateRide` with `day`); that rating SHALL mark the ride ridden and SHALL NOT count as a rating of the roads, in the rated-roads check or in the road memory. A rating SHALL count for the rest of the session at once, in the rated-roads check of the next routed trip. Legs rated 4 or 5 SHALL be offered as building blocks. Every routed trip SHALL report its share of distance on roads from rides or legs rated 0 or 1 (a leg's rating overriding the ride's); 10% or more SHALL make the loop invalid unless nothing else meets the hard limits, in which case the planner SHALL say so.
+Roadbooks and their legs SHALL be rateable 0 to 5 with a note, from the CLI,
+the prompt, the menu and the `rateRide` MCP tool; 0 means never again. A ride
+(a roadbook on a day) SHALL be rateable 0 to 5 for how the day went (`rides
+rate-day`, `rateRide` with `day`); that rating SHALL mark the ride ridden and
+SHALL NOT count as a rating of the roads. Every rating SHALL record when it
+was given.
+
+### Requirement: Ratings by precision
+
+Ratings SHALL steer planning square by square (500 m cells), the narrowest
+winning: a stretch over a leg over a roadbook, and between two of the same
+kind the most recent. Squares whose winning rating is 0-1 are avoided, 4-5
+loved, 2-3 neutral. Every routed trip SHALL report its share on avoided and on
+loved roads; 10% or more on avoided roads SHALL make the loop invalid unless
+nothing else meets the hard limits, in which case the planner SHALL say so.
+Legs and stretches rated 4-5 SHALL be offered as building blocks, with their
+coordinates.
+
+#### Scenario: Cobbles inside a loved loop
+
+- **WHEN** roadbook 7 is rated 5 and a stretch inside it is rated 0
+- **THEN** the stretch's squares are avoided and the rest of the loop is loved
+
+### Requirement: A roadbook rating judges the loop
+
+A roadbook rated 4-5 SHALL lift its roads as the weakest source. A roadbook
+rated 0-1 SHALL NOT spread to its roads; a candidate sharing 50% or more of its
+squares with a roadbook rated 0-1 (other than the one being changed) SHALL be
+invalid as a new proposal unless the rider asks for it, and the planner SHALL
+be given the rider's words. When the rider rates a roadbook 0-1 the system
+SHALL ask whether the roads or the way the loop was put together were bad;
+"the roads" SHALL also give each of its legs that rating. Existing roadbook
+ratings of 0-1 SHALL be copied onto their unrated legs once (schema step 3).
+
+#### Scenario: A badly built loop
+
+- **WHEN** the rider rates roadbook 9 at 1, "too many villages on the way back", and answers "the loop"
+- **THEN** its roads stay usable in later plans, and a new loop sharing more than half of its roads is not proposed as new
 
 ### Requirement: Editing a roadbook
 

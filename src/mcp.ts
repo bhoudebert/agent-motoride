@@ -20,7 +20,7 @@ import {
   reviewRide,
   rideToReview,
 } from "./feedback.ts";
-import { deleteForm, duplicateForm, type ElicitForm, reviewDecisions, reviewForm } from "./elicit.ts";
+import { deleteForm, duplicateForm, scopeForm, type ElicitForm, reviewDecisions, reviewForm } from "./elicit.ts";
 import { deleteRideQuestion, deleteRoadbookQuestion, rideOnDay, rideToBrief, roadbookOf } from "./housekeeping.ts";
 import { exportSavedRide, writeGpx } from "./gpx.ts";
 import { rideMapPng } from "./rideMap.ts";
@@ -31,7 +31,9 @@ import {
   copyRoadbook,
   followingRides,
   formatRideDetail,
+  rateRoadbook,
   rateStretch,
+  scopeQuestion,
   restoreVersion,
   formatRatedRoads,
   formatRideDayPage,
@@ -862,7 +864,7 @@ server.registerTool(
   "rateRide",
   {
     description:
-      "Rate a saved ride after riding it, or one of its legs: 0 (never again) to 5 (loved), with the rider's words as a note. Ratings steer later plans: rides and legs rated 4-5 are reused as building blocks, those rated 0-1 avoided. For a stretch of road within a leg, notes during the ride and reviewRide are more precise. Use the rider's own rating; ask when they gave none.",
+      "Rate a roadbook after riding it, one of its legs, or (with day) how a ride went: 0 (never again) to 5 (loved), with the rider's words. The narrowest rating steers later plans: a stretch over a leg over a roadbook. A roadbook rating judges the loop: rated 4-5 it lifts its roads; rated 0-1 the rider is asked whether the roads or the way the loop was put together were bad (a dialog, or call again with scope); with scope roads its legs are rated too and avoided, with scope loop its roads stay usable and loops much like it are not proposed again. For part of a road, rateStretch is more precise. Use the rider's own rating; ask when they gave none.",
     annotations: hintsOf("rateRide"),
     inputSchema: z.object({
       ride: z.string().describe("Roadbook number or name"),
@@ -875,6 +877,10 @@ server.registerTool(
           "Day of a ride (YYYY-MM-DD, saturday), to rate how that day went (weather, traffic, company) rather than the roads; it never marks a road",
         ),
       note: z.string().optional().describe("The rider's words, kept with the rating"),
+      scope: z
+        .enum(["roads", "loop"])
+        .optional()
+        .describe("For a roadbook rated 0-1: the roads were bad, or the way the loop was put together"),
     }),
   },
   async (args) => {
@@ -892,13 +898,26 @@ server.registerTool(
       if (!store.rateLeg(ride.id, args.leg, args.rating, note)) {
         throw new Error(`Roadbook #${ride.id} has no leg ${args.leg}; it has legs 1 to ${ride.legs.length}.`);
       }
-    } else store.rateRide(ride.id, args.rating, note);
+      context.ratedRoads = undefined;
+      const leg = ride.legs.find((l) => l.seq === args.leg)!;
+      return text(`Rated leg ${leg.seq} (${leg.from} -> ${leg.to}) of #${ride.id} "${ride.name}" ${args.rating}/5.`);
+    }
+    let scope = args.scope;
+    if (args.rating <= 1 && !scope) {
+      // What was bad is the rider's to say: in the client's dialog, else in the chat.
+      if (!canElicit()) {
+        return text(
+          `Not rated yet. ${scopeQuestion(ride.name)} Ask the rider, then call rateRide again with scope "roads" or "loop".`,
+        );
+      }
+      const answer = await ask(scopeForm(scopeQuestion(ride.name)));
+      if (!answer) return text("Not rated: the rider closed the question.");
+      scope = answer.roads === true ? "roads" : "loop";
+    }
+    const done = rateRoadbook(store, ride, args.rating, note, scope);
     // The next routed trip of this session must see the new rating.
     context.ratedRoads = undefined;
-    const leg = args.leg === undefined ? undefined : ride.legs.find((l) => l.seq === args.leg);
-    return text(
-      `Rated ${leg ? `leg ${leg.seq} (${leg.from} -> ${leg.to}) of ` : ""}#${ride.id} "${ride.name}" ${args.rating}/5.`,
-    );
+    return text(done);
   },
 );
 

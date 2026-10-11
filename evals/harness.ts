@@ -1,7 +1,7 @@
 // Run one eval case through the API planner, live (recording) or from a cassette.
 import { fileURLToPath } from "node:url";
 import { openRide } from "../src/agent.ts";
-import { saveCurrentRide } from "../src/library.ts";
+import { rateRoadbook, saveCurrentRide } from "../src/library.ts";
 import { EFFORT, MODEL, SCOUT_EFFORT, SCOUT_MODEL } from "../src/model.ts";
 import { DEFAULT_PREFERENCES } from "../src/preferences.ts";
 import { duplicateOf, ratedOverlap, registerRoute } from "../src/session.ts";
@@ -93,7 +93,15 @@ export async function runCase(
         { route, rideDate: null, departure: null, title: seed.name, itinerary: "seeded for an eval" },
         { request: "seed", parentId: null, home: c.home, force: true },
       );
-      if (seed.rating !== undefined) store.rateRide(id, seed.rating, null);
+      if (seed.rating !== undefined) {
+        rateRoadbook(
+          store,
+          store.findRide(String(id))!,
+          seed.rating,
+          null,
+          seed.scope ?? (seed.rating <= 1 ? "loop" : undefined),
+        );
+      }
     }
 
     const session = await openRide({ home: c.home, store, preferences, now });

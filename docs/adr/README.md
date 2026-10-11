@@ -31,3 +31,4 @@ not rewritten.
 | [0022](0022-versioned-schema-migrations.md)                    | Versioned schema migrations, applied in a transaction after a backup             | accepted |
 | [0023](0023-roadbooks-and-rides.md)                            | Split the library into roadbooks (the design) and rides (a roadbook on a day)    | accepted |
 | [0024](0024-ratings-by-precision-a-roadbook-rates-the-loop.md) | Ratings by precision: the narrowest wins, a roadbook rates the loop              | accepted |
+| [0025](0025-long-straights-weigh-more-than-slow-zones.md)      | Measure long straights and weigh them above the 31-50 zones                      | accepted |

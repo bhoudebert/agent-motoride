@@ -52,6 +52,7 @@ model presents.
 - **Itinerary**: the text presented to the rider.
 
 - "Open road" is distance outside built-up areas and off motorways; the rider's yardstick is time at 70 km/h or more.
+- A "long straight" is a stretch that keeps within 50 m of one straight line for 2 km or more; its share is a target (15% by default) that weighs more than the 31-50 zones (ADR 0025).
 - Slow-zone shares (30 and 31-50 km/h) are targets to minimise, not pass/fail limits; motorways are forbidden by default and permitted per session.
 - Riding time is estimated from speed limits and bends; the router's own time is an upper bound.
 - Legal defaults for untagged roads depend on country and region (France 80, Wallonia 90, Flanders 70).

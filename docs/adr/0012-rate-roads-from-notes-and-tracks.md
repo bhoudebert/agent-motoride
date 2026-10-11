@@ -1,6 +1,6 @@
 # 0012. Rate road stretches from time-stamped notes and recorded tracks
 
-- Status: accepted
+- Status: accepted; amended by [0024](0024-ratings-by-precision-a-roadbook-rates-the-loop.md)
 - Date: 2026-10-05
 
 ## Context

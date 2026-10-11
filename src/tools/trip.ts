@@ -1,4 +1,4 @@
-import { decodePolyline, encodePolyline, type LatLon } from "../geometry.ts";
+import { decodePolyline, encodePolyline, type LatLon, straightRuns } from "../geometry.ts";
 import { fetchJson } from "../http.ts";
 import { overviewLink, pinnedMapsLinks } from "../maps.ts";
 import { bearingDeg, describeCoords, fmtCoords, haversineKm, type Point, resolvePoint } from "./geo.ts";
@@ -212,7 +212,9 @@ export async function roadsAlong(points: LatLon[]): Promise<Array<{ name: string
  * - a riding-time estimate: limit (or the open-road default for the road class)
  *   scaled down by how much the segment turns. The router's own time assumes
  *   about 50 km/h on roads posted at 80 and is kept only as an upper bound;
- * - the main roads of each leg.
+ * - the main roads of each leg;
+ * - the long straights: stretches that keep to one straight line for 2 km or
+ *   more (ADR 0025), with the road they are on.
  */
 async function profileLegs(legShapes: string[]) {
   let km30 = 0;
@@ -241,6 +243,8 @@ async function profileLegs(legShapes: string[]) {
   let secondsOn70Plus = 0;
   let secondsAll = 0;
   let kmLimit70Plus = 0;
+  let kmStraight = 0;
+  const straights: Array<{ road: string; leg: number; km: number; at: string }> = [];
 
   for (const legShape of legShapes) {
     legIndex++;
@@ -315,6 +319,18 @@ async function profileLegs(legShapes: string[]) {
         secondsOn70Plus += edgeSeconds;
       }
     }
+    for (const run of straightRuns(shape)) {
+      // Named after the road it mostly runs on, the ref ("D 953") before the street name.
+      const along = new Map<string, number>();
+      for (const e of data.edges) {
+        const shared = Math.min(e.end_shape_index ?? 0, run.to) - Math.max(e.begin_shape_index ?? 0, run.from);
+        const name = e.names?.find((n) => /^[A-Z]{1,2} ?\d/.test(n)) ?? e.names?.[0];
+        if (shared > 0 && name) along.set(name, (along.get(name) ?? 0) + shared);
+      }
+      const road = [...along].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "unnamed road";
+      kmStraight += run.km;
+      straights.push({ road, leg: legIndex, km: run.km, at: fmtCoords(shape[run.from]!) });
+    }
     legSeconds.push(seconds);
     legRoads.push(
       [...roadKm.entries()]
@@ -358,6 +374,14 @@ async function profileLegs(legShapes: string[]) {
         km: round1(kmFastExpressway),
         pct: pct(kmFastExpressway),
         longest: longest(fastExpressways),
+      },
+      longStraights: {
+        km: round1(kmStraight),
+        pct: pct(kmStraight),
+        longest: straights
+          .sort((a, b) => b.km - a.km)
+          .slice(0, 4)
+          .map((r) => ({ ...r, km: round1(r.km) })),
       },
       longest30Zones: longest(zones30),
       longest50Zones: longest(zones50),

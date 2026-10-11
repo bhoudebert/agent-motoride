@@ -1,5 +1,6 @@
 // Code checks of an itinerary before the rider sees it: the hard limits read
 // from the rider's own words, and the rules the code enforces elsewhere.
+import { DEFAULT_MAX_STRAIGHT_PCT } from "./preferences.ts";
 import { dislikedOf, duplicateOf, type RegisteredRoute, type RideContext, ratedOverlap } from "./session.ts";
 
 export interface RequestLimits {
@@ -102,9 +103,23 @@ export function checkItinerary(
         .join(", ")}), over the rider's ${ceiling}% ceiling; route around them for a leisure ride, or say why not`,
     );
   }
-  // Slow-zone shares are targets, not limits: a loop over one stands, without a retry, but the rider is told.
-  const zones = trip.speedLimits as { limit31to50?: { pct: number }; limit30OrLess?: { pct: number } } | undefined;
+  // Long straights and slow zones are targets, not limits: a loop over one stands, without a retry,
+  // but the rider is told. A practical trip is not judged on them.
+  const zones = trip.speedLimits as
+    | {
+        limit31to50?: { pct: number };
+        limit30OrLess?: { pct: number };
+        longStraights?: { pct: number; longest: Array<{ road: string; km: number }> };
+      }
+    | undefined;
+  const straights = context.preferences.avoidMotorways ? zones?.longStraights : undefined;
+  const longest = straights?.longest[0];
   for (const [label, pct, target] of [
+    [
+      `long straights${longest ? ` (longest ${longest.km} km on the ${longest.road})` : ""}`,
+      straights?.pct,
+      context.preferences.maxStraightPct ?? DEFAULT_MAX_STRAIGHT_PCT,
+    ],
     ["31-50 zones", zones?.limit31to50?.pct, context.preferences.max50Pct],
     ["zones of 30 or less", zones?.limit30OrLess?.pct, context.preferences.max30Pct],
   ] as const) {

@@ -124,3 +124,56 @@ export function centroid(points: LatLon[]): LatLon {
   const sum = points.reduce((acc, p) => ({ lat: acc.lat + p.lat, lon: acc.lon + p.lon }), { lat: 0, lon: 0 });
   return { lat: sum.lat / points.length, lon: sum.lon / points.length };
 }
+
+/** A road stays "straight" while it keeps within this distance of one straight line, km (ADR 0025). */
+export const STRAIGHT_CORRIDOR_KM = 0.05;
+/** Shorter straight runs are ordinary road between bends; from this length they are a long straight, km. */
+export const LONG_STRAIGHT_KM = 2;
+
+/**
+ * The long straights of a line: runs of consecutive points that all stay within
+ * `corridorKm` of the chord from the run's first point to its last, at least
+ * `minKm` long. Greedy from the start: each run is extended as far as it stays
+ * inside its corridor and moves away from its first point, then the next one
+ * begins where it ended.
+ */
+export function straightRuns(
+  points: LatLon[],
+  corridorKm = STRAIGHT_CORRIDOR_KM,
+  minKm = LONG_STRAIGHT_KM,
+): Array<{ from: number; to: number; km: number }> {
+  if (points.length < 2) return [];
+  // Flat projection around the line's latitude: plenty at the scale of a ride.
+  const kx = (Math.PI / 180) * 6371 * Math.cos(((points[0]!.lat + points.at(-1)!.lat) / 2) * (Math.PI / 180));
+  const ky = (Math.PI / 180) * 6371;
+  const xy = points.map((p) => ({ x: p.lon * kx, y: p.lat * ky }));
+  const offset = (p: { x: number; y: number }, a: { x: number; y: number }, b: { x: number; y: number }) => {
+    const length = Math.hypot(b.x - a.x, b.y - a.y);
+    if (length === 0) return Math.hypot(p.x - a.x, p.y - a.y);
+    return Math.abs((b.x - a.x) * (a.y - p.y) - (a.x - p.x) * (b.y - a.y)) / length;
+  };
+  const runs: Array<{ from: number; to: number; km: number }> = [];
+  let start = 0;
+  while (start < xy.length - 1) {
+    let end = start + 1;
+    while (end + 1 < xy.length) {
+      const a = xy[start]!;
+      const b = xy[end + 1]!;
+      // A road that turns back on itself ends the straight where it turns.
+      if (Math.hypot(b.x - a.x, b.y - a.y) < Math.hypot(xy[end]!.x - a.x, xy[end]!.y - a.y)) break;
+      let inside = true;
+      for (let k = start + 1; k <= end; k++) {
+        if (offset(xy[k]!, a, b) > corridorKm) {
+          inside = false;
+          break;
+        }
+      }
+      if (!inside) break;
+      end++;
+    }
+    const km = haversineKm(points[start]!, points[end]!);
+    if (km >= minKm) runs.push({ from: start, to: end, km });
+    start = end;
+  }
+  return runs;
+}

@@ -30,7 +30,7 @@
     "test:coverage": "node --test --experimental-test-coverage --test-coverage-exclude='test/**' --test-coverage-exclude='scripts/**' --test-coverage-exclude='evals/run.ts' --test-coverage-lines=80 --test-coverage-functions=80 --test-coverage-branches=65 'test/**/*.test.ts'"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.131.0",
+    "@anthropic-ai/sdk": "^0.132.1",
     "@modelcontextprotocol/sdk": "^1.32.0",
     "@resvg/resvg-js": "^2.6.2",
     "uqr": "^0.1.3",

@@ -32,6 +32,8 @@ export interface SavedLeg {
   mainRoads: string[];
   rating: number | null;
   notes: string | null;
+  /** When the leg was rated, ISO 8601. */
+  ratedAt?: string | null;
 }
 
 export interface NewRide {
@@ -175,6 +177,9 @@ export interface RoadRating {
   /** Placed from the plan and elapsed time, not from a recorded track. */
   approximate: boolean;
   cells: string[];
+  /** The stretch's two ends, "lat,lon", to route through it. */
+  fromCoords?: string | null;
+  toCoords?: string | null;
 }
 
 export interface SavedRun extends RunRecord {
@@ -184,6 +189,8 @@ export interface SavedRun extends RunRecord {
 
 export interface SavedRide extends Omit<NewRide, "legs"> {
   id: number;
+  /** When the roadbook was rated, ISO 8601. */
+  ratedAt?: string | null;
   /** The ride (day) shown with this roadbook: its date, departure and day data; null if it has none. */
   rideDayId: number | null;
   createdAt: string;
@@ -276,6 +283,7 @@ interface RoadbookRow {
   center_lon: number;
   rating: number | null;
   notes: string | null;
+  rated_at: string | null;
   usage: string | null;
   shapes: string | null;
   route_extras: string | null;
@@ -316,6 +324,7 @@ interface SegmentRow {
   main_roads: string;
   rating: number | null;
   notes: string | null;
+  rated_at: string | null;
 }
 
 /** Stop lists are bare arrays per kind; repair any row written as { kind: { stops: [...] } }. */
@@ -644,6 +653,7 @@ export class Store {
       extras: joinExtras(row.route_extras, day?.day_extras ?? null),
       rating: row.rating,
       notes: row.notes,
+      ratedAt: row.rated_at,
       legs: legs.map((leg) => ({
         seq: leg.seq,
         from: leg.from_label,
@@ -655,6 +665,7 @@ export class Store {
         mainRoads: JSON.parse(leg.main_roads),
         rating: leg.rating,
         notes: leg.notes,
+        ratedAt: leg.rated_at,
       })),
     };
   }
@@ -753,15 +764,15 @@ export class Store {
 
   rateRide(id: number, rating: number, notes: string | null): boolean {
     const result = this.#db
-      .prepare("UPDATE roadbooks SET rating = ?, notes = coalesce(?, notes) WHERE id = ?")
-      .run(rating, notes, id);
+      .prepare("UPDATE roadbooks SET rating = ?, notes = coalesce(?, notes), rated_at = ? WHERE id = ?")
+      .run(rating, notes, new Date().toISOString(), id);
     return result.changes > 0;
   }
 
   rateLeg(rideId: number, seq: number, rating: number, notes: string | null): boolean {
     const result = this.#db
-      .prepare("UPDATE legs SET rating = ?, notes = coalesce(?, notes) WHERE roadbook_id = ? AND seq = ?")
-      .run(rating, notes, rideId, seq);
+      .prepare("UPDATE legs SET rating = ?, notes = coalesce(?, notes), rated_at = ? WHERE roadbook_id = ? AND seq = ?")
+      .run(rating, notes, new Date().toISOString(), rideId, seq);
     return result.changes > 0;
   }
 
@@ -1191,8 +1202,9 @@ export class Store {
   addRoadRating(rating: Omit<RoadRating, "id" | "createdAt">): number {
     const { lastInsertRowid } = this.#db
       .prepare(
-        `INSERT INTO road_ratings (roadbook_id, note_id, created_at, road, rating, reason, approximate, cells)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO road_ratings (roadbook_id, note_id, created_at, road, rating, reason, approximate, cells,
+           from_coords, to_coords)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         rating.rideId,
@@ -1203,6 +1215,8 @@ export class Store {
         rating.reason,
         rating.approximate ? 1 : 0,
         JSON.stringify(rating.cells),
+        rating.fromCoords ?? null,
+        rating.toCoords ?? null,
       );
     return Number(lastInsertRowid);
   }
@@ -1223,6 +1237,8 @@ export class Store {
       reason: string | null;
       approximate: number;
       cells: string;
+      from_coords: string | null;
+      to_coords: string | null;
     }>;
     return rows.map((row) => ({
       id: row.id,
@@ -1234,6 +1250,8 @@ export class Store {
       reason: row.reason,
       approximate: row.approximate === 1,
       cells: JSON.parse(row.cells),
+      fromCoords: row.from_coords,
+      toCoords: row.to_coords,
     }));
   }
 

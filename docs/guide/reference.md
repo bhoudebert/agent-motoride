@@ -115,8 +115,8 @@ AFTER THE RIDE
 - Review with your recorded track: notes placed on the road you rode, detours, pace, ratings to confirm
     npm run rides -- review [roadbook] [track.gpx]
     npm run rides -- notes
-- Rate a roadbook or one of its legs: 4-5 sought out by later plans, 0-1 avoided
-    npm run rides -- rate <roadbook> <0-5> [note]
+- Rate a roadbook or one of its legs: 4-5 sought out, 0-1 avoided; a low roadbook asks: the roads or the loop?
+    npm run rides -- rate <roadbook> <0-5> [note] [--roads|--loop]
     npm run rides -- rate-leg <roadbook> <leg> <0-5> [note]
     /rate
 - Rate how the day went (weather, traffic, company), apart from the roads
@@ -193,7 +193,7 @@ The rider's library of saved rides near a place, with rating (1-5, null if not r
 
 _read-only · uses online services_
 
-What the app already knows around a place, from earlier sessions: saved rides with their ratings, stretches the rider loved (4-5) or avoids (0-1), areas scouts already visited with their verdict, open-road share and age in days, and known winding roads with curviness and from/to coordinates usable directly as calculateTrip waypoints. With words (query), also the best matches anywhere, e.g. a road ref or a village. Call it before scouting or searching roads in a region: do not scout again an area recently found poor without a reason, and route known winding roads directly instead of a new road search. Weather is never remembered.
+What the app already knows around a place, from earlier sessions: saved rides with their ratings, stretches the rider loved (4-5) or avoids (0-1) with their two ends (fromCoords, toCoords: route through a loved one when it fits), areas scouts already visited with their verdict, open-road share and age in days, and known winding roads with curviness and from/to coordinates usable directly as calculateTrip waypoints. With words (query), also the best matches anywhere, e.g. a road ref or a village. Call it before scouting or searching roads in a region: do not scout again an area recently found poor without a reason, and route known winding roads directly instead of a new road search. Weather is never remembered.
 
 - `location` (string): Centre of the region, e.g. the start point or a candidate area
 - `radiusKm` (number, optional): Default 40
@@ -514,13 +514,14 @@ After a ride: place its pending notes on the road. With gpxPath (a track recorde
 
 _writes · not destructive · idempotent · local only_
 
-Rate a saved ride after riding it, or one of its legs: 0 (never again) to 5 (loved), with the rider's words as a note. Ratings steer later plans: rides and legs rated 4-5 are reused as building blocks, those rated 0-1 avoided. For a stretch of road within a leg, notes during the ride and reviewRide are more precise. Use the rider's own rating; ask when they gave none.
+Rate a roadbook after riding it, one of its legs, or (with day) how a ride went: 0 (never again) to 5 (loved), with the rider's words. The narrowest rating steers later plans: a stretch over a leg over a roadbook. A roadbook rating judges the loop: rated 4-5 it lifts its roads; rated 0-1 the rider is asked whether the roads or the way the loop was put together were bad (a dialog, or call again with scope); with scope roads its legs are rated too and avoided, with scope loop its roads stay usable and loops much like it are not proposed again. For part of a road, rateStretch is more precise. Use the rider's own rating; ask when they gave none.
 
 - `ride` (string): Roadbook number or name
 - `rating` (integer): 0 never again, 5 loved
 - `leg` (integer, optional): Leg number, to rate one leg instead of the whole ride
 - `day` (string, optional): Day of a ride (YYYY-MM-DD, saturday), to rate how that day went (weather, traffic, company) rather than the roads; it never marks a road
 - `note` (string, optional): The rider's words, kept with the rating
+- `scope` ("roads" \| "loop", optional): For a roadbook rated 0-1: the roads were bad, or the way the loop was put together
 
 #### `rateStretch`
 

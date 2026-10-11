@@ -142,7 +142,9 @@ keep Saturday's ride of roadbook 3 on the previous version
 ::: code-group
 
 ```bash [Terminal]
-npm run rides -- rate 3 5 "superb, Col de Rousset empty"     # the roads
+npm run rides -- rate 3 5 "superb, Col de Rousset empty"     # the roadbook
+npm run rides -- rate 4 1 "a dull way back" --loop            # 0-1: the loop as built...
+npm run rides -- rate 5 0 "cobbles everywhere" --roads        # ...or its roads
 npm run rides -- rate-leg 3 2 0 "gravel, never again"
 npm run rides -- rate-day 3 saturday 2 "freezing fog"        # the day, not the roads
 npm run rides -- rate-stretch "Ere" "Hollain" 5 "lovely"      # part of a ride, without a roadbook
@@ -150,17 +152,45 @@ npm run rides -- rate-stretch "Ere" "Hollain" 5 "lovely"      # part of a ride, 
 
 ```text [Claude Code / Codex]
 rate roadbook 3 five, Col de Rousset was empty
+roadbook 4 was a 1, the way back was dull
 leg 2 of roadbook 3: never again, gravel
 Saturday on roadbook 3 was cold and foggy, 2 out of 5
 ```
 
 :::
 
-Ratings run from 0 ("never again") to 5. A roadbook's rating, and its legs',
-are about the roads and steer later plans. A day's rating is about how that
-ride went (weather, traffic, company): it shows with the ride and never marks a
+Ratings run from 0 ("never again") to 5. A 0 or 1 on a whole roadbook is
+ambiguous, so the app asks once: were **the roads** bad, or **the loop** as it
+was put together (too many villages, a dull way back, the wrong order)? The
+terminal asks when you leave out `--roads` or `--loop`; Claude Code shows the
+question in a dialog, Codex asks in chat. A day's rating is about how that ride
+went (weather, traffic, company): it shows with the ride and never marks a
 road, so a cold Saturday does not hurt a good loop. For the details of a ride,
 notes during the ride work better: see [Notes and review](/notes-and-review).
+
+## What steers your plans
+
+You can rate the same road at several sizes: a whole roadbook, one of its legs,
+or a stretch (from your notes after a review, or rated directly). Each rating
+says something different, and the most precise one wins:
+
+| You rate     | 4 or 5                              | 0 or 1                                                                                                             | Weight    |
+| ------------ | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------ | --------- |
+| A stretch    | its roads are sought out            | its roads are avoided                                                                                              | strongest |
+| A leg        | its roads are sought out            | its roads are avoided                                                                                              | middle    |
+| A roadbook   | its roads are sought out, as a hint | **the roads**: every leg rated with it, avoided. **The loop**: roads usable, loops much like it not proposed again | weakest   |
+| A ride's day | shown with the ride, steers nothing | shown with the ride, steers nothing                                                                                | none      |
+
+So cobbles you rated 0 inside a loop you rated 5 are still avoided, and the
+rest of that loop is still loved. A leg rated on its own beats its roadbook;
+a stretch beats its leg. Between two ratings of the same size on the same
+road, the more recent wins: rate a stretch again after it was resurfaced.
+`npm run rides -- rated` (or "which roads have I rated?") lists them all.
+
+A loop rated 0 or 1 "as a loop" is checked like a repeat: a new plan that
+shares half its roads or more is sent back to the planner, who must change
+what you disliked or pick other roads (unless you asked for repeats, or you
+are changing that very roadbook).
 
 ## How the library shapes later plans
 
@@ -171,10 +201,11 @@ notes during the ride work better: see [Notes and review](/notes-and-review).
   deliberate copy). The planner offers instead to ride that roadbook again on
   your day. From 40% it is mentioned as similar. The same roads in the opposite
   direction count as the same ride.
-- **Ratings steer the choice.** Rides, legs and road stretches rated 4 or 5 are
-  reused as building blocks. Those rated 0 or 1 are avoided: a loop with 10% or
-  more on them is only offered when nothing else fits, and the planner must
-  say so. A leg's own rating wins over the ride's.
+- **Ratings steer the choice.** Roadbooks, legs and road stretches rated 4 or 5
+  are reused as building blocks. Legs and stretches rated 0 or 1 are avoided: a
+  loop with 10% or more on them is only offered when nothing else fits, and the
+  planner must say so. The most precise rating wins (see
+  [What steers your plans](#what-steers-your-plans)).
 - **Weather is never reused.** A ride shows the last forecast gathered,
   for reading; a plan or a change always checks the forecast afresh.
 

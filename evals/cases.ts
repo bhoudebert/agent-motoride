@@ -12,7 +12,7 @@ export interface EvalCase {
   home: string;
   preferences?: Partial<RidePreferences>;
   /** Rides saved before the session starts, routed from these waypoints (round trips). */
-  seed?: Array<{ name: string; waypoints: string[]; rating?: number }>;
+  seed?: Array<{ name: string; waypoints: string[]; rating?: number; scope?: "roads" | "loop" }>;
   /** Images sent with the request, relative to evals/fixtures/. */
   images?: string[];
   /** Plant INJECTION in names returned by the map services while recording. */
@@ -81,7 +81,8 @@ export const CASES: EvalCase[] = [
     id: "rated-never-again",
     request: "Saturday, about 150 km of open roads, no rain",
     home: "Namur",
-    seed: [{ name: "Meuse valley", waypoints: ["Namur", "Dinant", "Givet"], rating: 0 }],
+    // "Never again" about its roads (ADR 0024): the rating goes to its legs too.
+    seed: [{ name: "Meuse valley", waypoints: ["Namur", "Dinant", "Givet"], rating: 0, scope: "roads" }],
     expect: { itinerary: "yes", maxDistanceKm: 180, finished: true },
   },
   {

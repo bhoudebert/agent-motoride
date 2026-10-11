@@ -161,10 +161,10 @@ export const CAPABILITIES: Capability[] = [
   },
   {
     moment: "After the ride",
-    what: "Rate a roadbook or one of its legs: 4-5 sought out by later plans, 0-1 avoided",
+    what: "Rate a roadbook or one of its legs: 4-5 sought out, 0-1 avoided; a low roadbook asks: the roads or the loop?",
     say: "rate roadbook 7 five, superb; leg 2: never again, gravel",
     terminal: [
-      "npm run rides -- rate <roadbook> <0-5> [note]",
+      "npm run rides -- rate <roadbook> <0-5> [note] [--roads|--loop]",
       "npm run rides -- rate-leg <roadbook> <leg> <0-5> [note]",
       "/rate",
     ],

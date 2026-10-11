@@ -184,7 +184,15 @@ export class Memory {
           at: road.cells.length ? centroid(road.cells.map(cellCenter)) : null,
           rating: road.rating,
           learntAt: road.createdAt,
-          data: { road: road.road, rating: road.rating, why: road.reason, approximate: road.approximate },
+          data: {
+            road: road.road,
+            rating: road.rating,
+            why: road.reason,
+            approximate: road.approximate,
+            // Its two ends, ready as calculateTrip waypoints to ride it again on purpose.
+            fromCoords: road.fromCoords ?? null,
+            toCoords: road.toCoords ?? null,
+          },
         });
       }
 

@@ -54,6 +54,25 @@ export function reviewDecisions(review: RideReview, content: Record<string, unkn
   });
 }
 
+/** What a low roadbook rating is about: ticked, the roads; left, the way the loop was put together. */
+export function scopeForm(question: string): ElicitForm {
+  return {
+    message: question,
+    requestedSchema: {
+      type: "object",
+      properties: {
+        roads: {
+          type: "boolean",
+          title: "The roads themselves were bad",
+          description: "Ticked: its legs are rated too and avoided. Left: the loop as built; its roads stay usable.",
+          default: false,
+        },
+      },
+      required: ["roads"],
+    },
+  };
+}
+
 /** A yes/no question before a delete, "no" filled in. */
 export function deleteForm(question: string): ElicitForm {
   return {

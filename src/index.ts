@@ -12,6 +12,9 @@ import {
   formatRideDayPage,
   formatRoadbookPage,
   parseRating,
+  rateRoadbook,
+  type RatingScope,
+  scopeQuestion,
   rideNavigation,
   saveCurrentRide,
 } from "./library.ts";
@@ -543,8 +546,13 @@ async function startMenu(): Promise<
           if (answer === BACK || !answer) continue;
           try {
             const { rating, notes } = parseRating(answer.split(/\s+/));
-            store.rateRide(ride.id, rating, notes);
-            console.log(`Rated #${ride.id} ${rating}/5.`);
+            let scope: RatingScope | undefined;
+            if (rating <= 1) {
+              const which = await ask(`${scopeQuestion(ride.name)} [r] the roads  [l] the loop: `);
+              if (typeof which !== "string" || !/^[rl]/i.test(which)) continue;
+              scope = /^r/i.test(which) ? "roads" : "loop";
+            }
+            console.log(rateRoadbook(store, store.findRide(String(ride.id))!, rating, notes, scope));
           } catch (error) {
             console.log(describeError(error));
           }
@@ -711,9 +719,15 @@ async function refineLoop(
               console.log("No saved ride in this session yet. /save first, or use: npm run rides -- rate <id> <1-5>");
               break;
             }
-            const { rating, notes } = parseRating(args);
-            store.rateRide(id, rating, notes);
-            console.log(`Rated #${id} ${rating}/5.`);
+            const scope = args.includes("--roads") ? "roads" : args.includes("--loop") ? "loop" : undefined;
+            const { rating, notes } = parseRating(args.filter((a) => a !== "--roads" && a !== "--loop"));
+            if (rating <= 1 && !scope) {
+              console.log(
+                `${scopeQuestion(store.findRide(String(id))!.name)}\nSay it: /rate ${rating} … --roads, or /rate ${rating} … --loop`,
+              );
+              break;
+            }
+            console.log(rateRoadbook(store, store.findRide(String(id))!, rating, notes, scope));
             break;
           }
           case "note": {

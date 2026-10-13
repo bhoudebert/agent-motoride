@@ -33,6 +33,12 @@ cp .env.example .env
 npm run check           # environment and data services
 ```
 
+With [Nix](https://nixos.org) (optional), `nix develop` (or `direnv allow`) gives
+the same Node 24 plus `gh`, `jq` and `sqlite`, in place of `nvm use`.
+`nix run .#quality`, `.#eval`, `.#smoke` and `.#mcp-smoke` run the matching
+npm scripts, and `nix flake check` lints the Nix files. Each file in
+`nix/modules/` is a self-contained flake-parts module, picked up automatically.
+
 ## Workflow
 
 The path every feature follows, from idea to release, is described in

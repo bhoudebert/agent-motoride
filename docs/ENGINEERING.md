@@ -216,7 +216,9 @@ results.
 ## Choosing a model: benchmark results
 
 Short version: **use `claude-sonnet-5-5`**. Effort `medium` for speed and price,
-`high` for consistency. Opus and Haiku are not worth it for this app.
+`high` for consistency. Opus and Haiku are not worth it for this app. A local
+Gemma 4 12b can run the whole loop but misses the zone targets and needs a
+64k context; see [A local model](#a-local-model-gemma-4-12b-through-ollama).
 
 ### What was measured
 
@@ -237,6 +239,23 @@ library, from the same start point:
 
 Targets were at most 20% of the distance in 50 zones and 3% in 30 zones, with a
 hard limit of 3 hours of riding.
+
+#### A local model: Gemma 4 12b through Ollama
+
+The same request, measured on 2026-10-13 from the same start point on a
+16 GB GPU (RTX 5080), with scouts on and a scratch database. Model and scout
+model both `gemma4:12b`; cost is $0 (the model runs on the rider's machine) and
+time depends on the hardware, so it is not comparable with the API rows.
+
+| Setup                    | Cost | Time  | Model calls | Tool calls | Ride         | Open road | 50 zones | 30 zones |
+| ------------------------ | ---- | ----- | ----------- | ---------- | ------------ | --------- | -------- | -------- |
+| Gemma 4 12b, 32k context | $0   | 300 s | 50          | 47         | none         | n/a       | n/a      | n/a      |
+| Gemma 4 12b, 64k context | $0   | 397 s | 41          | 37         | 146 km, 2h44 | 68.5%     | 28.4%    | 3.1%     |
+
+Model and tool calls include the scouts' own. The 32k run was cut off, most
+likely at the context limit, and returned no itinerary. The 64k run completed; its answer was valid
+JSON in a code fence, which the app now reads (it was shown as text with no
+ride before). Gemma 4 26b has not been measured yet.
 
 ### What it shows
 
@@ -287,6 +306,9 @@ Free in every setup: the start menu, viewing roadbooks, rating, `refresh`.
   not cleared between them, later runs got road searches for free. That affects
   seconds, not cost or ride quality.
 - **Costs are estimates** from list prices at the time, and prices change.
+- **Local runs are one run each.** The Gemma 12b rows are single runs on one
+  machine, with scouts on; the Claude rows do not say whether scouts were on.
+  Gemma's ride misses two targets, but one run cannot say how often.
 
 ### Run it yourself
 
@@ -295,16 +317,46 @@ export RIDE_DB=data/bench.db              # separate database, your rides stay u
 
 # for each setup: edit RIDE_MODEL / RIDE_EFFORT in .env, then
 npm run rides -- clear-cache              # so no run inherits lookups from the previous one
-npm run ride -- --once --from "<your start>" "<your usual request>"
+npm run ride -- --once "<your usual request>"   # --once: print the itinerary and exit, no refine prompt
 
 npm run rides -- runs                     # compare
 unset RIDE_DB
 ```
 
-Do not `/save` during a benchmark: a roadbook changes what the next run sees.
+The start point comes from `RIDE_HOME`; `--from` overrides it, and the text is
+geocoded as is, so a placeholder such as `<your start>` is routed to wherever
+it matches. Do not `/save` during a benchmark, and do not pass `--save-as`: a
+roadbook changes what the next run sees. For a ride you want to keep, add
+`--save-as "<name>"` to a normal `--once` run.
 Use your own start point and your own kind of request; that is the only
 benchmark that tells you what to pick. Three runs per setup give a picture, one
 is an anecdote.
+
+### Run it on a local model (Ollama)
+
+The planner speaks the Anthropic API, so a local model needs an
+Anthropic-compatible endpoint. Ollama has one.
+
+```bash
+ollama pull gemma4:12b
+export ANTHROPIC_BASE_URL=http://localhost:11434
+export ANTHROPIC_API_KEY=ollama            # any value; overrides the key in .env
+export RIDE_MODEL=gemma4:12b
+export RIDE_SCOUT_MODEL=gemma4:12b         # scouts use the same endpoint
+export RIDE_SCOUTS=0                       # 1 to run scouts too (slower on one GPU)
+```
+
+- **Context window.** Ollama's default context is small and it truncates
+  silently. Start the server with `OLLAMA_CONTEXT_LENGTH=65536` (a run with scouts was cut off
+  at 32k and completed at 64k) and check `ollama ps`. Flash attention
+  and a quantised cache (`OLLAMA_FLASH_ATTENTION=1`,
+  `OLLAMA_KV_CACHE_TYPE=q8_0`) keep the memory down.
+- **Structured answers.** Ollama does not enforce the answer schema; the app
+  reads JSON from a code fence or surrounding prose, and `ride` given as one
+  string; an answer it cannot read is shown as text with no ride.
+- **Cost** shows as unknown: the model is not in the price table.
+- **Settings are Anthropic's.** `RIDE_EFFORT` and the fallback beta header are
+  sent as usual; Ollama 0.32 accepted them without changes.
 
 ## Evaluating the agent
 

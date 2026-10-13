@@ -92,12 +92,17 @@ The planner SHALL state only what tools returned and SHALL mark unverified parts
 
 ### Requirement: Structured final answer (API mode)
 
-The built-in planner's final answer SHALL be validated by the API against a schema with `message` (text for the rider) and `ride` (route id, date, departure, name, or null for a plain answer). An answer naming a route id unknown to the session SHALL be shown with a warning and SHALL NOT be saveable.
+The built-in planner's final answer SHALL be validated by the API against a schema with `message` (text for the rider) and `ride` (route id, date, departure, name, or null for a plain answer). An answer naming a route id unknown to the session SHALL be shown with a warning and SHALL NOT be saveable. A model that does not enforce structured output may wrap the JSON in a code fence or prose, or give `ride` as one string (route id, date and name joined by `_`): the answer SHALL be read from any of these forms, and an answer that cannot be read SHALL be shown as the message with `ride: null`.
 
 #### Scenario: Question without replanning
 
 - **WHEN** the rider asks a question about the itinerary
 - **THEN** the answer has `ride: null` and the current itinerary stays on the table
+
+#### Scenario: Answer wrapped in a code fence
+
+- **WHEN** a model without structured output returns the answer as JSON inside a markdown code fence
+- **THEN** the message is shown as text and the ride is registered as the current itinerary, as for a schema-validated answer
 
 ### Requirement: Itinerary layout
 

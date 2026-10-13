@@ -8,7 +8,7 @@ import {
   DEFAULT_PREFERENCES,
   type RidePreferences,
 } from "./preferences.ts";
-import { RideAnswer } from "./schema.ts";
+import { parseAnswer, RideAnswer } from "./schema.ts";
 import type { RegisteredRoute, RideContext, TraceEvent } from "./session.ts";
 import type { SavedRide, Store } from "./store.ts";
 import { setGeoAnchor } from "./tools/geo.ts";
@@ -456,17 +456,4 @@ export async function openRide(request: RideRequest): Promise<RideSession> {
     opened = true;
   }
   return { context, send: sendWithContext, current: () => current, usage: () => ({ ...usage }) };
-}
-
-/**
- * The API validates the answer against the schema, so this normally just
- * parses. Should a model ever answer in prose anyway, show the prose rather
- * than fail the turn.
- */
-function parseAnswer(raw: string): RideAnswer {
-  try {
-    return RideAnswer.parse(JSON.parse(raw));
-  } catch {
-    return { message: raw, ride: null };
-  }
 }

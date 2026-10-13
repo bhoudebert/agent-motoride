@@ -346,6 +346,20 @@ export RIDE_SCOUT_MODEL=gemma4:12b         # scouts use the same endpoint
 export RIDE_SCOUTS=0                       # 1 to run scouts too (slower on one GPU)
 ```
 
+With Nix, one command does the whole comparison on your Ollama models and
+leaves a table, a CSV and one log per run in `data/bench-logs/`:
+
+```bash
+nix run .#bench                          # gemma4:12b, gemma4:26b, gpt-oss:20b, qwen3:14b
+nix run .#bench -- gemma4:26b            # only these models (pulled if missing)
+BENCH_SCOUTS=1 BENCH_RUNS=3 nix run .#bench -- gemma4:12b
+```
+
+It uses a scratch database (`data/bench-local.db`), clears the lookup cache
+before every run, never touches the key in `.env`, and skips a model whose
+context is under 32k. `BENCH_MIN_CTX`, `BENCH_DB`, `BENCH_EFFORT`,
+`BENCH_REQUEST` and `BENCH_OLLAMA_URL` override the defaults.
+
 - **Context window.** Ollama's default context is small and it truncates
   silently. Start the server with `OLLAMA_CONTEXT_LENGTH=65536` (a run with scouts was cut off
   at 32k and completed at 64k) and check `ollama ps`. Flash attention

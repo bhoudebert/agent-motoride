@@ -5,11 +5,11 @@ the itinerary: who decides, who measures, who checks.
 
 ## Three roles
 
-| Role         | Who                                     | Does                                                                            |
-| ------------ | --------------------------------------- | ------------------------------------------------------------------------------- |
-| **Decides**  | the model (the planner, and its scouts) | where to look, which roads to string together, whether a loop is good enough    |
-| **Measures** | local tools over open data              | road bendiness, routing, speed limits, riding time, weather, stops, cameras     |
-| **Checks**   | code, after the answer                  | your limits, motorways, repeats, roads rated "never again", the stated distance |
+| Role         | Who                                     | Does                                                                                                                   |
+| ------------ | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| **Decides**  | the model (the planner, and its scouts) | where to look, which roads to string together, whether a loop is good enough                                           |
+| **Measures** | local tools over open data              | road bendiness, routing, speed limits, riding time, weather, stops, cameras                                            |
+| **Checks**   | code, after the answer                  | your limits, motorways, repeats, roads rated "never again", the stated distance, long straights and slow zones (notes) |
 
 The model never computes a distance or a time, and never states a forecast it
 did not fetch. It calls tools and reads what they return.

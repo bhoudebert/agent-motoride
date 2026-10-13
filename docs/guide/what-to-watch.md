@@ -41,6 +41,13 @@ Two readings of the rider's own yardstick:
 | time on 70+ roads     | share of riding time on roads limited to 70 km/h or more                  |
 | time at 70+ estimated | share at an estimated 70 or more, which needs limits of 80 and up (bends) |
 
+## Long straights
+
+Stretches that keep to one straight line for 2 km or more, by road, with their
+share of the distance. They weigh more than the 31-50 zones when the planner
+compares loops; over 15% (your setting), the plan says so. See
+[long straights](/settings#long-straights).
+
 ## Fast expressways
 
 Roads that are not motorways but are limited to 100 km/h or more: they count

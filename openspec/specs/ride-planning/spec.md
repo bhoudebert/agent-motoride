@@ -32,7 +32,12 @@ The planner SHALL accept a free-text request plus a start point, road preference
 
 ### Requirement: Hard limits and targets
 
-The planner SHALL treat distance caps, riding-time caps and "dry" as hard limits, and the 30 and 50 km/h zone shares as targets to minimise. When nothing satisfies every hard limit, it SHALL say so and offer the closest option naming the broken limit.
+The planner SHALL treat distance caps, riding-time caps and "dry" as hard limits, and the share of long straights and the 30 and 50 km/h zone shares as targets to minimise. Between two loops otherwise close, the one with fewer long straights SHALL be preferred before the one with fewer 31-50 zones (ADR 0025); the scouts SHALL be told the same, and scout reports SHALL be ranked by open road, then by the share of long straights read from the routed loop, then by the 50-zone share. A practical trip SHALL not be judged on long straights. When nothing satisfies every hard limit, it SHALL say so and offer the closest option naming the broken limit.
+
+#### Scenario: Fewer straights before fewer villages
+
+- **WHEN** two candidate loops have the same open road, one with 30% on long straights and 12% in 50 zones, the other with 10% on long straights and 16% in 50 zones
+- **THEN** the second is preferred
 
 #### Scenario: No loop fits
 
@@ -41,12 +46,17 @@ The planner SHALL treat distance caps, riding-time caps and "dry" as hard limits
 
 ### Requirement: Itinerary checked by code
 
-Every itinerary SHALL be checked by code before it is shown: routed distance and riding time against the caps read from the rider's words, no motorway when forbidden, no repeat of a roadbook unless repeats are allowed, less than 10% on roads rated 0-1, the distance stated in the answer equal to the routed one within 1.5 km, and, while motorways are forbidden, less than the rider's fast-expressway ceiling (roads that are not motorways, limited to 100 km/h or more; 25% of the distance by default). The ceiling SHALL be a setting like the slow-zone targets: `--max-fast-pct`, `RIDE_MAX_FAST_PCT`, `rideSettings` `maxFastPct`, shown with the settings, saved with each roadbook's preferences; when it differs from the default, the planner and the scouts SHALL be told it. 100 SHALL turn the check off. A slow-zone share over its target SHALL not fail the check: it SHALL be reported as a note for the rider (under the itinerary in API mode, after PASS in MCP mode), unless the answer already gives the share or speaks of the target. In API mode a failed check SHALL be sent back to the planner once, marked as an automatic check, unless the answer already acknowledges the breach; checks still failing after that SHALL be shown to the rider under the itinerary. In MCP mode the checks SHALL be available as the `checkItinerary` tool.
+Every itinerary SHALL be checked by code before it is shown: routed distance and riding time against the caps read from the rider's words, no motorway when forbidden, no repeat of a roadbook unless repeats are allowed, less than 10% on roads rated 0-1, the distance stated in the answer equal to the routed one within 1.5 km, and, while motorways are forbidden, less than the rider's fast-expressway ceiling (roads that are not motorways, limited to 100 km/h or more; 25% of the distance by default). The ceiling SHALL be a setting like the slow-zone targets: `--max-fast-pct`, `RIDE_MAX_FAST_PCT`, `rideSettings` `maxFastPct`, shown with the settings, saved with each roadbook's preferences; when it differs from the default, the planner and the scouts SHALL be told it. 100 SHALL turn the check off. The long-straight target (15% of the distance by default) SHALL be a setting the same way: `--max-straight-pct`, `RIDE_MAX_STRAIGHT_PCT`, `/straights`, `rideSettings` `maxStraightPct`. A long-straight share over its target while motorways are forbidden, or a slow-zone share over its target, SHALL not fail the check: it SHALL be reported as a note for the rider (under the itinerary in API mode, after PASS in MCP mode), unless the answer already gives the share or speaks of the target. In API mode a failed check SHALL be sent back to the planner once, marked as an automatic check, unless the answer already acknowledges the breach; checks still failing after that SHALL be shown to the rider under the itinerary. In MCP mode the checks SHALL be available as the `checkItinerary` tool.
 
 #### Scenario: Over the cap
 
 - **WHEN** the rider asked for "under 200 km" and the itinerary routes 214 km without saying so
 - **THEN** the planner is told "routed 214 km, over the 200 km limit" and answers again
+
+#### Scenario: Too many straights
+
+- **WHEN** a leisure loop has 32% of its distance on long straights, the longest 5.7 km on the D 953, and the answer does not say so
+- **THEN** the itinerary stands, with the note "32% of the distance in long straights (longest 5.7 km on the D 953), over the 15% target"
 
 #### Scenario: Impossible request
 

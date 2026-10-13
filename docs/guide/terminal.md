@@ -11,19 +11,20 @@ npm run ride                      # start menu: plan a new ride, or open a roadb
 npm run ride -- [options] "..."   # plan directly
 ```
 
-| Option                  | Effect                                                                                       |
-| ----------------------- | -------------------------------------------------------------------------------------------- |
-| `--from <place>`        | Start and end point: a town, a street or address, or `"lat,lon"`. Default `RIDE_HOME`        |
-| `--roadbook <id\|name>` | Work on a roadbook (also `--ride`): with a request, apply it; without, open the prompt on it |
-| `--show <id\|name>`     | Display a roadbook and exit, no model call                                                   |
-| `--image <file>`        | Attach a photo of a map or a route screenshot (repeatable)                                   |
-| `--allow-motorways`     | Permit motorways, e.g. for a commute                                                         |
-| `--max-30-pct <n>`      | Target for zones of 30 km/h or less (default 3)                                              |
-| `--max-50-pct <n>`      | Target for 31-50 km/h zones (default 20)                                                     |
-| `--max-fast-pct <n>`    | Ceiling for fast expressways on a leisure ride (default 25; 100 turns the check off)         |
-| `--allow-repeat`        | Accept rides that repeat saved ones                                                          |
-| `--save-as <name>`      | Save the first itinerary under this name                                                     |
-| `--once`                | Print the itinerary and exit, without the `refine>` prompt                                   |
+| Option                   | Effect                                                                                       |
+| ------------------------ | -------------------------------------------------------------------------------------------- |
+| `--from <place>`         | Start and end point: a town, a street or address, or `"lat,lon"`. Default `RIDE_HOME`        |
+| `--roadbook <id\|name>`  | Work on a roadbook (also `--ride`): with a request, apply it; without, open the prompt on it |
+| `--show <id\|name>`      | Display a roadbook and exit, no model call                                                   |
+| `--image <file>`         | Attach a photo of a map or a route screenshot (repeatable)                                   |
+| `--allow-motorways`      | Permit motorways, e.g. for a commute                                                         |
+| `--max-30-pct <n>`       | Target for zones of 30 km/h or less (default 3)                                              |
+| `--max-50-pct <n>`       | Target for 31-50 km/h zones (default 20)                                                     |
+| `--max-straight-pct <n>` | Target for long straights, 2 km or more on one line (default 15); weighs more than 50 zones  |
+| `--max-fast-pct <n>`     | Ceiling for fast expressways on a leisure ride (default 25; 100 turns the check off)         |
+| `--allow-repeat`         | Accept rides that repeat saved ones                                                          |
+| `--save-as <name>`       | Save the first itinerary under this name                                                     |
+| `--once`                 | Print the itinerary and exit, without the `refine>` prompt                                   |
 
 ## At the `refine>` prompt
 
@@ -44,6 +45,7 @@ Type a change in plain words ("too long, keep it under 180 km"), or a command:
 | `/rate <0-5> [note] [--roads\|--loop]` | Rate the roadbook of this session; a 0-1 says whether the roads or the loop were bad                        |
 | `/motorways on\|off`                   | Permit or forbid motorways from now on                                                                      |
 | `/fast <0-100>`                        | Fast-expressway ceiling from now on                                                                         |
+| `/straights <0-100>`                   | Long-straight target from now on                                                                            |
 | `/bike [range=.. pause=..]`            | Show or set the bike profile                                                                                |
 | `/settings`, `/usage`, `/trace`        | Settings in force, what the session cost, its steps so far                                                  |
 | `/back` (Ctrl-D), `/quit`              | Back to the menu, or quit                                                                                   |

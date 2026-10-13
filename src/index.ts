@@ -23,7 +23,12 @@ import { overviewLink, pinnedMapsLinks } from "./maps.ts";
 import { writeRideMarkdown } from "./markdown.ts";
 import { rideMapPng, writeRideMap } from "./rideMap.ts";
 import { parsePlanRide, planRideFrom } from "./planRide.ts";
-import { DEFAULT_MAX_FAST_PCT, DEFAULT_PREFERENCES, preferencesFromEnv } from "./preferences.ts";
+import {
+  DEFAULT_MAX_FAST_PCT,
+  DEFAULT_MAX_STRAIGHT_PCT,
+  DEFAULT_PREFERENCES,
+  preferencesFromEnv,
+} from "./preferences.ts";
 import { describeProfile, parseProfileArgs } from "./profile.ts";
 import { printQr, type Shared, startShareServer } from "./share.ts";
 import { type SavedRide, Store } from "./store.ts";
@@ -50,6 +55,8 @@ Options:
                         Also switchable during a session with /motorways on|off.
   --max-30-pct <n>      Target max % of distance in zones of 30 km/h or less. Default ${DEFAULT_PREFERENCES.max30Pct}.
   --max-50-pct <n>      Target max % of distance in 31-50 km/h zones. Default ${DEFAULT_PREFERENCES.max50Pct}.
+  --max-straight-pct <n>  Target max % of distance on long straights (2 km or more on one straight line); weighs
+                        more than the 50 zones. Default ${DEFAULT_MAX_STRAIGHT_PCT}. Also /straights during a session.
   --max-fast-pct <n>    Max % of a leisure ride on fast expressways (100 km/h or more, not motorways); the code
                         check sends a plan back above it. Default ${DEFAULT_MAX_FAST_PCT}; 100 turns the check off.
   --once                Print the itinerary and exit, without the refine prompt.
@@ -75,12 +82,13 @@ function refineHelp(): string {
   /map [file.png]       A picture of the saved or loaded ride: route, towns, stops, cameras (save first)
   /qr                   QR code of the Google Maps link, to scan with the phone
   /share                Page for the phone on the local Wi-Fi (map link, itinerary, GPX download) with its QR code
-  /rate <1-5> [note]    Rate the ride saved or loaded in this session
+  /rate <0-5> [note]    Rate the roadbook saved or loaded in this session; a 0-1 takes --roads or --loop
   /note <text> [--rating 0-5] [--back N]  During the ride: note about the last N minutes (default 10), reviewed after the ride
   /image <file> [text]  Attach a map photo or route screenshot: the planner reads the places on it and routes them
   /motorways on|off     Permit or forbid motorways from now on (default off)
   /fast <0-100>         Max % of a leisure ride on fast expressways (default 25; 100 turns the check off)
-  /settings             Show current settings: motorways, slow-zone targets, fast expressways, traffic
+  /straights <0-100>    Target max % on long straights, 2 km or more on one line (default ${DEFAULT_MAX_STRAIGHT_PCT})
+  /settings             Show current settings: motorways, long straights, slow zones, fast expressways, traffic
   /bike [range=250 ...] Show or set the bike profile (range, reserve, pause, stint, lunch) used for stops
   /usage                Model, tokens, time and estimated cost of this session so far
   /trace                Replay this session's steps so far (tool calls, scouts, answers)
@@ -101,6 +109,7 @@ const { values, positionals } = parseArgs({
     "max-30-pct": { type: "string" },
     "max-50-pct": { type: "string" },
     "max-fast-pct": { type: "string" },
+    "max-straight-pct": { type: "string" },
     once: { type: "boolean" },
     image: { type: "string", multiple: true },
     help: { type: "boolean", short: "h" },
@@ -126,12 +135,19 @@ const motorwayDefault = () => Boolean(values["allow-motorways"] ?? !preferencesF
 /** One line stating the settings a session runs with, so nothing is implicit. */
 function describeSettings(
   home: string,
-  preferences: { avoidMotorways: boolean; max30Pct: number; max50Pct: number; maxFastPct?: number },
+  preferences: {
+    avoidMotorways: boolean;
+    max30Pct: number;
+    max50Pct: number;
+    maxFastPct?: number;
+    maxStraightPct?: number;
+  },
 ): string {
   return [
     `Start: ${home}`,
     `motorways: ${preferences.avoidMotorways ? "FORBIDDEN" : "PERMITTED"}`,
     `30 zones: aim <= ${preferences.max30Pct}%`,
+    `long straights: aim <= ${preferences.maxStraightPct ?? DEFAULT_MAX_STRAIGHT_PCT}%`,
     `50 zones: aim <= ${preferences.max50Pct}%`,
     `fast expressway: <= ${preferences.maxFastPct ?? DEFAULT_MAX_FAST_PCT}%`,
     `traffic check: ${process.env.TOMTOM_API_KEY ? "on" : "off (no TOMTOM_API_KEY)"}`,
@@ -288,6 +304,11 @@ async function plan(
     max30Pct: percent("--max-30-pct", values["max-30-pct"], fromEnv.max30Pct),
     max50Pct: percent("--max-50-pct", values["max-50-pct"], fromEnv.max50Pct),
     maxFastPct: percent("--max-fast-pct", values["max-fast-pct"], fromEnv.maxFastPct ?? DEFAULT_MAX_FAST_PCT),
+    maxStraightPct: percent(
+      "--max-straight-pct",
+      values["max-straight-pct"],
+      fromEnv.maxStraightPct ?? DEFAULT_MAX_STRAIGHT_PCT,
+    ),
   };
 
   if (baseRide) console.error(`Working on roadbook #${baseRide.id} "${baseRide.name}".`);
@@ -782,6 +803,20 @@ async function refineLoop(
             preferences.maxFastPct = pct;
             pendingNote = `[Setting changed by the rider: fast expressways (not motorways, 100 km/h or more) may now be at most ${pct}% of a leisure ride${pct >= 100 ? ", with no ceiling" : ""}.]`;
             console.log(`Fast expressways: at most ${pct}% from now on.`);
+            break;
+          }
+          case "straights": {
+            const preferences = session.context.preferences;
+            const pct = Number(args[0]);
+            if (!args[0] || !Number.isFinite(pct) || pct < 0 || pct > 100) {
+              console.log(
+                `Long straights (2 km or more on one straight line): aim for at most ${preferences.maxStraightPct ?? DEFAULT_MAX_STRAIGHT_PCT}% of the distance. Use /straights <0-100>.`,
+              );
+              break;
+            }
+            preferences.maxStraightPct = pct;
+            pendingNote = `[Setting changed by the rider: long straights (2 km or more on one straight line) should now be at most ${pct}% of the distance; they still weigh more than the 31-50 zones.]`;
+            console.log(`Long straights: aim for at most ${pct}% from now on.`);
             break;
           }
           case "settings":

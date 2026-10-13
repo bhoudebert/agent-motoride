@@ -155,7 +155,7 @@ const CLIENT_SCOUTS = `API scouts are off here (${scoutsOff}), so scoutAreas can
 
 Scout brief:
 ${SCOUT_SYSTEM}
-Use only the agentMotoride tools (recallArea, searchRoads, calculateTrip, getWeather, reportScout), never shell commands, scripts or web search. Before answering, call reportScout once with your area, its central town, whether you found a loop, the routeId of your best loop if you routed one, and your verdict in one sentence: later sessions remember it. Then end with a short report: area, found (yes or no), routeId, distance, riding time, open-road and 50-zone shares, weather, verdict in one sentence.`;
+Use only the agentMotoride tools (recallArea, searchRoads, calculateTrip, getWeather, reportScout), never shell commands, scripts or web search. Before answering, call reportScout once with your area, its central town, whether you found a loop, the routeId of your best loop if you routed one, and your verdict in one sentence: later sessions remember it. Then end with a short report: area, found (yes or no), routeId, distance, riding time, open-road, long-straight and 50-zone shares, weather, verdict in one sentence.`;
 
 /** scoutAreas without API scouts: the way to scout with subagents, and each area's brief ready to hand over. */
 async function clientScouting(input: ScoutInput): Promise<string> {
@@ -269,7 +269,7 @@ server.registerTool(
   "rideSettings",
   {
     description:
-      "Show or change the rider's settings for this session: start and end point, whether motorways are permitted, and the slow-zone targets. Call it first with the home when the rider has not set one. Returns the settings in force.",
+      "Show or change the rider's settings for this session: start and end point, whether motorways are permitted, the long-straight and slow-zone targets. Call it first with the home when the rider has not set one. Returns the settings in force.",
     annotations: hintsOf("rideSettings"),
     inputSchema: z.object({
       home: z.string().optional().describe('Start and end point: town, address or "lat,lon"'),
@@ -283,6 +283,14 @@ server.registerTool(
         .optional()
         .describe(
           "Max % of a leisure ride on fast expressways (100 km/h or more, not motorways); 100 turns the check off",
+        ),
+      maxStraightPct: z
+        .number()
+        .min(0)
+        .max(100)
+        .optional()
+        .describe(
+          "Target max % of distance on long straights (2 km or more on one straight line); weighs more than 50 zones",
         ),
       allowRepeat: z.boolean().optional().describe("Accept rides that repeat saved ones"),
       tankRangeKm: z.number().positive().optional().describe("Bike profile: realistic range on a full tank"),
@@ -302,6 +310,7 @@ server.registerTool(
     if (args.max30Pct !== undefined) context.preferences.max30Pct = args.max30Pct;
     if (args.max50Pct !== undefined) context.preferences.max50Pct = args.max50Pct;
     if (args.maxFastPct !== undefined) context.preferences.maxFastPct = args.maxFastPct;
+    if (args.maxStraightPct !== undefined) context.preferences.maxStraightPct = args.maxStraightPct;
     if (args.allowRepeat !== undefined) context.allowRepeat = args.allowRepeat;
     return text(settingsText());
   },

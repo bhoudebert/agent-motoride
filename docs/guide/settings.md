@@ -56,6 +56,41 @@ allow up to 40% of fast expressways for this ride
 
 :::
 
+## Long straights
+
+Open road can still be dull: a road that runs on one straight line for
+kilometres, like the D 953 from Saint-Amand to Orchies. Every plan measures
+them: a **long straight** is a stretch that keeps within 50 m of one straight
+line for 2 km or more. The plan gives their share of the distance and the
+longest ones by road:
+
+```text
+Road mix: 71% open road  |  24% on long straights (longest 6.1 km, D 916)  |  18% in 31-50 zones ...
+```
+
+They come **before the 31-50 zones** in the planner's priorities: between two
+loops otherwise close, the one with fewer long straights wins, even with a
+little more through villages. The target is 15% of the distance. Like the
+slow-zone targets, it is not a limit: a plan over it stands, with a note
+saying so. Flat country has straights everywhere, so set your own:
+
+::: code-group
+
+```bash [Terminal]
+npm run ride -- --max-straight-pct 10 "a loop in the Avesnois, Saturday"
+# or RIDE_MAX_STRAIGHT_PCT=10 in .env; at the refine> prompt: /straights 10
+```
+
+```text [Claude Code / Codex]
+fewer long straight roads, at most 10% of the ride
+```
+
+:::
+
+A stretch you rated keeps its rating: a straight road you rated 5 stays one
+the plans seek out. A practical trip is not judged on straights. Roadbooks
+saved before this measure get it on `refresh`.
+
 ## Allowing motorways
 
 Motorways are forbidden by default. To allow them, for a commute for example:

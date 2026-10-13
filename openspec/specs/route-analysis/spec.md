@@ -40,6 +40,25 @@ The profile SHALL report, apart from motorways, the km and share of fast express
 - **WHEN** a secondary road in Germany has no limit tagged (legal default 100)
 - **THEN** it does not count as fast expressway
 
+### Requirement: Long straights
+
+The profile SHALL report the long straights of the route: runs that stay within 50 m of one straight line for 2 km or more, measured between their ends, with their km, their share of the distance and the four longest, each with its road (the ref before the street name), its leg and its starting point. A run SHALL end where the road leaves its corridor or turns back on itself.
+
+#### Scenario: A straight road between two towns
+
+- **WHEN** a route follows the D 953 from Saint-Amand-les-Eaux to Orchies
+- **THEN** it reports a long straight of about 5.7 km on the D 953
+
+#### Scenario: A bending road
+
+- **WHEN** a road bends left and right every few hundred metres, more than 50 m either side
+- **THEN** it reports no long straight
+
+#### Scenario: Out and back
+
+- **WHEN** a route rides 2.2 km along a straight road and back along it
+- **THEN** it reports two long straights of 2.2 km, not one
+
 ### Requirement: Riding-time estimate
 
 Riding time SHALL be estimated per segment as the limit scaled by a bend factor (about 95% straight, 80% flowing bends, 50% hairpins), capped at 85% of the limit in town, excluding stops and traffic. The router's own time SHALL be returned only as an upper bound.

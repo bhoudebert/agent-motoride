@@ -246,11 +246,12 @@ export const CAPABILITIES: Capability[] = [
   // Settings
   {
     moment: "Settings",
-    what: "Start point, motorways, slow-zone targets, the fast-expressway ceiling, repeats",
-    say: "allow motorways; aim for 10% in 50 zones; allow up to 40% of fast expressways",
+    what: "Start point, motorways, fewer long straights (they weigh more than 50 zones), slow-zone targets, the fast-expressway ceiling, repeats",
+    say: "allow motorways; fewer long straight roads; aim for 10% in 50 zones; allow up to 40% of fast expressways",
     terminal: [
-      "npm run ride -- --from <place> --allow-motorways --max-fast-pct <n>",
+      "npm run ride -- --from <place> --allow-motorways --max-straight-pct <n> --max-fast-pct <n>",
       "/motorways on|off",
+      "/straights <n>",
       "/fast <n>",
       "/settings",
     ],

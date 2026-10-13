@@ -12,19 +12,29 @@ export interface RidePreferences {
    * the check off. Absent on roadbooks saved before it existed: the default applies.
    */
   maxFastPct?: number;
+  /**
+   * Target ceiling for the share of the distance on long straights (2 km or more
+   * on one straight line, ADR 0025). Weighs more than the 31-50 zones. Absent on
+   * roadbooks saved before it existed: the default applies.
+   */
+  maxStraightPct?: number;
 }
 
 /** The fast-expressway ceiling when none is set. */
 export const DEFAULT_MAX_FAST_PCT = 25;
+
+/** The long-straight target when none is set. */
+export const DEFAULT_MAX_STRAIGHT_PCT = 15;
 
 export const DEFAULT_PREFERENCES: RidePreferences = {
   avoidMotorways: true,
   max30Pct: 3,
   max50Pct: 20,
   maxFastPct: DEFAULT_MAX_FAST_PCT,
+  maxStraightPct: DEFAULT_MAX_STRAIGHT_PCT,
 };
 
-/** Preferences from the environment (RIDE_ALLOW_MOTORWAYS, RIDE_MAX_30_PCT, RIDE_MAX_50_PCT, RIDE_MAX_FAST_PCT), defaults otherwise. */
+/** Preferences from the environment (RIDE_ALLOW_MOTORWAYS, RIDE_MAX_30_PCT, RIDE_MAX_50_PCT, RIDE_MAX_FAST_PCT, RIDE_MAX_STRAIGHT_PCT), defaults otherwise. */
 export function preferencesFromEnv(env: NodeJS.ProcessEnv = process.env): RidePreferences {
   const pct = (raw: string | undefined, fallback: number) => {
     const value = Number(raw);
@@ -35,5 +45,6 @@ export function preferencesFromEnv(env: NodeJS.ProcessEnv = process.env): RidePr
     max30Pct: pct(env.RIDE_MAX_30_PCT, DEFAULT_PREFERENCES.max30Pct),
     max50Pct: pct(env.RIDE_MAX_50_PCT, DEFAULT_PREFERENCES.max50Pct),
     maxFastPct: pct(env.RIDE_MAX_FAST_PCT, DEFAULT_MAX_FAST_PCT),
+    maxStraightPct: pct(env.RIDE_MAX_STRAIGHT_PCT, DEFAULT_MAX_STRAIGHT_PCT),
   };
 }

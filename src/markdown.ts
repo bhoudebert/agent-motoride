@@ -42,6 +42,7 @@ export function formatRideMarkdown(ride: SavedRide, map: string | null = null): 
     limit30OrLess?: { pct: number };
     motorwayKm?: number;
     fastExpressway?: { km: number; pct: number; longest: Array<{ road: string; km: number }> };
+    longStraights?: { km: number; pct: number; longest: Array<{ road: string; km: number }> };
   };
   const x = ride.extras;
   const lines: string[] = [];
@@ -93,6 +94,18 @@ export function formatRideMarkdown(ride: SavedRide, map: string | null = null): 
       push(
         `- Time on roads limited to 70 or more: ${s.timeOnRoads70PlusPct}% (${s.timeAbove70EstimatedPct}% at an estimated 70 or more)`,
       );
+    if (s.longStraights) {
+      push(
+        `- Long straights (2 km or more on one straight line): ${s.longStraights.km} km, ${s.longStraights.pct}%${
+          s.longStraights.longest.length
+            ? ` (${s.longStraights.longest
+                .slice(0, 3)
+                .map((r) => `${r.road} ${r.km} km`)
+                .join(", ")})`
+            : ""
+        }`,
+      );
+    }
     push(`- 31-50 zones: ${s.limit31to50.pct}%`, `- Zones of 30 or less: ${s.limit30OrLess?.pct ?? "?"}%`);
     if (s.fastExpressway?.km) {
       push(

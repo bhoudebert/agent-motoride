@@ -8,7 +8,7 @@ import {
   DEFAULT_PREFERENCES,
   type RidePreferences,
 } from "./preferences.ts";
-import { parseAnswer, RideAnswer } from "./schema.ts";
+import { parseAnswer, readAnswer, RideAnswer } from "./schema.ts";
 import type { RegisteredRoute, RideContext, TraceEvent } from "./session.ts";
 import type { SavedRide, Store } from "./store.ts";
 import { setGeoAnchor } from "./tools/geo.ts";
@@ -124,6 +124,9 @@ const JSON_ANSWER = `Your final answer is a JSON object with two fields. "messag
 export const SYSTEM = `${SYSTEM_CORE}
 
 ${JSON_ANSWER}`;
+
+/** Sent once when a model that does not enforce the schema answered in prose. */
+const FORMAT_REMINDER = `Your last message was not the JSON object. Reply again with only that JSON object: "message" holding the same full text for the rider, and "ride" holding the routeId, date, departure and name of the routed trip it presents, or null if it presents no new itinerary. Do not call tools.`;
 
 /** The lines every planner, built-in or MCP, gets about the rider's situation. */
 export function describeSituation(
@@ -257,7 +260,7 @@ export async function openRide(request: RideRequest): Promise<RideSession> {
   let history: Anthropic.Beta.BetaMessageParam[] = [];
   let current: CurrentRide | undefined;
 
-  async function send(text: string, images: RideImage[] = []): Promise<void> {
+  async function send(text: string, images: RideImage[] = [], formatRetry = false): Promise<void> {
     // Only the names go to the trace: the pictures themselves stay out of the database.
     context.trace({
       scope: "main",
@@ -366,6 +369,17 @@ export async function openRide(request: RideRequest): Promise<RideSession> {
           .flatMap((b) => (b.type === "text" ? [b.text] : []))
           .join("\n")
           .trim();
+        // A model that does not enforce the schema may answer in prose: ask once for the object.
+        if (!formatRetry && !readAnswer(raw)) {
+          context.trace({ scope: "main", kind: "error", name: "format", payload: "answer not JSON; asked again" });
+          process.stderr.write("\x1b[2m\n  answer is not the JSON object; asking the planner for it\x1b[0m\n");
+          try {
+            return await send(FORMAT_REMINDER, [], true);
+          } catch (error) {
+            // Fall through: the prose is still the answer.
+            context.trace({ scope: "main", kind: "error", name: "format retry", payload: String(error) });
+          }
+        }
         const answer = parseAnswer(raw);
         console.log(`\n${answer.message.trim()}`);
         context.trace({ scope: "main", kind: "answer", name: answer.ride ? "itinerary" : "answer", payload: answer });

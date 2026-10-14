@@ -30,6 +30,11 @@ export type RideAnswer = z.infer<typeof RideAnswer>;
  * answer be prose anyway, show the prose rather than fail the turn.
  */
 export function parseAnswer(raw: string): RideAnswer {
+  return readAnswer(raw) ?? { message: raw, ride: null };
+}
+
+/** The answer in any of the forms above, or null when the text is not one. */
+export function readAnswer(raw: string): RideAnswer | null {
   const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1];
   const open = raw.indexOf("{");
   const close = raw.lastIndexOf("}");
@@ -43,7 +48,7 @@ export function parseAnswer(raw: string): RideAnswer {
       // Not JSON: try the next reading.
     }
   }
-  return { message: raw, ride: null };
+  return null;
 }
 
 /** `ride` as "r2_2026-10-17_Winding_Loop" becomes the object the schema asks for. */

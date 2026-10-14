@@ -92,7 +92,7 @@ The planner SHALL state only what tools returned and SHALL mark unverified parts
 
 ### Requirement: Structured final answer (API mode)
 
-The built-in planner's final answer SHALL be validated by the API against a schema with `message` (text for the rider) and `ride` (route id, date, departure, name, or null for a plain answer). An answer naming a route id unknown to the session SHALL be shown with a warning and SHALL NOT be saveable. A model that does not enforce structured output may wrap the JSON in a code fence or prose, or give `ride` as one string (route id, date and name joined by `_`): the answer SHALL be read from any of these forms, and an answer that cannot be read SHALL be shown as the message with `ride: null`.
+The built-in planner's final answer SHALL be validated by the API against a schema with `message` (text for the rider) and `ride` (route id, date, departure, name, or null for a plain answer). An answer naming a route id unknown to the session SHALL be shown with a warning and SHALL NOT be saveable. A model that does not enforce structured output may wrap the JSON in a code fence or prose, or give `ride` as one string (route id, date and name joined by `_`): the answer SHALL be read from any of these forms, and an answer that cannot be read SHALL be asked for again once, as the JSON object only; if the second answer cannot be read either, it SHALL be shown as the message with `ride: null`.
 
 #### Scenario: Question without replanning
 
@@ -103,6 +103,11 @@ The built-in planner's final answer SHALL be validated by the API against a sche
 
 - **WHEN** a model without structured output returns the answer as JSON inside a markdown code fence
 - **THEN** the message is shown as text and the ride is registered as the current itinerary, as for a schema-validated answer
+
+#### Scenario: Answer in prose
+
+- **WHEN** a model without structured output answers in prose after routing a trip
+- **THEN** the planner is asked once for the JSON object, and the ride is registered from that second answer
 
 ### Requirement: Itinerary layout
 

@@ -216,7 +216,10 @@ results.
 ## Choosing a model: benchmark results
 
 Short version: **use `claude-sonnet-5-5`**. Effort `medium` for speed and price,
-`high` for consistency. Opus and Haiku are not worth it for this app.
+`high` for consistency. Opus and Haiku are not worth it for this app. Local models run
+through Ollama are free but not there yet: of four tried, only Gemma 4 26b
+produced a registered itinerary, and it missed the zone targets; see
+[A local model](#a-local-model-gemma-4-12b-through-ollama).
 
 ### What was measured
 
@@ -237,6 +240,62 @@ library, from the same start point:
 
 Targets were at most 20% of the distance in 50 zones and 3% in 30 zones, with a
 hard limit of 3 hours of riding.
+
+#### A local model: Gemma 4 12b through Ollama
+
+The same request, measured on 2026-10-13 from the same start point on a
+16 GB GPU (RTX 5080), with scouts on and a scratch database. Model and scout
+model both `gemma4:12b`; cost is $0 (the model runs on the rider's machine) and
+time depends on the hardware, so it is not comparable with the API rows.
+
+| Setup                    | Cost | Time  | Model calls | Tool calls | Ride         | Open road | 50 zones | 30 zones |
+| ------------------------ | ---- | ----- | ----------- | ---------- | ------------ | --------- | -------- | -------- |
+| Gemma 4 12b, 32k context | $0   | 300 s | 50          | 47         | none         | n/a       | n/a      | n/a      |
+| Gemma 4 12b, 64k context | $0   | 397 s | 41          | 37         | 146 km, 2h44 | 68.5%     | 28.4%    | 3.1%     |
+
+Model and tool calls include the scouts' own. The 32k run was cut off, most
+likely at the context limit, and returned no itinerary. The 64k run completed; its answer was valid
+JSON in a code fence, which the app now reads (it was shown as text with no
+ride before).
+
+#### Four local models, same request, scouts off
+
+Measured on 2026-10-13 with `nix run .#bench`: one run each, 64k context
+(40k for Qwen3, its own limit), medium effort, a scratch database and a cleared
+cache before each run, same start point and request. Cost is $0.
+
+| Model       | Time  | Model calls | Tool calls | Ride                       | Open road | 50 zones | 30 zones | Outcome                        |
+| ----------- | ----- | ----------- | ---------- | -------------------------- | --------- | -------- | -------- | ------------------------------ |
+| Gemma 4 12b | 501 s | 21          | 25         | none                       | n/a       | n/a      | n/a      | cut off at the output limit    |
+| Gemma 4 26b | 493 s | 15          | 19         | 136.7 km, 2h54             | 59.7%     | 27.0%    | 13.3%    | itinerary registered           |
+| gpt-oss 20b | 240 s | 27          | 26         | 82 km, 2h00 (as it stated) | 40.3%     | 43.2%    | 11.3%    | plain text, no ride registered |
+| Qwen3 14b   | 148 s | 5           | 4          | 90 km, 1h32 (routed trip)  | 81.4%     | 17.9%    | 0.6%     | plain text, no ride registered |
+
+What it shows:
+
+- **Only Gemma 4 26b finished a usable itinerary**, and it missed both zone
+  targets (27% in 50 zones, 13.3% in 30 zones, against 20% and 3%). It was also
+  the slowest to finish. The same 12b that completed with scouts at 64k
+  earlier the same day was cut off this time, so a single run says little about
+  it either way.
+- **Qwen3 14b routed the best trip of the four** (81% open road, 17.9% and 0.6%
+  in the zones) but stopped after four tool calls: no weather, stops, cameras
+  or traffic. Its answer gave values for all of them anyway, including a
+  sunrise that differs from the tool's 08:11, and said traffic was not
+  checked. An answer like that is worse than none, which is why the app
+  checks the answer against the tools' figures.
+- **gpt-oss 20b made the most calls (26) and presented the worst loop** of the
+  four (43% in 50 zones, 11% in 30 zones) as the "best compromise", with a
+  speed camera limit left as "??".
+- **Neither gpt-oss nor Qwen3 returned the structured answer**, so no ride was
+  registered even though the text was a readable itinerary. The parser reads
+  fenced JSON and a one-string `ride`, not an answer written as plain prose.
+
+None of the four matches Sonnet at medium (6 calls, 37 to 58 s, a ride inside
+the targets in one run of two) for this app. The planner needs a model that
+keeps calling tools until the facts are in, and answers in the schema; of
+these, only Gemma 26b did both, and its ride is a worse one than the API
+models'.
 
 ### What it shows
 
@@ -287,6 +346,9 @@ Free in every setup: the start menu, viewing roadbooks, rating, `refresh`.
   not cleared between them, later runs got road searches for free. That affects
   seconds, not cost or ride quality.
 - **Costs are estimates** from list prices at the time, and prices change.
+- **Local runs are one run each.** The Gemma 12b rows are single runs on one
+  machine, with scouts on; the Claude rows do not say whether scouts were on.
+  Gemma's ride misses two targets, but one run cannot say how often. The four-model table is also one run per model; the 12b gave a ride in one run and none in another.
 
 ### Run it yourself
 
@@ -295,16 +357,60 @@ export RIDE_DB=data/bench.db              # separate database, your rides stay u
 
 # for each setup: edit RIDE_MODEL / RIDE_EFFORT in .env, then
 npm run rides -- clear-cache              # so no run inherits lookups from the previous one
-npm run ride -- --once --from "<your start>" "<your usual request>"
+npm run ride -- --once "<your usual request>"   # --once: print the itinerary and exit, no refine prompt
 
 npm run rides -- runs                     # compare
 unset RIDE_DB
 ```
 
-Do not `/save` during a benchmark: a roadbook changes what the next run sees.
+The start point comes from `RIDE_HOME`; `--from` overrides it, and the text is
+geocoded as is, so a placeholder such as `<your start>` is routed to wherever
+it matches. Do not `/save` during a benchmark, and do not pass `--save-as`: a
+roadbook changes what the next run sees. For a ride you want to keep, add
+`--save-as "<name>"` to a normal `--once` run.
 Use your own start point and your own kind of request; that is the only
 benchmark that tells you what to pick. Three runs per setup give a picture, one
 is an anecdote.
+
+### Run it on a local model (Ollama)
+
+The planner speaks the Anthropic API, so a local model needs an
+Anthropic-compatible endpoint. Ollama has one.
+
+```bash
+ollama pull gemma4:12b
+export ANTHROPIC_BASE_URL=http://localhost:11434
+export ANTHROPIC_API_KEY=ollama            # any value; overrides the key in .env
+export RIDE_MODEL=gemma4:12b
+export RIDE_SCOUT_MODEL=gemma4:12b         # scouts use the same endpoint
+export RIDE_SCOUTS=0                       # 1 to run scouts too (slower on one GPU)
+```
+
+With Nix, one command does the whole comparison on your Ollama models and
+leaves a table, a CSV and one log per run in `data/bench-logs/`:
+
+```bash
+nix run .#bench                          # gemma4:12b, gemma4:26b, gpt-oss:20b, qwen3:14b
+nix run .#bench -- gemma4:26b            # only these models (pulled if missing)
+BENCH_SCOUTS=1 BENCH_RUNS=3 nix run .#bench -- gemma4:12b
+```
+
+It uses a scratch database (`data/bench-local.db`), clears the lookup cache
+before every run, never touches the key in `.env`, and skips a model whose
+context is under 32k. `BENCH_MIN_CTX`, `BENCH_DB`, `BENCH_EFFORT`,
+`BENCH_REQUEST` and `BENCH_OLLAMA_URL` override the defaults.
+
+- **Context window.** Ollama's default context is small and it truncates
+  silently. Start the server with `OLLAMA_CONTEXT_LENGTH=65536` (a run with scouts was cut off
+  at 32k and completed at 64k) and check `ollama ps`. Flash attention
+  and a quantised cache (`OLLAMA_FLASH_ATTENTION=1`,
+  `OLLAMA_KV_CACHE_TYPE=q8_0`) keep the memory down.
+- **Structured answers.** Ollama does not enforce the answer schema; the app
+  reads JSON from a code fence or surrounding prose, and `ride` given as one
+  string; an answer it cannot read is shown as text with no ride.
+- **Cost** shows as unknown: the model is not in the price table.
+- **Settings are Anthropic's.** `RIDE_EFFORT` and the fallback beta header are
+  sent as usual; Ollama 0.32 accepted them without changes.
 
 ## Evaluating the agent
 

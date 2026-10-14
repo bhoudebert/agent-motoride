@@ -21,6 +21,40 @@ export const RideAnswer = z.object({
 });
 export type RideAnswer = z.infer<typeof RideAnswer>;
 
+/**
+ * The API validates the answer against the schema, so this normally just
+ * parses. A model that does not enforce structured output (a local one, behind
+ * a compatible endpoint) tends to wrap the JSON in a code fence or a line of
+ * prose, and to give `ride` as a single string; both are read here, and the
+ * route id is still checked against the session by the caller. Should the
+ * answer be prose anyway, show the prose rather than fail the turn.
+ */
+export function parseAnswer(raw: string): RideAnswer {
+  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1];
+  const open = raw.indexOf("{");
+  const close = raw.lastIndexOf("}");
+  const candidates = [raw, fenced, open >= 0 && close > open ? raw.slice(open, close + 1) : undefined];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    try {
+      const parsed = RideAnswer.safeParse(coerceRide(JSON.parse(candidate.trim())));
+      if (parsed.success) return parsed.data;
+    } catch {
+      // Not JSON: try the next reading.
+    }
+  }
+  return { message: raw, ride: null };
+}
+
+/** `ride` as "r2_2026-10-17_Winding_Loop" becomes the object the schema asks for. */
+function coerceRide(value: unknown): unknown {
+  if (!value || typeof value !== "object" || typeof (value as { ride?: unknown }).ride !== "string") return value;
+  const [routeId = "", ...rest] = ((value as { ride: string }).ride as string).split("_");
+  const rideDate = rest.find((part) => /^\d{4}-\d{2}-\d{2}$/.test(part)) ?? null;
+  const name = rest.filter((part) => part !== rideDate).join(" ") || routeId;
+  return { ...value, ride: { routeId, rideDate, departure: null, name } };
+}
+
 /** What a scout reports back about one area. */
 export const ScoutReport = z.object({
   area: z.string(),

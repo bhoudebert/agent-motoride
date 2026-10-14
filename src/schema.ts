@@ -51,13 +51,32 @@ export function readAnswer(raw: string): RideAnswer | null {
   return null;
 }
 
-/** `ride` as "r2_2026-10-17_Winding_Loop" becomes the object the schema asks for. */
+/**
+ * `ride` as "r2_2026-10-17_Winding_Loop", or as an object with `date` for
+ * `rideDate` or a field left out, becomes the object the schema asks for.
+ */
 function coerceRide(value: unknown): unknown {
-  if (!value || typeof value !== "object" || typeof (value as { ride?: unknown }).ride !== "string") return value;
-  const [routeId = "", ...rest] = ((value as { ride: string }).ride as string).split("_");
-  const rideDate = rest.find((part) => /^\d{4}-\d{2}-\d{2}$/.test(part)) ?? null;
-  const name = rest.filter((part) => part !== rideDate).join(" ") || routeId;
-  return { ...value, ride: { routeId, rideDate, departure: null, name } };
+  const answer = value as { ride?: unknown } | null;
+  if (!answer || typeof answer !== "object") return value;
+  if (typeof answer.ride === "string") {
+    const [routeId = "", ...rest] = answer.ride.split("_");
+    const rideDate = rest.find((part) => /^\d{4}-\d{2}-\d{2}$/.test(part)) ?? null;
+    const name = rest.filter((part) => part !== rideDate).join(" ") || routeId;
+    return { ...answer, ride: { routeId, rideDate, departure: null, name } };
+  }
+  const ride = answer.ride as Record<string, unknown> | null | undefined;
+  if (ride && typeof ride === "object" && typeof ride.routeId === "string") {
+    return {
+      ...answer,
+      ride: {
+        routeId: ride.routeId,
+        rideDate: ride.rideDate ?? ride.date ?? null,
+        departure: ride.departure ?? null,
+        name: ride.name ?? ride.routeId,
+      },
+    };
+  }
+  return value;
 }
 
 /** What a scout reports back about one area. */

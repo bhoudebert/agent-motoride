@@ -119,14 +119,14 @@ Keep explanations to the facts the rider needs; put caveats (unverified data, mi
 The rider may then ask for changes. Treat a follow-up as an edit of the current itinerary: keep what they did not ask to change, reuse lookups you already have, and call tools again for anything the change affects (a new loop must be routed again, new places need their forecast). Answer with the full updated itinerary in the same format, opening with one line on what changed. If the follow-up is a question rather than a change, just answer it.`;
 
 /** API planner only: the final answer is validated against a schema. */
-const JSON_ANSWER = `Your final answer is a JSON object with two fields. "message" holds the full text for the rider, written for a terminal. "ride" names the routed trip the message presents: the routeId from the routing call for the exact loop the itinerary describes, the ride date and departure, and a short name a rider would recognise the ride by; it is null when the message is an answer without a new itinerary. The legs, distance and link in the itinerary must be those of that routed trip.`;
+const JSON_ANSWER = `Your final answer is a JSON object with two fields. "message" holds the full text for the rider, written for a terminal. "ride" names the routed trip the message presents, as an object with the fields routeId (from the routing call, for the exact loop the itinerary describes), rideDate (YYYY-MM-DD), departure (HH:MM) and name (a short name a rider would recognise the ride by); it is null when the message is an answer without a new itinerary. The legs, distance and link in the itinerary must be those of that routed trip.`;
 
 export const SYSTEM = `${SYSTEM_CORE}
 
 ${JSON_ANSWER}`;
 
 /** Sent once when a model that does not enforce the schema answered in prose. */
-const FORMAT_REMINDER = `Your last message was not the JSON object. Reply again with only that JSON object: "message" holding the same full text for the rider, and "ride" holding the routeId, date, departure and name of the routed trip it presents, or null if it presents no new itinerary. Do not call tools.`;
+const FORMAT_REMINDER = `Your last message was not the JSON object. Reply again with only that JSON object: "message" holding the same full text for the rider, and "ride" an object with routeId, rideDate, departure and name of the routed trip it presents, or null if it presents no new itinerary. Do not call tools.`;
 
 /** The lines every planner, built-in or MCP, gets about the rider's situation. */
 export function describeSituation(

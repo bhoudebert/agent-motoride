@@ -40,3 +40,13 @@ test("readAnswer: null for prose, so the planner can ask again", () => {
   assert.equal(readAnswer("The loop is 85 km."), null);
   assert.deepEqual(readAnswer(JSON.stringify(answer)), answer);
 });
+
+test("parseAnswer: ride object with date for rideDate and fields left out", () => {
+  const raw = JSON.stringify({
+    message: "Loop",
+    ride: { routeId: "r2", date: "2026-10-18", departure: "08:00", name: "Loop" },
+  });
+  assert.deepEqual(parseAnswer(raw).ride, { routeId: "r2", rideDate: "2026-10-18", departure: "08:00", name: "Loop" });
+  const bare = JSON.stringify({ message: "Loop", ride: { routeId: "r2" } });
+  assert.deepEqual(parseAnswer(bare).ride, { routeId: "r2", rideDate: null, departure: null, name: "r2" });
+});

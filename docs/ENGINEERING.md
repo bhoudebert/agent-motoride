@@ -217,8 +217,8 @@ results.
 
 Short version: **use `claude-sonnet-5-5`**. Effort `medium` for speed and price,
 `high` for consistency. Opus and Haiku are not worth it for this app. Local models run
-through Ollama are free but not there yet: of four tried, only Gemma 4 26b
-produced a registered itinerary, and it missed the zone targets; see
+through Ollama are free but not there yet: of four tried, Gemma 4 26b and
+gpt-oss 20b registered an itinerary, and both missed the zone targets; see
 [A local model](#a-local-model-gemma-4-12b-through-ollama).
 
 ### What was measured
@@ -260,42 +260,43 @@ ride before).
 
 #### Four local models, same request, scouts off
 
-Measured on 2026-10-13 with `nix run .#bench`: one run each, 64k context
-(40k for Qwen3, its own limit), medium effort, a scratch database and a cleared
-cache before each run, same start point and request. Cost is $0.
+Measured on 2026-10-13 and 2026-10-14 with `nix run .#bench`: one run each,
+64k context (Qwen3 caps at 40k), medium effort, a scratch database and a
+cleared cache before each run, same start point and request. Cost is $0. The
+gpt-oss row is its run after the planner started asking once for the JSON
+object and naming its fields; its first run, 2026-10-13, answered in prose and
+registered no ride.
 
-| Model       | Time  | Model calls | Tool calls | Ride                       | Open road | 50 zones | 30 zones | Outcome                        |
-| ----------- | ----- | ----------- | ---------- | -------------------------- | --------- | -------- | -------- | ------------------------------ |
-| Gemma 4 12b | 501 s | 21          | 25         | none                       | n/a       | n/a      | n/a      | cut off at the output limit    |
-| Gemma 4 26b | 493 s | 15          | 19         | 136.7 km, 2h54             | 59.7%     | 27.0%    | 13.3%    | itinerary registered           |
-| gpt-oss 20b | 240 s | 27          | 26         | 82 km, 2h00 (as it stated) | 40.3%     | 43.2%    | 11.3%    | plain text, no ride registered |
-| Qwen3 14b   | 148 s | 5           | 4          | 90 km, 1h32 (routed trip)  | 81.4%     | 17.9%    | 0.6%     | plain text, no ride registered |
+| Model       | Time  | Model calls | Tool calls | Ride           | Open road | 50 zones | 30 zones | Outcome                                       |
+| ----------- | ----- | ----------- | ---------- | -------------- | --------- | -------- | -------- | --------------------------------------------- |
+| Gemma 4 12b | 501 s | 21          | 25         | none           | n/a       | n/a      | n/a      | cut off at the output limit                   |
+| Gemma 4 26b | 493 s | 15          | 19         | 136.7 km, 2h54 | 59.7%     | 27.0%    | 13.3%    | itinerary registered                          |
+| gpt-oss 20b | 382 s | 17          | 16         | 143.6 km, 2h58 | 63.2%     | 24.5%    | 12.3%    | itinerary registered                          |
+| Qwen3 14b   | 148 s | 5           | 4          | 90 km, 1h32    | 81.4%     | 17.9%    | 0.6%     | plain text, no ride; two later runs timed out |
 
 What it shows:
 
-- **Only Gemma 4 26b finished a usable itinerary**, and it missed both zone
-  targets (27% in 50 zones, 13.3% in 30 zones, against 20% and 3%). It was also
-  the slowest to finish. The same 12b that completed with scouts at 64k
-  earlier the same day was cut off this time, so a single run says little about
-  it either way.
-- **Qwen3 14b routed the best trip of the four** (81% open road, 17.9% and 0.6%
-  in the zones) but stopped after four tool calls: no weather, stops, cameras
-  or traffic. Its answer gave values for all of them anyway, including a
-  sunrise that differs from the tool's 08:11, and said traffic was not
-  checked. An answer like that is worse than none, which is why the app
-  checks the answer against the tools' figures.
-- **gpt-oss 20b made the most calls (26) and presented the worst loop** of the
-  four (43% in 50 zones, 11% in 30 zones) as the "best compromise", with a
-  speed camera limit left as "??".
-- **Neither gpt-oss nor Qwen3 returned the structured answer**, so no ride was
-  registered even though the text was a readable itinerary. The parser reads
-  fenced JSON and a one-string `ride`, not an answer written as plain prose.
+- **Gemma 4 26b and gpt-oss 20b each registered an itinerary, and both missed
+  the zone targets** (24 to 27% in 50 zones, 12 to 13% in 30 zones, against 20%
+  and 3%). Their rides are close to each other and 2h54 to 2h58 under a 3 hour
+  limit. The same 12b that completed with scouts at 64k earlier the same day
+  was cut off this time, so a single run says little about it either way.
+- **gpt-oss 20b needed the format fix.** Its first run answered in prose, with
+  no JSON despite the instruction, and chose an 82 km loop with 43% in 50
+  zones. The second answered in the schema at once once the prompt named the
+  fields.
+- **Qwen3 14b is not usable here.** Its one finished run routed a good trip
+  (81% open road, 17.9% and 0.6% in the zones) but stopped after four tool
+  calls: no weather, stops, cameras or traffic, yet its answer gave values for
+  all of them, including a sunrise that differs from the tool's 08:11. Two
+  later runs ended in `Request timed out` after 24 and 31 minutes, with 3 and 6
+  model calls done.
+- **Local runs are slower than they look.** gpt-oss 20b (14 GB) ran about 60%
+  on the CPU and 40% on the GPU at 64k context on a 16 GB card.
 
 None of the four matches Sonnet at medium (6 calls, 37 to 58 s, a ride inside
-the targets in one run of two) for this app. The planner needs a model that
-keeps calling tools until the facts are in, and answers in the schema; of
-these, only Gemma 26b did both, and its ride is a worse one than the API
-models'.
+the targets in one run of two). Two of them finish a ride, free of charge, in
+six to eight minutes, and both leave the 30 zone share well over its target.
 
 ### What it shows
 

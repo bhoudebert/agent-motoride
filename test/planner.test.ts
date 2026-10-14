@@ -142,6 +142,46 @@ test("planner: an answer naming an unknown route is shown but not saveable", asy
   }
 });
 
+test("planner: an answer in prose is asked for again once, then the ride is registered", async () => {
+  const restore = quiet();
+  const store = new Store(":memory:");
+  try {
+    const json = JSON.stringify({
+      message: "Loop, 85 km.",
+      ride: { routeId: "r1", rideDate: "2026-10-10", departure: "09:00", name: "Loop" },
+    });
+    api.script = [
+      toolUse("calculateTrip", { waypoints: ["Lille", "Cassel"], roundTrip: true }),
+      finalText("Here is the loop (r1), 85 km, nice roads."),
+      finalText(json),
+    ];
+    const session = await openRide({ home: "Lille", store });
+    await session.send("go");
+    assert.equal(session.current()?.title, "Loop");
+    const last = api.requests.at(-1).messages.at(-1);
+    assert.match(JSON.stringify(last), /not the JSON object/);
+    assert.equal(api.script.length, 0);
+  } finally {
+    restore();
+    store.close();
+  }
+});
+
+test("planner: prose twice is shown as the answer, with one retry only", async () => {
+  const restore = quiet();
+  const store = new Store(":memory:");
+  try {
+    api.script = [finalText("It is 19:09."), finalText("Sunset is at 19:09.")];
+    const session = await openRide({ home: "Lille", store });
+    await session.send("when is sunset?");
+    assert.equal(session.current(), undefined);
+    assert.equal(api.script.length, 0, "exactly one retry");
+  } finally {
+    restore();
+    store.close();
+  }
+});
+
 test("planner: motorways stay excluded when forbidden, even if the model asks", async () => {
   const restore = quiet();
   const store = new Store(":memory:");

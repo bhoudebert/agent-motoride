@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.8.0](https://github.com/bhoudebert/agent-motoride/compare/v1.7.0...v1.8.0) (2026-10-14)
+
+
+### Features
+
+* **feedback:** rate a stretch of road directly, list rated roads, remove a stretch rating ([#73](https://github.com/bhoudebert/agent-motoride/issues/73)) ([20e180a](https://github.com/bhoudebert/agent-motoride/commit/20e180afe23b9fb31d96a27f8876577bc746f8ec))
+* **mcp:** one capability catalogue behind the help, a capabilities tool and rides help ([#75](https://github.com/bhoudebert/agent-motoride/issues/75)) ([4b13414](https://github.com/bhoudebert/agent-motoride/commit/4b134143642dfe339bad86ad55fef50501d5dc65))
+* **nix:** add nix ([#85](https://github.com/bhoudebert/agent-motoride/issues/85)) ([4331754](https://github.com/bhoudebert/agent-motoride/commit/433175488eb1b31296c5817539378ddee70478d0))
+* **ratings:** narrowest rating wins; a low roadbook rating asks roads or loop ([#76](https://github.com/bhoudebert/agent-motoride/issues/76)) ([33a080c](https://github.com/bhoudebert/agent-motoride/commit/33a080cbe139f71c0eef5bc154d5373e8b590bf7))
+* **route-analysis:** measure long straights and prefer fewer before fewer 50 zones ([#83](https://github.com/bhoudebert/agent-motoride/issues/83)) ([513dac0](https://github.com/bhoudebert/agent-motoride/commit/513dac0e1f2c0c611182e14a9caa82dae14dcd1a))
+
+
+### Bug Fixes
+
+* **planner:** read answers wrapped in a code fence or with ride as a … ([#84](https://github.com/bhoudebert/agent-motoride/issues/84)) ([c3bffe5](https://github.com/bhoudebert/agent-motoride/commit/c3bffe5439df8cec270de7c711efea7666274e03))
+
 ## [1.7.0](https://github.com/bhoudebert/agent-motoride/compare/v1.6.0...v1.7.0) (2026-10-07)
 
 

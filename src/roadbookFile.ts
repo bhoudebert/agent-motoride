@@ -14,7 +14,8 @@ export interface RoadbookFile {
   generatedAt: string;
   /** All legs joined in riding order, encoded polyline of precision 6. */
   line: string;
-  stops: Array<{ lat: number; lon: number; name: string }>;
+  /** `waypoint`: a point of the loop, which the rider can skip. `stop`: a planned fuel, café or pause stop on the route. */
+  stops: Array<{ lat: number; lon: number; name: string; kind: "waypoint" | "stop" }>;
   /** Speed limit per stretch, by index into the decoded line: from point `from` to point `to`. */
   limits: Array<{ from: number; to: number; kmh: number; posted: boolean; road?: string }>;
   cameras: Array<{ lat: number; lon: number; kmh: number | null; bearing: number | null; direction: "both" | null }>;
@@ -134,17 +135,26 @@ export async function buildRoadbookFile(
 
   // The loop's own stops, then the planned stops, in riding order by their place along the route.
   const loop = input.legs.flatMap((leg, i) => {
-    const out: Array<{ km: number; lat: number; lon: number; name: string }> = [];
-    if (i === 0) out.push({ km: 0, ...parseCoords(leg.fromCoords), name: `Start: ${leg.from}` });
+    const out: Array<{ km: number; lat: number; lon: number; name: string; kind: "waypoint" | "stop" }> = [];
+    if (i === 0) out.push({ km: 0, ...parseCoords(leg.fromCoords), name: `Start: ${leg.from}`, kind: "waypoint" });
     out.push({
       km: legEndKm[i] ?? km,
       ...parseCoords(leg.toCoords),
       name: i === input.legs.length - 1 ? `Finish: ${leg.to}` : `${i + 1}. ${leg.to}`,
+      kind: "waypoint",
     });
     return out;
   });
-  const planned = (input.stops ?? []).map((s) => ({ km: s.km ?? 0, lat: s.lat, lon: s.lon, name: s.label }));
-  const stops = [...loop, ...planned].sort((a, b) => a.km - b.km).map(({ lat, lon, name }) => ({ lat, lon, name }));
+  const planned = (input.stops ?? []).map((s) => ({
+    km: s.km ?? 0,
+    lat: s.lat,
+    lon: s.lon,
+    name: s.label,
+    kind: "stop" as const,
+  }));
+  const stops = [...loop, ...planned]
+    .sort((a, b) => a.km - b.km)
+    .map(({ lat, lon, name, kind }) => ({ lat, lon, name, kind }));
 
   const cameras = (input.cameras ?? []).map((c) => ({
     ...parseCoords(c.coords),

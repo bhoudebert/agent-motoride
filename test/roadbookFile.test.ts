@@ -122,6 +122,11 @@ test("roadbook file: the stops are in riding order, the planned ones placed by t
     ["Start: Home", "pause: Café", "1. Mont", "Finish: Home"],
   );
   assert.deepEqual([file.stops[0]!.lat, file.stops[0]!.lon], [50.4, 3]);
+  // The loop's points can be skipped by the rider; a planned stop lies on the route and cannot.
+  assert.deepEqual(
+    file.stops.map((s) => s.kind),
+    ["waypoint", "stop", "waypoint", "waypoint"],
+  );
 });
 
 test("camera bearing: degrees and compass points, nothing for relative or ambiguous directions", () => {

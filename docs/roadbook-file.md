@@ -14,7 +14,7 @@ available for other apps; the app reads a GPX too, but without limits or cameras
   "description": "122.3 km, about 2h05 riding.",
   "generatedAt": "2026-10-18T10:00:00.000Z",
   "line": "<encoded polyline, precision 6>",
-  "stops": [{ "lat": 50.4552, "lon": 3.20384, "name": "Start" }],
+  "stops": [{ "lat": 50.4552, "lon": 3.20384, "name": "Start", "kind": "waypoint" }],
   "limits": [{ "from": 0, "to": 183, "kmh": 50, "posted": true, "road": "D 954" }],
   "cameras": [{ "lat": 50.52, "lon": 3.31, "kmh": 70, "bearing": 90, "direction": null }]
 }
@@ -26,7 +26,9 @@ available for other apps; the app reads a GPX too, but without limits or cameras
   ones it knows; it ignores fields it does not know (so a version 1 file can gain optional fields).
 - `line`: the route, all legs joined in riding order, as an encoded polyline of precision 6 (the Valhalla and
   agentRide encoding). At least two points.
-- `stops`: named places in riding order (start, stops, finish). Optional.
+- `stops`: named places in riding order. `kind` is `waypoint` (the loop's own points: start, via points, finish; the
+  default) or `stop` (planned fuel, café or pause stops lying on the route). The app lets the rider skip waypoints,
+  never stops. Optional.
 - `limits`: the speed limit along the line. Each entry covers the stretch of the line from point `from` to point
   `to`, both **indexes into the decoded `line`** (`0 <= from < to <= last index`), so it needs no length measure.
   Consecutive stretches share their boundary point: the next `from` is the previous `to`. `kmh` is the limit that applies,

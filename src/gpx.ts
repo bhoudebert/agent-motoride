@@ -5,6 +5,7 @@ import { decodePolyline, routeCells } from "./geometry.ts";
 import { navigationPoints } from "./maps.ts";
 import type { SavedRide, Store } from "./store.ts";
 import { startLabel, startPoint } from "./start.ts";
+import { buildRoadbookFile } from "./roadbookFile.ts";
 import { setGeoAnchor } from "./tools/geo.ts";
 import { computeTrip } from "./tools/trip.ts";
 
@@ -183,16 +184,46 @@ export async function savedRideGpx(store: Store, ride: SavedRide): Promise<{ gpx
   };
 }
 
-/** Export a saved ride as a GPX file. */
+/** Where the roadbook file goes: next to the GPX, same name, `.motoride.json`. */
+export function roadbookFilePath(gpxPath: string): string {
+  return `${gpxPath.replace(/\.gpx$/i, "")}.motoride.json`;
+}
+
+/**
+ * Export a saved ride as a GPX file and as a roadbook file for the MobileMotoRide app (limits, cameras).
+ * The roadbook file is always written; when Valhalla cannot give the limits it has none and `limitsError` says why.
+ */
 export async function exportSavedRide(
   store: Store,
   ride: SavedRide,
   file?: string,
   maxRoutePoints?: number,
-): Promise<{ path: string; rerouted: boolean; stopsAt: Array<{ label: string; index: number; total: number }> }> {
+): Promise<{
+  path: string;
+  roadbookFile: string;
+  limitsError: string | null;
+  rerouted: boolean;
+  stopsAt: Array<{ label: string; index: number; total: number }>;
+}> {
   const { gpx, rerouted } = await savedRideGpx(store, ride);
   const input = { ...gpx, maxRoutePoints };
-  return { path: writeGpx(input, ride.id, file), rerouted, stopsAt: routePointIndex(input) };
+  const path = writeGpx(input, ride.id, file);
+  const { file: roadbook, limitsError } = await buildRoadbookFile({
+    name: gpx.name,
+    description: gpx.description,
+    legs: gpx.legs,
+    shapes: gpx.shapes,
+    stops: gpx.stops,
+    cameras: ride.extras?.cameras ?? [],
+  });
+  const roadbookFile = roadbookFilePath(path);
+  writeFileSync(roadbookFile, JSON.stringify(roadbook));
+  return { path, roadbookFile, limitsError, rerouted, stopsAt: routePointIndex(input) };
+}
+
+/** The line telling where the roadbook file went, and what is missing from it. */
+export function describeRoadbookFile(result: { roadbookFile: string; limitsError: string | null }): string {
+  return `Roadbook file (speed limits and cameras, for the MobileMotoRide app): ${result.roadbookFile}${result.limitsError ? `\n(${result.limitsError}; the file has no limits there.)` : ""}`;
 }
 
 /** "pause: X at route point 18 of 40" lines, for the rider to find the stops in an app's stage list. */

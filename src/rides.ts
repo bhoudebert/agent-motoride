@@ -16,7 +16,7 @@ import {
   rideToReview,
 } from "./feedback.ts";
 import { routeCells } from "./geometry.ts";
-import { describeStopsAt, exportSavedRide, savedRideGpx } from "./gpx.ts";
+import { describeRoadbookFile, describeStopsAt, exportSavedRide, savedRideGpx } from "./gpx.ts";
 import {
   DuplicateRideError,
   enrichRide,
@@ -347,10 +347,12 @@ try {
       const pinsAt = args.indexOf("--pins");
       const maxPoints = pinsAt >= 0 ? Number(args[pinsAt + 1]) : undefined;
       const file = args.slice(1).find((a, i) => !a.startsWith("--") && args[i] !== "--pins");
-      const { path, rerouted, stopsAt } = await exportSavedRide(store, target, file, maxPoints);
+      const exported = await exportSavedRide(store, target, file, maxPoints);
+      const { path, rerouted, stopsAt } = exported;
       console.log(
         `GPX written: ${path}${rerouted ? "\n(Route line was not stored for this ride; it was routed again from its waypoints.)" : ""}`,
       );
+      console.log(describeRoadbookFile(exported));
       if (stopsAt.length)
         console.log(
           `Planned stops in the route point list (as an app numbers the stages):\n${describeStopsAt(stopsAt).join("\n")}`,

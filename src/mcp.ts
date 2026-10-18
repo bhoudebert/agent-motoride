@@ -22,7 +22,7 @@ import {
 } from "./feedback.ts";
 import { deleteForm, duplicateForm, scopeForm, type ElicitForm, reviewDecisions, reviewForm } from "./elicit.ts";
 import { deleteRideQuestion, deleteRoadbookQuestion, rideOnDay, rideToBrief, roadbookOf } from "./housekeeping.ts";
-import { exportSavedRide, writeGpx } from "./gpx.ts";
+import { describeRoadbookFile, exportSavedRide, writeGpx } from "./gpx.ts";
 import { rideMapPng } from "./rideMap.ts";
 import { localDay, parseRideDay, planRideFrom } from "./planRide.ts";
 import {
@@ -480,7 +480,7 @@ server.registerTool(
   "exportGpx",
   {
     description:
-      "Write a ride as a GPX file for a GPS app: either a routeId from this session or the id of a saved ride. Returns the file path.",
+      "Write a ride as a GPX file for a GPS app: either a routeId from this session or the id of a saved ride. A saved ride also gets a roadbook file (speed limits and cameras) for the MobileMotoRide app. Returns the file paths.",
     annotations: hintsOf("exportGpx"),
     inputSchema: z.object({
       routeId: z.string().optional(),
@@ -493,8 +493,8 @@ server.registerTool(
     if (args.rideId !== undefined) {
       const ride = store.findRide(String(args.rideId));
       if (!ride) throw new Error(`No roadbook #${args.rideId}`);
-      const { path } = await exportSavedRide(store, ride, args.file);
-      return text(`GPX written: ${path}`);
+      const exported = await exportSavedRide(store, ride, args.file);
+      return text(`GPX written: ${exported.path}\n${describeRoadbookFile(exported)}`);
     }
     const route = args.routeId ? context.routes.get(args.routeId) : undefined;
     if (!route) throw new Error("Give a routeId from calculateTrip in this session, or a saved rideId.");

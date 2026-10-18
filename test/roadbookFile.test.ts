@@ -6,7 +6,7 @@ import { test } from "node:test";
 import { decodePolyline } from "../src/geometry.ts";
 import { exportSavedRide, roadbookFilePath } from "../src/gpx.ts";
 import { DEFAULT_PREFERENCES } from "../src/preferences.ts";
-import { buildRoadbookFile, ROADBOOK_FORMAT, ROADBOOK_VERSION } from "../src/roadbookFile.ts";
+import { buildRoadbookFile, cameraBearing, ROADBOOK_FORMAT, ROADBOOK_VERSION } from "../src/roadbookFile.ts";
 import { Store } from "../src/store.ts";
 import { effectiveLimit } from "../src/tools/trip.ts";
 import { installFakeServices } from "./helpers/fakeServices.ts";
@@ -124,6 +124,24 @@ test("roadbook file: the stops are in riding order, the planned ones placed by t
   assert.deepEqual([file.stops[0]!.lat, file.stops[0]!.lon], [50.4, 3]);
 });
 
+test("camera bearing: degrees and compass points, nothing for relative or ambiguous directions", () => {
+  assert.equal(cameraBearing("90"), 90);
+  assert.equal(cameraBearing(" 270 "), 270);
+  assert.equal(cameraBearing("360"), 0);
+  assert.equal(cameraBearing("45.5"), 45.5);
+  assert.equal(cameraBearing("N"), 0);
+  assert.equal(cameraBearing("se"), 135);
+  assert.equal(cameraBearing("WNW"), 292.5);
+  assert.equal(cameraBearing("forward"), null);
+  assert.equal(cameraBearing("backward"), null);
+  assert.equal(cameraBearing("both"), null);
+  assert.equal(cameraBearing("90;270"), null);
+  assert.equal(cameraBearing("400"), null);
+  assert.equal(cameraBearing(""), null);
+  assert.equal(cameraBearing(null), null);
+  assert.equal(cameraBearing(undefined), null);
+});
+
 test("roadbook file: cameras give a place, a limit when there is one, and a direction only when it is both", async () => {
   const { file } = await buildRoadbookFile(
     input({
@@ -138,13 +156,13 @@ test("roadbook file: cameras give a place, a limit when there is one, and a dire
     tracing(() => [edge(0, 60)]),
   );
   assert.deepEqual(
-    file.cameras.map((c) => [c.kmh, c.direction]),
+    file.cameras.map((c) => [c.kmh, c.direction, c.bearing]),
     [
-      [70, null],
-      [50, "both"],
-      [null, null],
-      [null, null],
-      [null, null],
+      [70, null, null],
+      [50, "both", null],
+      [null, null, null],
+      [null, null, 90],
+      [null, null, null],
     ],
   );
   assert.deepEqual([file.cameras[0]!.lat, file.cameras[0]!.lon], [50.5, 3.1]);
@@ -238,6 +256,6 @@ test("export: a saved ride is written as a GPX and as a roadbook file next to it
   assert.equal(file.name, "Flandre loop");
   assert.ok(decodePolyline(file.line).length > 100);
   assert.ok(file.limits.length >= 1);
-  assert.deepEqual(file.cameras, [{ lat: 50.5, lon: 3.2, kmh: 70, direction: null }]);
+  assert.deepEqual(file.cameras, [{ lat: 50.5, lon: 3.2, kmh: 70, bearing: null, direction: null }]);
   assert.ok(file.stops.length >= 3);
 });

@@ -17,7 +17,7 @@ export interface RoadbookFile {
   stops: Array<{ lat: number; lon: number; name: string }>;
   /** Speed limit per stretch, by index into the decoded line: from point `from` to point `to`. */
   limits: Array<{ from: number; to: number; kmh: number; posted: boolean; road?: string }>;
-  cameras: Array<{ lat: number; lon: number; kmh: number | null; direction: "both" | null }>;
+  cameras: Array<{ lat: number; lon: number; kmh: number | null; bearing: number | null; direction: "both" | null }>;
 }
 
 export interface RoadbookFileInput {
@@ -47,6 +47,25 @@ function cameraKmh(limit: number | string | null): number | null {
   if (typeof limit === "number") return limit > 0 ? limit : null;
   const n = Number(/\d+/.exec(String(limit ?? ""))?.[0]);
   return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+const COMPASS = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
+
+/**
+ * The direction a camera faces, degrees clockwise from north, from OpenStreetMap's `direction` when it is degrees or a
+ * compass point. `forward`, `backward` and `both` are relative to the way, not to a compass, so they give null; so do
+ * several values at once ("90;270"), which cannot be one direction.
+ */
+export function cameraBearing(direction: string | null | undefined): number | null {
+  const d = direction?.trim().toUpperCase();
+  if (!d) return null;
+  const point = COMPASS.indexOf(d);
+  if (point >= 0) return point * 22.5;
+  if (/^\d{1,3}(\.\d+)?$/.test(d)) {
+    const deg = Number(d);
+    return deg >= 0 && deg <= 360 ? deg % 360 : null;
+  }
+  return null;
 }
 
 function lengthKm(points: LatLon[]): number {
@@ -130,7 +149,9 @@ export async function buildRoadbookFile(
   const cameras = (input.cameras ?? []).map((c) => ({
     ...parseCoords(c.coords),
     kmh: cameraKmh(c.limitKmh),
-    // OpenStreetMap's direction is relative to the way, not to the route: only "both" is safe to state.
+    // A compass direction is the way the camera faces. forward and backward are relative to the OpenStreetMap
+    // way, not to the route, so they are not exported; "both" is safe to state.
+    bearing: cameraBearing(c.direction),
     direction: c.direction === "both" ? ("both" as const) : null,
   }));
 

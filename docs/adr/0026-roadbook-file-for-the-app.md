@@ -15,8 +15,9 @@ cameras as a list in the ride's extras.
 Exporting a saved ride also writes a **roadbook file** (`docs/roadbook-file.md`, `.motoride.json`) next to the GPX.
 It carries the line, the stops, a limit per stretch and the cameras. The line is the one traced by Valhalla, so the
 stretches can refer to point indexes with no distance to agree on. The limit of a stretch comes from
-`effectiveLimit`, extracted from the road statistics, so the statistics and the file never differ. Cameras state a
-direction only when it is `both`. A leg that cannot be traced is exported without limits and reported, never
+`effectiveLimit`, extracted from the road statistics, so the statistics and the file never differ. Cameras carry a
+bearing when OpenStreetMap gives one in degrees or as a compass point (the app compares it with the rider's direction), and
+a direction only when it is `both`. A leg that cannot be traced is exported without limits and reported, never
 dropped. The format is shared with the app and changes through its version number, in both repositories.
 
 ## Consequences

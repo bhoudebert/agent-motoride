@@ -16,7 +16,7 @@ available for other apps; the app reads a GPX too, but without limits or cameras
   "line": "<encoded polyline, precision 6>",
   "stops": [{ "lat": 50.4552, "lon": 3.20384, "name": "Start" }],
   "limits": [{ "from": 0, "to": 183, "kmh": 50, "posted": true, "road": "D 954" }],
-  "cameras": [{ "lat": 50.52, "lon": 3.31, "kmh": 70, "direction": "forward" }]
+  "cameras": [{ "lat": 50.52, "lon": 3.31, "kmh": 70, "bearing": 90, "direction": null }]
 }
 ```
 
@@ -32,8 +32,10 @@ available for other apps; the app reads a GPX too, but without limits or cameras
   Consecutive stretches share their boundary point: the next `from` is the previous `to`. `kmh` is the limit that applies,
   `posted` tells a tagged limit (true) from an assumed one, the country or built-up default (false), `road` is the
   road ref or name, optional. Entries are in order and should not overlap; a gap means unknown. Optional.
-- `cameras`: fixed speed cameras near the line. `kmh` is the camera's limit or null, `direction` is `forward`,
-  `backward`, `both` or null, relative to the line. Optional. The app shows them as danger zones, never as camera
+- `cameras`: fixed speed cameras near the line. `kmh` is the camera's limit or null. `bearing` is the direction the
+  camera faces, degrees clockwise from north (0 to 359), when OpenStreetMap gives it as degrees or a compass point;
+  the camera then watches traffic travelling the opposite way. `direction` is `both` or null: OpenStreetMap's
+  `forward` and `backward` are relative to the way, not to the line, so they are not exported. Optional. The app shows them as danger zones, never as camera
   positions (`openspec/specs/danger-zones`).
 
 ## Rules for the producer

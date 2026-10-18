@@ -98,7 +98,7 @@ RIDE DAY
 - The whole ride on one map: the loop, towns, stops and every fixed camera with its limit
     npm run rides -- map <roadbook>
     /map
-- For the GPS and the phone: GPX, navigation links, a QR code, a page on your Wi-Fi
+- For the GPS and the phone: GPX, a roadbook file with speed limits and cameras for the MobileMotoRide app, navigation links, a QR code, a page on your Wi-Fi
     npm run rides -- export <roadbook>
     npm run rides -- qr <roadbook>
     npm run rides -- share <roadbook>
@@ -377,7 +377,7 @@ Save an itinerary to the rider's library. Only when the rider asks to save. rout
 
 _writes · may overwrite · idempotent · uses online services_
 
-Write a ride as a GPX file for a GPS app: either a routeId from this session or the id of a saved ride. Returns the file path.
+Write a ride as a GPX file for a GPS app: either a routeId from this session or the id of a saved ride. A saved ride also gets a roadbook file (speed limits and cameras) for the MobileMotoRide app. Returns the file paths.
 
 - `routeId` (string, optional)
 - `rideId` (integer, optional)

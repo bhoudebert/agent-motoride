@@ -21,7 +21,7 @@ interface ValhallaResponse {
   };
 }
 
-interface TraceEdge {
+export interface TraceEdge {
   length: number;
   speed_limit?: number;
   road_class?: string;
@@ -33,7 +33,7 @@ interface TraceEdge {
   end_node?: { admin_index?: number };
 }
 
-interface TraceAttributesResponse {
+export interface TraceAttributesResponse {
   shape?: string;
   admins?: Array<{ country_code?: string; state_code?: string }>;
   edges: TraceEdge[];
@@ -85,6 +85,21 @@ function ruralDefaultKmh(roadClass: string, admin: { country_code?: string; stat
     UNKNOWN_COUNTRY_DEFAULT_KMH;
   if (MAJOR_CLASSES.has(roadClass)) return legal;
   return Math.min(legal, MINOR_ROAD_CAP_KMH[roadClass] ?? 30);
+}
+
+/**
+ * The speed limit that applies on a road edge: the posted one when OpenStreetMap has it, otherwise the legal
+ * default of the country and region (capped by road class), or 50 at most in a built-up area. Shared by the road
+ * statistics and the roadbook file, so the two never disagree.
+ */
+export function effectiveLimit(
+  edge: { speed_limit?: number; road_class?: string; density?: number; end_node?: { admin_index?: number } },
+  admins: Array<{ country_code?: string; state_code?: string }> | undefined,
+): { kmh: number; posted: boolean; builtUp: boolean } {
+  const posted = edge.speed_limit && edge.speed_limit > 0 ? edge.speed_limit : undefined;
+  const builtUp = (edge.density ?? 0) >= BUILT_UP_DENSITY;
+  const rural = ruralDefaultKmh(edge.road_class ?? "unclassified", admins?.[edge.end_node?.admin_index ?? -1]);
+  return { kmh: posted ?? (builtUp ? Math.min(50, rural) : rural), posted: posted !== undefined, builtUp };
 }
 
 // Valhalla density runs 0 (empty country) to 15 (city core). On measured routes,
@@ -150,6 +165,18 @@ export async function resolveWaypoints(waypoints: string[], roundTrip = false): 
   }
   if (roundTrip) points.push(points[0]!);
   return points;
+}
+
+/**
+ * The road edges of one leg. Exact edge matching is fastest but occasionally fails on a valid route shape;
+ * map-snapping the same shape is the tolerant fallback.
+ */
+export async function traceLeg(legShape: string): Promise<TraceAttributesResponse> {
+  try {
+    return await traceAttributes(legShape, "edge_walk");
+  } catch {
+    return await traceAttributes(legShape, "map_snap");
+  }
 }
 
 function traceAttributes(shape: string, shapeMatch: "edge_walk" | "map_snap") {
@@ -248,14 +275,7 @@ async function profileLegs(legShapes: string[]) {
 
   for (const legShape of legShapes) {
     legIndex++;
-    // Exact edge matching is fastest but occasionally fails on a valid route
-    // shape; map-snapping the same shape is the tolerant fallback.
-    let data: TraceAttributesResponse;
-    try {
-      data = await traceAttributes(legShape, "edge_walk");
-    } catch {
-      data = await traceAttributes(legShape, "map_snap");
-    }
+    const data = await traceLeg(legShape);
     // Shape indexes refer to the shape returned with the edges.
     const shape = decodePolyline(data.shape ?? legShape);
     const roadKm = new Map<string, number>();
@@ -279,10 +299,10 @@ async function profileLegs(legShapes: string[]) {
         badSurface.set(key, entry);
       }
 
-      const posted = edge.speed_limit && edge.speed_limit > 0 ? edge.speed_limit : undefined;
-      const builtUp = (edge.density ?? 0) >= BUILT_UP_DENSITY;
-      const rural = ruralDefaultKmh(roadClass, data.admins?.[edge.end_node?.admin_index ?? -1]);
-      const limit = posted ?? (builtUp ? Math.min(50, rural) : rural);
+      const effective = effectiveLimit(edge, data.admins);
+      const posted = effective.posted ? effective.kmh : undefined;
+      const builtUp = effective.builtUp;
+      const limit = effective.kmh;
       if (posted === undefined && !builtUp && limit > 50) {
         assumedLimits.set(limit, (assumedLimits.get(limit) ?? 0) + km);
       }

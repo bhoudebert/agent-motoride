@@ -17,7 +17,11 @@ available for other apps; the app reads a GPX too, but without limits or cameras
   "stops": [{ "lat": 50.4552, "lon": 3.20384, "name": "Start", "kind": "waypoint" }],
   "limits": [{ "from": 0, "to": 183, "kmh": 50, "posted": true, "road": "D 954" }],
   "cameras": [{ "lat": 50.52, "lon": 3.31, "kmh": 70, "bearing": 90, "direction": null }],
-  "junctions": [{ "kind": "roundabout", "at": 412, "to": 431, "exits": [-80, 15, 100], "take": 1 }]
+  "junctions": [{ "kind": "roundabout", "at": 412, "to": 431, "exits": [-80, 15, 100], "take": 1 }],
+  "countries": [
+    { "from": 0, "to": 390, "code": "FR" },
+    { "from": 390, "to": 900, "code": "BE" }
+  ]
 }
 ```
 
@@ -46,6 +50,9 @@ available for other apps; the app reads a GPX too, but without limits or cameras
   `exits` of the exit the line takes. `traffic` is `left` where traffic keeps left, absent otherwise. Read from the
   traced edges (Valhalla's `roundabout` flag and the roads meeting the ring). Lane guidance is not produced yet: the
   routing data has no turn lanes for the area it was tried on. Optional in the file, as the app reads it.
+- `countries`: the country of each stretch of the line, as indexes into `line` like `limits`, with an ISO 3166-1 alpha-2
+  `code`. The app decides from it what it may say about a camera: its place and distance, only a danger zone, or nothing.
+  A roadbook without it gets no camera warning at all. Cameras in Germany and Switzerland are not written. Optional.
 
 ## Rules for the producer
 

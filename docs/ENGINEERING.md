@@ -415,7 +415,7 @@ context is under 32k. `BENCH_MIN_CTX`, `BENCH_DB`, `BENCH_EFFORT`,
 
 ## Several riders (ADR 0027)
 
-One instance serves several riders. `src/tenants.ts` keeps the registry (`data/registry.db`): a random identifier, the
+One instance serves several riders. `src/tenants.ts` keeps the registry (`data/registry.db`): a random UUID, the
 email, a status and the hash of a 256-bit token shown once; each rider's library is its own SQLite file at
 `data/tenants/<id>/agentmotoride.db` (`src/dataDir.ts` builds the path and refuses any identifier that could make a path
 of it), migrated on first use by the versioned migrations. `src/admin.ts` (`npm run admin`, `nix run .#admin`) adds,
@@ -429,8 +429,20 @@ Streamable HTTP transport. Each request runs in a rider's context (`src/requestC
 start-point anchor, the place-name cache and the folder files are confined to are that rider's, and `inRoot` refuses any
 path that leaves it (exports go to `exports/` in the rider's folder). A session is reachable only with its rider's token,
 the registry is asked on every request so a suspended rider is shut out at once, and sessions, requests and bodies are
-limited. Not yet: uploading files (a route to import, a track to review), the roadbook feed and ride return for the app,
-live sharing, and the container image.
+limited.
+
+It ships as one container image (`Dockerfile`: Node 24, production dependencies only, an ordinary user, the data in a
+volume at `/data`, a health check) with `deploy/docker-compose.yml` and a `Caddyfile` for HTTPS that expose only `/mcp` and
+`/health`, and a NixOS module (`nix/modules/nixos-server.nix`) that runs the same image, Caddy, an
+`agent-motoride-admin` command and a nightly backup. `.github/workflows/image.yml` builds and starts the image in every pull
+request that can break it; `release.yml` publishes it to GHCR on a release.
+`src/live.ts` is the relay of live ride sharing (ADR 0028, spec `live-sharing`): channels in memory, each with a rider (a
+tenant), at most 720 encrypted updates, a 2 KiB limit, one update every 2 seconds, removed 12 hours after the last one or on the
+rider's say (an ended ride stays 30 minutes). The server holds ciphertext only: the phone encrypts with AES-256-GCM, the key
+is in the follower's link fragment, and `assets/follow/follow.js` decrypts in the browser (WebCrypto) and draws with MapLibre
+on OpenFreeMap; the page is served with a strict content security policy. The same script runs under Node in the tests,
+where a phone's encryption is reproduced and read back. Not yet: uploading files (a route to import, a track to review),
+the roadbook feed and ride return for the app, and the app's "Share my ride" button.
 
 ## Road memory
 

@@ -293,3 +293,173 @@ test("too many requests in a minute are answered with a wait, a big body is refu
     await s.app.close();
   }
 });
+
+const CH = "abcdefghijklmnopqrstuv"; // 22 characters
+const IV = "AAAAAAAAAAAAAAAA";
+const CT = "B".repeat(60);
+
+test("live sharing: a rider creates a channel, publishes, a follower with no token reads, the rider ends it", async () => {
+  const s = await setup({ live: { minGapMs: 0 } });
+  try {
+    const rider = { Authorization: `Bearer ${s.alice.token}`, "Content-Type": "application/json" };
+    const put = await fetch(`${s.url}/share/${CH}`, { method: "PUT", headers: rider });
+    assert.equal(put.status, 201);
+    assert.equal(
+      (await fetch(`${s.url}/share/${CH}`, { method: "PUT", headers: rider })).status,
+      200,
+      "confirmed for the same rider",
+    );
+    const post = await fetch(`${s.url}/share/${CH}`, {
+      method: "POST",
+      headers: rider,
+      body: JSON.stringify({ iv: IV, ct: CT }),
+    });
+    assert.equal(post.status, 200);
+    assert.equal((await post.json()).seq, 1);
+
+    // A follower has no token at all.
+    const read = await (await fetch(`${s.url}/share/${CH}?after=0`)).json();
+    assert.equal(read.state, "live");
+    assert.deepEqual(
+      read.items.map((u: { seq: number; iv: string; ct: string }) => [u.seq, u.iv, u.ct]),
+      [[1, IV, CT]],
+    );
+    assert.equal((await (await fetch(`${s.url}/share/${CH}?after=1`)).json()).items.length, 0);
+    assert.equal((await fetch(`${s.url}/health`).then((r) => r.json())).shares, 1);
+
+    const end = await fetch(`${s.url}/share/${CH}?mode=end`, { method: "DELETE", headers: rider });
+    assert.equal(end.status, 200);
+    assert.equal((await (await fetch(`${s.url}/share/${CH}`)).json()).state, "ended");
+    const late = await fetch(`${s.url}/share/${CH}`, {
+      method: "POST",
+      headers: rider,
+      body: JSON.stringify({ iv: IV, ct: CT }),
+    });
+    assert.equal(late.status, 410);
+    assert.equal((await fetch(`${s.url}/share/${CH}?mode=stop`, { method: "DELETE", headers: rider })).status, 200);
+    assert.equal((await fetch(`${s.url}/share/${CH}`)).status, 404);
+  } finally {
+    await s.app.close();
+  }
+});
+
+test("live sharing: publishing needs the rider's token, another rider cannot touch the channel, a bad channel is nothing", async () => {
+  const s = await setup({ live: { minGapMs: 0 } });
+  try {
+    const as = (token: string) => ({ Authorization: `Bearer ${token}`, "Content-Type": "application/json" });
+    assert.equal((await fetch(`${s.url}/share/${CH}`, { method: "PUT" })).status, 401);
+    assert.equal((await fetch(`${s.url}/share/${CH}`, { method: "PUT", headers: as("mrt_wrong") })).status, 401);
+    await fetch(`${s.url}/share/${CH}`, { method: "PUT", headers: as(s.alice.token) });
+    assert.equal((await fetch(`${s.url}/share/${CH}`, { method: "PUT", headers: as(s.bob.token) })).status, 409);
+    const body = JSON.stringify({ iv: IV, ct: CT });
+    assert.equal(
+      (await fetch(`${s.url}/share/${CH}`, { method: "POST", headers: as(s.bob.token), body })).status,
+      404,
+      "it looks like no channel",
+    );
+    assert.equal(
+      (await fetch(`${s.url}/share/${CH}?mode=stop`, { method: "DELETE", headers: as(s.bob.token) })).status,
+      404,
+    );
+    assert.notEqual((await fetch(`${s.url}/share/${CH}`)).status, 404, "and Bob changed nothing");
+    for (const path of ["/share/short", "/share/", `/share/${CH}x`, "/share/a%2F..%2Fb"])
+      assert.equal((await fetch(`${s.url}${path}`)).status, 404, path);
+    assert.equal((await fetch(`${s.url}/share/${CH}`, { method: "PATCH", headers: as(s.alice.token) })).status, 405);
+  } finally {
+    await s.app.close();
+  }
+});
+
+test("live sharing: updates are limited in size, shape, pace and number of channels", async () => {
+  const s = await setup({ live: { minGapMs: 2000 }, perMinute: 1000 });
+  try {
+    const h = { Authorization: `Bearer ${s.alice.token}`, "Content-Type": "application/json" };
+    const channels = ["a", "b", "c", "d"].map((c) => c.repeat(22));
+    assert.deepEqual(
+      await Promise.all(
+        channels.map((c) => fetch(`${s.url}/share/${c}`, { method: "PUT", headers: h }).then((r) => r.status)),
+      ),
+      [201, 201, 201, 429],
+      "three at once",
+    );
+    const post = (body: unknown) =>
+      fetch(`${s.url}/share/${channels[0]}`, {
+        method: "POST",
+        headers: h,
+        body: typeof body === "string" ? body : JSON.stringify(body),
+      });
+    assert.equal((await post({ iv: IV, ct: CT })).status, 200);
+    assert.equal((await post({ iv: IV, ct: CT })).status, 429, "one every 2 seconds");
+    assert.equal((await post({ iv: "short", ct: CT })).status, 400);
+    assert.equal((await post("not json")).status, 400);
+    assert.equal((await post({ iv: IV, ct: "B".repeat(5000) })).status, 413, "a body over 4 KiB");
+  } finally {
+    await s.app.close();
+  }
+});
+
+test("live sharing: the follower's page is the same for every link, with a strict policy, and its script is served", async () => {
+  const s = await setup();
+  try {
+    for (const path of [`/follow/${CH}`, "/follow/anything", "/follow/"]) {
+      const r = await fetch(`${s.url}${path}`);
+      assert.equal(r.status, 200, path);
+      assert.match(r.headers.get("content-type") ?? "", /text\/html/);
+      assert.equal(r.headers.get("referrer-policy"), "no-referrer");
+      const csp = r.headers.get("content-security-policy") ?? "";
+      assert.match(csp, /default-src 'none'/);
+      assert.match(csp, /frame-ancestors 'none'/);
+      assert.doesNotMatch(csp, /unsafe-eval/);
+      const html = await r.text();
+      assert.match(html, /id="map"/);
+      assert.match(html, /integrity="sha384-/, "the map library is pinned with a hash");
+    }
+    const js = await fetch(`${s.url}/follow.js`);
+    assert.equal(js.status, 200);
+    assert.match(js.headers.get("content-type") ?? "", /javascript/);
+    assert.match(await js.text(), /AES-GCM/);
+    assert.equal((await fetch(`${s.url}/follow/${CH}`, { method: "POST" })).status, 404);
+  } finally {
+    await s.app.close();
+  }
+});
+
+test("live sharing: what a phone encrypts, the relay carries and the page reads back, and the relay never sees the place", async () => {
+  const { webcrypto, randomBytes } = await import("node:crypto");
+  const { decryptUpdate, importKey } = await import("../assets/follow/follow.js");
+  const s = await setup({ live: { minGapMs: 0 } });
+  try {
+    const channel = randomBytes(16).toString("base64url");
+    const keyB64 = randomBytes(32).toString("base64url");
+    const key = await webcrypto.subtle.importKey("raw", Buffer.from(keyB64, "base64url"), "AES-GCM", false, [
+      "encrypt",
+    ]);
+    const iv = randomBytes(12);
+    const secret = JSON.stringify({ v: 1, lat: 50.4512, lon: 3.2077, spd: 61, state: "riding" });
+    const ct = Buffer.from(
+      await webcrypto.subtle.encrypt(
+        { name: "AES-GCM", iv, additionalData: new TextEncoder().encode(channel) },
+        key,
+        new TextEncoder().encode(secret),
+      ),
+    ).toString("base64url");
+    const h = { Authorization: `Bearer ${s.alice.token}`, "Content-Type": "application/json" };
+    await fetch(`${s.url}/share/${channel}`, { method: "PUT", headers: h });
+    await fetch(`${s.url}/share/${channel}`, {
+      method: "POST",
+      headers: h,
+      body: JSON.stringify({ iv: iv.toString("base64url"), ct }),
+    });
+    const raw = await (await fetch(`${s.url}/share/${channel}`)).text();
+    assert.ok(
+      !raw.includes("50.4512") && !raw.includes("3.2077") && !raw.includes(keyB64),
+      "nothing the relay holds says where, or holds the key",
+    );
+    const body = JSON.parse(raw);
+    const point = await decryptUpdate((await importKey(keyB64))!, channel, body.items[0]);
+    assert.equal(point?.lat, 50.4512);
+    assert.equal(point?.lon, 3.2077);
+  } finally {
+    await s.app.close();
+  }
+});

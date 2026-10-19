@@ -2,7 +2,10 @@
 import { createInterface } from "node:readline/promises";
 import { resolve } from "node:path";
 import { DATA_DIR } from "./dataDir.ts";
-import { backupAll, librarySize, Registry, removeLibrary, type Tenant } from "./tenants.ts";
+import { renderSVG, renderUnicodeCompact } from "uqr";
+import { Resvg } from "@resvg/resvg-js";
+import { writeFileSync } from "node:fs";
+import { backupAll, INVITE_HOURS, librarySize, PIN_TRIES, Registry, removeLibrary, type Tenant } from "./tenants.ts";
 
 const USAGE = `Usage: npm run admin -- <command>
 
@@ -13,6 +16,11 @@ const USAGE = `Usage: npm run admin -- <command>
                                data/removed/, or deleted with --purge --yes
   suspend <id|email>           The token stops working until resumed; nothing is lost
   resume <id|email>            Let a suspended rider back in
+  invite <email> [--pin] [--hours=24] [--out=file.png|file.svg] [--url=https://...]
+                               An invitation for the rider's phone: a QR code in the terminal (and in a file with
+                               --out) that the app scans, a one-time code that lasts 24 hours and works once.
+                               --pin adds six digits to tell the rider apart (three wrong tries burn it)
+  devices <id|email> --revoke  Stop every phone of a rider (their tokens made by invitations); the other token stays
   token <id|email>             A new token; the old one stops working at once
   backup [folder]              A consistent copy of the registry and every library into <folder>/<date>/
                                (default: data/backups)
@@ -40,6 +48,37 @@ export function connectionText(
   ].join("\n");
 }
 
+/** The link a phone opens: the app asks the rider before it uses the server. */
+export function inviteLink(base: string, code: string): string {
+  return `mobilemotoride://server?url=${encodeURIComponent(base.replace(/\/+$/, ""))}&code=${code}`;
+}
+
+/** The invitation as the administrator sees it: the QR code, the link, the PIN and the expiry. */
+export function inviteText(
+  invite: { tenant: Tenant; pin: string | null; expiresAt: string; created: boolean },
+  link: string,
+): string {
+  return [
+    `Invitation for ${invite.tenant.email}${invite.created ? " (registered just now)" : ""}`,
+    "",
+    renderUnicodeCompact(link, { border: 2 }),
+    "Scan it with the phone's camera: it opens the app, which asks before it uses the server.",
+    `Link: ${link}`,
+    `Valid until ${invite.expiresAt.slice(0, 16).replace("T", " ")} UTC, works once.`,
+    invite.pin
+      ? `PIN: ${invite.pin}   (tell it to the rider another way than the QR; ${PIN_TRIES} wrong tries burn the invitation)`
+      : "No PIN: whoever scans it first joins.",
+  ].join("\n");
+}
+
+/** The QR code as a file: PNG or SVG by the extension. */
+export function writeQr(path: string, link: string): void {
+  const svg = renderSVG(link, { border: 2, whiteColor: "#ffffff", blackColor: "#000000" });
+  if (/\.svg$/i.test(path)) return writeFileSync(path, svg);
+  if (!/\.png$/i.test(path)) throw new Error("--out is a .png or a .svg file.");
+  writeFileSync(path, new Resvg(svg, { fitTo: { mode: "width", value: 640 } }).render().asPng());
+}
+
 export function listText(registry: Registry): string {
   const rows = registry.list();
   if (!rows.length) return "No riders yet. Add one: npm run admin -- add <email>";
@@ -47,7 +86,7 @@ export function listText(registry: Registry): string {
     (t) =>
       `${t.id}  ${t.email.padEnd(32)}  ${t.status.padEnd(9)}  ${mb(librarySize(t.id)).padStart(8)}  ${when(t.lastSeenAt)}`,
   );
-  return [`${"id".padEnd(16)}  ${"email".padEnd(32)}  ${"status".padEnd(9)}  library  last seen`, ...lines].join("\n");
+  return [`${"id".padEnd(36)}  ${"email".padEnd(32)}  ${"status".padEnd(9)}  library  last seen`, ...lines].join("\n");
 }
 
 async function confirm(question: string, yes: boolean): Promise<boolean> {
@@ -65,7 +104,8 @@ export async function run(
   out: (s: string) => void = console.log,
 ): Promise<void> {
   const [command, ...rest] = argv;
-  const flags = new Set(rest.filter((a) => a.startsWith("--")));
+  const flags = new Set(rest.filter((a) => a.startsWith("--")).map((a) => a.split("=")[0]!));
+  const option = (name: string) => rest.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
   const args = rest.filter((a) => !a.startsWith("--"));
   const target = args[0];
   const need = (what: string) => {
@@ -76,6 +116,27 @@ export async function run(
     case "add": {
       const { tenant, token } = registry.add(need("Give an email: add <email>"));
       out(connectionText(tenant, token));
+      break;
+    }
+    case "invite": {
+      const base = option("url") ?? process.env.RIDE_SERVER_URL;
+      if (!base) throw new Error("Say where the server is: set RIDE_SERVER_URL or give --url=https://...");
+      if (!/^https:\/\/|^http:\/\/(localhost|127\.|10\.|192\.168\.)/.test(base))
+        throw new Error("The server address is https:// (http:// only for localhost or a local network).");
+      const hours = option("hours") === undefined ? INVITE_HOURS : Number(option("hours"));
+      const made = registry.invite(need("invite <email>"), { pin: flags.has("--pin"), hours });
+      const link = inviteLink(base, made.code);
+      out(inviteText(made, link));
+      const file = option("out");
+      if (file) {
+        writeQr(file, link);
+        out(`QR code saved to ${file} (anyone with it can join until it expires, unless there is a PIN).`);
+      }
+      break;
+    }
+    case "devices": {
+      if (!flags.has("--revoke")) throw new Error("devices <id|email> --revoke");
+      out(`${registry.revokeDevices(need("devices <id|email> --revoke"))} phone(s) stopped.`);
       break;
     }
     case "list":

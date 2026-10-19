@@ -1,0 +1,42 @@
+# agentMotoride for several riders, with HTTPS from Caddy (docs/guide/self-hosting.md).
+#
+#   cp deploy/.env.example deploy/.env      # set RIDE_DOMAIN and RIDE_SERVER_URL
+#   docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d
+#   docker compose -f deploy/docker-compose.yml exec ride node src/admin.ts add alice@example.org
+#
+# The image is built from this repository; to use the published one, replace `build` with
+# `image: ghcr.io/bhoudebert/agent-motoride:latest`.
+services:
+  ride:
+    build:
+      context: ..
+    restart: unless-stopped
+    environment:
+      # What `admin add` prints as the address riders connect to.
+      RIDE_SERVER_URL: ${RIDE_SERVER_URL:?set RIDE_SERVER_URL, e.g. https://rides.example.org}
+    volumes:
+      # The data: a folder of your own when RIDE_DATA_PATH is set (an absolute path, owned by uid 1000), else a Docker volume.
+      - ${RIDE_DATA_PATH:-ride-data}:/data
+    # Not published to the host: only Caddy reaches it.
+    expose:
+      - "8788"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - ride
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      RIDE_DOMAIN: ${RIDE_DOMAIN:?set RIDE_DOMAIN, e.g. rides.example.org}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  ride-data:
+  caddy-data:
+  caddy-config:

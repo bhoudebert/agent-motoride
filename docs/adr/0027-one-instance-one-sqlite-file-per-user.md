@@ -14,8 +14,8 @@ asynchronous code.
 ## Decision
 
 One agentRide process serves all riders. Each rider is a **tenant** with a library of its own, one SQLite file under
-`data/tenants/<id>/`. A small registry (`data/registry.db`) holds the tenants: a random identifier (not a hash of the
-email, which can be guessed and checked), the email, a status, and the hash of a random 256-bit token that is shown once.
+`data/tenants/<id>/`. A small registry (`data/registry.db`) holds the tenants: a random UUID (not a counter, and not a hash of
+the email, which can be guessed and checked; it is a folder name and never what grants access, the token is), the email, a status, and the hash of a random 256-bit token that is shown once.
 The MCP tools are reached over HTTP with the token as a bearer; the token chooses the library. An administrator
 command adds, lists, removes, suspends, re-keys and backs up tenants. Used alone, with no registry and no setting,
 agentRide is exactly what it was: one library in `data/agentmotoride.db`; `RIDE_TENANT=<id>` chooses a tenant's

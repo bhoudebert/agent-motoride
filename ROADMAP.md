@@ -13,6 +13,22 @@ Open to anyone, no API key needed for most (see `CONTRIBUTING.md`):
   in winter, a ride across a border, a group with two starts.
 - **Another traffic source** next to TomTom, behind the same `getTraffic`.
 
+## A server for several riders (ADR 0027)
+
+Done: a registry of riders with a library each, `npm run admin`, and the MCP tools over HTTP with a token
+(`npm run serve`). Next, in order:
+
+- **Upload files**: a route to import, a track to review, from a client that is not on the server's machine (today files
+  stay in the rider's folder on the server, so these two need a way to put one there).
+- **The roadbook feed and the ride return for the MotoRide app**: the app lists and downloads the roadbooks of the rider's
+  library, and sends a ride it recorded back for `reviewRide`, with the roadbook matched by number and name.
+- **Live ride sharing**: a relay that passes a rider's encrypted positions to a link, and the page followers open (the
+  key travels only in the link's fragment, so the server cannot read the positions).
+- **A container image, a Nix module and a self-hosting guide**: one image, one data volume, Caddy for TLS, the admin
+  command in the image; a shared cache of road and weather lookups across riders.
+- **Quotas and accounts** if the instance is offered as a service: limits per rider, billing, terms and deletion of an
+  account.
+
 ## Areas chosen from data
 
 - **An area finder**: today the planner picks the areas to scout from its own

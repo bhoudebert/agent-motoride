@@ -90,6 +90,12 @@ and lasts 24 hours (`--hours=48` for longer), so sending it by email or chat is 
 call. Three wrong PINs burn the invitation. Without `--pin`, whoever scans it first joins. An email that is not registered
 yet is registered by its invitation. `--url=https://...` overrides `RIDE_SERVER_URL`.
 
+**What the rider does:** install the MotoRide app, scan the QR code with the phone's camera (or open the link you sent
+on the phone), tap the link the camera offers, then in the app read the address, type the PIN if there is one, and tap
+**Join**. Then Menu, Server, **Test** shows that it works. If the camera does not offer to open the link, send the link
+itself in a message and tap it on the phone. If it says the invitation is no longer valid, it was used or it expired:
+make another.
+
 A phone's token is separate from the rider's own (Claude Code keeps working). `npm run admin -- devices alice@example.org
 --revoke` stops all of Alice's phones; suspending or removing her stops them too.
 

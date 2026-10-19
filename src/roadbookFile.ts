@@ -23,6 +23,8 @@ export interface RoadbookFile {
   junctions: RoundaboutJunction[];
   /** The country of each stretch, by index into the line: the app decides what it may say about a camera from it. */
   countries: Array<{ from: number; to: number; code: string }>;
+  /** Which roadbook of which library this is: the number is local to the library, so a reader checks the name as well. */
+  origin?: { app: "agentRide"; roadbook: number; ride?: number; name: string };
 }
 
 export interface RoundaboutJunction {
@@ -46,6 +48,8 @@ export interface RoadbookFileInput {
   shapes: string[];
   /** Planned fuel and pause stops, with their place along the route. */
   stops?: Array<{ lat: number; lon: number; label: string; km?: number }>;
+  /** The roadbook's number in the library, the number of its ride (day) if any, and its name there. */
+  origin?: { roadbook: number; ride?: number | null; name: string };
   /** Fixed cameras gathered for the ride. */
   cameras?: Array<{ limitKmh: number | string | null; direction: string | null; coords: string }>;
 }
@@ -281,6 +285,16 @@ export async function buildRoadbookFile(
       cameras,
       junctions,
       countries,
+      ...(input.origin
+        ? {
+            origin: {
+              app: "agentRide" as const,
+              roadbook: input.origin.roadbook,
+              ...(input.origin.ride !== null && input.origin.ride !== undefined ? { ride: input.origin.ride } : {}),
+              name: input.origin.name,
+            },
+          }
+        : {}),
     },
     limitsError: errors.length ? `Speed limits missing for ${errors.join("; ")}` : null,
   };

@@ -252,3 +252,55 @@ test("review with a track on a day without a ride: the ride is recorded, ridden,
   assert.equal(store.trackOf(dayId), "/rides/2026-10-11.gpx");
   assert.equal(store.recordRidden(id, "2026-10-11", "/rides/again.gpx"), dayId, "the same day again: the same ride");
 });
+
+import { roadbookOfOrigin, trackOrigin } from "../src/feedback.ts";
+
+const motorideGpx = (attrs: string) =>
+  `<?xml version="1.0"?><gpx version="1.1" xmlns:motoride="https://github.com/bhoudebert/mobile-motoride"><metadata><extensions><motoride:ride roadbook="loop-abc" name="Straight north" ${attrs} state="stopped"/></extensions></metadata><trk><trkseg/></trk></gpx>`;
+
+test("a MotoRide track says which agentRide roadbook it followed", () => {
+  const origin = trackOrigin(
+    motorideGpx(
+      `source="agentRide" sourceRoadbook="7" sourceRide="12" sourceName="Pays &quot;des&quot; Collines &amp; co"`,
+    ),
+  );
+  assert.deepEqual(origin, { roadbook: 7, name: 'Pays "des" Collines & co', ride: 12 });
+  assert.deepEqual(trackOrigin(motorideGpx(`source="agentRide" sourceRoadbook="7" sourceName="A"`)), {
+    roadbook: 7,
+    name: "A",
+    ride: null,
+  });
+  assert.equal(trackOrigin(motorideGpx("")), null, "a roadbook that did not come from agentRide");
+  assert.equal(trackOrigin(motorideGpx(`source="other" sourceRoadbook="7" sourceName="A"`)), null);
+  assert.equal(trackOrigin(motorideGpx(`source="agentRide" sourceRoadbook="x" sourceName="A"`)), null);
+  assert.equal(
+    trackOrigin(motorideGpx(`source="agentRide" sourceRoadbook="7"`)),
+    null,
+    "a number alone is not an origin",
+  );
+  assert.equal(trackOrigin("<gpx><trk/></gpx>"), null);
+});
+
+test("an origin is the same roadbook only when the number and the name agree, never on the number alone", () => {
+  const store = new Store(":memory:");
+  const id = saveRide(store);
+  const here = store.findRide(String(id))!;
+  assert.equal(roadbookOfOrigin(store, { roadbook: id, name: here.name, ride: null }).id, id);
+  assert.equal(roadbookOfOrigin(store, { roadbook: id, name: `  ${here.name.toUpperCase()} `, ride: null }).id, id);
+  assert.throws(
+    () => roadbookOfOrigin(store, { roadbook: id, name: "Eifel loop", ride: null }),
+    new RegExp(`roadbook ${id} "Eifel loop", but your roadbook ${id} is "${here.name}": not the same one`),
+  );
+  assert.throws(() => roadbookOfOrigin(store, { roadbook: 999, name: "Gone", ride: null }), /not in this library/);
+});
+
+test("review without a named ride follows the track's origin; a named ride wins", () => {
+  const store = new Store(":memory:");
+  const id = saveRide(store);
+  const here = store.findRide(String(id))!;
+  const origin = { roadbook: id, name: here.name, ride: null };
+  assert.equal(rideToReview(store, undefined, origin).id, id);
+  assert.equal(rideToReview(store, String(id), { roadbook: 99, name: "Other", ride: null }).id, id);
+  assert.throws(() => rideToReview(store, undefined, { roadbook: id, name: "Other", ride: null }), /not the same one/);
+  assert.throws(() => rideToReview(store, undefined, null), /No notes waiting for review/);
+});

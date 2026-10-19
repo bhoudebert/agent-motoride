@@ -263,6 +263,11 @@ test("export: a saved ride is written as a GPX and as a roadbook file next to it
   assert.ok(file.limits.length >= 1);
   assert.deepEqual(file.cameras, [{ lat: 50.5, lon: 3.2, kmh: 70, bearing: null, direction: null }]);
   assert.ok(file.stops.length >= 3);
+  // The number of the roadbook in this library and its name travel with the file, so a recorded ride can be matched back.
+  assert.equal(file.origin.app, "agentRide");
+  assert.equal(file.origin.roadbook, id);
+  assert.equal(file.origin.name, "Flandre loop");
+  assert.ok(file.origin.ride === undefined || Number.isInteger(file.origin.ride));
 });
 
 /** A ring edge, in the shape Valhalla returns it, with the roads that can be left at its end node. */
@@ -384,5 +389,27 @@ test("roadbook file: a camera in Germany or Switzerland is not written, one else
   assert.deepEqual(
     file.cameras.map((c) => Number(c.lat.toFixed(4))).sort(),
     [leg1[10]!.lat, leg1[50]!.lat].map((n) => Number(n.toFixed(4))).sort(),
+  );
+});
+
+test("roadbook file: it says which roadbook of which library it is, with the number and the name", async () => {
+  const { file } = await buildRoadbookFile(
+    input({ origin: { roadbook: 7, ride: 12, name: "Pays des Collines" } }),
+    tracing(() => [edge(0, 60)]),
+  );
+  assert.deepEqual(file.origin, { app: "agentRide", roadbook: 7, ride: 12, name: "Pays des Collines" });
+  const without = await buildRoadbookFile(
+    input({ origin: { roadbook: 7, ride: null, name: "X" } }),
+    tracing(() => [edge(0, 60)]),
+  );
+  assert.deepEqual(without.file.origin, { app: "agentRide", roadbook: 7, name: "X" });
+  assert.equal(
+    (
+      await buildRoadbookFile(
+        input(),
+        tracing(() => [edge(0, 60)]),
+      )
+    ).file.origin,
+    undefined,
   );
 });

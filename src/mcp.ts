@@ -17,6 +17,7 @@ import {
   formatReview,
   pendingNotesSummary,
   readTrack,
+  readTrackOrigin,
   reviewRide,
   rideToReview,
 } from "./feedback.ts";
@@ -850,7 +851,7 @@ server.registerTool(
   },
   async (args) => {
     if (args.decisions) return text(applyReview(store, args.decisions).join("\n"));
-    const ride = rideToReview(store, args.ride);
+    const ride = rideToReview(store, args.ride, args.gpxPath ? readTrackOrigin(args.gpxPath) : null);
     const review = await reviewRide(store, ride, {
       track: args.gpxPath ? readTrack(args.gpxPath) : undefined,
       trackPath: args.gpxPath,

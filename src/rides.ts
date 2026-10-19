@@ -12,6 +12,7 @@ import {
   formatReview,
   type ReviewDecision,
   readTrack,
+  readTrackOrigin,
   reviewRide,
   rideToReview,
 } from "./feedback.ts";
@@ -313,7 +314,16 @@ try {
     case "review": {
       const trackFile = args.find((a) => a.toLowerCase().endsWith(".gpx"));
       const rideName = args.find((a) => a !== trackFile && !a.startsWith("--"));
-      const target = rideToReview(store, rideName);
+      const origin = trackFile ? readTrackOrigin(trackFile) : null;
+      const target = rideToReview(store, rideName, origin);
+      if (
+        origin &&
+        rideName &&
+        !(target.id === origin.roadbook && target.name.trim().toLowerCase() === origin.name.trim().toLowerCase())
+      )
+        console.log(
+          `Note: this track says it followed roadbook ${origin.roadbook} "${origin.name}"; you chose #${target.id} "${target.name}".`,
+        );
       const review = await reviewRide(store, target, {
         track: trackFile ? readTrack(trackFile) : undefined,
         trackPath: trackFile ? resolve(trackFile) : undefined,

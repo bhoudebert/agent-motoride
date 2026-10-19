@@ -47,7 +47,7 @@ export function listText(registry: Registry): string {
     (t) =>
       `${t.id}  ${t.email.padEnd(32)}  ${t.status.padEnd(9)}  ${mb(librarySize(t.id)).padStart(8)}  ${when(t.lastSeenAt)}`,
   );
-  return [`${"id".padEnd(16)}  ${"email".padEnd(32)}  ${"status".padEnd(9)}  library  last seen`, ...lines].join("\n");
+  return [`${"id".padEnd(36)}  ${"email".padEnd(32)}  ${"status".padEnd(9)}  library  last seen`, ...lines].join("\n");
 }
 
 async function confirm(question: string, yes: boolean): Promise<boolean> {

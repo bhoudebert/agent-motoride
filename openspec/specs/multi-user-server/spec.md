@@ -60,6 +60,15 @@ On the server, every path a tool reads or writes SHALL be inside the rider's own
 - **WHEN** a rider asks `exportGpx` to write `../../escape.gpx` or `/tmp/x.gpx`
 - **THEN** the call fails with "files stay inside your own folder" and nothing is written
 
+### Requirement: Run as a container
+
+The system SHALL be runnable as one container image (`Dockerfile`) whose only state is one data volume (`RIDE_DATA_DIR=/data`): it SHALL run as an ordinary user, answer a health check, start `npm run serve` by default and run the administration inside (`node src/admin.ts`). A compose file with Caddy in front SHALL expose only `/mcp` and `/health` over HTTPS and nothing of the administration, and a NixOS module SHALL run the same image with Caddy, an `agent-motoride-admin` command and a nightly backup of which a number are kept. The image SHALL be built and started in every change that can break it, and published on a release as `latest` and by version.
+
+#### Scenario: A rider added inside the container
+
+- **WHEN** the administrator runs `admin add` inside the running container
+- **THEN** the rider's token opens a session through the proxy, and the data stays in the volume
+
 ### Requirement: Choose a library from the terminal
 
 The terminal commands and the stdio MCP server SHALL use a tenant's library when `RIDE_TENANT=<id>` is set, so that the administrator can look into a library, and SHALL fail with a clear message for an unknown identifier.

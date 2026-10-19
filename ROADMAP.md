@@ -24,8 +24,8 @@ Done: a registry of riders with a library each, `npm run admin`, and the MCP too
   library, and sends a ride it recorded back for `reviewRide`, with the roadbook matched by number and name.
 - **Live ride sharing**: a relay that passes a rider's encrypted positions to a link, and the page followers open (the
   key travels only in the link's fragment, so the server cannot read the positions).
-- **A container image, a Nix module and a self-hosting guide**: one image, one data volume, Caddy for TLS, the admin
-  command in the image; a shared cache of road and weather lookups across riders.
+- **A shared cache of road and weather lookups** across riders (the container image, the compose file, the NixOS module
+  and the self-hosting guide are done).
 - **Quotas and accounts** if the instance is offered as a service: limits per rider, billing, terms and deletion of an
   account.
 

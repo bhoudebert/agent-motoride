@@ -429,8 +429,14 @@ Streamable HTTP transport. Each request runs in a rider's context (`src/requestC
 start-point anchor, the place-name cache and the folder files are confined to are that rider's, and `inRoot` refuses any
 path that leaves it (exports go to `exports/` in the rider's folder). A session is reachable only with its rider's token,
 the registry is asked on every request so a suspended rider is shut out at once, and sessions, requests and bodies are
-limited. Not yet: uploading files (a route to import, a track to review), the roadbook feed and ride return for the app,
-live sharing, and the container image.
+limited.
+
+It ships as one container image (`Dockerfile`: Node 24, production dependencies only, an ordinary user, the data in a
+volume at `/data`, a health check) with `deploy/docker-compose.yml` and a `Caddyfile` for HTTPS that expose only `/mcp` and
+`/health`, and a NixOS module (`nix/modules/nixos-server.nix`) that runs the same image, Caddy, an
+`agent-motoride-admin` command and a nightly backup. `.github/workflows/image.yml` builds and starts the image in every pull
+request that can break it; `release.yml` publishes it to GHCR on a release. Not yet: uploading files (a route to import,
+a track to review), the roadbook feed and ride return for the app, and live sharing.
 
 ## Road memory
 

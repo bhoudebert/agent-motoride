@@ -1,3 +1,4 @@
+import { exportDir, inRoot } from "./requestContext.ts";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -237,7 +238,7 @@ export function formatRideMarkdown(ride: SavedRide, map: string | null = null): 
 
 /** Write the Markdown document, by default into exports/ in the project. Returns the absolute path. */
 export function writeRideMarkdown(ride: SavedRide, file?: string): string {
-  const path = resolve(file?.trim() || resolve(EXPORT_DIR, `${exportBase(ride)}.md`));
+  const path = resolve(inRoot(file?.trim() || resolve(exportDir(EXPORT_DIR), `${exportBase(ride)}.md`), "exports"));
   mkdirSync(dirname(path), { recursive: true });
   // The ride's map goes next to the document, which shows it at its top.
   let map: string | null = null;

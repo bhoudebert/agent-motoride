@@ -1,3 +1,4 @@
+import { currentContext, defaultContext, type RequestContext } from "../requestContext.ts";
 import { fetchJson } from "../http.ts";
 
 export interface Point {
@@ -7,19 +8,20 @@ export interface Point {
 }
 
 const COORDS = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/;
-const cache = new Map<string, Point>();
+/** The places resolved so far for the rider being served (a name's meaning depends on their start point). */
+const placesOf = (): Map<string, Point> => (currentContext().places ??= new Map<string, Point>());
 const MAX_ADDRESS_DISTANCE_KM = 500;
-let anchor: { lat: number; lon: number } | undefined;
 
 /**
  * Bias ambiguous place names toward this location. Many names exist in several
  * countries ("Die", "Mens"); the one nearest the rider's start is the one meant.
  */
 export async function setGeoAnchor(location: string): Promise<Point> {
-  anchor = undefined;
-  cache.clear();
+  const context = currentContext();
+  context.anchor = undefined;
+  placesOf().clear();
   const point = await resolvePoint(location);
-  anchor = point;
+  context.anchor = point;
   return point;
 }
 
@@ -88,7 +90,7 @@ async function geocodeTown(location: string): Promise<Point | undefined> {
             .map((f) => f.toLowerCase());
           return wanted.every((q) => fields.includes(q));
         });
-  const origin = anchor;
+  const origin = currentContext().anchor;
   // The town of that very name before towns that only contain it ("Le Quesnoy",
   // not Quesnoy-sur-Deûle); then near the start point wins, but a real town
   // beats a namesake hamlet that is only slightly closer: distance is
@@ -113,6 +115,7 @@ async function geocodeAddress(location: string): Promise<Point | undefined> {
   const url = new URL("https://photon.komoot.io/api/");
   url.searchParams.set("q", location);
   url.searchParams.set("limit", "1");
+  const anchor = currentContext().anchor;
   if (anchor) {
     // Prefer matches near the rider's start point.
     url.searchParams.set("lat", String(anchor.lat));
@@ -166,7 +169,8 @@ export async function resolvePoint(location: string): Promise<Point> {
   }
 
   const key = location.trim().toLowerCase();
-  const cached = cache.get(key);
+  const cached = placesOf().get(key);
+  const anchor = currentContext().anchor;
   if (cached) return cached;
 
   // Towns first (fast, clean labels), then streets and addresses. A geocoder
@@ -204,7 +208,7 @@ export async function resolvePoint(location: string): Promise<Point> {
       `Place not found: "${location}". Check the spelling, add the town ("street, town"), or use "lat,lon".`,
     );
   }
-  cache.set(key, point);
+  placesOf().set(key, point);
   return point;
 }
 
@@ -224,17 +228,16 @@ interface ReverseResponse {
 
 const reverseCache = new Map<string, string>();
 /** Optional persistent cache, wired by the app to SQLite; place names do not change. */
-let persistentCache: { get(key: string): string | undefined; set(key: string, value: string): void } | undefined;
-export function usePersistentGeoCache(cache: typeof persistentCache): void {
-  persistentCache = cache;
+export function usePersistentGeoCache(cache: RequestContext["persistent"]): void {
+  currentContext().persistent = cache;
 }
 
 /** Forget every place resolved so far and the start-point anchor: a fresh process, for evals and tests. */
 export function resetGeoState(): void {
-  cache.clear();
+  defaultContext.places?.clear();
   reverseCache.clear();
-  anchor = undefined;
-  persistentCache = undefined;
+  defaultContext.anchor = undefined;
+  defaultContext.persistent = undefined;
 }
 
 /**
@@ -244,7 +247,7 @@ export function resetGeoState(): void {
  */
 export async function describeCoords(lat: number, lon: number): Promise<string> {
   const key = `${lat.toFixed(3)},${lon.toFixed(3)}`;
-  const cached = reverseCache.get(key) ?? persistentCache?.get(`reverse|${key}`);
+  const cached = reverseCache.get(key) ?? currentContext().persistent?.get(`reverse|${key}`);
   // Labels cached before postcodes were filtered out are not worth keeping.
   if (cached && !/^\d+$/.test(cached)) return cached;
   let label = key;
@@ -277,7 +280,7 @@ export async function describeCoords(lat: number, lon: number): Promise<string> 
     // Keep the coordinates; a missing name must not fail a routing call.
   }
   reverseCache.set(key, label);
-  persistentCache?.set(`reverse|${key}`, label);
+  currentContext().persistent?.set(`reverse|${key}`, label);
   return label;
 }
 

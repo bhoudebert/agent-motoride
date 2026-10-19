@@ -3,6 +3,7 @@
 // then confirmed by the rider as road ratings that steer future planning.
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
+import { inRoot } from "./requestContext.ts";
 import { cellCenter, cellOfPoint, decodePolyline, type LatLon, pointCells, widenCells } from "./geometry.ts";
 import type { NotePlacement, RideNote, SavedRide, Store } from "./store.ts";
 import { describeCoords, haversineKm } from "./tools/geo.ts";
@@ -57,7 +58,7 @@ export function parseGpxTrack(xml: string): TrackPoint[] {
 
 /** Read a recorded track from a file on this machine; "~/" is the home folder. */
 export function readTrack(path: string): TrackPoint[] {
-  return parseGpxTrack(readFileSync(path.replace(/^~(?=\/)/, homedir()), "utf8"));
+  return parseGpxTrack(readFileSync(inRoot(path).replace(/^~(?=\/)/, homedir()), "utf8"));
 }
 
 const fmtCell = (cell: string) => {
@@ -110,7 +111,7 @@ export function trackOrigin(gpx: string): TrackOrigin | null {
 
 /** The origin of a track file on this machine; null when it has none. */
 export function readTrackOrigin(path: string): TrackOrigin | null {
-  return trackOrigin(readFileSync(path.replace(/^~(?=\/)/, homedir()), "utf8"));
+  return trackOrigin(readFileSync(inRoot(path).replace(/^~(?=\/)/, homedir()), "utf8"));
 }
 
 const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();

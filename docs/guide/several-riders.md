@@ -5,10 +5,46 @@ riders (family, a club, friends) from one machine, one instance can hold a libra
 Claude Code or Codex through the tools, with a token of their own. Nobody's plan runs on your model or your key: the
 rider's own model does the planning.
 
-::: warning In progress
-The administration is in place (below). The part that lets Claude Code and Codex connect over the network is the next
-step, so the connection lines printed by `add` do not work yet.
-:::
+## Start the server
+
+```bash
+npm run admin -- add alice@example.org     # once per rider: prints the token and the connection lines
+npm run serve                              # listens on 127.0.0.1:8788; /mcp for the tools, /health for a check
+```
+
+Put a proxy with TLS in front, for example Caddy, which gets the certificate by itself:
+
+```
+rides.example.org {
+  reverse_proxy 127.0.0.1:8788
+}
+```
+
+Set `RIDE_SERVER_HOST=0.0.0.0` only when the proxy runs on another machine or in a container. Never expose the port
+without TLS: the token travels in a header.
+
+## What a rider does
+
+The rider adds the server once, with the lines `add` printed:
+
+```bash
+claude mcp add --transport http ride https://rides.example.org/mcp --header "Authorization: Bearer mrt_…"
+```
+
+Codex reads the same address from `~/.codex/config.toml`, with the token in an environment variable. From then on the
+rider plans in plain words, as in [Claude Code and Codex](/claude-code-and-codex), and the library they build is theirs
+alone. Their own model plans: the server holds no model and no key, so scouting is done by the client's subagents in
+Claude Code (Codex explores the areas itself).
+
+## What the server protects
+
+- A **session belongs to the rider who opened it**: another token gets a plain "not found".
+- A **suspended or removed rider** is shut out at once, even in an open session.
+- **Files stay in the rider's own folder** (`data/tenants/<id>/`): an export lands in its `exports/`, and a path that
+  goes elsewhere (`..`, `/tmp/…`, `~/…`) is refused. Files cannot be uploaded yet, so importing a route file or
+  reviewing a track from a phone needs that next step.
+- At most 5 open sessions a rider and 200 in all, idle sessions closed after 30 minutes, 300 requests a minute a rider,
+  bodies up to 1 MiB.
 
 ## What you set up
 

@@ -42,6 +42,24 @@ A command `npm run admin` (and `nix run .#admin`) SHALL add a tenant by email an
 - **WHEN** the administrator removes a tenant
 - **THEN** its token stops working at once and its library is moved to `data/removed/` unless `--purge --yes` deletes it
 
+### Requirement: The tools over HTTP
+
+`npm run serve` SHALL serve the MCP tools over HTTP (the Streamable HTTP transport) at `/mcp`, with a health check at `/health`, on `RIDE_SERVER_HOST` and `RIDE_SERVER_PORT` (default 127.0.0.1:8788; TLS belongs to the proxy in front). Every request to `/mcp` SHALL carry `Authorization: Bearer <token>`; a missing, unknown, suspended or removed token SHALL be answered 401 with `WWW-Authenticate: Bearer` and reach nothing. Each MCP session SHALL be one rider's, over their library, holding that rider's routes, preferences and start point as the stdio server does; a session SHALL be reachable only with its rider's token, and any other token SHALL be answered as if the session did not exist. A rider suspended or removed SHALL be shut out of an open session at once. A rider SHALL have at most 5 open sessions and the server 200; a session idle for 30 minutes SHALL be closed; a rider SHALL be limited to 300 requests a minute (429 with `Retry-After`); a request body over 1 MiB SHALL be refused (413).
+
+#### Scenario: Two riders, one server
+
+- **WHEN** two riders connect with their own tokens and list their roadbooks
+- **THEN** each gets only their own, and neither can open the other's session
+
+### Requirement: Files stay in the rider's folder
+
+On the server, every path a tool reads or writes SHALL be inside the rider's own folder (`data/tenants/<id>/`): exports go to its `exports/` by default, a relative path is taken from there, and an absolute path elsewhere, a path with `..` or a path with `~` SHALL be refused with a message saying files stay inside the rider's folder. This SHALL cover the GPX, Markdown and map exports, the track given to a review and the route file given to an import. The place-name state that depends on a rider's start point SHALL be that rider's own while their request is served.
+
+#### Scenario: A path that leaves the folder
+
+- **WHEN** a rider asks `exportGpx` to write `../../escape.gpx` or `/tmp/x.gpx`
+- **THEN** the call fails with "files stay inside your own folder" and nothing is written
+
 ### Requirement: Choose a library from the terminal
 
 The terminal commands and the stdio MCP server SHALL use a tenant's library when `RIDE_TENANT=<id>` is set, so that the administrator can look into a library, and SHALL fail with a clear message for an unknown identifier.

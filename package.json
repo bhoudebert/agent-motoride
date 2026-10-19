@@ -11,6 +11,7 @@
     "ride": "node --env-file-if-exists=.env src/index.ts",
     "rides": "node --env-file-if-exists=.env src/rides.ts",
     "admin": "node --env-file-if-exists=.env src/admin.ts",
+    "serve": "node --env-file-if-exists=.env src/serve.ts",
     "smoke": "node --env-file-if-exists=.env scripts/smoke.ts",
     "typecheck": "tsc --noEmit",
     "mcp": "node --env-file-if-exists=.env src/mcp.ts",

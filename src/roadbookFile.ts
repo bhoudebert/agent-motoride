@@ -21,6 +21,8 @@ export interface RoadbookFile {
   cameras: Array<{ lat: number; lon: number; kmh: number | null; bearing: number | null; direction: "both" | null }>;
   /** Roundabouts on the line: where the rider enters and leaves the ring, the exits and the one taken. */
   junctions: RoundaboutJunction[];
+  /** The country of each stretch, by index into the line: the app decides what it may say about a camera from it. */
+  countries: Array<{ from: number; to: number; code: string }>;
 }
 
 export interface RoundaboutJunction {
@@ -64,6 +66,9 @@ function cameraKmh(limit: number | string | null): number | null {
   const n = Number(/\d+/.exec(String(limit ?? ""))?.[0]);
   return Number.isFinite(n) && n > 0 ? n : null;
 }
+
+/** Countries where warning of a camera is forbidden, so their cameras are not exported (the app also refuses them). */
+export const NO_CAMERA_COUNTRIES = new Set(["DE", "CH"]);
 
 const COMPASS = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
 
@@ -162,6 +167,7 @@ export async function buildRoadbookFile(
   const line: LatLon[] = [];
   const limits: RoadbookFile["limits"] = [];
   const junctions: RoadbookFile["junctions"] = [];
+  const countries: RoadbookFile["countries"] = [];
   const legEndKm: number[] = [];
   const errors: string[] = [];
   let km = 0;
@@ -187,6 +193,13 @@ export async function buildRoadbookFile(
         const from = edge.begin_shape_index;
         const to = edge.end_shape_index;
         if (from === undefined || to === undefined || to <= from) continue;
+        const code = data.admins?.[edge.end_node?.admin_index ?? -1]?.country_code?.toUpperCase();
+        if (code && /^[A-Z]{2}$/.test(code)) {
+          const lastCountry = countries.at(-1);
+          // Consecutive edges of one country are one stretch.
+          if (lastCountry && lastCountry.code === code && lastCountry.to === base + from) lastCountry.to = base + to;
+          else countries.push({ from: base + from, to: base + to, code });
+        }
         const { kmh, posted } = effectiveLimit(edge, data.admins);
         const road = roadLabel(edge.names);
         const stretch = { from: base + from, to: base + to, kmh, posted, ...(road ? { road } : {}) };
@@ -231,14 +244,29 @@ export async function buildRoadbookFile(
     .sort((a, b) => a.km - b.km)
     .map(({ lat, lon, name, kind }) => ({ lat, lon, name, kind }));
 
-  const cameras = (input.cameras ?? []).map((c) => ({
-    ...parseCoords(c.coords),
-    kmh: cameraKmh(c.limitKmh),
-    // A compass direction is the way the camera faces. forward and backward are relative to the OpenStreetMap
-    // way, not to the route, so they are not exported; "both" is safe to state.
-    bearing: cameraBearing(c.direction),
-    direction: c.direction === "both" ? ("both" as const) : null,
-  }));
+  // Where the app may never say anything about a camera, the camera is not written: nothing to leak or to forget.
+  const countryOfCamera = (at: LatLon) => {
+    let best = -1;
+    let bestKm = 0.1;
+    line.forEach((p, i) => {
+      const d = haversineKm(p, at);
+      if (d < bestKm) {
+        best = i;
+        bestKm = d;
+      }
+    });
+    return countries.find((c) => best >= c.from && best <= c.to)?.code;
+  };
+  const cameras = (input.cameras ?? [])
+    .filter((c) => !NO_CAMERA_COUNTRIES.has(countryOfCamera(parseCoords(c.coords)) ?? ""))
+    .map((c) => ({
+      ...parseCoords(c.coords),
+      kmh: cameraKmh(c.limitKmh),
+      // A compass direction is the way the camera faces. forward and backward are relative to the OpenStreetMap
+      // way, not to the route, so they are not exported; "both" is safe to state.
+      bearing: cameraBearing(c.direction),
+      direction: c.direction === "both" ? ("both" as const) : null,
+    }));
 
   return {
     file: {
@@ -252,6 +280,7 @@ export async function buildRoadbookFile(
       limits,
       cameras,
       junctions,
+      countries,
     },
     limitsError: errors.length ? `Speed limits missing for ${errors.join("; ")}` : null,
   };

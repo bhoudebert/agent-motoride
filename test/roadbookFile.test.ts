@@ -338,3 +338,51 @@ test("roadbook file: traffic keeping left is said, a ring with one exit or a rin
   );
   assert.deepEqual(bare.file.junctions, []);
 });
+
+const tracingAdmins = (admins: Array<{ country_code?: string }>, edgesOf: (leg: number) => unknown[]) => {
+  let n = 0;
+  return async (shape: string) => ({ shape, admins, edges: edgesOf(n++) as any[] });
+};
+const inAdmin = (from: number, to: number, admin: number) => edge(from, to, { end_node: { admin_index: admin } });
+
+test("roadbook file: the country of each stretch is written, consecutive edges of a country making one stretch", async () => {
+  const { file } = await buildRoadbookFile(
+    input(),
+    tracingAdmins([{ country_code: "fr" }, { country_code: "BE" }], (leg) =>
+      leg === 0 ? [inAdmin(0, 20, 0), inAdmin(20, 40, 0), inAdmin(40, 60, 1)] : [inAdmin(0, 30, 1), inAdmin(30, 60, 1)],
+    ),
+  );
+  assert.deepEqual(file.countries, [
+    { from: 0, to: 40, code: "FR" },
+    { from: 40, to: 120, code: "BE" },
+  ]);
+});
+
+test("roadbook file: a leg that could not be traced has no country, and the others keep theirs", async () => {
+  const { file } = await buildRoadbookFile(input(), async (shape) => {
+    if (shape === shapes[0]) throw new Error("429");
+    return { shape, admins: [{ country_code: "BE" }], edges: [inAdmin(0, 60, 0)] } as any;
+  });
+  assert.deepEqual(file.countries, [{ from: 60, to: 120, code: "BE" }]);
+});
+
+test("roadbook file: a camera in Germany or Switzerland is not written, one elsewhere is", async () => {
+  const at = (i: number) => `${leg1[i]!.lat},${leg1[i]!.lon}`;
+  const { file } = await buildRoadbookFile(
+    input({
+      cameras: [
+        { limitKmh: 50, direction: null, coords: at(10) },
+        { limitKmh: 50, direction: null, coords: at(50) },
+        { limitKmh: 70, direction: null, coords: at(30) },
+      ],
+    }),
+    tracingAdmins([{ country_code: "FR" }, { country_code: "DE" }], (leg) =>
+      leg === 0 ? [inAdmin(0, 20, 0), inAdmin(20, 40, 1), inAdmin(40, 60, 0)] : [inAdmin(0, 60, 0)],
+    ),
+  );
+  assert.equal(file.cameras.length, 2);
+  assert.deepEqual(
+    file.cameras.map((c) => Number(c.lat.toFixed(4))).sort(),
+    [leg1[10]!.lat, leg1[50]!.lat].map((n) => Number(n.toFixed(4))).sort(),
+  );
+});

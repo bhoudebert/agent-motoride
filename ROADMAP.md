@@ -22,9 +22,10 @@ Done: a registry of riders with a library each, `npm run admin`, and the MCP too
   stay in the rider's folder on the server, so these two need a way to put one there).
 - **The roadbook feed and the ride return for the MotoRide app**: the app lists and downloads the roadbooks of the rider's
   library, and sends a ride it recorded back for `reviewRide`, with the roadbook matched by number and name.
-- **Live sharing, the phone's side**: the relay and the follower's page are built (ADR 0028); the MotoRide app's "Share my
-  ride" button, which makes the link and sends the encrypted positions, is next. Later: a self-hosted copy of the map library,
-  alerts to followers (no news for 10 minutes, a long stop) from the phone's own check.
+- **Live sharing, what is left**: the relay, the follower's page and the app's "Share this ride live" are built (ADR 0028).
+  Later: a self-hosted copy of the map library, alerts to followers (no news for 10 minutes, a long stop) from the phone's
+  own check, and an in-app QR scanner or an https page that opens the app for cameras that do not open the invitation link
+  (ADR 0029).
 - **A shared cache of road and weather lookups** across riders (the container image, the compose file, the NixOS module
   and the self-hosting guide are done).
 - **Quotas and accounts** if the instance is offered as a service: limits per rider, billing, terms and deletion of an

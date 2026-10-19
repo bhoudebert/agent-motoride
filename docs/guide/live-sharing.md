@@ -4,8 +4,9 @@ A rider can share where they are, live, with people who follow from a link: in a
 followers install nothing and open the link in a browser. The server that relays the positions **cannot read them**.
 
 ::: tip Where this is
-The relay and the page followers open are built and run in the server for several riders ([Host it yourself](/self-hosting)).
-The MotoRide app's "Share my ride" button, which makes the link and sends the positions, is the next step.
+The relay and the page followers open run in the server for several riders ([Host it yourself](/self-hosting)). The
+MotoRide app shares a ride from its ride screen: set the server once by scanning an invitation
+([Run it for several riders](/several-riders)), switch "Share this ride live" on, and send the link.
 :::
 
 ## What a follower sees
@@ -34,7 +35,7 @@ the server restarts they are gone, and the phone creates its ride again.
 
 ## For the person running the server
 
-The relay needs no setting. Put `/share/*`, `/follow/*` and `/follow.js` behind your proxy next to `/mcp` (the Caddy file and
+The relay needs no setting. Put `/share/*`, `/follow/*`, `/follow.js` and `/enrol` behind your proxy next to `/mcp` (the Caddy file and
 the NixOS module in the repository already do). The page loads the map library from a pinned address with an integrity hash
 and the map from OpenFreeMap. The server logs no channel, key, token or position. How it is built:
 [ADR 0028](https://github.com/bhoudebert/agent-motoride/blob/main/docs/adr/0028-live-sharing-is-an-encrypted-relay.md).

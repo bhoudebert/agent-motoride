@@ -41,6 +41,10 @@ jobs:
             -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}' \
             | grep -q '"serverInfo"'
           docker exec ride node src/admin.ts list | grep -q ci@example.org
+          # The live ride relay and the follower's page.
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8788/follow/anything)" = 200
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8788/follow.js)" = 200
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X PUT http://127.0.0.1:8788/share/abcdefghijklmnopqrstuv)" = 401
       - name: Compose file is valid
         run: |
           printf 'RIDE_DOMAIN=rides.example.org\nRIDE_SERVER_URL=https://rides.example.org\n' > /tmp/ride.env

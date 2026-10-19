@@ -3,7 +3,7 @@ import { parseArgs } from "node:util";
 import Anthropic from "@anthropic-ai/sdk";
 import { openRide, type RideSession } from "./agent.ts";
 import { addRideNote, pendingNotesSummary } from "./feedback.ts";
-import { exportSavedRide, savedRideGpx, writeGpx } from "./gpx.ts";
+import { describeRoadbookFile, exportSavedRide, savedRideGpx, writeGpx } from "./gpx.ts";
 import {
   DuplicateRideError,
   enrichRide,
@@ -581,8 +581,8 @@ async function startMenu(): Promise<
         }
         if (key === "g") {
           try {
-            const { path } = await exportSavedRide(store, ride, undefined);
-            console.log(`GPX written: ${path}`);
+            const exported = await exportSavedRide(store, ride, undefined);
+            console.log(`GPX written: ${exported.path}\n${describeRoadbookFile(exported)}`);
             ride = store.findRide(String(ride.id)) ?? ride;
           } catch (error) {
             console.log(describeError(error));
@@ -921,8 +921,8 @@ async function refineLoop(
               );
               console.log(`GPX written: ${path}`);
             } else if (savedId() !== null) {
-              const { path } = await exportSavedRide(store, store.findRide(String(savedId()))!, file);
-              console.log(`GPX written: ${path}`);
+              const exported = await exportSavedRide(store, store.findRide(String(savedId()))!, file);
+              console.log(`GPX written: ${exported.path}\n${describeRoadbookFile(exported)}`);
             } else {
               console.log("Nothing to export yet: no itinerary in this session.");
             }

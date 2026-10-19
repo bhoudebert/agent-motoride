@@ -57,6 +57,20 @@ offline and looks the same everywhere. It also comes with the Markdown export
 (at the top of the document) and on the phone share page. For streets and
 the land around, use the Google Maps links.
 
+## For the MobileMotoRide app
+
+Exporting a saved ride also writes a **roadbook file** next to the GPX, `<name>.motoride.json`, for the
+MobileMotoRide app: the exact line, the stops, the speed limit of
+every stretch (posted, or assumed from the country default and marked so) and the fixed cameras. The app shows the
+limit at all times and warns when you are over it. The export says where the file went, and if Valhalla could not
+give the limits for a leg, which one.
+
+```bash
+npm run rides -- export 7    # 7-<name>.gpx and 7-<name>.motoride.json in exports/
+```
+
+The format is described in `docs/roadbook-file.md`.
+
 ## To the phone
 
 ::: code-group

@@ -69,9 +69,30 @@ docker compose -f deploy/docker-compose.yml exec ride node src/admin.ts backup  
 docker compose -f deploy/docker-compose.yml pull && docker compose -f deploy/docker-compose.yml up -d
 ```
 
-Everything lives in the `ride-data` volume: the registry and one library per rider. Back it up, or copy the backups
+Everything lives in one place, the Docker volume `ride-data` unless you choose a folder (below): the registry and one library per rider. Back it up, or copy the backups
 folder somewhere else. An update is a new image and a restart; each library migrates itself, after a backup of its own,
 the first time its rider is served ([ADR 0022](https://github.com/bhoudebert/agent-motoride/blob/main/docs/adr/0022-versioned-schema-migrations.md)).
+
+### Keep the data in a folder of your own
+
+To have the data on a disk path you choose, rather than in a Docker volume, set `RIDE_DATA_PATH` in `deploy/.env`:
+
+```bash
+sudo mkdir -p /srv/agent-motoride && sudo chown 1000:1000 /srv/agent-motoride   # the container runs as uid 1000 (node)
+echo 'RIDE_DATA_PATH=/srv/agent-motoride' >> deploy/.env
+docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d ride    # add the nginx override if you use one
+```
+
+The registry (`registry.db`), the riders' libraries (`tenants/`) and the backups are then ordinary files there, which you
+can back up with your usual tools. To move data that is already in the volume (stop the server first):
+
+```bash
+docker compose -f deploy/docker-compose.yml stop ride
+docker run --rm -v deploy_ride-data:/from -v /srv/agent-motoride:/to alpine sh -c 'cp -a /from/. /to/ && chown -R 1000:1000 /to'
+```
+
+(The volume is named after the folder the compose file is in: `docker volume ls` shows it.) Keep `RIDE_DATA_PATH` set from
+then on; the old volume stays until you remove it.
 
 ## With NixOS
 

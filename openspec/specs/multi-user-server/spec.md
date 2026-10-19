@@ -17,7 +17,7 @@ Without any server setting, agentRide SHALL work as before: one library in `data
 
 ### Requirement: Tenants and their tokens
 
-The system SHALL keep a registry of tenants in its own SQLite file (`data/registry.db`, or `RIDE_REGISTRY`): for each a random identifier of 16 characters that is not derived from the email, the email address (lower case, unique), a status (active or suspended), the creation date and the time it was last seen. A tenant SHALL be given a token of 256 random bits shown once, when it is created or changed, and only a hash of it SHALL be kept. A token SHALL identify its tenant only while the tenant is active; an unknown token, a token of a suspended tenant and a token of a removed tenant SHALL identify nobody. Giving a new token SHALL end the old one at once.
+The system SHALL keep a registry of tenants in its own SQLite file (`data/registry.db`, or `RIDE_REGISTRY`): for each a random UUID (version 4) as identifier, never a counter and not derived from the email, the email address (lower case, unique), a status (active or suspended), the creation date and the time it was last seen. A tenant SHALL be given a token of 256 random bits shown once, when it is created or changed, and only a hash of it SHALL be kept. A token SHALL identify its tenant only while the tenant is active; an unknown token, a token of a suspended tenant and a token of a removed tenant SHALL identify nobody. Giving a new token SHALL end the old one at once.
 
 #### Scenario: A lost token
 

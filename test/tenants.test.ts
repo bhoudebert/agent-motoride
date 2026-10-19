@@ -54,7 +54,7 @@ test("a rider is registered by email with a random identifier and a token shown 
   const { tenant, token } = registry.add("  Alice@Example.ORG ");
   assert.equal(tenant.email, "alice@example.org");
   assert.equal(tenant.status, "active");
-  assert.match(tenant.id, /^[A-Za-z0-9_-]{16}$/);
+  assert.match(tenant.id, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/, "a random UUID");
   assert.ok(!tenant.id.includes("alice"), "the identifier says nothing of the email");
   assert.match(token, /^mrt_[A-Za-z0-9_-]{43}$/);
   assert.notEqual(registry.add("bob@example.org").tenant.id, tenant.id);

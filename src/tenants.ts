@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -23,7 +23,8 @@ const SEEN_EVERY_MS = 60_000;
 
 const hash = (token: string) => createHash("sha256").update(token).digest("hex");
 export const newToken = (): string => TOKEN_PREFIX + randomBytes(32).toString("base64url");
-const newId = (): string => randomBytes(12).toString("base64url");
+/** A random UUID (122 random bits): not a counter, not made from the email, and impossible to guess. */
+const newId = (): string => randomUUID();
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface Row {

@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Following a ride</title>
+    <link rel="icon" href="data:," />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.9.0/dist/maplibre-gl.css"
+      integrity="sha384-gNYNsUmuZqDYiT3gbirWTV5K7rt71RoveS/yXAaU09d4ZUmeDVTD3XoqB6uJAIFR"
+      crossorigin="anonymous"
+    />
+    <style>
+      :root {
+        --paper: #f3eee4;
+        --moss: #24382d;
+        --signal: #e6b422;
+        --rust: #a8432a;
+        --ink: #1c1d1a;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        font-family: system-ui, sans-serif;
+        background: var(--paper);
+        color: var(--ink);
+      }
+      #map {
+        position: absolute;
+        inset: 0;
+        background: #e8e4d8;
+      }
+      .panel {
+        position: absolute;
+        left: 12px;
+        right: 12px;
+        top: 12px;
+        max-width: 420px;
+        background: var(--moss);
+        color: #e9efe6;
+        border-radius: 16px;
+        padding: 14px 18px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+        z-index: 2;
+      }
+      #headline {
+        font-size: 22px;
+        font-weight: 700;
+      }
+      #detail {
+        margin-top: 4px;
+        font-size: 14px;
+        opacity: 0.85;
+      }
+      body[data-state="stale"] .panel {
+        background: var(--rust);
+      }
+      body[data-state="ended"] .panel {
+        background: #4a4b44;
+      }
+      .dot {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--rust);
+        border: 4px solid var(--paper);
+        box-shadow: 0 0 0 8px rgba(168, 67, 42, 0.25);
+      }
+      .note {
+        position: absolute;
+        left: 12px;
+        bottom: 12px;
+        font-size: 11px;
+        background: rgba(243, 238, 228, 0.9);
+        padding: 4px 8px;
+        border-radius: 8px;
+        z-index: 2;
+      }
+    </style>
+  </head>
+  <body data-state="waiting">
+    <div id="map"></div>
+    <div class="panel" role="status" aria-live="polite">
+      <div id="headline">Opening the ride…</div>
+      <div id="detail"></div>
+    </div>
+    <div class="note">Shared by link. The position is decrypted here in your browser; the server cannot read it.</div>
+    <script
+      src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.9.0/dist/maplibre-gl.js"
+      integrity="sha384-81ppUWZZO+pveTPk4qU9cZuScEFULHfuOMHVJHFZ7xVBlWQTG1zsPrVIMGAl1WMb"
+      crossorigin="anonymous"
+    ></script>
+    <script type="module" src="/follow.js"></script>
+  </body>
+</html>

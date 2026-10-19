@@ -1,8 +1,11 @@
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
+import { fileURLToPath } from "node:url";
 import { tenantDbPath, tenantDir } from "./dataDir.ts";
+import { CHANNEL, LiveShares, type LiveOptions } from "./live.ts";
 import { type RequestContext, runInContext } from "./requestContext.ts";
 import { createRideServer } from "./rideServer.ts";
 import { Store } from "./store.ts";
@@ -26,6 +29,8 @@ export interface ServeOptions {
   maxBody?: number;
   version?: string;
   now?: () => number;
+  /** Limits of the live sharing relay (ADR 0028). */
+  live?: LiveOptions;
 }
 
 interface Session {
@@ -35,6 +40,28 @@ interface Session {
   store: Store;
   lastUsed: number;
 }
+
+const ASSETS = fileURLToPath(new URL("../assets/follow/", import.meta.url));
+const FOLLOW_HTML = readFileSync(`${ASSETS}index.html`);
+const FOLLOW_JS = readFileSync(`${ASSETS}follow.js`);
+/** Only this server and the map's own sources: the page decrypts positions, so nothing else may run in it. */
+const FOLLOW_CSP = [
+  "default-src 'none'",
+  "script-src 'self' https://cdn.jsdelivr.net",
+  "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+  "img-src 'self' data: blob: https://tiles.openfreemap.org",
+  "connect-src 'self' https://tiles.openfreemap.org",
+  "worker-src blob:",
+  "child-src blob:",
+  "frame-ancestors 'none'",
+  "base-uri 'none'",
+  "form-action 'none'",
+].join("; ");
+
+const sendFile = (res: ServerResponse, body: Buffer, type: string, headers: Record<string, string> = {}) => {
+  res.writeHead(200, { "Content-Type": type, "Cache-Control": "no-cache", ...headers });
+  res.end(body);
+};
 
 const json = (res: ServerResponse, status: number, body: unknown, headers: Record<string, string> = {}) => {
   res.writeHead(status, { "Content-Type": "application/json", "Cache-Control": "no-store", ...headers });
@@ -64,6 +91,7 @@ const bearer = (req: IncomingMessage): string | null => {
 export function createHttpServer(options: ServeOptions): {
   http: Server;
   sessions: Map<string, Session>;
+  live: LiveShares;
   /** Close the sessions that have been idle too long; returns how many. */
   sweep(): Promise<number>;
   close(): Promise<void>;
@@ -78,6 +106,7 @@ export function createHttpServer(options: ServeOptions): {
     version = "0.1.0",
     now = Date.now,
   } = options;
+  const live = new LiveShares({ now, ...options.live });
   const sessions = new Map<string, Session>();
   const windows = new Map<string, { start: number; count: number }>();
 
@@ -103,9 +132,99 @@ export function createHttpServer(options: ServeOptions): {
     session.store.close();
   };
 
+  /** The relay of live sharing: the rider's side needs their token, the follower's side needs nothing but the channel. */
+  async function handleShare(req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
+    const channel = url.pathname.slice("/share/".length);
+    if (!CHANNEL.test(channel)) return json(res, 404, { error: "Not found" });
+
+    if (req.method === "GET") {
+      const t = now();
+      const w = windows.get(`read:${channel}`);
+      if (!w || t - w.start >= 60_000) windows.set(`read:${channel}`, { start: t, count: 1 });
+      else if (++w.count > 120) return json(res, 429, { error: "Too many requests." }, { "Retry-After": "30" });
+      const after = Number(url.searchParams.get("after") ?? 0);
+      const read = live.read(channel, Number.isInteger(after) && after >= 0 ? after : 0);
+      return read ? json(res, 200, read) : json(res, 404, { error: "No ride here." });
+    }
+
+    const token = bearer(req);
+    const tenant = token ? registry.verify(token) : null;
+    if (!tenant) return json(res, 401, { error: "A rider's token is needed." }, { "WWW-Authenticate": "Bearer" });
+    if (limited(tenant)) return json(res, 429, { error: "Too many requests; wait a minute." }, { "Retry-After": "60" });
+
+    if (req.method === "PUT") {
+      const made = live.create(channel, tenant.id);
+      if (made === "created") return json(res, 201, { ok: true });
+      if (made === "same") return json(res, 200, { ok: true });
+      if (made === "taken") return json(res, 409, { error: "That channel is taken." });
+      if (made === "limit") return json(res, 429, { error: "Too many rides shared at once." }, { "Retry-After": "60" });
+      return json(res, 400, { error: "Not a channel." });
+    }
+    if (req.method === "DELETE") {
+      const mode = url.searchParams.get("mode") === "stop" ? "stop" : "end";
+      return live.end(channel, tenant.id, mode) === "ok"
+        ? json(res, 200, { ok: true })
+        : json(res, 404, { error: "No ride here." });
+    }
+    if (req.method === "POST") {
+      let body: unknown;
+      try {
+        body = await readBody(req, 4096);
+      } catch (e) {
+        return e instanceof TooBig
+          ? json(res, 413, { error: "Update too large." })
+          : json(res, 400, { error: "Not JSON." });
+      }
+      const { iv, ct } = (typeof body === "object" && body !== null ? body : {}) as { iv?: unknown; ct?: unknown };
+      const result = live.publish(channel, tenant.id, iv, ct);
+      if (result.ok) return json(res, 200, { seq: result.seq });
+      const status = { unknown: 404, forbidden: 404, "too-fast": 429, bad: 400, ended: 410 }[result.reason];
+      return json(res, status, { error: result.reason }, status === 429 ? { "Retry-After": "2" } : {});
+    }
+    return json(res, 405, { error: "Method not allowed." }, { Allow: "GET, PUT, POST, DELETE" });
+  }
+
+  /** A phone exchanges the code of its invitation (and the PIN, when there is one) for a token of its own. */
+  async function handleEnrol(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    if (req.method !== "POST") return json(res, 405, { error: "Method not allowed." }, { Allow: "POST" });
+    // Whoever asks, only so many tries a minute in all: the code is 192 random bits and the PIN counts its own tries.
+    const t = now();
+    const w = windows.get("enrol");
+    if (!w || t - w.start >= 60_000) windows.set("enrol", { start: t, count: 1 });
+    else if (++w.count > 30)
+      return json(res, 429, { error: "Too many tries; wait a minute." }, { "Retry-After": "60" });
+    let body: unknown;
+    try {
+      body = await readBody(req, 1024);
+    } catch (e) {
+      return e instanceof TooBig ? json(res, 413, { error: "Too large." }) : json(res, 400, { error: "Not JSON." });
+    }
+    const { code, pin } = (typeof body === "object" && body !== null ? body : {}) as { code?: unknown; pin?: unknown };
+    if (typeof code !== "string" || (pin !== undefined && typeof pin !== "string"))
+      return json(res, 400, { error: "A code is needed." });
+    const result = registry.redeem(code, pin, now());
+    if (result.ok) return json(res, 200, { token: result.token });
+    if (result.reason === "pin") return json(res, 403, { error: "pin", triesLeft: result.triesLeft });
+    if (result.reason === "locked") return json(res, 403, { error: "locked" });
+    return json(res, 404, { error: "invalid" });
+  }
+
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const url = new URL(req.url ?? "/", "http://x");
-    if (url.pathname === "/health") return json(res, 200, { ok: true, version, sessions: sessions.size });
+    if (url.pathname === "/enrol") return handleEnrol(req, res);
+    if (url.pathname === "/health")
+      return json(res, 200, { ok: true, version, sessions: sessions.size, shares: live.size });
+    if (url.pathname === "/follow.js" && req.method === "GET")
+      return sendFile(res, FOLLOW_JS, "text/javascript; charset=utf-8");
+    // The page is the same for every link, so it says nothing of whether a ride exists.
+    if (url.pathname.startsWith("/follow/") && req.method === "GET") {
+      return sendFile(res, FOLLOW_HTML, "text/html; charset=utf-8", {
+        "Content-Security-Policy": FOLLOW_CSP,
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff",
+      });
+    }
+    if (url.pathname.startsWith("/share/")) return handleShare(req, res, url);
     if (url.pathname !== "/mcp") return json(res, 404, { error: "Not found" });
 
     const token = bearer(req);
@@ -175,7 +294,9 @@ export function createHttpServer(options: ServeOptions): {
   return {
     http,
     sessions,
+    live,
     async sweep() {
+      live.sweep();
       const idle = [...sessions].filter(([, s]) => now() - s.lastUsed >= idleMs).map(([sid]) => sid);
       for (const sid of idle) await drop(sid);
       return idle.length;

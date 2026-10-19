@@ -7,6 +7,8 @@ rider's own model does the planning.
 
 ## Start the server
 
+The quickest way is the container with Caddy in front: [Host it yourself](/self-hosting). By hand, from the code:
+
 ```bash
 npm run admin -- add alice@example.org     # once per rider: prints the token and the connection lines
 npm run serve                              # listens on 127.0.0.1:8788; /mcp for the tools, /health for a check

@@ -30,7 +30,17 @@ export interface TraceEdge {
   surface?: string;
   begin_shape_index?: number;
   end_shape_index?: number;
-  end_node?: { admin_index?: number };
+  /** The road is a roundabout's ring. */
+  roundabout?: boolean;
+  drive_on_right?: boolean;
+  /** Degrees clockwise from north at the start and the end of the edge. */
+  begin_heading?: number;
+  end_heading?: number;
+  end_node?: {
+    admin_index?: number;
+    /** The other roads at the end node: where they start, and whether they can be driven out of it. */
+    intersecting_edges?: Array<{ begin_heading?: number; driveability?: "forward" | "backward" | "both" }>;
+  };
 }
 
 export interface TraceAttributesResponse {
@@ -197,6 +207,12 @@ function traceAttributes(shape: string, shapeMatch: "edge_walk" | "map_snap") {
           "edge.surface",
           "edge.begin_shape_index",
           "edge.end_shape_index",
+          "edge.roundabout",
+          "edge.drive_on_right",
+          "edge.begin_heading",
+          "edge.end_heading",
+          "node.intersecting_edge.begin_heading",
+          "node.intersecting_edge.driveability",
           "shape",
           "node.admin_index",
           "admin.country_code",

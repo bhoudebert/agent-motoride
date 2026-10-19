@@ -264,3 +264,77 @@ test("export: a saved ride is written as a GPX and as a roadbook file next to it
   assert.deepEqual(file.cameras, [{ lat: 50.5, lon: 3.2, kmh: 70, bearing: null, direction: null }]);
   assert.ok(file.stops.length >= 3);
 });
+
+/** A ring edge, in the shape Valhalla returns it, with the roads that can be left at its end node. */
+const ring = (from: number, to: number, extra: Record<string, unknown> = {}) =>
+  edge(from, to, { roundabout: true, begin_heading: 90, end_heading: 90, ...extra });
+const road = (begin_heading: number, driveability: string) => ({ begin_heading, driveability });
+const node = (...intersecting_edges: unknown[]) => ({ admin_index: 0, intersecting_edges });
+
+test("roadbook file: a roundabout gives its entry, exit points, the exits relative to the way in and the one taken", async () => {
+  const { file } = await buildRoadbookFile(
+    input(),
+    tracing((leg) =>
+      leg === 0
+        ? [
+            edge(0, 20, { end_heading: 0, end_node: node() }),
+            // Entering heading north; exits at 100 (right), 280 (left, one-way in: not an exit) and 10 (taken); the road at 200 is on the left, -160.
+            ring(20, 24, { end_node: node(road(100, "forward"), road(280, "backward")) }),
+            ring(24, 28, { end_node: node(road(200, "both")) }),
+            edge(28, 60, { begin_heading: 10 }),
+          ]
+        : [edge(0, 60)],
+    ),
+  );
+  assert.deepEqual(file.junctions, [{ kind: "roundabout", at: 20, to: 28, exits: [-160, 10, 100], take: 1 }]);
+});
+
+test("roadbook file: indexes of a roundabout in a later leg carry the leg's offset", async () => {
+  const { file } = await buildRoadbookFile(
+    input(),
+    tracing((leg) =>
+      leg === 0
+        ? [edge(0, 60)]
+        : [
+            edge(0, 10, { end_heading: 90, end_node: node() }),
+            ring(10, 15, { end_node: node(road(0, "both")) }),
+            edge(15, 60, { begin_heading: 180 }),
+          ],
+    ),
+  );
+  assert.equal(file.junctions.length, 1);
+  assert.deepEqual([file.junctions[0]!.at, file.junctions[0]!.to], [70, 75]);
+  assert.deepEqual(file.junctions[0]!.exits, [-90, 90]);
+  assert.equal(file.junctions[0]!.exits[file.junctions[0]!.take], 90);
+});
+
+test("roadbook file: traffic keeping left is said, a ring with one exit or a ring the leg ends in gives nothing", async () => {
+  const left = await buildRoadbookFile(
+    input(),
+    tracing((leg) =>
+      leg === 0
+        ? [
+            edge(0, 10, { end_heading: 0, end_node: node() }),
+            ring(10, 15, { drive_on_right: false, end_node: node(road(270, "forward")) }),
+            edge(15, 60, { begin_heading: 90 }),
+          ]
+        : [edge(0, 60)],
+    ),
+  );
+  assert.equal(left.file.junctions[0]?.traffic, "left");
+  const bare = await buildRoadbookFile(
+    input(),
+    tracing((leg) =>
+      leg === 0
+        ? [
+            edge(0, 10, { end_heading: 0, end_node: node() }),
+            ring(10, 15, { end_node: node(road(90, "backward")) }),
+            edge(15, 40, { begin_heading: 0 }),
+            edge(40, 50, { end_heading: 0, end_node: node() }),
+            ring(50, 60),
+          ]
+        : [edge(0, 60)],
+    ),
+  );
+  assert.deepEqual(bare.file.junctions, []);
+});

@@ -1,6 +1,6 @@
 import { decodePolyline, encodePolyline, type LatLon } from "./geometry.ts";
 import { haversineKm } from "./tools/geo.ts";
-import { effectiveLimit, traceLeg, type TraceAttributesResponse } from "./tools/trip.ts";
+import { effectiveLimit, traceLeg, type TraceAttributesResponse, type TraceEdge } from "./tools/trip.ts";
 
 /** The `motoride-roadbook` file read by the MobileMotoRide app (docs/roadbook-file.md). */
 export const ROADBOOK_FORMAT = "motoride-roadbook";
@@ -19,6 +19,21 @@ export interface RoadbookFile {
   /** Speed limit per stretch, by index into the decoded line: from point `from` to point `to`. */
   limits: Array<{ from: number; to: number; kmh: number; posted: boolean; road?: string }>;
   cameras: Array<{ lat: number; lon: number; kmh: number | null; bearing: number | null; direction: "both" | null }>;
+  /** Roundabouts on the line: where the rider enters and leaves the ring, the exits and the one taken. */
+  junctions: RoundaboutJunction[];
+}
+
+export interface RoundaboutJunction {
+  kind: "roundabout";
+  /** Index into the line of the point where the rider enters the ring, and of the one where they leave it. */
+  at: number;
+  to: number;
+  /** Bearings of the exit roads in degrees relative to the way the rider enters, -180 to 180, left to right. */
+  exits: number[];
+  /** Index into `exits` of the exit the line takes. */
+  take: number;
+  /** Which side traffic keeps; omitted when it keeps right. */
+  traffic?: "left";
 }
 
 export interface RoadbookFileInput {
@@ -69,6 +84,64 @@ export function cameraBearing(direction: string | null | undefined): number | nu
   return null;
 }
 
+/** `heading` seen from `from`, in degrees from -180 (exclusive) to 180: negative is to the left. */
+const relative = (heading: number, from: number) => {
+  const d = (((heading - from) % 360) + 360) % 360;
+  return d > 180 ? d - 360 : d;
+};
+
+/** Two exits closer than this are one road, drawn twice by the data. */
+const SAME_EXIT_DEG = 8;
+
+/**
+ * The roundabouts a traced leg goes through. A run of ring edges is entered from the edge before it and left by the
+ * edge after it; the exits are the roads that can be driven out of the ring at the nodes it passes (a one-way road
+ * that only leads in is not one), plus the road taken. A ring the leg starts or ends in, or with fewer than two
+ * exits, gives nothing. `base` is the index of the leg's first point in the whole line.
+ */
+export function roundaboutsOf(edges: TraceEdge[], base: number): RoundaboutJunction[] {
+  const found: RoundaboutJunction[] = [];
+  for (let i = 1; i < edges.length; i++) {
+    const entry = edges[i - 1]!;
+    if (!edges[i]!.roundabout || entry.roundabout) continue;
+    let j = i;
+    while (edges[j + 1]?.roundabout) j++;
+    const out = edges[j + 1];
+    const from = edges[i]!;
+    const last = edges[j]!;
+    const heading = entry.end_heading;
+    if (
+      !out ||
+      heading === undefined ||
+      out.begin_heading === undefined ||
+      from.begin_shape_index === undefined ||
+      last.end_shape_index === undefined
+    )
+      continue;
+    const taken = relative(out.begin_heading, heading);
+    const exits = [taken];
+    for (const node of [entry, ...edges.slice(i, j + 1)].map((e) => e.end_node)) {
+      for (const road of node?.intersecting_edges ?? []) {
+        if (road.begin_heading === undefined || road.driveability === "backward") continue;
+        const deg = relative(road.begin_heading, heading);
+        if (exits.every((e) => Math.abs(relative(e, deg)) > SAME_EXIT_DEG)) exits.push(deg);
+      }
+    }
+    if (exits.length < 2 || exits.length > 8) continue;
+    exits.sort((a, b) => a - b);
+    found.push({
+      kind: "roundabout",
+      at: base + from.begin_shape_index,
+      to: base + last.end_shape_index,
+      exits,
+      take: exits.indexOf(taken),
+      ...(from.drive_on_right === false ? { traffic: "left" as const } : {}),
+    });
+    i = j + 1;
+  }
+  return found;
+}
+
 function lengthKm(points: LatLon[]): number {
   let km = 0;
   for (let i = 1; i < points.length; i++) km += haversineKm(points[i - 1]!, points[i]!);
@@ -88,6 +161,7 @@ export async function buildRoadbookFile(
 ): Promise<{ file: RoadbookFile; limitsError: string | null }> {
   const line: LatLon[] = [];
   const limits: RoadbookFile["limits"] = [];
+  const junctions: RoadbookFile["junctions"] = [];
   const legEndKm: number[] = [];
   const errors: string[] = [];
   let km = 0;
@@ -128,6 +202,7 @@ export async function buildRoadbookFile(
           previous.to = stretch.to;
         } else limits.push(stretch);
       }
+      junctions.push(...roundaboutsOf(data.edges, base));
       km += data.edges.reduce((sum, e) => sum + e.length, 0);
     } else km += lengthKm(points);
     legEndKm.push(km);
@@ -176,6 +251,7 @@ export async function buildRoadbookFile(
       stops,
       limits,
       cameras,
+      junctions,
     },
     limitsError: errors.length ? `Speed limits missing for ${errors.join("; ")}` : null,
   };

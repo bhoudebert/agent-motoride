@@ -16,7 +16,8 @@ available for other apps; the app reads a GPX too, but without limits or cameras
   "line": "<encoded polyline, precision 6>",
   "stops": [{ "lat": 50.4552, "lon": 3.20384, "name": "Start", "kind": "waypoint" }],
   "limits": [{ "from": 0, "to": 183, "kmh": 50, "posted": true, "road": "D 954" }],
-  "cameras": [{ "lat": 50.52, "lon": 3.31, "kmh": 70, "bearing": 90, "direction": null }]
+  "cameras": [{ "lat": 50.52, "lon": 3.31, "kmh": 70, "bearing": 90, "direction": null }],
+  "junctions": [{ "kind": "roundabout", "at": 412, "to": 431, "exits": [-80, 15, 100], "take": 1 }]
 }
 ```
 
@@ -39,6 +40,12 @@ available for other apps; the app reads a GPX too, but without limits or cameras
   the camera then watches traffic travelling the opposite way. `direction` is `both` or null: OpenStreetMap's
   `forward` and `backward` are relative to the way, not to the line, so they are not exported. Optional. The app shows them as danger zones, never as camera
   positions (`openspec/specs/danger-zones`).
+- `junctions`: the roundabouts of the line, in order. `at` and `to` are indexes into `line` of the points where the rider
+  enters and leaves the ring. `exits` are the roads that can be driven out of the ring, as bearings in degrees relative to
+  the way the rider enters (0 straight ahead, 90 to the right, -90 to the left), from -180 to 180; `take` is the index in
+  `exits` of the exit the line takes. `traffic` is `left` where traffic keeps left, absent otherwise. Read from the
+  traced edges (Valhalla's `roundabout` flag and the roads meeting the ring). Lane guidance is not produced yet: the
+  routing data has no turn lanes for the area it was tried on. Optional in the file, as the app reads it.
 
 ## Rules for the producer
 

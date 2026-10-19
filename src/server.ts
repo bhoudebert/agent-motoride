@@ -184,8 +184,34 @@ export function createHttpServer(options: ServeOptions): {
     return json(res, 405, { error: "Method not allowed." }, { Allow: "GET, PUT, POST, DELETE" });
   }
 
+  /** A phone exchanges the code of its invitation (and the PIN, when there is one) for a token of its own. */
+  async function handleEnrol(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    if (req.method !== "POST") return json(res, 405, { error: "Method not allowed." }, { Allow: "POST" });
+    // Whoever asks, only so many tries a minute in all: the code is 192 random bits and the PIN counts its own tries.
+    const t = now();
+    const w = windows.get("enrol");
+    if (!w || t - w.start >= 60_000) windows.set("enrol", { start: t, count: 1 });
+    else if (++w.count > 30)
+      return json(res, 429, { error: "Too many tries; wait a minute." }, { "Retry-After": "60" });
+    let body: unknown;
+    try {
+      body = await readBody(req, 1024);
+    } catch (e) {
+      return e instanceof TooBig ? json(res, 413, { error: "Too large." }) : json(res, 400, { error: "Not JSON." });
+    }
+    const { code, pin } = (typeof body === "object" && body !== null ? body : {}) as { code?: unknown; pin?: unknown };
+    if (typeof code !== "string" || (pin !== undefined && typeof pin !== "string"))
+      return json(res, 400, { error: "A code is needed." });
+    const result = registry.redeem(code, pin, now());
+    if (result.ok) return json(res, 200, { token: result.token });
+    if (result.reason === "pin") return json(res, 403, { error: "pin", triesLeft: result.triesLeft });
+    if (result.reason === "locked") return json(res, 403, { error: "locked" });
+    return json(res, 404, { error: "invalid" });
+  }
+
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const url = new URL(req.url ?? "/", "http://x");
+    if (url.pathname === "/enrol") return handleEnrol(req, res);
     if (url.pathname === "/health")
       return json(res, 200, { ok: true, version, sessions: sessions.size, shares: live.size });
     if (url.pathname === "/follow.js" && req.method === "GET")

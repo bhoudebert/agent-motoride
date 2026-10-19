@@ -38,7 +38,9 @@ docker compose -f deploy/docker-compose.yml exec ride node src/admin.ts add alic
 docker compose -f deploy/docker-compose.yml exec ride node src/admin.ts list
 ```
 
-`add` prints the token once and the line for Claude Code and for Codex. Send it to the rider; it is the only copy. The
+`add` prints the token once and the line for Claude Code and for Codex. Send it to the rider; it is the only copy. For the
+MotoRide app on a phone, make an invitation instead of sending a token: `exec ride node src/admin.ts invite alice@example.org
+--pin` prints a QR code to scan ([Run it for several riders](/several-riders)). The
 other commands (`suspend`, `resume`, `token`, `remove`, `backup`) are in [Run it for several riders](/several-riders).
 An alias saves typing: `alias ride-admin='docker compose -f deploy/docker-compose.yml exec ride node src/admin.ts'`.
 
@@ -84,7 +86,7 @@ The data is in `/var/lib/agent-motoride` (set `dataDir` to move it), the nightly
 
 ## What is exposed
 
-Caddy passes only `/mcp` (the tools, with a token), `/health`, and the live ride relay and its page (`/share/*`, `/follow/*`,
+Caddy passes only `/mcp` (the tools, with a token), `/health`, `/enrol` (a phone exchanging its one-time invitation), and the live ride relay and its page (`/share/*`, `/follow/*`,
 `/follow.js`, [Share a ride live](/live-sharing)). The administration stays inside the container: there
 is no web page to log in to, and a rider can only be added from the machine. The container runs as an ordinary user, listens
 on the loopback address of the host, and keeps nothing but the data volume. A token travels in a header, so the port

@@ -64,6 +64,7 @@ npm run admin -- add alice@example.org       # prints the token once, and how to
 npm run admin -- list                        # identifier, email, status, size of the library, last seen
 npm run admin -- suspend alice@example.org   # the token stops working; nothing is lost
 npm run admin -- resume alice@example.org
+npm run admin -- invite alice@example.org    # a QR code for her phone (see below)
 npm run admin -- token alice@example.org     # a new token; the old one stops working at once
 npm run admin -- remove alice@example.org    # the library is kept aside in data/removed/
 npm run admin -- remove alice@example.org --purge --yes   # and this deletes it for good
@@ -73,6 +74,24 @@ nix run .#admin -- list                      # the same, with Nix
 
 Set `RIDE_SERVER_URL` (for example `https://rides.example.org`) so `add` prints the right connection text, and
 `RIDE_DATA_DIR` to keep the data on a mounted volume.
+
+## Connect a phone: the invitation
+
+The MotoRide app needs the server's address and a token. Rather than send a long secret, make an **invitation**:
+
+```bash
+npm run admin -- invite alice@example.org --pin --out alice.png
+```
+
+It prints a QR code in the terminal, the link behind it, when it expires, and a PIN of six digits; `--out` also saves the QR
+code as a PNG or SVG file you can send. Alice scans it with her phone's camera, the app opens and asks whether to use the
+server, asks for the PIN, and receives a token of its own. The QR code holds no token, only a one-time code that works once
+and lasts 24 hours (`--hours=48` for longer), so sending it by email or chat is safe; send the PIN another way, such as a
+call. Three wrong PINs burn the invitation. Without `--pin`, whoever scans it first joins. An email that is not registered
+yet is registered by its invitation. `--url=https://...` overrides `RIDE_SERVER_URL`.
+
+A phone's token is separate from the rider's own (Claude Code keeps working). `npm run admin -- devices alice@example.org
+--revoke` stops all of Alice's phones; suspending or removing her stops them too.
 
 ## Looking into a rider's library
 

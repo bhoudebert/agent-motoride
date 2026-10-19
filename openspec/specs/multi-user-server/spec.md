@@ -42,6 +42,20 @@ A command `npm run admin` (and `nix run .#admin`) SHALL add a tenant by email an
 - **WHEN** the administrator removes a tenant
 - **THEN** its token stops working at once and its library is moved to `data/removed/` unless `--purge --yes` deletes it
 
+### Requirement: Invite a rider's phone
+
+The administration SHALL be able to invite a rider's phone: `admin invite <email>` SHALL make a one-time code of 192 random bits (only its hash is kept), valid for 24 hours or the hours asked for (1 to 720), and print a QR code in the terminal, the link `mobilemotoride://server?url=<server>&code=<code>`, and the expiry; `--out` SHALL save the QR code as a PNG or SVG file. An email not yet registered SHALL be registered by its invitation. `--pin` SHALL add a PIN of six digits, printed to the administrator and never part of the QR code or the link. The server SHALL exchange a code for a token of the phone's own at `POST /enrol` (a JSON body with `code`, and `pin` when there is one): the code works once and an unknown, expired or used code SHALL be answered alike (404); a PIN SHALL be checked by the server, a missing PIN SHALL cost nothing, a wrong one SHALL count, and the third SHALL burn the invitation (403 `locked`); `/enrol` SHALL be limited to 30 tries a minute in all and a body over 1 KiB SHALL be refused. A phone's token SHALL be another token than the rider's own, identify the same rider while they are active, end when the rider is suspended or removed, and be ended with `admin devices <email> --revoke` together with the invitations not yet used. The proxy SHALL expose `/enrol`.
+
+#### Scenario: A new rider's phone
+
+- **WHEN** the administrator invites `alice@example.org` with `--pin`, sends her the QR code, and tells her the PIN by phone
+- **THEN** her app scans it, asks for the PIN, and receives a token of its own without the token ever being in the QR code; the same QR code then no longer works
+
+#### Scenario: A QR code that leaks
+
+- **WHEN** the QR code of an invitation is seen by someone else after the rider used it, or after 24 hours
+- **THEN** it opens nothing
+
 ### Requirement: The tools over HTTP
 
 `npm run serve` SHALL serve the MCP tools over HTTP (the Streamable HTTP transport) at `/mcp`, with a health check at `/health`, on `RIDE_SERVER_HOST` and `RIDE_SERVER_PORT` (default 127.0.0.1:8788; TLS belongs to the proxy in front). Every request to `/mcp` SHALL carry `Authorization: Bearer <token>`; a missing, unknown, suspended or removed token SHALL be answered 401 with `WWW-Authenticate: Bearer` and reach nothing. Each MCP session SHALL be one rider's, over their library, holding that rider's routes, preferences and start point as the stdio server does; a session SHALL be reachable only with its rider's token, and any other token SHALL be answered as if the session did not exist. A rider suspended or removed SHALL be shut out of an open session at once. A rider SHALL have at most 5 open sessions and the server 200; a session idle for 30 minutes SHALL be closed; a rider SHALL be limited to 300 requests a minute (429 with `Retry-After`); a request body over 1 MiB SHALL be refused (413).

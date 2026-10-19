@@ -70,6 +70,7 @@ export default defineConfig({
           { text: "How a plan is made", link: "/how-a-plan-is-made" },
           { text: "What a session did", link: "/sessions" },
           { text: "Behind the scenes", link: "/behind-the-scenes" },
+          { text: "Run it for several riders", link: "/several-riders" },
           { text: "Open source, and how to help", link: "/open-source" },
         ],
       },

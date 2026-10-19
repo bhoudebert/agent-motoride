@@ -31,6 +31,24 @@ To run the published image instead of building it, replace `build:` with
 `image: ghcr.io/bhoudebert/agent-motoride:latest` in `deploy/docker-compose.yml`, and pin a version tag if you want to
 choose when an update happens.
 
+### With your own nginx (or another proxy)
+
+If ports 80 and 443 are already taken by a proxy of yours, run the server alone: it is published on the loopback address of
+the machine only, and your proxy passes the few paths it shows to the internet.
+
+```bash
+docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.nginx.yml --env-file deploy/.env up -d ride
+curl http://127.0.0.1:8788/health          # {"ok":true,...}
+sudo cp deploy/ride-proxy.conf.example /etc/nginx/ride-proxy.conf
+sudo cp deploy/nginx.conf.example /etc/nginx/conf.d/rides.conf    # set the domain and your certificate
+sudo nginx -t && sudo systemctl reload nginx
+curl https://rides.example.org/health
+```
+
+`up -d ride` starts the server and not Caddy. Keep the paths of the example: `/mcp`, `/health`, `/enrol`, `/follow.js`,
+`/follow/*` and `/share/*` are exposed and everything else is 404. Keep `proxy_buffering off` and the long read timeout:
+the tools answer as a stream. `RIDE_DOMAIN` can be left as it is: only Caddy reads it.
+
 ### Add the riders
 
 ```bash
@@ -94,13 +112,14 @@ must never be reachable without TLS.
 
 ## When something is wrong
 
-| What you see             | What to check                                                                                                           |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| `curl …/health` fails    | `docker compose … ps`; the logs with `docker compose … logs ride caddy`; the domain's `A` record; ports 80 and 443 open |
-| A rider gets 401         | The token is wrong or was replaced (`token` makes a new one and ends the old one), or the rider is suspended (`list`)   |
-| A rider gets 429         | More than 300 requests a minute or 5 open sessions: wait a minute, close a client                                       |
-| Certificate errors       | Caddy needs the domain to point at this machine and port 80 open to get the certificate                                 |
-| A rider forgot the token | There is no recovery: `token` makes a new one                                                                           |
+| What you see                       | What to check                                                                                                                        |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `curl localhost:8788/health` fails | Port 8788 is published to the host only with the nginx override (`docker-compose.nginx.yml`); with Caddy it is reached only by Caddy |
+| `curl …/health` fails              | `docker compose … ps`; the logs with `docker compose … logs ride caddy`; the domain's `A` record; ports 80 and 443 open              |
+| A rider gets 401                   | The token is wrong or was replaced (`token` makes a new one and ends the old one), or the rider is suspended (`list`)                |
+| A rider gets 429                   | More than 300 requests a minute or 5 open sessions: wait a minute, close a client                                                    |
+| Certificate errors                 | Caddy needs the domain to point at this machine and port 80 open to get the certificate                                              |
+| A rider forgot the token           | There is no recovery: `token` makes a new one                                                                                        |
 
 ## Costs and risks, plainly
 

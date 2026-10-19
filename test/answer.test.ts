@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { parseAnswer } from "../src/schema.ts";
+import { parseAnswer, readAnswer } from "../src/schema.ts";
 
 const ride = { routeId: "r2", rideDate: "2026-10-17", departure: "09:00", name: "Artois loop" };
 const answer = { message: "Artois loop, 146 km", ride };
@@ -34,4 +34,19 @@ test("parseAnswer: prose or a wrong shape is shown as the message, with no ride"
   assert.deepEqual(parseAnswer("No loop fits."), { message: "No loop fits.", ride: null });
   const wrong = JSON.stringify({ text: "no message field" });
   assert.deepEqual(parseAnswer(wrong), { message: wrong, ride: null });
+});
+
+test("readAnswer: null for prose, so the planner can ask again", () => {
+  assert.equal(readAnswer("The loop is 85 km."), null);
+  assert.deepEqual(readAnswer(JSON.stringify(answer)), answer);
+});
+
+test("parseAnswer: ride object with date for rideDate and fields left out", () => {
+  const raw = JSON.stringify({
+    message: "Loop",
+    ride: { routeId: "r2", date: "2026-10-18", departure: "08:00", name: "Loop" },
+  });
+  assert.deepEqual(parseAnswer(raw).ride, { routeId: "r2", rideDate: "2026-10-18", departure: "08:00", name: "Loop" });
+  const bare = JSON.stringify({ message: "Loop", ride: { routeId: "r2" } });
+  assert.deepEqual(parseAnswer(bare).ride, { routeId: "r2", rideDate: null, departure: null, name: "r2" });
 });

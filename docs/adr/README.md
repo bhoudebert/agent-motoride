@@ -34,3 +34,5 @@ not rewritten.
 | [0025](0025-long-straights-weigh-more-than-slow-zones.md)      | Measure long straights and weigh them above the 31-50 zones                      | accepted |
 | [0026](0026-roadbook-file-for-the-app.md)                      | A roadbook file with limits and cameras for the MobileMotoRide app               | accepted |
 | [0027](0027-one-instance-one-sqlite-file-per-user.md)          | One instance serves several riders, one SQLite file each, found by token         | accepted |
+| [0028](0028-live-sharing-is-an-encrypted-relay.md)             | Live sharing is an encrypted relay the phone writes to and a web page reads from | accepted |
+| [0029](0029-the-phone-joins-with-a-one-time-invitation.md)     | The phone joins with a one-time invitation, not a token in a QR code             | accepted |

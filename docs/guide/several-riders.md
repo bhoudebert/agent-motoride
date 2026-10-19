@@ -48,8 +48,8 @@ Claude Code (Codex explores the areas itself).
 
 ## What you set up
 
-- A **registry** of riders, a small SQLite file (`data/registry.db`): for each an identifier (random, not made from the
-  email), the email, a status and the hash of a token. The token itself is shown once, when it is made.
+- A **registry** of riders, a small SQLite file (`data/registry.db`): for each an identifier (a random UUID, not made from
+  the email), the email, a status and the hash of a token. The token itself is shown once, when it is made.
 - One **library per rider**, a SQLite file at `data/tenants/<id>/agentmotoride.db`, created on first use. Nothing a
   rider saves, rates or notes can be seen with another rider's token.
 - An update changes no library until its rider is next served: each library is migrated, after a backup, the first time

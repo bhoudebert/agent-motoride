@@ -415,7 +415,7 @@ context is under 32k. `BENCH_MIN_CTX`, `BENCH_DB`, `BENCH_EFFORT`,
 
 ## Several riders (ADR 0027)
 
-One instance serves several riders. `src/tenants.ts` keeps the registry (`data/registry.db`): a random identifier, the
+One instance serves several riders. `src/tenants.ts` keeps the registry (`data/registry.db`): a random UUID, the
 email, a status and the hash of a 256-bit token shown once; each rider's library is its own SQLite file at
 `data/tenants/<id>/agentmotoride.db` (`src/dataDir.ts` builds the path and refuses any identifier that could make a path
 of it), migrated on first use by the versioned migrations. `src/admin.ts` (`npm run admin`, `nix run .#admin`) adds,

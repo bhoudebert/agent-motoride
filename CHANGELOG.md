@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.8.0](https://github.com/bhoudebert/agent-motoride/compare/v1.7.0...v1.8.0) (2026-10-19)
+
+
+### Features
+
+* **feedback:** rate a stretch of road directly, list rated roads, remove a stretch rating ([#73](https://github.com/bhoudebert/agent-motoride/issues/73)) ([20e180a](https://github.com/bhoudebert/agent-motoride/commit/20e180afe23b9fb31d96a27f8876577bc746f8ec))
+* **mcp:** one capability catalogue behind the help, a capabilities tool and rides help ([#75](https://github.com/bhoudebert/agent-motoride/issues/75)) ([4b13414](https://github.com/bhoudebert/agent-motoride/commit/4b134143642dfe339bad86ad55fef50501d5dc65))
+* **nix:** add nix ([#85](https://github.com/bhoudebert/agent-motoride/issues/85)) ([4331754](https://github.com/bhoudebert/agent-motoride/commit/433175488eb1b31296c5817539378ddee70478d0))
+* **ratings:** narrowest rating wins; a low roadbook rating asks roads or loop ([#76](https://github.com/bhoudebert/agent-motoride/issues/76)) ([33a080c](https://github.com/bhoudebert/agent-motoride/commit/33a080cbe139f71c0eef5bc154d5373e8b590bf7))
+* **review:** match a MotoRide track to its roadbook by number and name, export the origin ([#93](https://github.com/bhoudebert/agent-motoride/issues/93)) ([c9c8954](https://github.com/bhoudebert/agent-motoride/commit/c9c89547214b944226bfc3c11c7dae25ebed973b))
+* **roadbook:** export file ([#90](https://github.com/bhoudebert/agent-motoride/issues/90)) ([852e1f8](https://github.com/bhoudebert/agent-motoride/commit/852e1f8d2396f3e93944f2b432a47ca459522cef))
+* **route-analysis:** measure long straights and prefer fewer before fewer 50 zones ([#83](https://github.com/bhoudebert/agent-motoride/issues/83)) ([513dac0](https://github.com/bhoudebert/agent-motoride/commit/513dac0e1f2c0c611182e14a9caa82dae14dcd1a))
+* **route-exports:** write the country of each stretch, leave out cameras where warning is banned ([#92](https://github.com/bhoudebert/agent-motoride/issues/92)) ([82267f9](https://github.com/bhoudebert/agent-motoride/commit/82267f939a617cc9f201c49e7f086b5fcd907a36))
+* **route-exports:** write the roundabouts of the line into the roadbook file ([#91](https://github.com/bhoudebert/agent-motoride/issues/91)) ([60ca8d6](https://github.com/bhoudebert/agent-motoride/commit/60ca8d65d4bdccb9754de0792c6dfb6ad8ac0cbd))
+
+
+### Bug Fixes
+
+* **planner:** ask once for the JSON object when a model answers in prose ([#86](https://github.com/bhoudebert/agent-motoride/issues/86)) ([b9dd238](https://github.com/bhoudebert/agent-motoride/commit/b9dd23868b390fe61e2284e1d3b8b62e9bdfc094))
+* **planner:** read answers wrapped in a code fence or with ride as a … ([#84](https://github.com/bhoudebert/agent-motoride/issues/84)) ([c3bffe5](https://github.com/bhoudebert/agent-motoride/commit/c3bffe5439df8cec270de7c711efea7666274e03))
+
 ## [1.7.0](https://github.com/bhoudebert/agent-motoride/compare/v1.6.0...v1.7.0) (2026-10-07)
 
 

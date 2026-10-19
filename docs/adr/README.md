@@ -33,3 +33,4 @@ not rewritten.
 | [0024](0024-ratings-by-precision-a-roadbook-rates-the-loop.md) | Ratings by precision: the narrowest wins, a roadbook rates the loop              | accepted |
 | [0025](0025-long-straights-weigh-more-than-slow-zones.md)      | Measure long straights and weigh them above the 31-50 zones                      | accepted |
 | [0026](0026-roadbook-file-for-the-app.md)                      | A roadbook file with limits and cameras for the MobileMotoRide app               | accepted |
+| [0027](0027-one-instance-one-sqlite-file-per-user.md)          | One instance serves several riders, one SQLite file each, found by token         | accepted |

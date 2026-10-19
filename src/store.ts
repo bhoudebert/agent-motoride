@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, renameSync, statSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { fileURLToPath } from "node:url";
+import { DATA_DIR, tenantDbPath } from "./dataDir.ts";
 import { migrate } from "./migrations.ts";
 import type { RidePreferences } from "./preferences.ts";
 import { type BikeProfile, DEFAULT_PROFILE } from "./profile.ts";
@@ -9,8 +9,17 @@ import type { RideConditions } from "./conditions.ts";
 import type { StopPlan } from "./stops.ts";
 import type { RunUsage } from "./usage.ts";
 
-const DATA_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..", "data");
 const DEFAULT_DB = resolve(DATA_DIR, "agentmotoride.db");
+
+/**
+ * The library the terminal and the stdio server use: `RIDE_DB`, else the tenant named by `RIDE_TENANT` (ADR 0027), else the
+ * single library of one rider.
+ */
+function defaultPath(): string {
+  if (process.env.RIDE_DB) return process.env.RIDE_DB;
+  const tenant = process.env.RIDE_TENANT;
+  return tenant ? tenantDbPath(tenant) : DEFAULT_DB;
+}
 
 /** Libraries created before the rename live in data/agentride.db: move them once. */
 function migrateLegacyDb(): void {
@@ -374,7 +383,7 @@ export class Store {
     return this.#db;
   }
 
-  constructor(path = process.env.RIDE_DB || DEFAULT_DB) {
+  constructor(path = defaultPath()) {
     if (path === DEFAULT_DB) migrateLegacyDb();
     this.path = path;
     if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });

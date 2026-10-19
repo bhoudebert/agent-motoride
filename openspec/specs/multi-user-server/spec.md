@@ -1,0 +1,52 @@
+# Multi-user Server Specification
+
+## Purpose
+
+Let one agentRide instance serve several riders, each with a library of their own, reached by the MCP tools over HTTPS from Claude Code or Codex, while a rider who runs it alone sees no change (ADR 0027).
+
+## Requirements
+
+### Requirement: Alone, nothing changes
+
+Without any server setting, agentRide SHALL work as before: one library in `data/agentmotoride.db`, the terminal commands and the stdio MCP server unchanged. The multi-user parts SHALL be off until a registry exists and the HTTP server is started.
+
+#### Scenario: A rider who never sets it up
+
+- **WHEN** agentRide runs without `RIDE_TENANT`, a registry or the HTTP server
+- **THEN** it reads and writes `data/agentmotoride.db` exactly as before
+
+### Requirement: Tenants and their tokens
+
+The system SHALL keep a registry of tenants in its own SQLite file (`data/registry.db`, or `RIDE_REGISTRY`): for each a random identifier of 16 characters that is not derived from the email, the email address (lower case, unique), a status (active or suspended), the creation date and the time it was last seen. A tenant SHALL be given a token of 256 random bits shown once, when it is created or changed, and only a hash of it SHALL be kept. A token SHALL identify its tenant only while the tenant is active; an unknown token, a token of a suspended tenant and a token of a removed tenant SHALL identify nobody. Giving a new token SHALL end the old one at once.
+
+#### Scenario: A lost token
+
+- **WHEN** the administrator makes a new token for a tenant
+- **THEN** the old token no longer identifies anybody and the new one does
+
+### Requirement: One library per tenant
+
+Each tenant SHALL have its own SQLite library at `data/tenants/<id>/agentmotoride.db`, created on first use and migrated by the versioned migrations of ADR 0022 when it is opened, so that an update changes no tenant until that tenant is next used and a backup is taken first. A tenant's data SHALL NOT be reachable with another tenant's token. An identifier that is not 8 to 40 letters, digits, hyphens or underscores SHALL be refused before it makes a path.
+
+#### Scenario: Two riders
+
+- **WHEN** two tenants save a roadbook each
+- **THEN** each library holds only its own, and each is a separate file
+
+### Requirement: Administration
+
+A command `npm run admin` (and `nix run .#admin`) SHALL add a tenant by email and print its token and how to connect, list tenants (identifier, email, status, size of the library, last seen), remove a tenant (the library is kept aside, and deleted only with `--purge` and `--yes`), suspend and resume a tenant, give a new token, and back up the registry and every library to a dated folder using a consistent copy. Adding an email that is already registered, or removing a tenant that does not exist, SHALL fail with a message.
+
+#### Scenario: Remove
+
+- **WHEN** the administrator removes a tenant
+- **THEN** its token stops working at once and its library is moved to `data/removed/` unless `--purge --yes` deletes it
+
+### Requirement: Choose a library from the terminal
+
+The terminal commands and the stdio MCP server SHALL use a tenant's library when `RIDE_TENANT=<id>` is set, so that the administrator can look into a library, and SHALL fail with a clear message for an unknown identifier.
+
+#### Scenario: Look into a library
+
+- **WHEN** `RIDE_TENANT=<id> npm run rides -- roadbooks` runs
+- **THEN** it lists that tenant's roadbooks

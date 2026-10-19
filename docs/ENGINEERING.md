@@ -413,7 +413,16 @@ context is under 32k. `BENCH_MIN_CTX`, `BENCH_DB`, `BENCH_EFFORT`,
 - **Settings are Anthropic's.** `RIDE_EFFORT` and the fallback beta header are
   sent as usual; Ollama 0.32 accepted them without changes.
 
-## Evaluating the agent
+## Several riders (ADR 0027)
+
+One instance can serve several riders: `src/tenants.ts` keeps a registry (`data/registry.db`) of riders with a random
+identifier, the email, a status and the hash of a 256-bit token shown once; each rider's library is its own SQLite file
+at `data/tenants/<id>/agentmotoride.db` (`src/dataDir.ts` builds the path and refuses any identifier that could make a
+path of it), migrated on first use by the versioned migrations. `src/admin.ts` (`npm run admin`, `nix run .#admin`)
+adds, lists, removes, suspends, re-keys and backs up. `RIDE_TENANT=<id>` points the terminal and the stdio server at a
+rider's library; with nothing set the single library is used as before. Not yet: serving the MCP tools over HTTP with
+the token, which needs the MCP server's session state to move from module variables into a context made for each
+request, and the exports (`exports/`) and the place-search anchor to become per rider.
 
 A model loop can get worse without any unit test noticing: a prompt edit, a
 new model, a tool that now phrases its result differently. So the planner has

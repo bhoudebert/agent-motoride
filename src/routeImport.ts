@@ -1,3 +1,4 @@
+import { inRoot } from "./requestContext.ts";
 // Import a route shared as a GPX or KML file: read its line, reduce it to
 // waypoints, route it like any planned loop, and add waypoints where the
 // router strays from the file, so the result keeps to the file's roads.
@@ -74,7 +75,8 @@ export function parseRouteFile(text: string): RouteFile {
 }
 
 /** Read a route file from this machine: .gpx or .kml, 10 MB at most. */
-export function readRouteFile(path: string): RouteFile {
+export function readRouteFile(file: string): RouteFile {
+  const path = inRoot(file);
   const ext = extname(path).toLowerCase();
   if (ext !== ".gpx" && ext !== ".kml") throw new Error(`${basename(path)}: only .gpx and .kml route files are read.`);
   if (statSync(path).size > MAX_ROUTE_FILE_BYTES) throw new Error(`${basename(path)} is over 10 MB.`);

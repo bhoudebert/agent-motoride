@@ -57,8 +57,8 @@ Start with the one that matches what you have: an API key, Claude Code or
 Codex.
 
 **For several riders, from one machine**: one instance can hold a library for each rider, reached with a token from
-Claude Code or Codex, with no model or key of yours involved (the rider's own model plans). The administration
-(`npm run admin`) is built; the network connection is the next step. See
+Claude Code or Codex, with no model or key of yours involved (the rider's own model plans). `npm run admin` adds the riders and
+`npm run serve` serves the tools over HTTP. See
 [Run it for several riders](https://bhoudebert.github.io/agent-motoride/guide/several-riders).
 
 **From your phone, with nothing to install**: a Claude Code or Codex session running on

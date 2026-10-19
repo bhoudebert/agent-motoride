@@ -1,3 +1,4 @@
+import { exportDir, inRoot } from "./requestContext.ts";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -141,7 +142,9 @@ export function writeGpx(input: GpxInput, id: string | number, file?: string): s
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
-  const path = resolve(file?.trim() || resolve(EXPORT_DIR, `${id}-${slug || "ride"}.gpx`));
+  const path = resolve(
+    inRoot(file?.trim() || resolve(exportDir(EXPORT_DIR), `${id}-${slug || "ride"}.gpx`), "exports"),
+  );
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, buildGpx(input));
   return path;

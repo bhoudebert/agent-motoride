@@ -9,7 +9,7 @@ Context Protocol client, so the client's model can plan on its own account.
 
 ### Requirement: Transport and state
 
-The server SHALL speak the protocol over stdio with all logging on stderr, SHALL hold one session context for its lifetime (routed trips, preferences, stop plans), SHALL create a run row at start and trace every tool call, and SHALL refuse ride tools until a start point is set (from `RIDE_HOME` or `rideSettings`).
+The server SHALL speak the protocol over stdio with all logging on stderr (or, for several riders, over HTTP with a token: spec multi-user-server), SHALL hold one session context for its lifetime (routed trips, preferences, stop plans), SHALL create a run row at start and trace every tool call, and SHALL refuse ride tools until a start point is set (from `RIDE_HOME` or `rideSettings`).
 
 ### Requirement: Tools
 

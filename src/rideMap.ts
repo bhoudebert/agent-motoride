@@ -1,3 +1,4 @@
+import { exportDir, inRoot } from "./requestContext.ts";
 // A small map of a saved ride, drawn from the ride's own data (route line,
 // towns, planned stops, fixed cameras) in the roadbook style of the site.
 // No map tiles: nothing is fetched, and the picture is the same everywhere.
@@ -363,7 +364,7 @@ export function exportBase(ride: SavedRide): string {
 
 /** Write the ride's map as a PNG, by default in exports/. Returns the path. */
 export function writeRideMap(ride: SavedRide, file?: string): string {
-  const path = resolve(file?.trim() || resolve(EXPORT_DIR, `${exportBase(ride)}.png`));
+  const path = resolve(inRoot(file?.trim() || resolve(exportDir(EXPORT_DIR), `${exportBase(ride)}.png`), "exports"));
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, rideMapPng(ride));
   return path;

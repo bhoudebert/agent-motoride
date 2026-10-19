@@ -27,8 +27,11 @@ const json = (body: unknown, status = 200) =>
 
 export function installFakeServices(): FakeApi {
   const api: FakeApi = { script: [], requests: [], overpass: [] };
+  // This machine is not an external service: a test that serves something on a local port (the HTTP server) reaches it.
+  const realFetch = globalThis.fetch;
   globalThis.fetch = (async (input: any, init: any) => {
     const url = new URL(String(input instanceof Request ? input.url : input));
+    if (url.hostname === "127.0.0.1" || url.hostname === "localhost") return realFetch(input, init);
     // Overpass bodies are form-encoded; every other service sends JSON.
     const raw = init?.body ? String(init.body) : "";
     const body = raw.startsWith("{") ? JSON.parse(raw) : null;

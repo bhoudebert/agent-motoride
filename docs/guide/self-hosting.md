@@ -84,7 +84,8 @@ The data is in `/var/lib/agent-motoride` (set `dataDir` to move it), the nightly
 
 ## What is exposed
 
-Caddy passes only `/mcp` (the tools, with a token) and `/health`. The administration stays inside the container: there
+Caddy passes only `/mcp` (the tools, with a token), `/health`, and the live ride relay and its page (`/share/*`, `/follow/*`,
+`/follow.js`, [Share a ride live](/live-sharing)). The administration stays inside the container: there
 is no web page to log in to, and a rider can only be added from the machine. The container runs as an ordinary user, listens
 on the loopback address of the host, and keeps nothing but the data volume. A token travels in a header, so the port
 must never be reachable without TLS.

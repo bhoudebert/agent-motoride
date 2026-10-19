@@ -72,6 +72,7 @@ export default defineConfig({
           { text: "Behind the scenes", link: "/behind-the-scenes" },
           { text: "Run it for several riders", link: "/several-riders" },
           { text: "Host it yourself", link: "/self-hosting" },
+          { text: "Share a ride live", link: "/live-sharing" },
           { text: "Open source, and how to help", link: "/open-source" },
         ],
       },

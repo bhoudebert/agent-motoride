@@ -96,11 +96,10 @@ _: {
         services.caddy = lib.mkIf cfg.caddy.enable {
           enable = true;
           virtualHosts.${cfg.domain}.extraConfig = ''
-            # Only the tools and the health check are exposed; the administration stays inside the container.
-            handle /mcp {
-              reverse_proxy 127.0.0.1:${toString cfg.port}
-            }
-            handle /health {
+            # Only the tools, the live ride relay and its page, and the health check are exposed;
+            # the administration stays inside the container.
+            @exposed path /mcp /health /follow.js /follow/* /share/*
+            handle @exposed {
               reverse_proxy 127.0.0.1:${toString cfg.port}
             }
             handle {

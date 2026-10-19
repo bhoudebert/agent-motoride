@@ -29,5 +29,10 @@ export default tseslint.config(
     files: ["test/**", "scripts/**"],
     rules: { "@typescript-eslint/no-explicit-any": "off" },
   },
+  {
+    // The follower's page runs in a browser (the map library is a script of the page).
+    files: ["assets/follow/**/*.js"],
+    languageOptions: { globals: { ...globals.browser, maplibregl: "readonly" } },
+  },
   prettier,
 );

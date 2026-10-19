@@ -58,7 +58,8 @@ Codex.
 
 **For several riders, from one machine**: one instance can hold a library for each rider, reached with a token from
 Claude Code or Codex, with no model or key of yours involved (the rider's own model plans). `npm run admin` adds the riders and
-`npm run serve` serves the tools over HTTP, and a Docker image and a NixOS module run it with HTTPS. See
+`npm run serve` serves the tools over HTTP, and a Docker image and a NixOS module run it with HTTPS. The same server relays a ride **live** to followers who open a
+link, with the positions encrypted so that the server cannot read them ([Share a ride live](https://bhoudebert.github.io/agent-motoride/guide/live-sharing)). See
 [Run it for several riders](https://bhoudebert.github.io/agent-motoride/guide/several-riders) and
 [Host it yourself](https://bhoudebert.github.io/agent-motoride/guide/self-hosting).
 

@@ -215,6 +215,7 @@ export async function exportSavedRide(
     shapes: gpx.shapes,
     stops: gpx.stops,
     cameras: ride.extras?.cameras ?? [],
+    origin: { roadbook: ride.id, ride: ride.rideDayId, name: ride.name },
   });
   const roadbookFile = roadbookFilePath(path);
   writeFileSync(roadbookFile, JSON.stringify(roadbook));

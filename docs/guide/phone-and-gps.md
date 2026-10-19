@@ -154,3 +154,16 @@ against its opening hours at arrival, crosswind and low sun. It ends with
   alert app in the background for speed-camera warnings.
 - When a GPS app shows a route different from the file, it is recalculating
   from the route points; choose "follow the track" in that app.
+
+## A ride recorded by the MotoRide app
+
+The MotoRide app saves every ride it guides as a GPX, finished or not, and shares it from "My rides". Hand that file to
+`review` like any recorded track:
+
+```bash
+npm run rides -- review ~/Downloads/2026-10-19T09-30-05-pays-des-collines-loop.gpx
+```
+
+The track says which roadbook it followed, so you do not have to name it. The numbers are those of your own library, and
+they repeat from one library to another, so the match needs the number **and** the name: a track whose roadbook 7 is
+"Eifel loop" will not be taken for your roadbook 7 "Pays des Collines", it is refused and you name the roadbook yourself.

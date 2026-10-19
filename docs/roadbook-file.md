@@ -53,6 +53,11 @@ available for other apps; the app reads a GPX too, but without limits or cameras
 - `countries`: the country of each stretch of the line, as indexes into `line` like `limits`, with an ISO 3166-1 alpha-2
   `code`. The app decides from it what it may say about a camera: its place and distance, only a danger zone, or nothing.
   A roadbook without it gets no camera warning at all. Cameras in Germany and Switzerland are not written. Optional.
+- `origin`: which roadbook of which library this is: `{ "app": "agentRide", "roadbook": 7, "ride": 12, "name": "Pays des
+Collines loop" }`. The numbers are this library's own and repeat from one library to another, so a reader that matches
+  a ride recorded on the phone back to a roadbook must find the number **and** the same name. The MotoRide app copies
+  them into the GPX of a ride it records; `rides review track.gpx` reads them and refuses a number that means another
+  roadbook. Optional.
 
 ## Rules for the producer
 

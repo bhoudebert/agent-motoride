@@ -78,13 +78,71 @@ export function rideForNote(store: Store, ride: string | undefined, today: strin
   return found;
 }
 
-/** The ride to review: the one named, else the ride of the latest pending note. */
-export function rideToReview(store: Store, ride: string | undefined): SavedRide {
+/** What a track recorded by MotoRide says about the roadbook it followed (its GPX `motoride:ride` element). */
+export interface TrackOrigin {
+  /** The roadbook's number in the library that exported it, and its name there. */
+  roadbook: number;
+  name: string;
+  /** The ride (day) number, when the roadbook file had one. */
+  ride: number | null;
+}
+
+const unescapeXml = (s: string) =>
+  s
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+
+/** The origin a MotoRide track gives, or null when the file is not one or the roadbook did not come from agentRide. */
+export function trackOrigin(gpx: string): TrackOrigin | null {
+  const element = /<motoride:ride\b([^>]*)\/?>/.exec(gpx)?.[1];
+  if (!element) return null;
+  const attr = (name: string) => new RegExp(`\\b${name}="([^"]*)"`).exec(element)?.[1];
+  if (attr("source") !== "agentRide") return null;
+  const roadbook = Number(attr("sourceRoadbook"));
+  const name = attr("sourceName");
+  if (!Number.isInteger(roadbook) || roadbook < 0 || name === undefined) return null;
+  const ride = Number(attr("sourceRide"));
+  return { roadbook, name: unescapeXml(name), ride: Number.isInteger(ride) && ride >= 0 ? ride : null };
+}
+
+/** The origin of a track file on this machine; null when it has none. */
+export function readTrackOrigin(path: string): TrackOrigin | null {
+  return trackOrigin(readFileSync(path.replace(/^~(?=\/)/, homedir()), "utf8"));
+}
+
+const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/**
+ * The roadbook a track says it followed, when it is the same one here: the number alone is not enough, since numbers
+ * repeat from one library to another, so the name must agree. A number that means another roadbook is an error that
+ * says so, never a silent match.
+ */
+export function roadbookOfOrigin(store: Store, origin: TrackOrigin): SavedRide {
+  const found = store.findRide(String(origin.roadbook));
+  if (!found) {
+    throw new Error(
+      `This track says it followed roadbook ${origin.roadbook} "${origin.name}", which is not in this library. Name the roadbook to review it anyway.`,
+    );
+  }
+  if (!sameName(found.name, origin.name)) {
+    throw new Error(
+      `This track says it followed roadbook ${origin.roadbook} "${origin.name}", but your roadbook ${origin.roadbook} is "${found.name}": not the same one. Name the roadbook to review it anyway.`,
+    );
+  }
+  return found;
+}
+
+/** The ride to review: the one named, else the one the track says it followed, else the ride of the latest pending note. */
+export function rideToReview(store: Store, ride: string | undefined, origin: TrackOrigin | null = null): SavedRide {
   if (ride) {
     const found = store.findRide(ride);
     if (!found) throw new Error(`No saved ride matches "${ride}".`);
     return found;
   }
+  if (origin) return roadbookOfOrigin(store, origin);
   const last = store.listNotes().at(-1);
   if (!last) throw new Error("No notes waiting for review. Name a ride to review its track anyway.");
   return store.findRide(String(last.rideId))!;

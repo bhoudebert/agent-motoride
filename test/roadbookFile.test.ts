@@ -264,7 +264,10 @@ test("export: a saved ride is written as a GPX and as a roadbook file next to it
   assert.deepEqual(file.cameras, [{ lat: 50.5, lon: 3.2, kmh: 70, bearing: null, direction: null }]);
   assert.ok(file.stops.length >= 3);
   // The number of the roadbook in this library and its name travel with the file, so a recorded ride can be matched back.
-  assert.deepEqual(file.origin, { app: "agentRide", roadbook: id, name: "Flandre loop" });
+  assert.equal(file.origin.app, "agentRide");
+  assert.equal(file.origin.roadbook, id);
+  assert.equal(file.origin.name, "Flandre loop");
+  assert.ok(file.origin.ride === undefined || Number.isInteger(file.origin.ride));
 });
 
 /** A ring edge, in the shape Valhalla returns it, with the roads that can be left at its end node. */

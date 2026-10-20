@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.9.0](https://github.com/bhoudebert/agent-motoride/compare/v1.8.0...v1.9.0) (2026-10-20)
+
+
+### Features
+
+* **admin:** invite a rider's phone with a QR code and a one-time code ([#101](https://github.com/bhoudebert/agent-motoride/issues/101)) ([0bd0ab9](https://github.com/bhoudebert/agent-motoride/commit/0bd0ab98003018cc45dfb2299ad10558c44af3dd))
+* **deploy:** keep the data in a folder of your choice with RIDE_DATA_PATH ([#104](https://github.com/bhoudebert/agent-motoride/issues/104)) ([1ee6b3e](https://github.com/bhoudebert/agent-motoride/commit/1ee6b3ecbb9a65f086f516bac8dfaf1f098305bd))
+* **live:** relay a ride live to followers, encrypted so the server cannot read it ([#100](https://github.com/bhoudebert/agent-motoride/issues/100)) ([0b99af8](https://github.com/bhoudebert/agent-motoride/commit/0b99af82549a56f3d4c91c26c97e0da1e9c4ae31))
+* **server:** a container image, compose with Caddy, a NixOS module and a self-hosting guide ([#99](https://github.com/bhoudebert/agent-motoride/issues/99)) ([f5dbb9d](https://github.com/bhoudebert/agent-motoride/commit/f5dbb9d89817e7be4084d5f0ef1603c7da2eef15))
+* **server:** a registry of riders with a library each, and an admin command ([#94](https://github.com/bhoudebert/agent-motoride/issues/94)) ([edf7f35](https://github.com/bhoudebert/agent-motoride/commit/edf7f357919819938e4455b5acd1a62a4cf6bb52))
+* **server:** identify a rider by a random UUID ([#98](https://github.com/bhoudebert/agent-motoride/issues/98)) ([68e2445](https://github.com/bhoudebert/agent-motoride/commit/68e244567cf9f6e396bd114d597f05b36dc470de))
+* **server:** serve the MCP tools over HTTP, one session and one library per rider ([#96](https://github.com/bhoudebert/agent-motoride/issues/96)) ([60c8972](https://github.com/bhoudebert/agent-motoride/commit/60c89721180490da13f204f2691d26f85f7d5d0b))
+
 ## [1.8.0](https://github.com/bhoudebert/agent-motoride/compare/v1.7.0...v1.8.0) (2026-10-19)
 
 

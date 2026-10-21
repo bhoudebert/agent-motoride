@@ -87,6 +87,18 @@ test("track: time-stamped points parsed in order; a planned route without times 
   );
 });
 
+test("track: a MotoRide recording with elevation and sensor extensions reads as a plain track", () => {
+  const point = (lat: number, time: string, extra: string) =>
+    `<trkpt lat="${lat}" lon="3.2"><ele>212.4</ele><time>${time}</time><extensions><motoride:speed>12.3</motoride:speed>${extra}</extensions></trkpt>`;
+  const xml = `<gpx xmlns:motoride="https://github.com/bhoudebert/mobile-motoride"><metadata><extensions><motoride:ride roadbook="x" name="Loop" state="stopped" climbM="12" peakLeftDeg="38" peakRightDeg="41"/></extensions></metadata><trk><trkseg>
+    ${point(50.1, "2026-10-19T09:30:05.000Z", "<motoride:lean>25.6</motoride:lean><motoride:latg>0.46</motoride:latg><motoride:brakeg>-0.20</motoride:brakeg><motoride:turn>0.123</motoride:turn>")}
+    ${point(50.1001, "2026-10-19T09:30:11.000Z", "")}
+  </trkseg></trk></gpx>`;
+  const track = parseGpxTrack(xml);
+  assert.equal(track.length, 2);
+  assert.deepEqual(track[0], { lat: 50.1, lon: 3.2, time: Date.parse("2026-10-19T09:30:05.000Z") });
+});
+
 test("ratings proposed from the note's own rating, else its words", () => {
   assert.equal(proposedRating({ rating: 3, text: "never again" }), 3);
   assert.equal(proposedRating({ rating: null, text: "cobbles, never again" }), 0);

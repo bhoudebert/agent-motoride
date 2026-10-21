@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MotoRide privacy policy</title>
+<meta name="description" content="What the MotoRide motorcycle GPS app does with your data.">
+<style>
+  :root { --paper: #f3eee4; --ink: #1c1d1a; --ink-2: #4a4b44; --rule: #cfc6b4; --moss: #24382d; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 17px/1.6 "Helvetica Neue", Arial, sans-serif; }
+  main { max-width: 42rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+  h1 { color: var(--moss); font-size: 2rem; line-height: 1.2; margin: 0 0 .25rem; }
+  h2 { color: var(--moss); font-size: 1.2rem; margin: 2.2rem 0 .4rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+  p, li { color: var(--ink); }
+  .meta { color: var(--ink-2); margin: 0 0 1.5rem; }
+  a { color: var(--moss); }
+  code { background: #ebe4d6; padding: .05rem .3rem; border-radius: 3px; font-size: .92em; }
+</style>
+</head>
+<body>
+<main>
+  <h1>MotoRide privacy policy</h1>
+  <p class="meta">Last updated 21 October 2026. Applies to the MotoRide app for Android (package <code>com.adequatefunction.motoride</code>).</p>
+
+  <p>MotoRide is a motorcycle GPS. It follows a roadbook, warns you of dangerous corners and, if you choose, shares your
+  ride live with people you pick. It has no account, no advertising and no analytics. This page says what leaves your phone,
+  when, and where it goes.</p>
+
+  <h2>What stays on your phone</h2>
+  <ul>
+    <li>Your roadbooks and GPX files, the rides MotoRide records (as GPX files), your settings and the saved offline map.</li>
+    <li>Your position while you ride. The corner warnings, turn guidance and voice are worked out on the phone.</li>
+    <li>If you set a server, the access token for it, kept in the phone's secure storage.</li>
+  </ul>
+  <p>The developer does not receive any of this. Uninstalling the app deletes it.</p>
+
+  <h2>Live sharing (off unless you turn it on)</h2>
+  <p>When you share a ride live, the phone sends its position about every 30 seconds to the <strong>server you set in the
+  app</strong>, which is a server you or someone you trust runs (agentRide's multi-user server). The position is
+  <strong>encrypted on the phone</strong> (AES-256-GCM) before it is sent. The key is in the link you give to your followers
+  and is never sent to the server, so the server cannot read the position. The followers' web page decrypts it in their
+  browser. Stopping the share ends it. What the server keeps, and for how long, is decided by whoever runs it.</p>
+
+  <h2>Services MotoRide calls</h2>
+  <p>To search a place, route to it, complete a GPX file with speed limits, roundabouts and camera zones, and draw the map,
+  the app calls public open-data services. They receive what is needed for the request, and your IP address, and they have
+  their own privacy policies:</p>
+  <ul>
+    <li><strong>Nominatim</strong> (OpenStreetMap, <code>nominatim.openstreetmap.org</code>): the text of a place you search.</li>
+    <li><strong>Valhalla</strong> (<code>valhalla1.openstreetmap.de</code>): the coordinates of a route to a place or of a GPX being completed.</li>
+    <li><strong>Overpass</strong> (<code>overpass-api.de</code>, <code>overpass.openstreetmap.fr</code>): the area around a route, to read speed limits, roundabouts and cameras.</li>
+    <li><strong>OpenFreeMap</strong> (<code>tiles.openfreemap.org</code>): the map tiles for the area you look at or save for offline use.</li>
+  </ul>
+  <p>These calls are made only when you use the feature. Nothing is sent to the developer.</p>
+
+  <h2>Permissions</h2>
+  <ul>
+    <li><strong>Location</strong>, including while the app is in the background during a ride: to follow your position and warn you. It runs as a foreground service with a visible notification.</li>
+    <li><strong>Notifications</strong>: the notification shown while a ride runs.</li>
+    <li><strong>Internet</strong>: for the services above and live sharing.</li>
+  </ul>
+
+  <h2>What MotoRide does not do</h2>
+  <p>No account or sign-up. No advertising and no advertising identifier. No analytics, tracking or crash-reporting
+  service. No sale of data. The app is not directed at children; it is for riders of legal age.</p>
+
+  <h2>Your choices</h2>
+  <p>Turn live sharing off at any time, remove the server in the app, revoke location permission in Android settings, or
+  uninstall the app. To delete data held on a server you used, ask whoever runs it.</p>
+
+  <h2>Changes and contact</h2>
+  <p>If this policy changes, the date above changes. Questions, or a request about your data, can be sent as an issue on
+  <a href="https://github.com/bhoudebert/agent-motoride/issues">github.com/bhoudebert/agent-motoride</a>.</p>
+</main>
+</body>
+</html>

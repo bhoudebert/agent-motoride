@@ -71,6 +71,20 @@ npm run rides -- export 7    # 7-<name>.gpx and 7-<name>.motoride.json in export
 
 The format is described in `docs/roadbook-file.md`.
 
+## In the MotoRide app: gauges (coming soon)
+
+The MotoRide app, coming soon on Android and iOS, shows a few readings at the left of the map during a ride, each with
+its own switch in a **Gauges** card:
+
+- **Compass**, **altitude and climb**, and **slope** over the last 150 m, from the GPS.
+- **Lean angle** with your peak to the left and to the right, the **lateral G**, and the **braking G**, from the phone's
+  own accelerometer and gyroscope. Put the phone on its mount with the screen towards you, stand the bike upright and tap
+  Calibrate once; no sensor is needed on the bike.
+
+The lean is worked out from the turning rate and the GPS speed, because a phone used as a level meter reads about zero in
+a steady corner (the bike leans exactly along the force it feels). It is indicative: expect a few degrees of error, more in
+quick changes of direction, and nothing under 18 km/h. Lean and braking are off until the phone is calibrated.
+
 ## To the phone
 
 ::: code-group
@@ -163,6 +177,10 @@ The MotoRide app saves every ride it guides as a GPX, finished or not, and share
 ```bash
 npm run rides -- review ~/Downloads/2026-10-19T09-30-05-pays-des-collines-loop.gpx
 ```
+
+The file also has the altitude of every point and, when the rider had lean on, the lean, the lateral and braking G and the
+turning rate of each point (in `motoride:` extensions that other programs ignore), with the climb and the peak leans in its
+metadata. `review` reads the track and ignores them.
 
 The track says which roadbook it followed, so you do not have to name it. The numbers are those of your own library, and
 they repeat from one library to another, so the match needs the number **and** the name: a track whose roadbook 7 is

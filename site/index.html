@@ -188,6 +188,22 @@
   footer { border-top: 1.5px solid var(--ink); padding: 34px 0 60px; font-size: 14px; color: var(--ink-2); display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
   footer .mark { font-size: 24px; color: var(--ink); }
 
+  /* The app */
+  .app { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 56px; align-items: start; }
+  .phones { display: flex; gap: 18px; justify-content: center; align-items: flex-start; position: sticky; top: 24px; }
+  .phones img { width: 31%; height: auto; display: block; border: 1.5px solid var(--ink); border-radius: 22px; box-shadow: 6px 7px 0 var(--paper-2); }
+  .phones img:nth-child(2) { margin-top: 36px; }
+  .soon { display: flex; gap: 10px; flex-wrap: wrap; margin: 0 0 22px; }
+  .soon span { font-family: var(--mono); font-size: 13px; padding: 7px 12px; border: 1.5px solid var(--ink); background: #fbf8f1; }
+  .soon span b { color: var(--rust); font-weight: 600; }
+  .app-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+  .app-list li { padding-left: 20px; position: relative; color: var(--ink-2); }
+  .app-list li::before { content: "■"; position: absolute; left: 0; top: 1px; font-size: 11px; color: var(--signal); }
+  .app-list b { display: block; color: var(--ink); font-size: 17px; }
+  .app-live { margin-top: 26px; padding: 18px 20px; background: color-mix(in srgb, var(--signal) 16%, #fbf8f1); border: 1.5px solid var(--ink); }
+  .app-live b { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--rust); display: block; margin-bottom: 6px; }
+  .app-live p { margin: 0; }
+
   @media (max-width: 900px) {
     .hero { grid-template-columns: 1fr; padding: 56px 0 72px; }
     .note { transform: none; }
@@ -200,6 +216,8 @@
     .rb-row { grid-template-columns: 90px 1fr; }
     .rb-row .tulip, .rb-row .side { display: none; }
     .logbook { grid-template-columns: 1fr; gap: 32px; }
+    .app { grid-template-columns: 1fr; gap: 36px; }
+    .phones { position: static; }
     .slip:nth-child(even) { margin-left: 0; }
     .lg-row { grid-template-columns: 80px 1fr; }
     .lg-row .rate { grid-column: 2; border-left: 0 !important; padding-top: 0; }
@@ -220,6 +238,7 @@
     <li><a href="#map">Map</a></li>
     <li><a href="#stages">What it does</a></li>
     <li><a href="#after">After the ride</a></li>
+    <li><a href="#app">The app</a></li>
     <li><a href="#how">How it works</a></li>
     <li><a href="#run">Run it</a></li>
     <li><a href="#everything">Everything</a></li>
@@ -411,9 +430,42 @@
   <p class="caption">From Claude Code or Codex in plain words, <code>/mcp__ride__note</code> and <code>/mcp__ride__review</code>, or <code>npm run rides -- note</code> and <code>review</code> in a terminal. No track? Notes are placed on the plan by time, marked approximate.</p>
 </section>
 
+<section id="app">
+  <div class="head">
+    <div class="num">05 / the app</div>
+    <div>
+      <h2>MotoRide. The plan, on your handlebars.</h2>
+      <p>A motorcycle GPS built around the roads you chose, not the fastest route. It rides the roadbook from this planner, warns you of the corners ahead and lets the people at home watch you ride.</p>
+    </div>
+  </div>
+  <div class="app">
+    <div class="phones">
+      <img src="app-corner.png" width="360" height="720" loading="lazy" alt="MotoRide on a phone: a turn instruction, a yellow warning 'Sharp left, 200 m, ride at 35 km/h', the map with the route, and the speed panel with the speed limit.">
+      <img src="app-roundabout.png" width="360" height="720" loading="lazy" alt="MotoRide on a phone: 'Take the 2nd exit' with a roundabout diagram on the map.">
+      <img src="app-home.png" width="360" height="720" loading="lazy" alt="MotoRide's home screen: a map, a 'Where to?' search, a Roadbooks button and the recent rides.">
+    </div>
+    <div>
+      <div class="soon"><span>Android <b>· coming soon</b></span><span>iOS <b>· coming soon</b></span></div>
+      <ul class="app-list">
+        <li><b>Rides your roadbook</b>Open the GPX or roadbook file of a planned loop, or any GPX from another app, and press start. A route to a place works the same way.</li>
+        <li><b>Warns of corners before you reach them</b>Hairpins and tight bends are found on the route and announced on screen and by voice, with an advisory speed.</li>
+        <li><b>Turns, roundabouts and lanes</b>Spoken guidance, roundabout exits, lane advice and speed limits where the data exists.</li>
+        <li><b>Keeps going with the screen off</b>Guidance continues in the background, with a notification while a ride runs.</li>
+        <li><b>Works without network</b>Save the map around a roadbook before you leave. Your roadbooks and recorded rides stay on the phone.</li>
+        <li><b>Records every ride</b>Each ride is saved as a GPX you can share or bring back for the review.</li>
+      </ul>
+      <div class="app-live">
+        <b>LIVE TRACKING</b>
+        <p>Turn on sharing and send a link. Family and friends watch your dot move on a map in their browser, with no app to install. Positions are encrypted on your phone; the server you run cannot read them.</p>
+      </div>
+    </div>
+  </div>
+  <p class="caption">MotoRide is free, has no account and no ads. Corner warnings and advisory speeds are estimates from map data: an aid, not a substitute for your own judgement. <a href="motoride-privacy.html">Privacy policy</a> · <a href="https://github.com/bhoudebert/agent-motoride">Follow the progress on GitHub</a></p>
+</section>
+
 <section id="how">
   <div class="head">
-    <div class="num">05 / how it works</div>
+    <div class="num">06 / how it works</div>
     <div>
       <h2>An agent that does the legwork, code that keeps it honest</h2>
       <p>The model decides where to look and what to propose. Deterministic tools supply every number. The code enforces the rules you set.</p>
@@ -433,7 +485,7 @@
 
 <section id="run">
   <div class="head">
-    <div class="num">06 / run it</div>
+    <div class="num">07 / run it</div>
     <div>
       <h2>Three ways in</h2>
       <p>Same tools, same library, same exports. Pick the one that fits what you already have.</p>
@@ -460,7 +512,7 @@
 
 <section>
   <div class="head">
-    <div class="num">07 / under the hood</div>
+    <div class="num">08 / under the hood</div>
     <div>
       <h2>Built like something you would rely on</h2>
     </div>
@@ -481,7 +533,7 @@
 
 <section>
   <div class="head">
-    <div class="num">08 / try it</div>
+    <div class="num">09 / try it</div>
     <div>
       <h2>Five minutes to a first plan</h2>
       <p>Full instructions in the <a href="https://github.com/bhoudebert/agent-motoride#readme">README</a>.</p>
@@ -496,7 +548,7 @@
 
 <section id="everything">
   <div class="head">
-    <div class="num">09 / everything it does</div>
+    <div class="num">10 / everything it does</div>
     <div>
       <h2>Everything it does, in your words</h2>
       <p>Say it in plain words in Claude Code or Codex, or use the terminal. The full list, with every command and shortcut, is in the <a href="guide/everything">guide</a>; "what can you do?" shows it in your client.</p>
@@ -571,7 +623,7 @@
 
 <section id="open">
   <div class="head">
-    <div class="num">10 / open source</div>
+    <div class="num">11 / open source</div>
     <div>
       <h2>Open source, on open data</h2>
       <p>MIT-licensed, built in the open, and standing on data that communities map and share. Read every line, run it on your machine, send improvements back.</p>

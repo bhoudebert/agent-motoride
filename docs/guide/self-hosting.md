@@ -45,7 +45,7 @@ sudo nginx -t && sudo systemctl reload nginx
 curl https://rides.example.org/health
 ```
 
-`up -d ride` starts the server and not Caddy. Keep the paths of the example: `/mcp`, `/health`, `/enrol`, `/follow.js`,
+`up -d ride` starts the server and not Caddy. Keep the paths of the example: `/mcp`, `/health`, `/enrol`, `/traffic`, `/follow.js`,
 `/follow/*` and `/share/*` are exposed and everything else is 404. Keep `proxy_buffering off` and the long read timeout:
 the tools answer as a stream. `RIDE_DOMAIN` can be left as it is: only Caddy reads it.
 
@@ -125,11 +125,25 @@ The data is in `/var/lib/agent-motoride` (set `dataDir` to move it), the nightly
 
 ## What is exposed
 
-Caddy passes only `/mcp` (the tools, with a token), `/health`, `/enrol` (a phone exchanging its one-time invitation), and the live ride relay and its page (`/share/*`, `/follow/*`,
+Caddy passes only `/mcp` (the tools, with a token), `/health`, `/enrol` (a phone exchanging its one-time invitation), `/traffic` (the phone's traffic, with a token), and the live ride relay and its page (`/share/*`, `/follow/*`,
 `/follow.js`, [Share a ride live](/live-sharing)). The administration stays inside the container: there
 is no web page to log in to, and a rider can only be added from the machine. The container runs as an ordinary user, listens
 on the loopback address of the host, and keeps nothing but the data volume. A token travels in a header, so the port
 must never be reachable without TLS.
+
+## Traffic for the phone (optional)
+
+One server does it all: the same container serves the planning tools (MCP), the live ride relay and the phone's traffic. For the traffic
+on the MotoRide route you add your own [TomTom](https://developer.tomtom.com/) key (free tier). You accept TomTom's terms and answer
+for the quota; `TRAFFIC_MAX_PER_DAY` (600 by default) stops your riders from using it up.
+
+- **Docker:** put `TOMTOM_API_KEY=...` in `deploy/.env` (the compose file passes it in), then
+  `docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d`.
+- **NixOS:** `services.agent-motoride.environmentFile = "/run/secrets/agent-motoride.env";` with a line `TOMTOM_API_KEY=...` in that file.
+- **Your own proxy:** pass `/traffic` too (it is in the example above).
+
+Check it: `curl https://rides.example.org/health` says `"traffic":true`. The phone shows a traffic chip only then. The phone
+sends the server seven points of the road ahead, so the server learns roughly where a rider rides: run it for people you trust.
 
 ## When something is wrong
 

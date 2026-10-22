@@ -14,6 +14,9 @@ services:
     environment:
       # What `admin add` prints as the address riders connect to.
       RIDE_SERVER_URL: ${RIDE_SERVER_URL:?set RIDE_SERVER_URL, e.g. https://rides.example.org}
+      # The phone's Traffic (optional): your TomTom key, and the most TomTom requests a day it may cause. Empty: no traffic.
+      TOMTOM_API_KEY: ${TOMTOM_API_KEY:-}
+      TRAFFIC_MAX_PER_DAY: ${TRAFFIC_MAX_PER_DAY:-600}
     volumes:
       # The data: a folder of your own when RIDE_DATA_PATH is set (an absolute path, owned by uid 1000), else a Docker volume.
       - ${RIDE_DATA_PATH:-ride-data}:/data

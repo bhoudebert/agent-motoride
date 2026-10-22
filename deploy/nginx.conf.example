@@ -7,8 +7,8 @@ server {
     # ssl_certificate     /etc/letsencrypt/live/rides.example.org/fullchain.pem;
     # ssl_certificate_key /etc/letsencrypt/live/rides.example.org/privkey.pem;
 
-    # The tools (with a token), the health check, a phone's invitation, and the live ride relay with its page.
-    location ~ ^/(mcp|health|enrol|follow\.js)$ { proxy_pass http://127.0.0.1:8788; include /etc/nginx/ride-proxy.conf; }
+    # The tools (with a token), the health check, a phone's invitation, the phone's traffic, and the live ride relay with its page.
+    location ~ ^/(mcp|health|enrol|traffic|follow\.js)$ { proxy_pass http://127.0.0.1:8788; include /etc/nginx/ride-proxy.conf; }
     location ~ ^/(follow|share)/                 { proxy_pass http://127.0.0.1:8788; include /etc/nginx/ride-proxy.conf; }
     location /                                   { return 404; }
 }

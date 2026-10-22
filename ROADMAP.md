@@ -26,6 +26,8 @@ Done: a registry of riders with a library each, `npm run admin`, and the MCP too
   Later: a self-hosted copy of the map library, alerts to followers (no news for 10 minutes, a long stop) from the phone's
   own check, and an in-app QR scanner or an https page that opens the app for cameras that do not open the invitation link
   (ADR 0029).
+- **Traffic for the phone**: `POST /traffic` is built (ADR 0030), the MotoRide app shows it. Later: incidents (closures,
+  accidents) beside the flow, and TomTom's newer traffic endpoints when the current one is retired.
 - **A shared cache of road and weather lookups** across riders (the container image, the compose file, the NixOS module
   and the self-hosting guide are done).
 - **Quotas and accounts** if the instance is offered as a service: limits per rider, billing, terms and deletion of an

@@ -36,3 +36,4 @@ not rewritten.
 | [0027](0027-one-instance-one-sqlite-file-per-user.md)          | One instance serves several riders, one SQLite file each, found by token         | accepted |
 | [0028](0028-live-sharing-is-an-encrypted-relay.md)             | Live sharing is an encrypted relay the phone writes to and a web page reads from | accepted |
 | [0029](0029-the-phone-joins-with-a-one-time-invitation.md)     | The phone joins with a one-time invitation, not a token in a QR code             | accepted |
+| [0030](0030-traffic-comes-from-the-server.md)                  | Traffic comes from the server, with the host's TomTom key, not from the app      | accepted |

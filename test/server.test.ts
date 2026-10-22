@@ -463,3 +463,64 @@ test("live sharing: what a phone encrypts, the relay carries and the page reads 
     await s.app.close();
   }
 });
+
+test("traffic: a rider's token is needed, a server with no key says so, and the points are validated", async () => {
+  const none = await setup({ traffic: { key: "" } });
+  const withKey = await setup({
+    traffic: {
+      key: "K",
+      fetch: async () => ({ flowSegmentData: { currentSpeed: 20, freeFlowSpeed: 60, confidence: 1 } }),
+    },
+  });
+  try {
+    const post = (s: { url: string }, token: string | null, body: unknown) =>
+      fetch(`${s.url}/traffic`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify(body),
+      });
+    assert.equal((await fetch(`${withKey.url}/health`).then((r) => r.json())).traffic, true);
+    assert.equal((await fetch(`${none.url}/health`).then((r) => r.json())).traffic, false);
+    assert.equal((await post(withKey, null, { points: [[50, 3]] })).status, 401);
+    assert.equal((await fetch(`${withKey.url}/traffic`)).status, 405);
+    for (const points of [[], "x", [[50]], [[91, 3]], [["a", "b"]], Array(9).fill([50, 3])])
+      assert.equal((await post(withKey, withKey.alice.token, { points })).status, 400, JSON.stringify(points));
+    withKey.tick(61_000); // the bad tries counted against the minute too
+    const ok = await post(withKey, withKey.alice.token, {
+      points: [
+        [50, 3],
+        [50.1, 3.1],
+      ],
+    });
+    assert.equal(ok.status, 200);
+    const body = await ok.json();
+    assert.equal(body.points.length, 2);
+    assert.equal(body.points[0].level, "heavy");
+    assert.equal(body.budget, true);
+    assert.equal((await post(none, none.alice.token, { points: [[50, 3]] })).status, 503);
+  } finally {
+    await none.app.close();
+    await withKey.app.close();
+  }
+});
+
+test("traffic: a rider may ask only so often, and a big body is refused", async () => {
+  const s = await setup({
+    traffic: { key: "K", fetch: async () => ({ flowSegmentData: { currentSpeed: 60, freeFlowSpeed: 60 } }) },
+  });
+  try {
+    const post = (body: string) =>
+      fetch(`${s.url}/traffic`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${s.alice.token}` },
+        body,
+      });
+    const statuses: number[] = [];
+    for (let i = 0; i < 8; i++) statuses.push((await post(JSON.stringify({ points: [[50, 3]] }))).status);
+    assert.deepEqual(statuses, [200, 200, 200, 200, 200, 200, 429, 429]);
+    s.tick(61_000);
+    assert.equal((await post("x".repeat(5000))).status, 413);
+  } finally {
+    await s.app.close();
+  }
+});

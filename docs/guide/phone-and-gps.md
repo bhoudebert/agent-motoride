@@ -85,6 +85,25 @@ The lean is worked out from the turning rate and the GPS speed, because a phone 
 a steady corner (the bike leans exactly along the force it feels). It is indicative: expect a few degrees of error, more in
 quick changes of direction, and nothing under 18 km/h. Lean and braking are off until the phone is calibrated.
 
+## In the MotoRide app: on the road (coming soon)
+
+Beyond the gauges, the app will help during a ride, each with its own switch where it matters:
+
+- **Fuel stops.** The fuel stations along the roadbook (from OpenStreetMap) are on the map with the distance to the next one,
+  and the app says so once when the stretch after a station is longer than 60 % of your tank range, which you set on the card.
+- **Find along the route.** A bakery, café, restaurant, viewpoint, toilets, cash machine or motorcycle shop in the next 60 km,
+  listed with how far off the route it is. Pick one and it is marked on the map: the roadbook stays your route and the app
+  guides you back after the detour.
+- **Weather ahead.** The forecast for where you are and every 15 km ahead, at the time you will be there (MET Norway): dry, rain in
+  30 km, rain on a cold road (ice risk). It says it once before bad weather and can be turned off.
+- **Crash and fall detection.** A hard shock followed by ten seconds without moving, with the phone no longer upright, asks if you
+  are all right for 30 seconds. If you do not answer, the followers of a **live ride** (below) see a red "Possible crash" with your
+  position, and a message for your emergency contact and a call to 112 are one tap away on the screen. The app cannot send a message
+  or call by itself, and it can miss a crash or raise a false alert: it is an aid, not a guarantee.
+- **Looking back.** From "My rides", open a recorded ride for its track coloured by speed, its figures and a replay.
+- **The phone's look and language.** Light or dark, English or French, following the phone or chosen in the menu. The voice lowers
+  the music while it speaks.
+
 ## To the phone
 
 ::: code-group

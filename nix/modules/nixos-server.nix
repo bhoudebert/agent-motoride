@@ -64,6 +64,16 @@ _: {
           description = "Run Caddy in front for HTTPS, and open ports 80 and 443. Turn off to bring your own proxy.";
         };
 
+        environmentFile = lib.mkOption {
+          type = lib.types.nullOr lib.types.path;
+          default = null;
+          example = "/run/secrets/agent-motoride.env";
+          description = ''
+            A file of `NAME=value` lines read by the container, kept out of the Nix store. To give the phone's traffic a TomTom
+            key: `TOMTOM_API_KEY=...`, and optionally `TRAFFIC_MAX_PER_DAY=600`. Without a key the server offers no traffic.
+          '';
+        };
+
         backup = {
           enable = lib.mkOption {
             type = lib.types.bool;
@@ -86,6 +96,7 @@ _: {
           ports = [ "127.0.0.1:${toString cfg.port}:8788" ];
           volumes = [ "${cfg.dataDir}:/data" ];
           environment.RIDE_SERVER_URL = "https://${cfg.domain}";
+          environmentFiles = lib.optional (cfg.environmentFile != null) cfg.environmentFile;
         };
 
         # The image runs as the `node` user, uid 1000.
@@ -98,7 +109,7 @@ _: {
           virtualHosts.${cfg.domain}.extraConfig = ''
             # Only the tools, the live ride relay and its page, and the health check are exposed;
             # the administration stays inside the container.
-            @exposed path /mcp /health /enrol /follow.js /follow/* /share/*
+            @exposed path /mcp /health /enrol /traffic /follow.js /follow/* /share/*
             handle @exposed {
               reverse_proxy 127.0.0.1:${toString cfg.port}
             }

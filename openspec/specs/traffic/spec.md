@@ -15,6 +15,15 @@ The server SHALL offer traffic when `TOMTOM_API_KEY` is set and SHALL say so in 
 - **WHEN** a server has no TomTom key and a phone asks for traffic
 - **THEN** the answer is 503 "This server has no traffic source." and `/health` says `traffic: false`
 
+### Requirement: Reachable through the proxy
+
+The deployment examples (Caddy, the NixOS module, nginx) SHALL pass `/traffic` with the other public routes, the compose file and the NixOS module SHALL hand `TOMTOM_API_KEY` and `TRAFFIC_MAX_PER_DAY` to the container (the module through a file kept out of the Nix store), and a test SHALL fail when a route of the server is missing from an example.
+
+#### Scenario: Behind Caddy
+
+- **WHEN** a phone posts to `https://<domain>/traffic` through the example Caddyfile
+- **THEN** the request reaches the server and is not answered 404 by the proxy
+
 ### Requirement: Flow at points of the road ahead
 
 `POST /traffic` with the rider's token (spec multi-user-server) and `{points: [[lat, lon], ...]}` of one to eight points SHALL answer `{at, budget, points: [{lat, lon, level, ratio}]}`: for each point TomTom's flow at the road nearest to it (Flow Segment Data), as `ratio`, the current speed over the speed of an empty road, and a `level`: `free` (0.8 or more), `slow` (0.5 to under 0.8), `heavy` (under 0.5), `closed` (the road is closed), or `unknown` (no answer from TomTom, or a confidence under 0.5). A point TomTom could not answer SHALL be `unknown` and SHALL NOT fail the others. Anything else than one to eight valid points SHALL be refused with 400, a body over 2 KiB with 413, and a missing or wrong token with 401. A rider SHALL be allowed six requests a minute.

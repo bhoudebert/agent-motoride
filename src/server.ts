@@ -6,6 +6,7 @@ import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { fileURLToPath } from "node:url";
 import { tenantDbPath, tenantDir } from "./dataDir.ts";
 import { CHANNEL, LiveShares, type LiveOptions } from "./live.ts";
+import { MAX_POINTS, TrafficFlow, type TrafficOptions } from "./traffic.ts";
 import { type RequestContext, runInContext } from "./requestContext.ts";
 import { createRideServer } from "./rideServer.ts";
 import { Store } from "./store.ts";
@@ -31,6 +32,8 @@ export interface ServeOptions {
   now?: () => number;
   /** Limits of the live sharing relay (ADR 0028). */
   live?: LiveOptions;
+  /** TomTom flow for the phone's Traffic (ADR 0030): a key and a daily budget; none and the server offers no traffic. */
+  traffic?: TrafficOptions;
 }
 
 interface Session {
@@ -107,6 +110,7 @@ export function createHttpServer(options: ServeOptions): {
     now = Date.now,
   } = options;
   const live = new LiveShares({ now, ...options.live });
+  const traffic = new TrafficFlow({ now, ...options.traffic });
   const sessions = new Map<string, Session>();
   const windows = new Map<string, { start: number; count: number }>();
 
@@ -184,6 +188,47 @@ export function createHttpServer(options: ServeOptions): {
     return json(res, 405, { error: "Method not allowed." }, { Allow: "GET, PUT, POST, DELETE" });
   }
 
+  /** Traffic flow at a few points of the road ahead (ADR 0030): the rider's token, the host's TomTom key. */
+  async function handleTraffic(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    if (req.method !== "POST") return json(res, 405, { error: "Method not allowed." }, { Allow: "POST" });
+    const token = bearer(req);
+    const tenant = token ? registry.verify(token) : null;
+    if (!tenant) return json(res, 401, { error: "A rider's token is needed." }, { "WWW-Authenticate": "Bearer" });
+    if (limited(tenant)) return json(res, 429, { error: "Too many requests; wait a minute." }, { "Retry-After": "60" });
+    if (!traffic.available) return json(res, 503, { error: "This server has no traffic source." });
+    // A rider asks at most six times a minute: the phone asks every few minutes.
+    const t = now();
+    const w = windows.get(`traffic:${tenant.id}`);
+    if (!w || t - w.start >= 60_000) windows.set(`traffic:${tenant.id}`, { start: t, count: 1 });
+    else if (++w.count > 6)
+      return json(res, 429, { error: "Too many requests; wait a minute." }, { "Retry-After": "30" });
+    let body: unknown;
+    try {
+      body = await readBody(req, 2048);
+    } catch (e) {
+      return e instanceof TooBig ? json(res, 413, { error: "Too large." }) : json(res, 400, { error: "Not JSON." });
+    }
+    const raw = (
+      typeof body === "object" && body !== null ? (body as { points?: unknown }).points : undefined
+    ) as unknown;
+    const valid =
+      Array.isArray(raw) &&
+      raw.length >= 1 &&
+      raw.length <= MAX_POINTS &&
+      raw.every(
+        (p) =>
+          Array.isArray(p) &&
+          p.length === 2 &&
+          typeof p[0] === "number" &&
+          typeof p[1] === "number" &&
+          Math.abs(p[0]) <= 90 &&
+          Math.abs(p[1]) <= 180,
+      );
+    if (!valid) return json(res, 400, { error: `One to ${MAX_POINTS} points [lat, lon] are needed.` });
+    const answer = await traffic.flow(raw as Array<[number, number]>);
+    return json(res, 200, { at: t, ...answer });
+  }
+
   /** A phone exchanges the code of its invitation (and the PIN, when there is one) for a token of its own. */
   async function handleEnrol(req: IncomingMessage, res: ServerResponse): Promise<void> {
     if (req.method !== "POST") return json(res, 405, { error: "Method not allowed." }, { Allow: "POST" });
@@ -213,7 +258,14 @@ export function createHttpServer(options: ServeOptions): {
     const url = new URL(req.url ?? "/", "http://x");
     if (url.pathname === "/enrol") return handleEnrol(req, res);
     if (url.pathname === "/health")
-      return json(res, 200, { ok: true, version, sessions: sessions.size, shares: live.size });
+      return json(res, 200, {
+        ok: true,
+        version,
+        sessions: sessions.size,
+        shares: live.size,
+        traffic: traffic.available,
+      });
+    if (url.pathname === "/traffic") return handleTraffic(req, res);
     if (url.pathname === "/follow.js" && req.method === "GET")
       return sendFile(res, FOLLOW_JS, "text/javascript; charset=utf-8");
     // The page is the same for every link, so it says nothing of whether a ride exists.

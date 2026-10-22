@@ -97,9 +97,10 @@ Beyond the gauges, the app will help during a ride, each with its own switch whe
 - **Weather ahead.** The forecast for where you are and every 15 km ahead, at the time you will be there (MET Norway): dry, rain in
   30 km, rain on a cold road (ice risk). It says it once before bad weather and can be turned off.
 - **Crash and fall detection.** A hard shock followed by ten seconds without moving, with the phone no longer upright, asks if you
-  are all right for 30 seconds. If you do not answer, the followers of a **live ride** (below) see a red "Possible crash" with your
-  position, and a message for your emergency contact and a call to 112 are one tap away on the screen. The app cannot send a message
-  or call by itself, and it can miss a crash or raise a false alert: it is an aid, not a guarantee.
+  are all right for 30 seconds. If you do not answer, a **live ride** (below) shows a red "Possible crash" with your position to
+  anyone who has its page open (nothing is pushed to them), and a message for your emergency contact and a call to 112 are one tap
+  away on the screen for whoever holds the phone. The app calls and texts no one by itself, and it can miss a crash or raise a false
+  alert: it is an aid, not a guarantee.
 - **Looking back.** From "My rides", open a recorded ride for its track coloured by speed, its figures and a replay.
 - **The phone's look and language.** Light or dark, English or French, following the phone or chosen in the menu. The voice lowers
   the music while it speaks.

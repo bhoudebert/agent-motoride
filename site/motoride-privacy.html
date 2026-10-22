@@ -43,13 +43,14 @@
   browser. Stopping the share ends it. What the server keeps, and for how long, is decided by whoever runs it.</p>
 
   <h2>Services MotoRide calls</h2>
-  <p>To search a place, route to it, complete a GPX file with speed limits, roundabouts and camera zones, show the fuel stations on the way, and draw the map,
+  <p>To search a place, route to it, complete a GPX file with speed limits, roundabouts and camera zones, show the fuel stations and the weather on the way, find places along it, and draw the map,
   the app calls public open-data services. They receive what is needed for the request, and your IP address, and they have
   their own privacy policies:</p>
   <ul>
     <li><strong>Nominatim</strong> (OpenStreetMap, <code>nominatim.openstreetmap.org</code>): the text of a place you search.</li>
     <li><strong>Valhalla</strong> (<code>valhalla1.openstreetmap.de</code>): the coordinates of a route to a place or of a GPX being completed.</li>
-    <li><strong>Overpass</strong> (<code>overpass-api.de</code>, <code>overpass.openstreetmap.fr</code>): the area around a route, to read speed limits, roundabouts and cameras, and to find the fuel stations along it (the route's coordinates, a point every kilometre, once a month for each roadbook you ride).</li>
+    <li><strong>Overpass</strong> (<code>overpass-api.de</code>, <code>overpass.openstreetmap.fr</code>): the area around a route, to read speed limits, roundabouts and cameras, and to find the fuel stations along it (the route's coordinates, a point every kilometre, once a month for each roadbook you ride), and to find the bakery, café, viewpoint or other kind of place you ask for along the next 60 km (the coordinates of that stretch, when you ask).</li>
+    <li><strong>MET Norway</strong> (<code>api.met.no</code>): the weather forecast. The app sends a place, rounded to about a kilometre, for where you are and for every 15 km of the roadbook ahead, up to five places every ten minutes while a ride screen is open. You can turn the weather off on the weather card, and then nothing is sent. Weather data: MET Norway.</li>
     <li><strong>OpenFreeMap</strong> (<code>tiles.openfreemap.org</code>): the map tiles for the area you look at or save for offline use.</li>
   </ul>
   <p>These calls are made only when you use the feature. Nothing is sent to the developer.</p>

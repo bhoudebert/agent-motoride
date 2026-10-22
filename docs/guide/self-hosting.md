@@ -140,7 +140,8 @@ for the quota; `TRAFFIC_MAX_PER_DAY` (600 by default) stops your riders from usi
 - **Docker:** put `TOMTOM_API_KEY=...` in `deploy/.env` (the compose file passes it in), then
   `docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d`.
 - **NixOS:** `services.agent-motoride.environmentFile = "/run/secrets/agent-motoride.env";` with a line `TOMTOM_API_KEY=...` in that file.
-- **Your own proxy:** pass `/traffic` too (it is in the example above).
+- **The single-container file** (`deploy/docker-compose.single.yml`, no Caddy): the same two lines; `--env-file` or a `.env` next to it.
+- **Your own proxy:** pass `/traffic` too (it is in the example above); a proxy that lists paths answers 404 for it otherwise.
 
 Check it: `curl https://rides.example.org/health` says `"traffic":true`. The phone shows a traffic chip only then. The phone
 sends the server seven points of the road ahead, so the server learns roughly where a rider rides: run it for people you trust.

@@ -27,9 +27,11 @@ test("Caddy, the NixOS module and nginx pass every public route", () => {
 });
 
 test("the compose file passes the traffic key in, and the example says how to set it", () => {
-  const compose = read("deploy/docker-compose.yml");
-  assert.ok(compose.includes("TOMTOM_API_KEY: ${TOMTOM_API_KEY:-}"));
-  assert.ok(compose.includes("TRAFFIC_MAX_PER_DAY"));
+  for (const file of ["deploy/docker-compose.yml", "deploy/docker-compose.single.yml"]) {
+    const compose = read(file);
+    assert.ok(compose.includes("TOMTOM_API_KEY: ${TOMTOM_API_KEY:-}"), `${file} passes the key`);
+    assert.ok(compose.includes("TRAFFIC_MAX_PER_DAY"), `${file} passes the cap`);
+  }
   assert.ok(read("deploy/.env.example").includes("TOMTOM_API_KEY"));
   assert.ok(read("nix/modules/nixos-server.nix").includes("environmentFile"));
 });

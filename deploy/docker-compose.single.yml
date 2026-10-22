@@ -14,6 +14,9 @@ services:
     environment:
       # What `admin add` prints as the address riders connect to.
       RIDE_SERVER_URL: ${RIDE_SERVER_URL:?set RIDE_SERVER_URL, e.g. https://rides.example.org}
+      # The phone's Traffic (optional): your TomTom key, and the most TomTom requests a day it may cause. Empty: no traffic.
+      TOMTOM_API_KEY: ${TOMTOM_API_KEY:-}
+      TRAFFIC_MAX_PER_DAY: ${TRAFFIC_MAX_PER_DAY:-600}
     volumes:
       - /home/ubuntu/wks/motoride-data:/data
     # Not published to the host: only Caddy reaches it.

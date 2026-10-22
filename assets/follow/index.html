@@ -56,6 +56,22 @@
         font-size: 14px;
         opacity: 0.85;
       }
+      body[data-state="alert"] .panel {
+        background: #b3261e;
+        border: 3px solid #fff;
+      }
+      body[data-state="alert"] #headline {
+        font-size: 28px;
+      }
+      #advice {
+        display: none;
+        margin-top: 8px;
+        font-size: 15px;
+        font-weight: 600;
+      }
+      body[data-state="alert"] #advice {
+        display: block;
+      }
       body[data-state="stale"] .panel {
         background: var(--rust);
       }
@@ -87,6 +103,10 @@
     <div class="panel" role="status" aria-live="polite">
       <div id="headline">Opening the ride…</div>
       <div id="detail"></div>
+      <div id="advice">
+        The rider's phone thinks they crashed and nobody answered. Try to reach them. If you cannot, call the emergency
+        services (112 in Europe) with the position shown here.
+      </div>
     </div>
     <div class="note">Shared by link. The position is decrypted here in your browser; the server cannot read it.</div>
     <script

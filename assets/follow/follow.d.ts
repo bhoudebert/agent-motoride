@@ -7,7 +7,7 @@ export interface FollowedPoint {
   spd?: number | null;
   hdg?: number | null;
   acc?: number | null;
-  state?: "riding" | "stopped" | "ended";
+  state?: "riding" | "stopped" | "ended" | "alert";
   name?: string;
   [key: string]: unknown;
 }
@@ -21,5 +21,5 @@ export function summarise(
   points: Array<{ at: number; state?: string }>,
   state: "live" | "ended",
   now: number,
-): { headline: string; ageS: number | null; stale: boolean };
+): { headline: string; ageS: number | null; stale: boolean; alert?: boolean };
 export function ago(seconds: number | null): string;

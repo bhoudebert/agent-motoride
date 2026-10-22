@@ -43,6 +43,8 @@ export function summarise(points, state, now) {
     };
   const ageS = Math.max(0, Math.round((now - last.at) / 1000));
   if (state === "ended" || last.state === "ended") return { headline: "Ride ended", ageS, stale: false };
+  // The phone thinks the rider crashed and has not been told otherwise: it stays said however long ago the last update came.
+  if (last.state === "alert") return { headline: "Possible crash", ageS, stale: false, alert: true };
   const stale = ageS > 120;
   const headline = stale ? "No news for a while" : last.state === "stopped" ? "Stopped" : "Riding";
   return { headline, ageS, stale };
@@ -120,11 +122,14 @@ async function start() {
     const s = summarise(points, state, Date.now());
     const last = points[points.length - 1];
     say("headline", s.headline);
-    document.body.dataset.state = s.stale
-      ? "stale"
-      : state === "ended" || last?.state === "ended"
-        ? "ended"
-        : (last?.state ?? "waiting");
+    document.title = s.alert ? "Possible crash - following a ride" : "Following a ride";
+    document.body.dataset.state = s.alert
+      ? "alert"
+      : s.stale
+        ? "stale"
+        : state === "ended" || last?.state === "ended"
+          ? "ended"
+          : (last?.state ?? "waiting");
     say(
       "detail",
       [last?.name, last && last.spd != null ? `${Math.round(last.spd)} km/h` : "", ago(s.ageS)]

@@ -26,12 +26,17 @@ The relay SHALL need the rider's token (spec multi-user-server) to create a chan
 
 ### Requirement: The follower's side of the relay
 
-`GET /share/<channel>?after=<n>` SHALL return, without any token, the state of the channel (`live` or `ended`), when it was last updated and the updates newer than `n`, each with its sequence number, time, nonce and ciphertext. `GET /follow/<channel>` SHALL serve the page followers open, whatever the channel, so that it reveals nothing about whether one exists. The page SHALL read the key from the link's fragment, fetch and decrypt the updates in the browser, and show the rider's position and trail on a map, the speed, how long ago the last update came, whether the ride is live or ended, and a clear message when nothing has come for two minutes or the link is wrong. It SHALL make no request that carries the key.
+`GET /share/<channel>?after=<n>` SHALL return, without any token, the state of the channel (`live` or `ended`), when it was last updated and the updates newer than `n`, each with its sequence number, time, nonce and ciphertext. `GET /follow/<channel>` SHALL serve the page followers open, whatever the channel, so that it reveals nothing about whether one exists. The page SHALL read the key from the link's fragment, fetch and decrypt the updates in the browser, and show the rider's position and trail on a map, the speed, how long ago the last update came, whether the ride is live or ended, and a clear message when nothing has come for two minutes or the link is wrong. When the last update carries the state `alert` (the rider's phone thinks they crashed, MotoRide spec crash-detection) it SHALL say **Possible crash** in red above everything else, whatever the age of that update, with advice to try to reach the rider and to call the emergency services with the position shown; the next update that is not an alert (the rider says they are fine) takes it back. It SHALL make no request that carries the key.
 
 #### Scenario: A follower opens the link
 
 - **WHEN** a follower opens the link in a browser
 - **THEN** the map shows the rider's last position and trail, updating while the ride is live
+
+#### Scenario: A possible crash
+
+- **WHEN** the last update a follower's page has decrypted carries the state `alert`
+- **THEN** the page says "Possible crash" in red with the position and advice to try to reach the rider and call the emergency services, until an update that is not an alert arrives
 
 ### Requirement: Nothing else is exposed
 

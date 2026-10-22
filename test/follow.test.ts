@@ -78,6 +78,25 @@ test("what the page says: waiting, riding, stopped, no news, ended", () => {
   assert.equal(summarise([at(5000, "ended")], "live", now).headline, "Ride ended");
 });
 
+test("a possible crash is said first, at any age, until the rider says they are fine", () => {
+  const now = 1_000_000;
+  const at = (ms: number, state: string) => ({ at: now - ms, state });
+  assert.deepEqual(summarise([at(5000, "riding"), at(2000, "alert")], "live", now), {
+    headline: "Possible crash",
+    ageS: 2,
+    stale: false,
+    alert: true,
+  });
+  // Even when the phone has gone quiet (it may be broken, or have no signal): that is no reason to take the alert back.
+  assert.equal(summarise([at(10 * 60_000, "alert")], "live", now).headline, "Possible crash");
+  assert.equal(summarise([at(10 * 60_000, "alert")], "live", now).alert, true);
+  // The rider says all is well: the next update is a riding one.
+  assert.equal(summarise([at(30_000, "alert"), at(1000, "riding")], "live", now).headline, "Riding");
+  assert.equal("alert" in summarise([at(30_000, "alert"), at(1000, "riding")], "live", now), false);
+  // An ended ride is an ended ride.
+  assert.equal(summarise([at(5000, "alert")], "ended", now).headline, "Ride ended");
+});
+
 test("times are said short", () => {
   assert.equal(ago(null), "");
   assert.equal(ago(12), "12 s ago");

@@ -12,10 +12,15 @@ providers exist. The phone must not have to change when the source does.
 ## Decision
 
 The answer of `POST /traffic` is the contract: one level per point (free, slow, heavy, closed, unknown) and a ratio. Behind it the server
-has a `TrafficProvider` (`flowAt(lat, lon)`), chosen by `TRAFFIC_PROVIDER` (default `tomtom-flow`, the only one so far). The rounding, the
-five-minute cache shared between riders, the daily cap and the rate limit stand above the provider, so every provider gets them for free.
+has a `TrafficProvider` (`flowAt(lat, lon)`), chosen by `TRAFFIC_PROVIDER` (default `off`: no traffic; `tomtom-flow` is the only source so far). The rounding, the
+daily cap and the rate limit stand above the provider; a provider says if an answer may be kept for other riders (`cacheMs`) and if each
+place costs a request (`metered`).
 A provider answers `unknown` for a place it cannot tell; an unknown provider name stops the server at start with the list of known ones.
 Another provider is one function and one entry in the list. None is added before there is a reason to.
+
+TomTom is opt-in: the key is also the planner's, and TomTom's portal terms (read on 2026-10-23) forbid keeping results to serve several
+users (clause 11.4), exclude navigation functionality unless agreed in writing (2.1), and limit an evaluation key to evaluation (2.2). So its
+provider keeps nothing, and a host turns it on knowing their plan has to allow it. Open government data comes next, as providers of their own.
 
 ## Consequences
 

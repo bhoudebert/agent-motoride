@@ -53,9 +53,9 @@
     <li><strong>MET Norway</strong> (<code>api.met.no</code>): the weather forecast. The app sends a place, rounded to about a kilometre, for where you are and for every 15 km of the roadbook ahead, up to five places every ten minutes while a ride screen is open. You can turn the weather off on the weather card, and then nothing is sent. Weather data: MET Norway.</li>
     <li><strong>OpenFreeMap</strong> (<code>tiles.openfreemap.org</code>): the map tiles for the area you look at or save for offline use.</li>
   </ul>
-  <p>If you set a server and it has a TomTom key, the app also shows the <strong>traffic</strong> on the next 60 km. Every five minutes
+  <p>If you set a server and its host turned traffic on, the app also shows the <strong>traffic</strong> on the next 60 km. Every five minutes
   it asks that server, and only that server, about seven points of the road ahead (latitude and longitude, here and every 10 km),
-  and the server asks TomTom with its own key. So that server learns roughly where you ride, to about a kilometre: use a server you
+  and the server asks its traffic source (TomTom, with the host's own key, today). So that server learns roughly where you ride, to about a kilometre: use a server you
   trust. The app asks the server whether it has traffic each time a ride screen opens (nothing about the ride is sent in that
   request). You can turn traffic off in the app, and then nothing is sent. Without a server, nothing about traffic exists in the app.</p>
 

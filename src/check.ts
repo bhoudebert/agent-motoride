@@ -1,7 +1,7 @@
 // Environment check: what each mode needs, which services answer from here,
 // and the state of the database. No model call, no cost.
 import { existsSync } from "node:fs";
-import { fetchJson } from "./http.ts";
+import { fetchJson, VALHALLA_CLIENT_ID } from "./http.ts";
 import { MODEL, SCOUT_MODEL } from "./model.ts";
 import { describeProfile } from "./profile.ts";
 import { Store } from "./store.ts";
@@ -75,7 +75,7 @@ const route = await timed(() =>
     "https://valhalla1.openstreetmap.de/route",
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-Client-Id": VALHALLA_CLIENT_ID },
       body: JSON.stringify({
         locations: [
           { lat: 50.63, lon: 3.06 },

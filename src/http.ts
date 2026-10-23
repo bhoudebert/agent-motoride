@@ -1,6 +1,9 @@
 // Contact-style agent string: some public instances reject free-text or browser-like agents.
 const USER_AGENT = "agentMotoride/0.1 (+https://github.com/bhoudebert/agent-motoride)";
 
+/** The public Valhalla server asks apps that use it to say who they are, beside the User-Agent (FOSSGIS demo server notice). */
+export const VALHALLA_CLIENT_ID = "agentmotoride";
+
 /** fetch + JSON with a timeout and a readable error on non-2xx responses. */
 export async function fetchJson<T>(url: string, init: RequestInit = {}, timeoutMs = 30_000): Promise<T> {
   const res = await fetch(url, {

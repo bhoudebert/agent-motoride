@@ -35,3 +35,20 @@ test("the compose file passes the traffic key in, and the example says how to se
   assert.ok(read("deploy/.env.example").includes("TOMTOM_API_KEY"));
   assert.ok(read("nix/modules/nixos-server.nix").includes("environmentFile"));
 });
+
+test("the compose files hand VALHALLA_URL to the server and offer an own Valhalla only on request (profile)", () => {
+  for (const file of ["deploy/docker-compose.yml", "deploy/docker-compose.single.yml"]) {
+    const compose = read(file);
+    assert.ok(compose.includes("VALHALLA_URL: ${VALHALLA_URL:-}"), `${file} passes the address`);
+    assert.ok(
+      /valhalla:\n\s+image: ghcr\.io\/gis-ops\/docker-valhalla\/valhalla/.test(compose),
+      `${file} has the service`,
+    );
+    assert.ok(compose.includes('profiles: ["valhalla"]'), `${file}: the service starts only with its profile`);
+    assert.ok(compose.includes("build_admins:"), `${file}: the countries of a roadbook need the admin boundaries`);
+    // The service block ends at the next service or at the top-level volumes.
+    const block = compose.slice(compose.indexOf("\n  valhalla:\n")).split(/\n(?: {2}\w[\w-]*:\n|volumes:)/)[1] ?? "";
+    assert.ok(block.includes("image:") && !block.includes("ports:"), `${file}: the service publishes nothing`);
+  }
+  assert.ok(read("deploy/.env.example").includes("VALHALLA_URL"));
+});

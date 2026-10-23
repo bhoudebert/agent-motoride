@@ -18,12 +18,35 @@ services:
       TOMTOM_API_KEY: ${TOMTOM_API_KEY:-}
       TRAFFIC_MAX_PER_DAY: ${TRAFFIC_MAX_PER_DAY:-600}
       TRAFFIC_PROVIDER: ${TRAFFIC_PROVIDER:-open-data}
+      # Your own Valhalla (optional, the `valhalla` service below): http://valhalla:8002. Empty: the public server.
+      VALHALLA_URL: ${VALHALLA_URL:-}
     volumes:
       # The data: a folder of your own when RIDE_DATA_PATH is set (an absolute path, owned by uid 1000), else a Docker volume.
       - ${RIDE_DATA_PATH:-ride-data}:/data
     # Not published to the host: only Caddy reaches it.
     expose:
       - "8788"
+
+  # Your own routing engine (optional, docs/guide/self-hosting.md): `docker compose --profile valhalla up -d`, then set
+  # VALHALLA_URL=http://valhalla:8002. The first start downloads the map extracts and builds the tiles (hours, a lot of memory);
+  # it answers once that is done. Reached by the ride service only: nothing is published.
+  valhalla:
+    image: ghcr.io/gis-ops/docker-valhalla/valhalla:latest
+    profiles: ["valhalla"]
+    restart: unless-stopped
+    environment:
+      tile_urls: ${VALHALLA_TILE_URLS:-https://download.geofabrik.de/europe/france-latest.osm.pbf https://download.geofabrik.de/europe/belgium-latest.osm.pbf}
+      use_tiles_ignore_pbf: "True"
+      build_elevation: "False"
+      build_admins: "True"
+      build_time_zones: "True"
+      server_threads: ${VALHALLA_THREADS:-4}
+      # Set to True for one start to rebuild the tiles from fresh extracts, then back to False.
+      force_rebuild: ${VALHALLA_REBUILD:-False}
+    volumes:
+      - valhalla-data:/custom_files
+    expose:
+      - "8002"
 
   caddy:
     image: caddy:2
@@ -41,6 +64,7 @@ services:
       - caddy-config:/config
 
 volumes:
+  valhalla-data:
   ride-data:
   caddy-data:
   caddy-config:

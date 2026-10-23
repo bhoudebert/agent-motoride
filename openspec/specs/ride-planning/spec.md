@@ -124,3 +124,17 @@ When the request is a practical trip (commute, arrive by a time), the planner SH
 ### Requirement: Order of completion
 
 Once a loop is chosen the planner SHALL run traffic, cameras and the stop plan on that loop, and reconsider departure or loop only when traffic or daylight demands it.
+
+### Requirement: The routing engine is the host's choice
+
+Routes and traces (the trip calculation, the roadbook legs, the `check` command) SHALL be asked of the Valhalla server named by `VALHALLA_URL` when it is set, and of the public Valhalla server otherwise. The address SHALL be read at each use. An address that is not an http or https URL SHALL be refused with a message naming `VALHALLA_URL`. Every request to Valhalla SHALL send the `X-Client-Id` header.
+
+#### Scenario: An own Valhalla
+
+- **WHEN** `VALHALLA_URL=http://valhalla:8002` is set and a trip is calculated
+- **THEN** the route is asked of `http://valhalla:8002/route` and not of the public server
+
+#### Scenario: A mistyped address
+
+- **WHEN** `VALHALLA_URL=valhalla:8002` is set
+- **THEN** the request fails with "VALHALLA_URL must be http or https" before anything is sent

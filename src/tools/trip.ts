@@ -1,5 +1,5 @@
 import { decodePolyline, encodePolyline, type LatLon, straightRuns } from "../geometry.ts";
-import { fetchJson, VALHALLA_CLIENT_ID } from "../http.ts";
+import { fetchJson, valhallaUrl, VALHALLA_CLIENT_ID } from "../http.ts";
 import { overviewLink, pinnedMapsLinks } from "../maps.ts";
 import { bearingDeg, describeCoords, fmtCoords, haversineKm, type Point, resolvePoint } from "./geo.ts";
 
@@ -8,8 +8,6 @@ export interface CalculateTripInput {
   roundTrip?: boolean;
   avoidMotorways?: boolean;
 }
-
-const VALHALLA = "https://valhalla1.openstreetmap.de";
 
 interface ValhallaResponse {
   trip: {
@@ -190,7 +188,7 @@ export async function traceLeg(legShape: string): Promise<TraceAttributesRespons
 }
 
 function traceAttributes(shape: string, shapeMatch: "edge_walk" | "map_snap") {
-  return fetchJson<TraceAttributesResponse>(`${VALHALLA}/trace_attributes`, {
+  return fetchJson<TraceAttributesResponse>(`${valhallaUrl()}/trace_attributes`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Client-Id": VALHALLA_CLIENT_ID },
     body: JSON.stringify({
@@ -496,7 +494,7 @@ export async function computeTrip(input: CalculateTripInput): Promise<TripComput
   const avoidMotorways = input.avoidMotorways ?? true;
   let data: ValhallaResponse;
   try {
-    data = await fetchJson<ValhallaResponse>(`${VALHALLA}/route`, {
+    data = await fetchJson<ValhallaResponse>(`${valhallaUrl()}/route`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Client-Id": VALHALLA_CLIENT_ID },
       body: JSON.stringify({

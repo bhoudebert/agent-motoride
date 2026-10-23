@@ -1,7 +1,7 @@
 // Environment check: what each mode needs, which services answer from here,
 // and the state of the database. No model call, no cost.
 import { existsSync } from "node:fs";
-import { fetchJson, VALHALLA_CLIENT_ID } from "./http.ts";
+import { fetchJson, valhallaUrl, VALHALLA_CLIENT_ID } from "./http.ts";
 import { MODEL, SCOUT_MODEL } from "./model.ts";
 import { describeProfile } from "./profile.ts";
 import { Store } from "./store.ts";
@@ -72,7 +72,7 @@ const forecast = await timed(() =>
 add(forecast.value ? "ok" : "fail", "Open-Meteo forecast", forecast.value ? `${forecast.ms} ms` : forecast.error!);
 const route = await timed(() =>
   fetchJson<{ trip?: unknown }>(
-    "https://valhalla1.openstreetmap.de/route",
+    `${valhallaUrl()}/route`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Client-Id": VALHALLA_CLIENT_ID },

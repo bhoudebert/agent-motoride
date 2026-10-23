@@ -131,6 +131,26 @@ is no web page to log in to, and a rider can only be added from the machine. The
 on the loopback address of the host, and keeps nothing but the data volume. A token travels in a header, so the port
 must never be reachable without TLS.
 
+## Your own routing engine (optional)
+
+By default agentRide asks the shared public Valhalla server (`valhalla1.openstreetmap.de`) for routes: free, but rate-limited, with no promise of
+service. If your server has the room, it can run its own Valhalla for the countries you ride in. Planning gets faster and the shared limit goes away.
+
+**What it takes** (estimates, not measured: tell us what you see). For France and Belgium: about 5 GB of map downloads and 10 to 15 GB of disk; a first
+build of one to a few hours that wants 8 to 16 GB of memory while it runs; afterwards 2 to 4 GB of memory and one or two cores to serve. Run the first
+build at a quiet hour.
+
+1. Start it with the profile: `docker compose -f deploy/docker-compose.yml --env-file deploy/.env --profile valhalla up -d valhalla`. The first start
+   downloads the extracts (`VALHALLA_TILE_URLS`, France and Belgium by default, from [Geofabrik](https://download.geofabrik.de/)) and builds the
+   tiles; follow it with `docker compose logs -f valhalla`. It builds the administrative boundaries (the countries of a roadbook come from them) and no elevation.
+2. Once it answers, put `VALHALLA_URL=http://valhalla:8002` in `deploy/.env` and restart the server (`up -d ride`). Nothing is published: only the server reaches it.
+   Check it: `docker compose exec ride node src/check.ts` (or `npm run check`) tests the route service it uses.
+3. Keep the roads current: once a month set `VALHALLA_REBUILD=True` for one start (it downloads fresh extracts and rebuilds), then back to `False`.
+
+Unset `VALHALLA_URL` and it goes back to the public server. The image and its settings are the
+[gis-ops docker-valhalla](https://github.com/gis-ops/docker-valhalla) ones: read its README if a variable has changed. The phone still asks the public
+server itself; having the phone use yours through the rider's server is the next step (ADR 0043).
+
 ## Traffic for the phone (optional)
 
 One server does it all: the same container serves the planning tools (MCP), the live ride relay and the phone's traffic. Traffic needs no key and no

@@ -17,7 +17,8 @@ test("the speed against an empty road gives free, slow, heavy or closed", () => 
 });
 
 test("a server offers no traffic unless TomTom was asked for, with a key", () => {
-  assert.equal(new TrafficFlow({ key: "K" }).available, false); // a key alone is the planner's
+  assert.equal(new TrafficFlow({ key: "K", provider: "off" }).available, false);
+  assert.equal(new TrafficFlow({ key: "K", provider: "open-data" }).available, true); // no key needed
   assert.equal(new TrafficFlow({ key: "", provider: "tomtom-flow" }).available, false);
   assert.equal(new TrafficFlow({ key: "K", provider: "tomtom-flow" }).available, true);
 });
@@ -147,7 +148,7 @@ test("the provider is chosen by name, and a name that is not one is a mistake sa
   assert.equal(new TrafficFlow({ key: "", provider: "tomtom-flow" }).available, false);
   assert.throws(
     () => new TrafficFlow({ key: "K", provider: "nope" }),
-    /Unknown TRAFFIC_PROVIDER "nope"\. Known: off, tomtom-flow\./,
+    /Unknown TRAFFIC_PROVIDER "nope"\. Known: open-data, off, tomtom-flow\./,
   );
 });
 

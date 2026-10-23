@@ -38,3 +38,4 @@ not rewritten.
 | [0029](0029-the-phone-joins-with-a-one-time-invitation.md)     | The phone joins with a one-time invitation, not a token in a QR code             | accepted |
 | [0030](0030-traffic-comes-from-the-server.md)                  | Traffic comes from the server, with the host's TomTom key, not from the app      | accepted |
 | [0041](0041-traffic-providers-behind-one-answer.md)            | Traffic providers behind one answer, chosen by the host                          | accepted |
+| [0042](0042-traffic-from-open-government-data.md)              | Traffic from open government data, by country                                    | accepted |

@@ -264,6 +264,7 @@ export function createHttpServer(options: ServeOptions): {
         sessions: sessions.size,
         shares: live.size,
         traffic: traffic.available,
+        trafficCountries: traffic.countries,
       });
     if (url.pathname === "/traffic") return handleTraffic(req, res);
     if (url.pathname === "/follow.js" && req.method === "GET")

@@ -6,23 +6,23 @@ Let the MotoRide phone show where the traffic is slow on the road ahead, with th
 
 ## Requirements
 
-### Requirement: The server offers traffic only with a key
+### Requirement: The server offers traffic only when a source is chosen
 
-The server SHALL offer traffic when `TOMTOM_API_KEY` is set and SHALL say so in its health answer (`traffic: true`); without a key it SHALL say `traffic: false` and answer `POST /traffic` with 503. The host, who holds the key, is the one who accepts TomTom's terms and answers for the quota; the phone holds no key.
+The server SHALL offer traffic only when its host chose a provider with `TRAFFIC_PROVIDER` and, for TomTom, set `TOMTOM_API_KEY`; it SHALL say so in its health answer (`traffic: true`). With no provider (`off`, the default) or no key for the one chosen, it SHALL say `traffic: false` and answer `POST /traffic` with 503. A TomTom key in the environment SHALL NOT turn traffic on by itself: the key is also the planner's. The host, who holds the key, answers for TomTom's terms and for the quota (ADR 0030).
 
 #### Scenario: No key
 
-- **WHEN** a server has no TomTom key and a phone asks for traffic
+- **WHEN** a server has no provider chosen, or TomTom chosen with no key, and a phone asks for traffic
 - **THEN** the answer is 503 "This server has no traffic source." and `/health` says `traffic: false`
 
 ### Requirement: The provider is the host's choice
 
-The flow SHALL come from the provider named by `TRAFFIC_PROVIDER` (default `tomtom-flow`, TomTom Flow Segment Data, ADR 0041), behind the same answer for every provider: a level and a ratio per point, `unknown` where the provider cannot tell. The rounding, the cache, the daily cap and the rate limit SHALL apply whatever the provider. A name that is not a known provider SHALL stop the server at start with the list of known ones.
+The flow SHALL come from the provider named by `TRAFFIC_PROVIDER` (default `off`; `tomtom-flow` is TomTom Flow Segment Data; ADR 0041), behind the same answer for every provider: a level and a ratio per point, `unknown` where the provider cannot tell. The rounding, the cache, the daily cap and the rate limit SHALL apply whatever the provider. A name that is not a known provider SHALL stop the server at start with the list of known ones.
 
 #### Scenario: A mistyped provider
 
 - **WHEN** `TRAFFIC_PROVIDER=tomtom` is set
-- **THEN** the server does not start and says `Unknown TRAFFIC_PROVIDER "tomtom". Known: tomtom-flow.`
+- **THEN** the server does not start and says `Unknown TRAFFIC_PROVIDER "tomtom". Known: off, tomtom-flow.`
 
 ### Requirement: Reachable through the proxy
 
@@ -44,11 +44,11 @@ The deployment examples (Caddy, the NixOS module, nginx) SHALL pass `/traffic` w
 
 ### Requirement: The host's quota is kept
 
-The points SHALL be rounded to a hundredth of a degree (about a kilometre) before TomTom is asked, and the answer of a cell SHALL be kept five minutes and shared by every rider of the server. The server SHALL ask TomTom at most `TRAFFIC_MAX_PER_DAY` times a UTC day (600 by default); past it the points not in the cache SHALL come back `unknown` and `budget` SHALL be `false`, until the next day. The key SHALL never be sent to a phone nor written to a log.
+The points SHALL be rounded to a hundredth of a degree (about a kilometre) before TomTom is asked, and the server SHALL NOT keep TomTom's results to serve other riders (TomTom's terms forbid caching to serve several clients, clause 11.4): each request asks TomTom again. The server SHALL ask TomTom at most `TRAFFIC_MAX_PER_DAY` times a UTC day (600 by default); past it the points SHALL come back `unknown` and `budget` SHALL be `false`, until the next day. A provider that costs nothing per place and allows it MAY keep an answer for the time it declares. The key SHALL never be sent to a phone nor written to a log.
 
 #### Scenario: The daily budget
 
-- **WHEN** the budget of the day is used up and a phone asks for a cell not in the cache
+- **WHEN** the budget of the day is used up and a phone asks for a cell
 - **THEN** it comes back `unknown` with `budget: false`, and TomTom is not asked
 
 ### Requirement: What the server learns

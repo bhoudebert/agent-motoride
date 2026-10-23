@@ -133,14 +133,20 @@ must never be reachable without TLS.
 
 ## Traffic for the phone (optional)
 
-One server does it all: the same container serves the planning tools (MCP), the live ride relay and the phone's traffic. For the traffic
-on the MotoRide route you add your own [TomTom](https://developer.tomtom.com/) key (free tier). You accept TomTom's terms and answer
-for the quota; `TRAFFIC_MAX_PER_DAY` (600 by default) stops your riders from using it up. `TRAFFIC_PROVIDER` says where the flow comes from; `tomtom-flow` is the only one so far and the default.
+One server does it all: the same container serves the planning tools (MCP), the live ride relay and the phone's traffic. Traffic is **off by default**:
+the phone shows no traffic and says what the server could add. `TRAFFIC_PROVIDER` turns it on (`off`, the default, or `tomtom-flow`).
 
-- **Docker:** put `TOMTOM_API_KEY=...` in `deploy/.env` (the compose file passes it in), then
+**TomTom (`tomtom-flow`).** You add your own [TomTom](https://developer.tomtom.com/) key and set `TRAFFIC_PROVIDER=tomtom-flow`. The key in
+`TOMTOM_API_KEY` is also the planner's, so it never turns traffic on by itself. You accept TomTom's terms and answer for them and for the quota. Read
+them first: as of 2026-10-23 they allow an evaluation key for evaluation only, forbid keeping results to serve several users (so the server asks
+TomTom again for every rider's refresh, up to `TRAFFIC_MAX_PER_DAY`, 600 by default), and exclude turn-by-turn "navigation functionality" unless
+TomTom agrees in writing. Whether showing traffic on a ride app falls under that is for you and TomTom to settle; this project cannot say.
+Open data for France and Belgium is planned as the default source.
+
+- **Docker:** put `TOMTOM_API_KEY=...` and `TRAFFIC_PROVIDER=tomtom-flow` in `deploy/.env` (the compose file passes it in), then
   `docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d`.
-- **NixOS:** `services.agent-motoride.environmentFile = "/run/secrets/agent-motoride.env";` with a line `TOMTOM_API_KEY=...` in that file.
-- **The single-container file** (`deploy/docker-compose.single.yml`, no Caddy): the same two lines; `--env-file` or a `.env` next to it.
+- **NixOS:** `services.agent-motoride.environmentFile = "/run/secrets/agent-motoride.env";` with the lines `TOMTOM_API_KEY=...` and `TRAFFIC_PROVIDER=tomtom-flow` in that file.
+- **The single-container file** (`deploy/docker-compose.single.yml`, no Caddy): the same lines; `--env-file` or a `.env` next to it.
 - **Your own proxy:** pass `/traffic` too (it is in the example above); a proxy that lists paths answers 404 for it otherwise.
 
 Check it: `curl https://rides.example.org/health` says `"traffic":true`. The phone shows a traffic chip only then. The phone

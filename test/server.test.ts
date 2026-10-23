@@ -465,10 +465,11 @@ test("live sharing: what a phone encrypts, the relay carries and the page reads 
 });
 
 test("traffic: a rider's token is needed, a server with no key says so, and the points are validated", async () => {
-  const none = await setup({ traffic: { key: "" } });
+  const none = await setup({ traffic: { key: "", provider: "tomtom-flow" } });
   const withKey = await setup({
     traffic: {
       key: "K",
+      provider: "tomtom-flow",
       fetch: async () => ({ flowSegmentData: { currentSpeed: 20, freeFlowSpeed: 60, confidence: 1 } }),
     },
   });
@@ -506,7 +507,11 @@ test("traffic: a rider's token is needed, a server with no key says so, and the 
 
 test("traffic: a rider may ask only so often, and a big body is refused", async () => {
   const s = await setup({
-    traffic: { key: "K", fetch: async () => ({ flowSegmentData: { currentSpeed: 60, freeFlowSpeed: 60 } }) },
+    traffic: {
+      key: "K",
+      provider: "tomtom-flow",
+      fetch: async () => ({ flowSegmentData: { currentSpeed: 60, freeFlowSpeed: 60 } }),
+    },
   });
   try {
     const post = (body: string) =>

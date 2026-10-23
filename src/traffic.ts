@@ -18,8 +18,6 @@ export interface TrafficPoint {
 /** A point is about a kilometre wide: the same cell is asked once for every rider in the cache time. */
 const cell = (n: number) => n.toFixed(2);
 export const MAX_POINTS = 8;
-/** Answers kept five minutes, which is how fast TomTom's flow changes and how often a phone asks. */
-export const CACHE_MS = 5 * 60_000;
 
 /** What a ratio of current to free-flow speed means for a rider. */
 export function levelOf(ratio: number | null, closed: boolean): TrafficLevel {
@@ -39,6 +37,13 @@ export type PointFlow = Omit<TrafficPoint, "lat" | "lon">;
  */
 export interface TrafficProvider {
   readonly name: string;
+  /**
+   * How long an answer for a cell may be kept and shared between riders, ms; 0 for none. TomTom's terms forbid caching
+   * "for the purpose of scaling results to serve multiple clients" (clause 11.4), so its provider keeps nothing.
+   */
+  readonly cacheMs: number;
+  /** Whether each place costs a request to a remote service, so the daily cap applies. */
+  readonly metered: boolean;
   flowAt(lat: number, lon: number): Promise<PointFlow>;
 }
 
@@ -60,6 +65,8 @@ export function tomtomFlowSegment(key: string, get?: (url: string) => Promise<Fl
   const fetchFlow = get ?? ((url: string) => fetchJson<FlowSegment>(url, {}, 8000));
   return {
     name: "tomtom-flow",
+    cacheMs: 0,
+    metered: true,
     async flowAt(lat, lon) {
       const url = new URL("https://api.tomtom.com/traffic/services/4/flowSegmentData/absolute/10/json");
       url.searchParams.set("key", key);
@@ -84,8 +91,11 @@ export function tomtomFlowSegment(key: string, get?: (url: string) => Promise<Fl
   };
 }
 
-/** The providers a host can choose with `TRAFFIC_PROVIDER`; the first is the default. */
-export const PROVIDERS = ["tomtom-flow"] as const;
+/**
+ * The providers a host can choose with `TRAFFIC_PROVIDER`; the first is the default and means no traffic. TomTom is never
+ * on by itself: a key in the environment is also the planner's, so the host says it wants it for the phone.
+ */
+export const PROVIDERS = ["off", "tomtom-flow"] as const;
 
 /** The provider a host chose, or null when it has no key. An unknown name is a configuration mistake, said at once. */
 export function providerFor(
@@ -96,14 +106,17 @@ export function providerFor(
   if (!PROVIDERS.includes(name as (typeof PROVIDERS)[number])) {
     throw new Error(`Unknown TRAFFIC_PROVIDER "${name}". Known: ${PROVIDERS.join(", ")}.`);
   }
-  return key ? tomtomFlowSegment(key, get) : null;
+  if (name === "off" || !key) return null;
+  return tomtomFlowSegment(key, get);
 }
 
 export interface TrafficOptions {
   /** TomTom key, empty for none; without one the server offers no traffic. Default `TOMTOM_API_KEY`. */
   key?: string;
-  /** Which provider answers (default `TRAFFIC_PROVIDER`, else `tomtom-flow`). */
+  /** Which provider answers (default `TRAFFIC_PROVIDER`, else `off`). */
   provider?: string;
+  /** For tests: a provider of one's own, instead of one chosen by name. */
+  custom?: TrafficProvider;
   /** TomTom requests a day, so a host's quota cannot be used up by their riders (default 600). */
   perDay?: number;
   now?: () => number;
@@ -121,12 +134,13 @@ export class TrafficFlow {
 
   constructor(options: TrafficOptions = {}) {
     const name = options.provider ?? (process.env.TRAFFIC_PROVIDER || PROVIDERS[0]);
-    this.#provider = providerFor(name, (options.key ?? process.env.TOMTOM_API_KEY) || undefined, options.fetch);
+    this.#provider =
+      options.custom ?? providerFor(name, (options.key ?? process.env.TOMTOM_API_KEY) || undefined, options.fetch);
     this.#perDay = options.perDay ?? (Number(process.env.TRAFFIC_MAX_PER_DAY) || 600);
     this.#now = options.now ?? Date.now;
   }
 
-  /** Whether this server has a key, and so offers traffic. */
+  /** Whether this server has a provider, and so offers traffic. */
   get available(): boolean {
     return this.#provider !== null;
   }
@@ -139,24 +153,27 @@ export class TrafficFlow {
       this.#day = today;
       this.#used = 0;
     }
+    const provider = this.#provider!;
     let budget = true;
     const out = await Promise.all(
       points.map(async ([lat, lon]): Promise<TrafficPoint> => {
         const key = `${cell(lat)},${cell(lon)}`;
-        const kept = this.#cache.get(key);
-        if (kept && t - kept.at < CACHE_MS) return { lat, lon, ...kept.point };
-        if (this.#used >= this.#perDay) {
-          budget = false;
-          return { lat, lon, level: "unknown", ratio: null };
+        const kept = provider.cacheMs > 0 ? this.#cache.get(key) : undefined;
+        if (kept && t - kept.at < provider.cacheMs) return { lat, lon, ...kept.point };
+        if (provider.metered) {
+          if (this.#used >= this.#perDay) {
+            budget = false;
+            return { lat, lon, level: "unknown", ratio: null };
+          }
+          this.#used++;
         }
-        this.#used++;
-        const point = await this.#provider!.flowAt(Number(cell(lat)), Number(cell(lon)));
-        this.#cache.set(key, { at: t, point });
+        const point = await provider.flowAt(Number(cell(lat)), Number(cell(lon)));
+        if (provider.cacheMs > 0) this.#cache.set(key, { at: t, point });
         return { lat, lon, ...point };
       }),
     );
     // Cells not asked for a while are forgotten, so the map does not grow for ever.
-    for (const [k, v] of this.#cache) if (t - v.at >= CACHE_MS) this.#cache.delete(k);
+    for (const [k, v] of this.#cache) if (t - v.at >= provider.cacheMs) this.#cache.delete(k);
     return { points: out, budget };
   }
 }

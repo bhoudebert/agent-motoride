@@ -1,5 +1,5 @@
 import { decodePolyline, encodePolyline, type LatLon, straightRuns } from "../geometry.ts";
-import { fetchJson } from "../http.ts";
+import { fetchJson, VALHALLA_CLIENT_ID } from "../http.ts";
 import { overviewLink, pinnedMapsLinks } from "../maps.ts";
 import { bearingDeg, describeCoords, fmtCoords, haversineKm, type Point, resolvePoint } from "./geo.ts";
 
@@ -192,7 +192,7 @@ export async function traceLeg(legShape: string): Promise<TraceAttributesRespons
 function traceAttributes(shape: string, shapeMatch: "edge_walk" | "map_snap") {
   return fetchJson<TraceAttributesResponse>(`${VALHALLA}/trace_attributes`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "X-Client-Id": VALHALLA_CLIENT_ID },
     body: JSON.stringify({
       encoded_polyline: shape,
       shape_match: shapeMatch,
@@ -498,7 +498,7 @@ export async function computeTrip(input: CalculateTripInput): Promise<TripComput
   try {
     data = await fetchJson<ValhallaResponse>(`${VALHALLA}/route`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-Client-Id": VALHALLA_CLIENT_ID },
       body: JSON.stringify({
         locations: points.map((p) => ({ lat: p.lat, lon: p.lon })),
         costing: "motorcycle",

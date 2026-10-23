@@ -1,4 +1,5 @@
 import { fetchJson } from "./http.ts";
+import { openData } from "./traffic-open.ts";
 
 /**
  * Traffic flow for the phone (ADR 0030, spec traffic): the server asks TomTom for the flow at a few points of the road ahead,
@@ -37,6 +38,8 @@ export type PointFlow = Omit<TrafficPoint, "lat" | "lon">;
  */
 export interface TrafficProvider {
   readonly name: string;
+  /** The countries whose roads it knows (ISO codes), for the phone to say where traffic works; empty when it is not by country. */
+  readonly countries?: readonly string[];
   /**
    * How long an answer for a cell may be kept and shared between riders, ms; 0 for none. TomTom's terms forbid caching
    * "for the purpose of scaling results to serve multiple clients" (clause 11.4), so its provider keeps nothing.
@@ -92,10 +95,10 @@ export function tomtomFlowSegment(key: string, get?: (url: string) => Promise<Fl
 }
 
 /**
- * The providers a host can choose with `TRAFFIC_PROVIDER`; the first is the default and means no traffic. TomTom is never
- * on by itself: a key in the environment is also the planner's, so the host says it wants it for the phone.
+ * The providers a host can choose with `TRAFFIC_PROVIDER`; the first is the default. TomTom is never on by
+ * itself: a key in the environment is also the planner's, so the host says it wants it for the phone; `off` is no traffic.
  */
-export const PROVIDERS = ["off", "tomtom-flow"] as const;
+export const PROVIDERS = ["open-data", "off", "tomtom-flow"] as const;
 
 /** The provider a host chose, or null when it has no key. An unknown name is a configuration mistake, said at once. */
 export function providerFor(
@@ -106,14 +109,15 @@ export function providerFor(
   if (!PROVIDERS.includes(name as (typeof PROVIDERS)[number])) {
     throw new Error(`Unknown TRAFFIC_PROVIDER "${name}". Known: ${PROVIDERS.join(", ")}.`);
   }
-  if (name === "off" || !key) return null;
-  return tomtomFlowSegment(key, get);
+  if (name === "off") return null;
+  if (name === "open-data") return openData();
+  return key ? tomtomFlowSegment(key, get) : null;
 }
 
 export interface TrafficOptions {
   /** TomTom key, empty for none; without one the server offers no traffic. Default `TOMTOM_API_KEY`. */
   key?: string;
-  /** Which provider answers (default `TRAFFIC_PROVIDER`, else `off`). */
+  /** Which provider answers (default `TRAFFIC_PROVIDER`, else `open-data`). */
   provider?: string;
   /** For tests: a provider of one's own, instead of one chosen by name. */
   custom?: TrafficProvider;
@@ -143,6 +147,11 @@ export class TrafficFlow {
   /** Whether this server has a provider, and so offers traffic. */
   get available(): boolean {
     return this.#provider !== null;
+  }
+
+  /** The countries the provider knows, empty when it is not by country (TomTom covers every road it measures). */
+  get countries(): readonly string[] {
+    return this.#provider?.countries ?? [];
   }
 
   /** Flow at each point, from the cache or from TomTom; a point TomTom could not answer is `unknown`. */

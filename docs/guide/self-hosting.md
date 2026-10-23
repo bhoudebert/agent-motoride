@@ -133,15 +133,20 @@ must never be reachable without TLS.
 
 ## Traffic for the phone (optional)
 
-One server does it all: the same container serves the planning tools (MCP), the live ride relay and the phone's traffic. Traffic is **off by default**:
-the phone shows no traffic and says what the server could add. `TRAFFIC_PROVIDER` turns it on (`off`, the default, or `tomtom-flow`).
+One server does it all: the same container serves the planning tools (MCP), the live ride relay and the phone's traffic. Traffic needs no key and no
+set-up: by default (`TRAFFIC_PROVIDER=open-data`) the server reads **open government data**, the measured speeds of the main roads, and tells the
+phone where the road ahead is slow (green, orange, red). It costs nothing per rider and sends your riders' positions to nobody.
+
+**What it covers today: France only** (Belgium is next; more countries on request). Only roads the governments measure: the national roads outside the
+motorway concessions, mostly near cities. Elsewhere the phone shows no traffic. After a restart the server needs about an hour to learn what each road's
+normal speed is; until then it says "unknown". Set `TRAFFIC_PROVIDER=off` for none.
 
 **TomTom (`tomtom-flow`).** You add your own [TomTom](https://developer.tomtom.com/) key and set `TRAFFIC_PROVIDER=tomtom-flow`. The key in
 `TOMTOM_API_KEY` is also the planner's, so it never turns traffic on by itself. You accept TomTom's terms and answer for them and for the quota. Read
 them first: as of 2026-10-23 they allow an evaluation key for evaluation only, forbid keeping results to serve several users (so the server asks
 TomTom again for every rider's refresh, up to `TRAFFIC_MAX_PER_DAY`, 600 by default), and exclude turn-by-turn "navigation functionality" unless
 TomTom agrees in writing. Whether showing traffic on a ride app falls under that is for you and TomTom to settle; this project cannot say.
-Open data for France and Belgium is planned as the default source.
+It takes the place of the open data when you choose it.
 
 - **Docker:** put `TOMTOM_API_KEY=...` and `TRAFFIC_PROVIDER=tomtom-flow` in `deploy/.env` (the compose file passes it in), then
   `docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d`.

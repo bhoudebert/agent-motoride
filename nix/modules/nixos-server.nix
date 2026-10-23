@@ -70,7 +70,7 @@ _: {
           example = "/run/secrets/agent-motoride.env";
           description = ''
             A file of `NAME=value` lines read by the container, kept out of the Nix store. To give the phone's traffic a TomTom
-            key: `TOMTOM_API_KEY=...` and `TRAFFIC_PROVIDER=tomtom-flow` (traffic is off unless you say so), and optionally `TRAFFIC_MAX_PER_DAY=600`.
+            key: `TOMTOM_API_KEY=...` and `TRAFFIC_PROVIDER=tomtom-flow` (without it the traffic comes from open data), and optionally `TRAFFIC_MAX_PER_DAY=600`.
           '';
         };
 

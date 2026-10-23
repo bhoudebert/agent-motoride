@@ -442,7 +442,7 @@ rider's say (an ended ride stays 30 minutes). The server holds ciphertext only: 
 is in the follower's link fragment, and `assets/follow/follow.js` decrypts in the browser (WebCrypto) and draws with MapLibre
 on OpenFreeMap; the page is served with a strict content security policy. The same script runs under Node in the tests,
 where a phone's encryption is reproduced and read back. `src/traffic.ts` is the phone's traffic (ADR 0030, spec `traffic`):
-`POST /traffic` takes up to eight points, rounds them to about a kilometre, asks the provider the host chose with `TRAFFIC_PROVIDER` (off by default; `tomtom-flow` is TomTom's Flow Segment Data with the
+`POST /traffic` takes up to eight points, rounds them to about a kilometre, asks the provider the host chose with `TRAFFIC_PROVIDER` (`open-data` by default, ADR 0042: the speeds of the French national-road stations, read every five minutes for all riders; `tomtom-flow` is TomTom's Flow Segment Data with the
 host's key, one request per cell, never kept for other riders, at most `TRAFFIC_MAX_PER_DAY` a day, ADR 0041) and answers a
 level per point; `/health` says whether the server has a provider. Not yet: uploading files (a route to import, a track to review),
 the roadbook feed and ride return for the app, and the app's "Share my ride" button.

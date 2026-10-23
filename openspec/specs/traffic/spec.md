@@ -6,23 +6,37 @@ Let the MotoRide phone show where the traffic is slow on the road ahead, with th
 
 ## Requirements
 
-### Requirement: The server offers traffic only when a source is chosen
+### Requirement: The server offers traffic from the source its host chose
 
-The server SHALL offer traffic only when its host chose a provider with `TRAFFIC_PROVIDER` and, for TomTom, set `TOMTOM_API_KEY`; it SHALL say so in its health answer (`traffic: true`). With no provider (`off`, the default) or no key for the one chosen, it SHALL say `traffic: false` and answer `POST /traffic` with 503. A TomTom key in the environment SHALL NOT turn traffic on by itself: the key is also the planner's. The host, who holds the key, answers for TomTom's terms and for the quota (ADR 0030).
+The server SHALL offer traffic from the provider named by `TRAFFIC_PROVIDER`: `open-data` (the default, open government data, no key), `tomtom-flow` (TomTom, with `TOMTOM_API_KEY`) or `off`. It SHALL say so in its health answer (`traffic: true`) together with the countries the provider knows (`trafficCountries`, `["FR"]` for open data; empty for TomTom); with `off`, or with TomTom chosen and no key, it SHALL say `traffic: false` and answer `POST /traffic` with 503. A TomTom key in the environment SHALL NOT turn TomTom on by itself: the key is also the planner's. The host, who holds the key, answers for TomTom's terms and for the quota (ADR 0030, 0041).
 
 #### Scenario: No key
 
-- **WHEN** a server has no provider chosen, or TomTom chosen with no key, and a phone asks for traffic
+- **WHEN** a server has traffic `off`, or TomTom chosen with no key, and a phone asks for traffic
 - **THEN** the answer is 503 "This server has no traffic source." and `/health` says `traffic: false`
 
 ### Requirement: The provider is the host's choice
 
-The flow SHALL come from the provider named by `TRAFFIC_PROVIDER` (default `off`; `tomtom-flow` is TomTom Flow Segment Data; ADR 0041), behind the same answer for every provider: a level and a ratio per point, `unknown` where the provider cannot tell. The rounding, the cache, the daily cap and the rate limit SHALL apply whatever the provider. A name that is not a known provider SHALL stop the server at start with the list of known ones.
+The flow SHALL come from the provider named by `TRAFFIC_PROVIDER` (default `open-data`; `tomtom-flow` is TomTom Flow Segment Data; ADR 0041), behind the same answer for every provider: a level and a ratio per point, `unknown` where the provider cannot tell. The rounding, the cache, the daily cap and the rate limit SHALL apply whatever the provider. A name that is not a known provider SHALL stop the server at start with the list of known ones.
 
 #### Scenario: A mistyped provider
 
 - **WHEN** `TRAFFIC_PROVIDER=tomtom` is set
-- **THEN** the server does not start and says `Unknown TRAFFIC_PROVIDER "tomtom". Known: off, tomtom-flow.`
+- **THEN** the server does not start and says `Unknown TRAFFIC_PROVIDER "tomtom". Known: open-data, off, tomtom-flow.`
+
+### Requirement: Open data, by country
+
+The `open-data` provider SHALL answer from public government feeds, read at most once every five minutes whatever the number of riders, and SHALL answer a point only from a measured section of road within 1.5 km of it; any other point, and any point outside the countries covered, SHALL be `unknown`. For France it SHALL use the speeds of the stations of the national roads outside the motorway concessions (transport.data.gouv.fr, Licence Ouverte 2.0). A station's speed has no free-flow reference in the feed, so the server SHALL learn each station's usual speed (the 90th percentile of the speeds it has shown, over the last day) and SHALL answer `unknown` for a station until it has seen twelve readings. The server SHALL send a rider's points to no one.
+
+#### Scenario: Learning
+
+- **WHEN** the server has just started and a phone asks for a point on a measured road
+- **THEN** the point is `unknown`, and after twelve readings of the station it is `free`, `slow` or `heavy` against the station's usual speed
+
+#### Scenario: Outside the covered countries
+
+- **WHEN** a phone asks for a point in Spain
+- **THEN** the point is `unknown` and no feed is read
 
 ### Requirement: Reachable through the proxy
 

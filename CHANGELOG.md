@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.10.0](https://github.com/bhoudebert/agent-motoride/compare/v1.9.0...v1.10.0) (2026-10-23)
+
+
+### Features
+
+* **follow:** show a possible crash on the follower page when the rider's phone says so ([#113](https://github.com/bhoudebert/agent-motoride/issues/113)) ([51f148e](https://github.com/bhoudebert/agent-motoride/commit/51f148e4b36dc235b102dd32b4d8f446749d7aa1))
+* **traffic:** answer the phone's traffic with TomTom flow, using the host's key ([#116](https://github.com/bhoudebert/agent-motoride/issues/116)) ([ec8a685](https://github.com/bhoudebert/agent-motoride/commit/ec8a685dc0b22906b0938fd1a94dc71827c4207a))
+* **traffic:** read French open data by default, with no key ([#121](https://github.com/bhoudebert/agent-motoride/issues/121)) ([ddd2ce7](https://github.com/bhoudebert/agent-motoride/commit/ddd2ce7b0d5c1942baa9167ebaaf095e8442a893))
+
+
+### Bug Fixes
+
+* **deploy:** let the proxy pass /traffic and hand the TomTom key to the container ([#118](https://github.com/bhoudebert/agent-motoride/issues/118)) ([0b55074](https://github.com/bhoudebert/agent-motoride/commit/0b550742c2fb282e7128a22b21152c93ab726e9f))
+* **ops:** single docker ([677bbf8](https://github.com/bhoudebert/agent-motoride/commit/677bbf82056c03f303e5063ab08281732d23b751))
+* **site:** keep the menu links on one line and stack them under the name when they do not fit ([#108](https://github.com/bhoudebert/agent-motoride/issues/108)) ([e889df9](https://github.com/bhoudebert/agent-motoride/commit/e889df956ade9b75ad83d2ea01763b830a7d2a36))
+* **traffic:** keep TomTom off by default and stop sharing its results between riders ([#120](https://github.com/bhoudebert/agent-motoride/issues/120)) ([a30baf6](https://github.com/bhoudebert/agent-motoride/commit/a30baf620ebd34467547ade664647b8c4aea6551))
+
 ## [1.9.0](https://github.com/bhoudebert/agent-motoride/compare/v1.8.0...v1.9.0) (2026-10-20)
 
 

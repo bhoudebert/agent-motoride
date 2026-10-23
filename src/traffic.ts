@@ -15,23 +15,11 @@ export interface TrafficPoint {
   ratio: number | null;
 }
 
-/** The part of TomTom's Flow Segment Data answer that is used. */
-interface FlowSegment {
-  flowSegmentData?: {
-    currentSpeed?: number;
-    freeFlowSpeed?: number;
-    confidence?: number;
-    roadClosure?: boolean;
-  };
-}
-
 /** A point is about a kilometre wide: the same cell is asked once for every rider in the cache time. */
 const cell = (n: number) => n.toFixed(2);
 export const MAX_POINTS = 8;
 /** Answers kept five minutes, which is how fast TomTom's flow changes and how often a phone asks. */
 export const CACHE_MS = 5 * 60_000;
-/** Below this confidence TomTom's figure is mostly historical: say nothing rather than guess. */
-const MIN_CONFIDENCE = 0.5;
 
 /** What a ratio of current to free-flow speed means for a rider. */
 export function levelOf(ratio: number | null, closed: boolean): TrafficLevel {
@@ -42,34 +30,105 @@ export function levelOf(ratio: number | null, closed: boolean): TrafficLevel {
   return "heavy";
 }
 
+/** What one provider says of one place: the level and the speed ratio, `unknown` and null when it cannot tell. */
+export type PointFlow = Omit<TrafficPoint, "lat" | "lon">;
+
+/**
+ * Where the flow comes from (ADR 0041). The cache, the daily cap and the rounding stand above it, so a provider only
+ * answers for one place; a place it cannot answer is `unknown`, never an error.
+ */
+export interface TrafficProvider {
+  readonly name: string;
+  flowAt(lat: number, lon: number): Promise<PointFlow>;
+}
+
+/** The part of TomTom's Flow Segment Data answer that is used. */
+interface FlowSegment {
+  flowSegmentData?: {
+    currentSpeed?: number;
+    freeFlowSpeed?: number;
+    confidence?: number;
+    roadClosure?: boolean;
+  };
+}
+
+/** Below this confidence TomTom's figure is mostly historical: say nothing rather than guess. */
+const MIN_CONFIDENCE = 0.5;
+
+/** TomTom Flow Segment Data: one request per place, the speed now over the speed of an empty road. */
+export function tomtomFlowSegment(key: string, get?: (url: string) => Promise<FlowSegment>): TrafficProvider {
+  const fetchFlow = get ?? ((url: string) => fetchJson<FlowSegment>(url, {}, 8000));
+  return {
+    name: "tomtom-flow",
+    async flowAt(lat, lon) {
+      const url = new URL("https://api.tomtom.com/traffic/services/4/flowSegmentData/absolute/10/json");
+      url.searchParams.set("key", key);
+      url.searchParams.set("point", `${lat},${lon}`);
+      url.searchParams.set("unit", "KMPH");
+      try {
+        const d = (await fetchFlow(url.toString())).flowSegmentData;
+        if (!d) return { level: "unknown", ratio: null };
+        const closed = d.roadClosure === true;
+        const usable =
+          typeof d.currentSpeed === "number" &&
+          typeof d.freeFlowSpeed === "number" &&
+          d.freeFlowSpeed > 0 &&
+          (d.confidence ?? 1) >= MIN_CONFIDENCE;
+        const ratio = usable ? Math.round((d.currentSpeed! / d.freeFlowSpeed!) * 100) / 100 : null;
+        return { level: levelOf(ratio, closed), ratio };
+      } catch {
+        // A point TomTom did not answer is not worth failing the others for; the next ask tries again.
+        return { level: "unknown", ratio: null };
+      }
+    },
+  };
+}
+
+/** The providers a host can choose with `TRAFFIC_PROVIDER`; the first is the default. */
+export const PROVIDERS = ["tomtom-flow"] as const;
+
+/** The provider a host chose, or null when it has no key. An unknown name is a configuration mistake, said at once. */
+export function providerFor(
+  name: string,
+  key: string | undefined,
+  get?: (url: string) => Promise<FlowSegment>,
+): TrafficProvider | null {
+  if (!PROVIDERS.includes(name as (typeof PROVIDERS)[number])) {
+    throw new Error(`Unknown TRAFFIC_PROVIDER "${name}". Known: ${PROVIDERS.join(", ")}.`);
+  }
+  return key ? tomtomFlowSegment(key, get) : null;
+}
+
 export interface TrafficOptions {
   /** TomTom key, empty for none; without one the server offers no traffic. Default `TOMTOM_API_KEY`. */
   key?: string;
+  /** Which provider answers (default `TRAFFIC_PROVIDER`, else `tomtom-flow`). */
+  provider?: string;
   /** TomTom requests a day, so a host's quota cannot be used up by their riders (default 600). */
   perDay?: number;
   now?: () => number;
+  /** For tests: what TomTom's flow answers for a URL. */
   fetch?: (url: string) => Promise<FlowSegment>;
 }
 
 export class TrafficFlow {
-  readonly #key: string | undefined;
+  readonly #provider: TrafficProvider | null;
   readonly #perDay: number;
   readonly #now: () => number;
-  readonly #fetch: (url: string) => Promise<FlowSegment>;
   readonly #cache = new Map<string, { at: number; point: Omit<TrafficPoint, "lat" | "lon"> }>();
   #day = "";
   #used = 0;
 
   constructor(options: TrafficOptions = {}) {
-    this.#key = (options.key ?? process.env.TOMTOM_API_KEY) || undefined;
+    const name = options.provider ?? (process.env.TRAFFIC_PROVIDER || PROVIDERS[0]);
+    this.#provider = providerFor(name, (options.key ?? process.env.TOMTOM_API_KEY) || undefined, options.fetch);
     this.#perDay = options.perDay ?? (Number(process.env.TRAFFIC_MAX_PER_DAY) || 600);
     this.#now = options.now ?? Date.now;
-    this.#fetch = options.fetch ?? ((url) => fetchJson<FlowSegment>(url, {}, 8000));
   }
 
   /** Whether this server has a key, and so offers traffic. */
   get available(): boolean {
-    return this.#key !== undefined;
+    return this.#provider !== null;
   }
 
   /** Flow at each point, from the cache or from TomTom; a point TomTom could not answer is `unknown`. */
@@ -91,7 +150,7 @@ export class TrafficFlow {
           return { lat, lon, level: "unknown", ratio: null };
         }
         this.#used++;
-        const point = await this.#ask(Number(cell(lat)), Number(cell(lon)));
+        const point = await this.#provider!.flowAt(Number(cell(lat)), Number(cell(lon)));
         this.#cache.set(key, { at: t, point });
         return { lat, lon, ...point };
       }),
@@ -99,27 +158,5 @@ export class TrafficFlow {
     // Cells not asked for a while are forgotten, so the map does not grow for ever.
     for (const [k, v] of this.#cache) if (t - v.at >= CACHE_MS) this.#cache.delete(k);
     return { points: out, budget };
-  }
-
-  async #ask(lat: number, lon: number): Promise<Omit<TrafficPoint, "lat" | "lon">> {
-    const url = new URL("https://api.tomtom.com/traffic/services/4/flowSegmentData/absolute/10/json");
-    url.searchParams.set("key", this.#key!);
-    url.searchParams.set("point", `${lat},${lon}`);
-    url.searchParams.set("unit", "KMPH");
-    try {
-      const d = (await this.#fetch(url.toString())).flowSegmentData;
-      if (!d) return { level: "unknown", ratio: null };
-      const closed = d.roadClosure === true;
-      const usable =
-        typeof d.currentSpeed === "number" &&
-        typeof d.freeFlowSpeed === "number" &&
-        d.freeFlowSpeed > 0 &&
-        (d.confidence ?? 1) >= MIN_CONFIDENCE;
-      const ratio = usable ? Math.round((d.currentSpeed! / d.freeFlowSpeed!) * 100) / 100 : null;
-      return { level: levelOf(ratio, closed), ratio };
-    } catch {
-      // A point TomTom did not answer is not worth failing the others for; the next ask tries again.
-      return { level: "unknown", ratio: null };
-    }
   }
 }

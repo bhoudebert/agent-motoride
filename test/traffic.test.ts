@@ -105,3 +105,23 @@ test("the daily budget stops the asking, says so, and starts again the next day"
   assert.equal(next.budget, true);
   assert.equal(asked, 3);
 });
+
+test("the provider is chosen by name, and a name that is not one is a mistake said at once", () => {
+  assert.equal(new TrafficFlow({ key: "K", provider: "tomtom-flow" }).available, true);
+  assert.equal(new TrafficFlow({ key: "", provider: "tomtom-flow" }).available, false);
+  assert.throws(
+    () => new TrafficFlow({ key: "K", provider: "nope" }),
+    /Unknown TRAFFIC_PROVIDER "nope"\. Known: tomtom-flow\./,
+  );
+});
+
+test("TRAFFIC_PROVIDER from the environment picks the provider", () => {
+  const before = process.env.TRAFFIC_PROVIDER;
+  process.env.TRAFFIC_PROVIDER = "nope";
+  try {
+    assert.throws(() => new TrafficFlow({ key: "K" }), /Unknown TRAFFIC_PROVIDER/);
+  } finally {
+    if (before === undefined) delete process.env.TRAFFIC_PROVIDER;
+    else process.env.TRAFFIC_PROVIDER = before;
+  }
+});

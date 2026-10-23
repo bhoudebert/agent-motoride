@@ -15,6 +15,15 @@ The server SHALL offer traffic when `TOMTOM_API_KEY` is set and SHALL say so in 
 - **WHEN** a server has no TomTom key and a phone asks for traffic
 - **THEN** the answer is 503 "This server has no traffic source." and `/health` says `traffic: false`
 
+### Requirement: The provider is the host's choice
+
+The flow SHALL come from the provider named by `TRAFFIC_PROVIDER` (default `tomtom-flow`, TomTom Flow Segment Data, ADR 0041), behind the same answer for every provider: a level and a ratio per point, `unknown` where the provider cannot tell. The rounding, the cache, the daily cap and the rate limit SHALL apply whatever the provider. A name that is not a known provider SHALL stop the server at start with the list of known ones.
+
+#### Scenario: A mistyped provider
+
+- **WHEN** `TRAFFIC_PROVIDER=tomtom` is set
+- **THEN** the server does not start and says `Unknown TRAFFIC_PROVIDER "tomtom". Known: tomtom-flow.`
+
 ### Requirement: Reachable through the proxy
 
 The deployment examples (Caddy, the NixOS module, nginx) SHALL pass `/traffic` with the other public routes, the compose file and the NixOS module SHALL hand `TOMTOM_API_KEY` and `TRAFFIC_MAX_PER_DAY` to the container (the module through a file kept out of the Nix store), and a test SHALL fail when a route of the server is missing from an example.

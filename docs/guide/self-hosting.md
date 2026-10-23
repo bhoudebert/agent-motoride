@@ -135,7 +135,7 @@ must never be reachable without TLS.
 
 One server does it all: the same container serves the planning tools (MCP), the live ride relay and the phone's traffic. For the traffic
 on the MotoRide route you add your own [TomTom](https://developer.tomtom.com/) key (free tier). You accept TomTom's terms and answer
-for the quota; `TRAFFIC_MAX_PER_DAY` (600 by default) stops your riders from using it up.
+for the quota; `TRAFFIC_MAX_PER_DAY` (600 by default) stops your riders from using it up. `TRAFFIC_PROVIDER` says where the flow comes from; `tomtom-flow` is the only one so far and the default.
 
 - **Docker:** put `TOMTOM_API_KEY=...` in `deploy/.env` (the compose file passes it in), then
   `docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d`.

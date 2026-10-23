@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.11.0](https://github.com/bhoudebert/agent-motoride/compare/v1.10.0...v1.11.0) (2026-10-23)
+
+
+### Features
+
+* **deploy:** choose the Valhalla server by VALHALLA_URL and offer an own one ([#125](https://github.com/bhoudebert/agent-motoride/issues/125)) ([8c14596](https://github.com/bhoudebert/agent-motoride/commit/8c14596472f1896c2b6baafdbe9a97588fdfd284))
+
+
+### Bug Fixes
+
+* **valhalla:** send an X-Client-Id to the public Valhalla server ([#122](https://github.com/bhoudebert/agent-motoride/issues/122)) ([7949929](https://github.com/bhoudebert/agent-motoride/commit/7949929541dbd0531895232911ad94f492dc539f))
+
 ## [1.10.0](https://github.com/bhoudebert/agent-motoride/compare/v1.9.0...v1.10.0) (2026-10-23)
 
 

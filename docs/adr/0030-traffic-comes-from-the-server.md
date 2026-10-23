@@ -26,7 +26,7 @@ The phone has no key to leak. A server that answers the points learns about wher
 sharing never lets it do: the guide says so and tells to use a server one trusts. Points are sampled every ten kilometres, so
 a jam shorter than that is seen only if a point falls in it; this is an indication, not a map of traffic. The cell cache makes
 the free tier last for a few riders; many riders on one key need a paid TomTom plan, which is the host's decision. TomTom's
-Flow Segment Data may be replaced by their newer Orbis traffic endpoints: only `src/traffic.ts` would change.
+Flow Segment Data may be replaced by other endpoints or providers (ADR 0041): only `src/traffic.ts` would change.
 
 ## Alternatives considered
 

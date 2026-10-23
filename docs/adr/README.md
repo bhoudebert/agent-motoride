@@ -37,3 +37,4 @@ not rewritten.
 | [0028](0028-live-sharing-is-an-encrypted-relay.md)             | Live sharing is an encrypted relay the phone writes to and a web page reads from | accepted |
 | [0029](0029-the-phone-joins-with-a-one-time-invitation.md)     | The phone joins with a one-time invitation, not a token in a QR code             | accepted |
 | [0030](0030-traffic-comes-from-the-server.md)                  | Traffic comes from the server, with the host's TomTom key, not from the app      | accepted |
+| [0041](0041-traffic-providers-behind-one-answer.md)            | Traffic providers behind one answer, chosen by the host                          | accepted |

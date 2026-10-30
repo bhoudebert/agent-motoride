@@ -48,7 +48,7 @@ The path every feature follows, from idea to release, is described in
 2. Behaviour change: update the spec first, `openspec/specs/<capability>/spec.md`
    (requirements with scenarios). New capability: new folder plus a line in
    `openspec/README.md`. CI validates the specs
-   (`openspec validate --specs`) and asks for a spec or docs change with any
+   (`openspec validate --all`) and asks for a spec or docs change with any
    change under `src/`; a refactor takes the `no-spec` label instead.
 3. Architectural choice (new dependency, data store, mode, model default,
    cross-cutting rule): add a record in `docs/adr/` from `template.md`.

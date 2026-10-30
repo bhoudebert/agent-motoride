@@ -28,7 +28,9 @@ _: {
       apps = {
         quality = npmApp "quality" "quality" "Typecheck, lint, format check, tests with coverage";
         eval = npmApp "eval" "eval" "Replay the recorded eval cases offline (--record is live and billed)";
-        admin = npmApp "admin" "admin" "Riders of a multi-user instance: add, list, remove, suspend, token, backup";
+        admin =
+          npmApp "admin" "admin"
+            "Riders of a multi-user instance: add, list, remove, suspend, token, backup";
         smoke = npmApp "smoke" "smoke" "Live map and weather tools, no model";
         mcp-smoke = npmApp "mcp-smoke" "mcp:smoke" "MCP server over stdio, no model";
       };

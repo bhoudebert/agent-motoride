@@ -66,3 +66,17 @@ Collines loop" }`. The numbers are this library's own and repeat from one librar
 - Distances are never stored: the reader measures the line itself.
 - Coordinates are WGS84 degrees. Strings are UTF-8.
 - Data comes from OpenStreetMap: keep its attribution with the file's use.
+
+## Fetching from a server
+
+A phone enrolled on an agentRide server (the token it got from its invitation) can fetch roadbooks without any file
+being exported:
+
+- `GET /roadbooks` with `Authorization: Bearer <token>` gives `{"roadbooks": [{"id", "name", "distanceKm",
+"ridingMinutes", "stamp"}]}`, the rider's roadbooks.
+- `GET /roadbook/<id>` gives the file above. Its `ETag` is the roadbook's `stamp`; send it back in `If-None-Match` to
+  get 304 when the copy you hold is current. The file is traced on first request, which can take several seconds.
+- The stamp changes when the route, the stops, the cameras or the name change. It does not see a change of OpenStreetMap
+  limits alone; `refresh` on the server is what brings those in.
+- Errors: 401 no or wrong token, 404 no such roadbook, 429 too many requests, 502 the route could not be traced (try
+  again).

@@ -106,7 +106,7 @@ _: {
           virtualHosts.${cfg.domain}.extraConfig = ''
             # Only the tools, the live ride relay and its page, and the health check are exposed;
             # the administration stays inside the container.
-            @exposed path /mcp /health /enrol /traffic /follow.js /follow/* /share/*
+            @exposed path /mcp /health /enrol /traffic /roadbooks /roadbook/* /follow.js /follow/* /share/*
             handle @exposed {
               reverse_proxy 127.0.0.1:${toString cfg.port}
             }

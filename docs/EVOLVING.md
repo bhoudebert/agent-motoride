@@ -30,6 +30,12 @@ SHALL statements, each with at least one scenario (WHEN / THEN). A new
 capability gets its own folder and a line in `openspec/README.md`. The spec is
 written first and reviewed with the code in the same pull request.
 
+CI checks it (ADR 0044): every spec must pass `openspec validate --specs`
+(run it in the dev shell, `nix develop`), and a pull request that changes
+`src/` must also change something under `openspec/` or `docs/`. A change with
+no behaviour or usage change (a refactor, an internal fix) takes the `no-spec`
+label instead.
+
 ## 4. Code and tests, in every mode
 
 - **One implementation, every mode.** Logic lives in plain modules and tools

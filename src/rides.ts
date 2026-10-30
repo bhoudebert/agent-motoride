@@ -17,7 +17,7 @@ import {
   rideToReview,
 } from "./feedback.ts";
 import { routeCells } from "./geometry.ts";
-import { describeRoadbookFile, describeStopsAt, exportSavedRide, savedRideGpx } from "./gpx.ts";
+import { describeRoadbookFile, describeStopsAt, exportSavedRide, savedRideGpx, savedRideRoadbook } from "./gpx.ts";
 import {
   DuplicateRideError,
   enrichRide,
@@ -43,7 +43,7 @@ import { startPoint } from "./start.ts";
 import { formatRideMarkdown, writeRideMarkdown } from "./markdown.ts";
 import { rideMapPng, writeRideMap } from "./rideMap.ts";
 import { describeProfile, parseProfileArgs } from "./profile.ts";
-import { printQr, startShareServer } from "./share.ts";
+import { importLink, once, printQr, startShareServer } from "./share.ts";
 import { formatStopPlan } from "./stops.ts";
 import { Store } from "./store.ts";
 import { setGeoAnchor } from "./tools/geo.ts";
@@ -415,10 +415,13 @@ try {
         overviewUrl: nav.overview,
         itinerary: target.itinerary,
         gpx,
+        roadbookFile: once(async () => JSON.stringify((await savedRideRoadbook(target, gpx)).file)),
       };
       const { url } = await startShareServer(() => shared, Number(process.env.RIDE_SHARE_PORT) || 8787);
       console.log(`Scan with the phone (same Wi-Fi): ${url}\nServing until Ctrl-C.`);
       await printQr(url);
+      console.log("Or scan this one to open the roadbook in the MotoRide app:");
+      await printQr(importLink(`${url}ride.motoride.json`));
       await new Promise(() => undefined); // until Ctrl-C
       break;
     }

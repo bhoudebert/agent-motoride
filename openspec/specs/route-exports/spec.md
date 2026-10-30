@@ -72,6 +72,20 @@ A roadbook SHALL be drawable as a picture from its own data, without map tiles o
 - **WHEN** a ride has fixed cameras at 130 on its way to the riding area
 - **THEN** the map shows each camera as a badge reading 130 at its place on the route
 
+### Requirement: Roadbook file on the share page
+
+The phone share page of a saved ride SHALL also serve the roadbook file at `/ride.motoride.json`, as a download, and offer an "Open in MotoRide" button on the link `mobilemotoride://import?url=<that file's address>` that makes the MobileMotoRide app download and import it. The file SHALL be made when first requested, once per share, because it traces the route; a failure SHALL answer 502 and not be kept, so the next request tries again. `rides share` and `/share` SHALL also print a second QR code of that import link. A ride without a saved library entry (an itinerary not yet saved) SHALL NOT offer the file, because its cameras are not known.
+
+#### Scenario: The rider opens the share page on the phone
+
+- **WHEN** the phone opens the share page of saved ride 7 and taps "Open in MotoRide"
+- **THEN** the app downloads `/ride.motoride.json` and imports it, and a second request for the file does not trace the route again
+
+#### Scenario: The route cannot be traced
+
+- **WHEN** the router answers 429 while the file is made
+- **THEN** the request answers 502, and the next request makes the file again
+
 ### Requirement: Phone handoff
 
 `/qr` SHALL print a QR code of the first navigation link. `/share` SHALL serve a page on the local network with one button per link part, the itinerary and a GPX download, print its QR code, follow the current itinerary while the session runs, and stop on quit.

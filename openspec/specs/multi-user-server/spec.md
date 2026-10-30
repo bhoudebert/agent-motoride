@@ -70,6 +70,20 @@ The server SHALL give a rider's phone its roadbooks without a file being exporte
 - **WHEN** a rider asks for a roadbook number that exists only in another rider's library
 - **THEN** the answer is 404, as if it did not exist
 
+### Requirement: Roadbooks pushed to the server
+
+A rider who plans on a library kept elsewhere SHALL be able to send a roadbook file to their server: `PUT /roadbooks` with their token and the roadbook file as the body, up to 5 MiB, at most 10 a minute, at most 100 kept. The server SHALL refuse a body that is not JSON (400), not a `motoride-roadbook` version 1 file with a name and a line of at least two points (400), or too large (413), and SHALL keep the file in that rider's own folder. A file that says which roadbook it is (`origin`: number and name) SHALL replace the earlier push of the same roadbook; any other SHALL be told by its name. The answer SHALL give the id, the version stamp (computed without the time the file was made, so the same roadbook pushed twice is one version) and whether it replaced an earlier copy. Pushed files SHALL be listed by `GET /roadbooks` after the rider's library, with ids from 1,000,000 up so that they never meet a library number, and served by `GET /roadbook/<id>` as kept, with the same `ETag` rules and without tracing. A rider SHALL never see another rider's pushed files. The terminal (`rides export <id> --push`) and the `exportGpx` tool (`push`) SHALL send the file of a saved ride to `RIDE_REMOTE_URL` with `RIDE_REMOTE_TOKEN`, and say plainly when either is missing or the server refuses the token; on a server, where the library is already there, the tool SHALL refuse.
+
+#### Scenario: A rider plans locally and pushes
+
+- **WHEN** a rider with a local library runs `rides export 7 --push` with their server and token set
+- **THEN** the server keeps the roadbook file, the phone enrolled with the same rider lists it, and pushing it again unchanged gives the same version stamp
+
+#### Scenario: Another rider's server folder
+
+- **WHEN** a second rider lists roadbooks or asks for the first rider's pushed id
+- **THEN** the list is empty of it and the id answers 404
+
 ### Requirement: The tools over HTTP
 
 `npm run serve` SHALL serve the MCP tools over HTTP (the Streamable HTTP transport) at `/mcp`, with a health check at `/health`, on `RIDE_SERVER_HOST` and `RIDE_SERVER_PORT` (default 127.0.0.1:8788; TLS belongs to the proxy in front). Every request to `/mcp` SHALL carry `Authorization: Bearer <token>`; a missing, unknown, suspended or removed token SHALL be answered 401 with `WWW-Authenticate: Bearer` and reach nothing. Each MCP session SHALL be one rider's, over their library, holding that rider's routes, preferences and start point as the stdio server does; a session SHALL be reachable only with its rider's token, and any other token SHALL be answered as if the session did not exist. A rider suspended or removed SHALL be shut out of an open session at once. A rider SHALL have at most 5 open sessions and the server 200; a session idle for 30 minutes SHALL be closed; a rider SHALL be limited to 300 requests a minute (429 with `Retry-After`); a request body over 1 MiB SHALL be refused (413).

@@ -43,6 +43,7 @@ import { startPoint } from "./start.ts";
 import { formatRideMarkdown, writeRideMarkdown } from "./markdown.ts";
 import { rideMapPng, writeRideMap } from "./rideMap.ts";
 import { describeProfile, parseProfileArgs } from "./profile.ts";
+import { pushExported } from "./remote.ts";
 import { importLink, once, printQr, startShareServer } from "./share.ts";
 import { formatStopPlan } from "./stops.ts";
 import { Store } from "./store.ts";
@@ -93,7 +94,8 @@ const USAGE = `Usage: npm run rides -- <command>
   notes [--all]                         Notes waiting for review (--all: reviewed and dismissed ones too)
   review [id|name] [track.gpx] [--yes]  After the ride: place the notes on the recorded track (or on the plan without one),
                                         show detours and pace, then confirm a rating per road stretch (--yes: accept all proposals)
-  export <id|name> [file.gpx] [--pins N]  Write the ride as a GPX file (default: exports/ in the project); --pins caps the route points
+  export <id|name> [file.gpx] [--pins N] [--push]  Write the ride as a GPX file (default: exports/ in the project); --pins caps the route points;
+                                        --push also sends the roadbook file to your server (RIDE_REMOTE_URL, RIDE_REMOTE_TOKEN)
   qr <id|name>                          QR code of the ride's Google Maps link
   share <id|name>                       Serve the ride to the phone on the local Wi-Fi (QR code), until Ctrl-C
   trace <run> [--full]                  Replay a planning session step by step (run ids from "runs")
@@ -363,6 +365,7 @@ try {
         `GPX written: ${path}${rerouted ? "\n(Route line was not stored for this ride; it was routed again from its waypoints.)" : ""}`,
       );
       console.log(describeRoadbookFile(exported));
+      if (args.includes("--push")) console.log(await pushExported(exported.roadbookFile));
       if (stopsAt.length)
         console.log(
           `Planned stops in the route point list (as an app numbers the stages):\n${describeStopsAt(stopsAt).join("\n")}`,

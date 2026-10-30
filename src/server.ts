@@ -6,6 +6,8 @@ import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { fileURLToPath } from "node:url";
 import { tenantDbPath, tenantDir } from "./dataDir.ts";
 import { CHANNEL, LiveShares, type LiveOptions } from "./live.ts";
+import { join } from "node:path";
+import { PUSHED_ID_BASE, MAX_PUSHED_BYTES, PushedRoadbooks, PushRefused } from "./pushedRoadbooks.ts";
 import { listRoadbooks, type MakeRoadbookFile, RoadbookFiles } from "./roadbookDownload.ts";
 import { MAX_POINTS, TrafficFlow, type TrafficOptions } from "./traffic.ts";
 import { type RequestContext, runInContext } from "./requestContext.ts";
@@ -235,13 +237,37 @@ export function createHttpServer(options: ServeOptions): {
 
   /** The rider's roadbooks for the phone: a list with version stamps, and one roadbook file (docs/roadbook-file.md). */
   async function handleRoadbooks(req: IncomingMessage, res: ServerResponse, path: string): Promise<void> {
-    if (req.method !== "GET") return json(res, 405, { error: "Method not allowed." }, { Allow: "GET" });
+    const pushing = req.method === "PUT" && path === "/roadbooks";
+    if (req.method !== "GET" && !pushing)
+      return json(res, 405, { error: "Method not allowed." }, { Allow: path === "/roadbooks" ? "GET, PUT" : "GET" });
     const token = bearer(req);
     const tenant = token ? registry.verify(token) : null;
     if (!tenant) return json(res, 401, { error: "A rider's token is needed." }, { "WWW-Authenticate": "Bearer" });
     if (limited(tenant)) return json(res, 429, { error: "Too many requests; wait a minute." }, { "Retry-After": "60" });
     const file = /^\/roadbook\/(\d{1,9})$/.exec(path);
     if (path !== "/roadbooks" && !file) return json(res, 404, { error: "Not found" });
+    const pushed = new PushedRoadbooks(join(tenantDir(tenant.id), "pushed"));
+    if (pushing) {
+      // A rider pushes at most 10 files a minute.
+      const t = now();
+      const w = windows.get(`push:${tenant.id}`);
+      if (!w || t - w.start >= 60_000) windows.set(`push:${tenant.id}`, { start: t, count: 1 });
+      else if (++w.count > 10)
+        return json(res, 429, { error: "Too many requests; wait a minute." }, { "Retry-After": "30" });
+      let body: unknown;
+      try {
+        body = await readBody(req, MAX_PUSHED_BYTES);
+      } catch (e) {
+        return e instanceof TooBig ? json(res, 413, { error: "Too large." }) : json(res, 400, { error: "Not JSON." });
+      }
+      try {
+        return json(res, 200, pushed.put(body));
+      } catch (e) {
+        if (e instanceof PushRefused) return json(res, e.status, { error: e.message });
+        console.error(`[roadbook push] ${e instanceof Error ? e.message : String(e)}`);
+        return json(res, 500, { error: "The roadbook file could not be kept." });
+      }
+    }
     // A file costs a route tracing on the public router: a rider asks for at most 30 a minute.
     if (file) {
       const t = now();
@@ -250,9 +276,25 @@ export function createHttpServer(options: ServeOptions): {
       else if (++w.count > 30)
         return json(res, 429, { error: "Too many requests; wait a minute." }, { "Retry-After": "30" });
     }
+    // A pushed file is served as it was kept: nothing to trace.
+    if (file && Number(file[1]) >= PUSHED_ID_BASE) {
+      const kept = pushed.get(Number(file[1]));
+      if (!kept) return json(res, 404, { error: "No such roadbook." });
+      const etag = `"${kept.stamp}"`;
+      if (req.headers["if-none-match"] === etag) {
+        res.writeHead(304, { ETag: etag });
+        return void res.end();
+      }
+      res.writeHead(200, {
+        "Content-Type": "application/json; charset=utf-8",
+        ETag: etag,
+        "Cache-Control": "private, no-cache",
+      });
+      return void res.end(kept.body);
+    }
     const store = new Store(tenantDbPath(tenant.id));
     try {
-      if (!file) return json(res, 200, { roadbooks: listRoadbooks(store) });
+      if (!file) return json(res, 200, { roadbooks: [...listRoadbooks(store), ...pushed.list()] });
       const made = await roadbookFiles.get(tenant.id, store, Number(file[1]));
       if (!made) return json(res, 404, { error: "No such roadbook." });
       const etag = `"${made.stamp}"`;

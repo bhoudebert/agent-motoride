@@ -120,10 +120,11 @@ export const CAPABILITIES: Capability[] = [
   },
   {
     moment: "Ride day",
-    what: "For the GPS and the phone: GPX, a roadbook file with speed limits and cameras for the MobileMotoRide app, navigation links, a QR code, a page on your Wi-Fi",
+    what: "For the GPS and the phone: GPX, a roadbook file with speed limits and cameras for the MobileMotoRide app, navigation links, a QR code, a page on your Wi-Fi, or a push to your own server",
     say: "export roadbook 7 as GPX",
     terminal: [
       "npm run rides -- export <roadbook>",
+      "npm run rides -- export <roadbook> --push",
       "npm run rides -- qr <roadbook>",
       "npm run rides -- share <roadbook>",
       "/gpx",

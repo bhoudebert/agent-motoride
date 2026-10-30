@@ -90,7 +90,7 @@ _: {
 
       config = lib.mkIf cfg.enable {
         virtualisation.oci-containers.containers.${name} = {
-          image = cfg.image;
+          inherit (cfg) image;
           autoStart = true;
           # Loopback only: Caddy, or the proxy you bring, is the way in.
           ports = [ "127.0.0.1:${toString cfg.port}:8788" ];
@@ -98,9 +98,6 @@ _: {
           environment.RIDE_SERVER_URL = "https://${cfg.domain}";
           environmentFiles = lib.optional (cfg.environmentFile != null) cfg.environmentFile;
         };
-
-        # The image runs as the `node` user, uid 1000.
-        systemd.tmpfiles.rules = [ "d ${cfg.dataDir} 0750 1000 1000 -" ];
 
         environment.systemPackages = [ admin ];
 
@@ -123,20 +120,25 @@ _: {
           443
         ];
 
-        systemd.services.agent-motoride-backup = lib.mkIf cfg.backup.enable {
-          description = "Back up the agentMotoride libraries";
-          after = [ "${backend}-${name}.service" ];
-          requires = [ "${backend}-${name}.service" ];
-          serviceConfig = {
-            Type = "oneshot";
-            ExecStart = backup;
+        systemd = {
+          # The image runs as the `node` user, uid 1000.
+          tmpfiles.rules = [ "d ${cfg.dataDir} 0750 1000 1000 -" ];
+
+          services.agent-motoride-backup = lib.mkIf cfg.backup.enable {
+            description = "Back up the agentMotoride libraries";
+            after = [ "${backend}-${name}.service" ];
+            requires = [ "${backend}-${name}.service" ];
+            serviceConfig = {
+              Type = "oneshot";
+              ExecStart = backup;
+            };
           };
-        };
-        systemd.timers.agent-motoride-backup = lib.mkIf cfg.backup.enable {
-          wantedBy = [ "timers.target" ];
-          timerConfig = {
-            OnCalendar = "*-*-* 03:30:00";
-            Persistent = true;
+          timers.agent-motoride-backup = lib.mkIf cfg.backup.enable {
+            wantedBy = [ "timers.target" ];
+            timerConfig = {
+              OnCalendar = "*-*-* 03:30:00";
+              Persistent = true;
+            };
           };
         };
       };

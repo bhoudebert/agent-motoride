@@ -78,8 +78,10 @@ export function checkItinerary(
   if (context.preferences.avoidMotorways && trip.usesMotorway) {
     violations.push("motorways: the route uses a motorway, and the rider forbids them");
   }
-  const duplicate = context.allowRepeat ? undefined : duplicateOf(context, route.cells);
-  const disliked = context.allowRepeat || duplicate ? undefined : dislikedOf(context, route.cells);
+  // A rider who permits motorways is on a practical trip: repeating a commute is the point.
+  const practical = !context.preferences.avoidMotorways;
+  const duplicate = context.allowRepeat || practical ? undefined : duplicateOf(context, route.cells);
+  const disliked = context.allowRepeat || practical || duplicate ? undefined : dislikedOf(context, route.cells);
   if (disliked) {
     violations.push(
       `disliked loop: ${disliked.overlapPct}% the same roads as roadbook #${disliked.rideId} "${disliked.name}", which the rider rated ${disliked.rating}${disliked.notes ? ` ("${disliked.notes}")` : ""}; change what they disliked or pick other roads, or say why this one`,

@@ -21,4 +21,5 @@
 - [ ] Tests with the code; `npm run quality` passes
 - [ ] Guide updated (`docs/guide/`); README if the overview changed; roadmap updated
 - [ ] Site and diagram updated when a rider would notice the feature
+- [ ] Harness diagrams in `docs/ENGINEERING.md` updated when the loop, the MCP flow, a hard rule or the checks change
 - [ ] Commits and PR title follow Conventional Commits

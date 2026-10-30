@@ -66,7 +66,9 @@ is out of date. The guide (`docs/guide/`): what the feature is for, how to use i
 side by side, its limits; a new page for a new task, and a line in the sidebar
 (`docs/guide/.vitepress/config.mts`). The README only when the overview changes
 (what you get, how it is built). `docs/ENGINEERING.md` when the architecture,
-a tool or a data source changes.
+a tool or a data source changes; its harness diagrams and their table (section
+"The harness") when the planner loop, the MCP flow, a hard rule or the checks
+change.
 `AGENTS.md` or `CONTRIBUTING.md` when the way of working changes. `ROADMAP.md`:
 remove what is done, add what was learnt.
 

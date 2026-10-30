@@ -36,7 +36,8 @@ The full path every feature follows, from idea to release, is in
    findings.
 6. **Docs with the change.** The guide (`docs/guide/`) when usage changes, the
    README when the overview changes, `docs/ENGINEERING.md` when the
-   architecture changes; `ROADMAP.md` when an idea is done or added.
+   architecture changes (its harness diagrams too, when the planner loop, the
+   MCP flow, a hard rule or the checks change); `ROADMAP.md` when an idea is done or added.
 7. **Pull request** with the template: summary, spec touched, what was
    verified, what was not. The maintainer reviews and merges.
 8. **No attribution trailers** or generated-by footers in commits, PR

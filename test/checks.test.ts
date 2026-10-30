@@ -83,9 +83,9 @@ test("checks: an answer owning up to a missed limit is acknowledged", () => {
   assert.equal(result.acknowledged, true);
 });
 
-test("checks: repeats of saved rides and roads rated never again", () => {
-  const { store, route, context } = setup({ avoidMotorways: false });
-  const id = store.saveRide({
+/** A saved roadbook on exactly the roads of `route`. */
+function saveOldLoop(store: ReturnType<typeof setup>["store"], route: ReturnType<typeof setup>["route"]): number {
+  return store.saveRide({
     name: "Old loop",
     parentId: null,
     home: "Lille",
@@ -119,6 +119,13 @@ test("checks: repeats of saved rides and roads rated never again", () => {
       },
     ],
   });
+}
+
+test("checks: repeats of saved rides and roads rated never again", () => {
+  const { store, route, context } = setup();
+  // A leisure ride, motorways forbidden, on a motorway-free route.
+  route.trip.result.usesMotorway = false;
+  const id = saveOldLoop(store, route);
   // "Never again" about its roads: its legs are rated too (ADR 0024).
   rateRoadbook(store, store.findRide(String(id))!, 0, "never again", "roads");
   const { violations } = checkItinerary(context, route, "Loop, 214 km.", {
@@ -128,6 +135,18 @@ test("checks: repeats of saved rides and roads rated never again", () => {
   assert.match(violations[0]!, /^repeat: 100% of the roads of roadbook #1 "Old loop"/);
   assert.match(violations[1]!, /^rated roads: 100% on roads the rider rated 0 or 1/);
   assert.match(correctionMessage(violations), /^\[Automatic check by code, not from the rider\./);
+});
+
+test("checks: a practical trip may repeat a saved roadbook", () => {
+  // Motorways permitted is how a practical trip is told apart: repeating a commute is the point.
+  const { store, route, context } = setup({ avoidMotorways: false });
+  const id = saveOldLoop(store, route);
+  rateRoadbook(store, store.findRide(String(id))!, 0, "never again", "loop");
+  const { violations } = checkItinerary(context, route, "Commute, 214 km.", {
+    maxDistanceKm: null,
+    maxRidingMinutes: null,
+  });
+  assert.equal(violations.filter((v) => /^(repeat|disliked loop):/.test(v)).length, 0);
 });
 
 test("checks: a leisure ride mostly on fast expressways goes back; a practical trip does not", () => {

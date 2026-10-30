@@ -40,3 +40,4 @@ not rewritten.
 | [0041](0041-traffic-providers-behind-one-answer.md)            | Traffic providers behind one answer, chosen by the host                          | accepted |
 | [0042](0042-traffic-from-open-government-data.md)              | Traffic from open government data, by country                                    | accepted |
 | [0043](0043-an-own-valhalla-is-optional.md)                    | An own Valhalla is optional, chosen by one address                               | accepted |
+| [0044](0044-specs-checked-in-ci.md)                            | Check the specs in CI and require a spec or docs change with code                | accepted |

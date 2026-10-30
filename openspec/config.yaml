@@ -1,0 +1,16 @@
+# OpenSpec project configuration (read by `openspec doctor`, `instructions`, `archive`).
+# How this repository uses specs and changes: openspec/README.md and docs/EVOLVING.md.
+schema: spec-driven
+
+context: |
+  agentMotoride, an agentic motorcycle ride planner (TypeScript, Node 24).
+  Conventions and domain vocabulary: openspec/project.md. Working rules: AGENTS.md.
+  Default flow: edit openspec/specs/<capability>/spec.md directly, in the same pull
+  request as the code. A change proposal under openspec/changes/ is only for a feature
+  that spans several pull requests, or whose design is agreed before any code.
+
+operations:
+  archive:
+    guidance:
+      - Archive in the last pull request of the feature, once its code is in that pull request or already on main.
+      - Run `openspec validate --all` after archiving; CI runs the same check.

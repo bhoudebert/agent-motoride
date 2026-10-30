@@ -260,7 +260,7 @@ export async function describeCoords(lat: number, lon: number): Promise<string> 
     url.searchParams.set("lon", keyLon);
     url.searchParams.set("limit", "5");
     const features = (await fetchJson<ReverseResponse>(url.toString(), {}, 10_000)).features.map((f) => f.properties);
-    // Roads, passes and settlements make good labels; postcodes, boundaries and bare numbers do not.
+    // Roads, passes and settlements make good labels; postcodes and bare numbers do not.
     type Props = ReverseResponse["features"][number]["properties"];
     const clean = (p: Props) => p.osm_value !== "postcode" && !/^\d+$/.test(p.name ?? "");
     const p =

@@ -529,7 +529,7 @@ export async function enrichRide(store: Store, ride: SavedRide): Promise<RideExt
             ]),
           ),
     errors,
-    // A date beyond the forecast range keeps the last forecast gathered, if any.
+    // A failed lookup keeps the last forecast gathered; a date beyond the forecast range stores none.
     weather: weather ?? (errors.weather ? (previous?.weather ?? null) : null),
     stopPlan: stopPlan ?? previous?.stopPlan ?? null,
     conditions: conditions ?? previous?.conditions ?? null,

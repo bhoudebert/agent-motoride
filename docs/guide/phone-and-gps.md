@@ -139,6 +139,13 @@ routers isolate devices on guest networks, and then the phone cannot reach the
 computer. Any other way of getting the one `.motoride.json` file to the phone
 (share sheet, AirDrop, e-mail, cable) works with the app's import button. It stays on your local network; nothing is put online.
 
+### From your server
+
+With the phone enrolled on your server (the invitation QR, see [Run it for several riders](/several-riders)), the
+roadbooks of the library on that server can be fetched by the app itself: `GET /roadbooks` lists them with a version
+stamp and `GET /roadbook/<id>` gives the file. Nothing to export or carry. This needs a server; without one, use the
+share page or any way of moving the one `.motoride.json` file.
+
 ## For the GPS
 
 ::: code-group

@@ -6,6 +6,7 @@ import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { fileURLToPath } from "node:url";
 import { tenantDbPath, tenantDir } from "./dataDir.ts";
 import { CHANNEL, LiveShares, type LiveOptions } from "./live.ts";
+import { listRoadbooks, type MakeRoadbookFile, RoadbookFiles } from "./roadbookDownload.ts";
 import { MAX_POINTS, TrafficFlow, type TrafficOptions } from "./traffic.ts";
 import { type RequestContext, runInContext } from "./requestContext.ts";
 import { createRideServer } from "./rideServer.ts";
@@ -34,6 +35,8 @@ export interface ServeOptions {
   live?: LiveOptions;
   /** The phone's traffic (ADR 0030, 0041, 0042): the provider, open data by default, and TomTom's key and daily budget. */
   traffic?: TrafficOptions;
+  /** Makes the roadbook file of a saved ride; traces the route by default (tests give a fake). */
+  makeRoadbookFile?: MakeRoadbookFile;
 }
 
 interface Session {
@@ -111,6 +114,7 @@ export function createHttpServer(options: ServeOptions): {
   } = options;
   const live = new LiveShares({ now, ...options.live });
   const traffic = new TrafficFlow({ now, ...options.traffic });
+  const roadbookFiles = new RoadbookFiles(options.makeRoadbookFile);
   const sessions = new Map<string, Session>();
   const windows = new Map<string, { start: number; count: number }>();
 
@@ -229,6 +233,47 @@ export function createHttpServer(options: ServeOptions): {
     return json(res, 200, { at: t, ...answer });
   }
 
+  /** The rider's roadbooks for the phone: a list with version stamps, and one roadbook file (docs/roadbook-file.md). */
+  async function handleRoadbooks(req: IncomingMessage, res: ServerResponse, path: string): Promise<void> {
+    if (req.method !== "GET") return json(res, 405, { error: "Method not allowed." }, { Allow: "GET" });
+    const token = bearer(req);
+    const tenant = token ? registry.verify(token) : null;
+    if (!tenant) return json(res, 401, { error: "A rider's token is needed." }, { "WWW-Authenticate": "Bearer" });
+    if (limited(tenant)) return json(res, 429, { error: "Too many requests; wait a minute." }, { "Retry-After": "60" });
+    const file = /^\/roadbook\/(\d{1,9})$/.exec(path);
+    if (path !== "/roadbooks" && !file) return json(res, 404, { error: "Not found" });
+    // A file costs a route tracing on the public router: a rider asks for at most 30 a minute.
+    if (file) {
+      const t = now();
+      const w = windows.get(`roadbook:${tenant.id}`);
+      if (!w || t - w.start >= 60_000) windows.set(`roadbook:${tenant.id}`, { start: t, count: 1 });
+      else if (++w.count > 30)
+        return json(res, 429, { error: "Too many requests; wait a minute." }, { "Retry-After": "30" });
+    }
+    const store = new Store(tenantDbPath(tenant.id));
+    try {
+      if (!file) return json(res, 200, { roadbooks: listRoadbooks(store) });
+      const made = await roadbookFiles.get(tenant.id, store, Number(file[1]));
+      if (!made) return json(res, 404, { error: "No such roadbook." });
+      const etag = `"${made.stamp}"`;
+      if (req.headers["if-none-match"] === etag) {
+        res.writeHead(304, { ETag: etag });
+        return void res.end();
+      }
+      res.writeHead(200, {
+        "Content-Type": "application/json; charset=utf-8",
+        ETag: etag,
+        "Cache-Control": "private, no-cache",
+      });
+      return void res.end(made.body);
+    } catch (e) {
+      console.error(`[roadbook] ${e instanceof Error ? e.message : String(e)}`);
+      return json(res, 502, { error: "The roadbook file could not be made right now; try again." });
+    } finally {
+      store.close();
+    }
+  }
+
   /** A phone exchanges the code of its invitation (and the PIN, when there is one) for a token of its own. */
   async function handleEnrol(req: IncomingMessage, res: ServerResponse): Promise<void> {
     if (req.method !== "POST") return json(res, 405, { error: "Method not allowed." }, { Allow: "POST" });
@@ -267,6 +312,8 @@ export function createHttpServer(options: ServeOptions): {
         trafficCountries: traffic.countries,
       });
     if (url.pathname === "/traffic") return handleTraffic(req, res);
+    if (url.pathname === "/roadbooks" || url.pathname.startsWith("/roadbook/"))
+      return handleRoadbooks(req, res, url.pathname);
     if (url.pathname === "/follow.js" && req.method === "GET")
       return sendFile(res, FOLLOW_JS, "text/javascript; charset=utf-8");
     // The page is the same for every link, so it says nothing of whether a ride exists.

@@ -56,6 +56,20 @@ The administration SHALL be able to invite a rider's phone: `admin invite <email
 - **WHEN** the QR code of an invitation is seen by someone else after the rider used it, or after 24 hours
 - **THEN** it opens nothing
 
+### Requirement: Roadbooks for the phone
+
+The server SHALL give a rider's phone its roadbooks without a file being exported or carried: `GET /roadbooks` SHALL list the rider's roadbooks (number, name, distance, riding minutes and a `stamp`), and `GET /roadbook/<number>` SHALL return that roadbook's file as `docs/roadbook-file.md` describes it. Both SHALL need a rider's token, show only that rider's library, and refuse other methods. The stamp SHALL change when the route, the stops, the cameras or the name change, and the file SHALL carry it as its `ETag`, so a phone that sends it back in `If-None-Match` gets 304 and no body. A file traces the route on a public router, so it SHALL be made once for a given roadbook and stamp and kept in memory (bounded), a rider SHALL get at most 30 files a minute, and a failure SHALL answer 502 without being kept. The proxy examples SHALL pass both paths.
+
+#### Scenario: The phone checks for a newer version
+
+- **WHEN** a phone holding stamp `a1b2` for roadbook 7 asks for `/roadbook/7` with `If-None-Match: "a1b2"` and the roadbook has not changed
+- **THEN** the server answers 304 without tracing the route again
+
+#### Scenario: Another rider's roadbook
+
+- **WHEN** a rider asks for a roadbook number that exists only in another rider's library
+- **THEN** the answer is 404, as if it did not exist
+
 ### Requirement: The tools over HTTP
 
 `npm run serve` SHALL serve the MCP tools over HTTP (the Streamable HTTP transport) at `/mcp`, with a health check at `/health`, on `RIDE_SERVER_HOST` and `RIDE_SERVER_PORT` (default 127.0.0.1:8788; TLS belongs to the proxy in front). Every request to `/mcp` SHALL carry `Authorization: Bearer <token>`; a missing, unknown, suspended or removed token SHALL be answered 401 with `WWW-Authenticate: Bearer` and reach nothing. Each MCP session SHALL be one rider's, over their library, holding that rider's routes, preferences and start point as the stdio server does; a session SHALL be reachable only with its rider's token, and any other token SHALL be answered as if the session did not exist. A rider suspended or removed SHALL be shut out of an open session at once. A rider SHALL have at most 5 open sessions and the server 200; a session idle for 30 minutes SHALL be closed; a rider SHALL be limited to 300 requests a minute (429 with `Retry-After`); a request body over 1 MiB SHALL be refused (413).

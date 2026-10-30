@@ -4,11 +4,21 @@ import { test } from "node:test";
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 /** What the server shows to the internet (src/server.ts): every proxy example must pass these and nothing else. */
-const PUBLIC = ["mcp", "health", "enrol", "traffic", "follow.js", "follow/", "share/"];
+const PUBLIC = ["mcp", "health", "enrol", "traffic", "roadbooks", "roadbook/", "follow.js", "follow/", "share/"];
 
 test("the server's own routes are the ones the proxy examples pass", () => {
   const server = read("src/server.ts");
-  for (const p of ["/enrol", "/health", "/traffic", "/follow.js", "/follow/", "/share/", "/mcp"])
+  for (const p of [
+    "/enrol",
+    "/health",
+    "/traffic",
+    "/roadbooks",
+    "/roadbook/",
+    "/follow.js",
+    "/follow/",
+    "/share/",
+    "/mcp",
+  ])
     assert.ok(server.includes(`"${p}`), `${p} is a route of the server`);
 });
 
@@ -21,7 +31,7 @@ test("Caddy, the NixOS module and nginx pass every public route", () => {
     for (const p of PUBLIC) assert.ok(line.includes(`/${p}`), `${file} passes /${p}`);
   }
   const nginx = read("deploy/nginx.conf.example");
-  for (const p of ["mcp", "health", "enrol", "traffic", "follow\\.js"])
+  for (const p of ["mcp", "health", "enrol", "traffic", "roadbooks", "roadbook/", "follow\\.js"])
     assert.ok(nginx.includes(p), `nginx passes ${p}`);
   assert.ok(nginx.includes("(follow|share)/"));
 });

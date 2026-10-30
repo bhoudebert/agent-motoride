@@ -45,7 +45,7 @@ sudo nginx -t && sudo systemctl reload nginx
 curl https://rides.example.org/health
 ```
 
-`up -d ride` starts the server and not Caddy. Keep the paths of the example: `/mcp`, `/health`, `/enrol`, `/traffic`, `/follow.js`,
+`up -d ride` starts the server and not Caddy. Keep the paths of the example: `/mcp`, `/health`, `/enrol`, `/traffic`, `/roadbooks`, `/roadbook/*`, `/follow.js`,
 `/follow/*` and `/share/*` are exposed and everything else is 404. Keep `proxy_buffering off` and the long read timeout:
 the tools answer as a stream. `RIDE_DOMAIN` can be left as it is: only Caddy reads it.
 
@@ -125,7 +125,7 @@ The data is in `/var/lib/agent-motoride` (set `dataDir` to move it), the nightly
 
 ## What is exposed
 
-Caddy passes only `/mcp` (the tools, with a token), `/health`, `/enrol` (a phone exchanging its one-time invitation), `/traffic` (the phone's traffic, with a token), and the live ride relay and its page (`/share/*`, `/follow/*`,
+Caddy passes only `/mcp` (the tools, with a token), `/health`, `/enrol` (a phone exchanging its one-time invitation), `/traffic` (the phone's traffic, with a token), `/roadbooks` and `/roadbook/<id>` (the phone's list of the rider's roadbooks and the roadbook file, with a token), and the live ride relay and its page (`/share/*`, `/follow/*`,
 `/follow.js`, [Share a ride live](/live-sharing)). The administration stays inside the container: there
 is no web page to log in to, and a rider can only be added from the machine. The container runs as an ordinary user, listens
 on the loopback address of the host, and keeps nothing but the data volume. A token travels in a header, so the port

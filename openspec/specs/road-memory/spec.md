@@ -17,6 +17,12 @@ verdict, location), from API scouts and from client subagents through
 curviness, length, coordinates of both ends, date). It SHALL be kept current
 incrementally and SHALL never hold weather.
 
+#### Scenario: Scout report with weather
+
+- **WHEN** the traces hold a scout report for the Condroz, found poor, with "rain all afternoon" in it, and a road search around Ciney
+- **THEN** the memory reads both on its first catch-up and nothing more on the next, and the scout verdict is kept without the weather
+- **AND** a new scout report added later is read on the following catch-up, alone
+
 ### Requirement: Recall by place and by words
 
 `recallArea` SHALL take a place and a radius (default 40 km) and return the
@@ -36,3 +42,9 @@ The planner and the scouts SHALL be instructed to call `recallArea` before
 scouting or searching roads in a region, to reuse known winding roads by
 their coordinates, and to scout again an area recently found poor only for a
 stated reason.
+
+#### Scenario: Scout of a known area
+
+- **WHEN** a scout is started for an area
+- **THEN** its brief tells it to call `recallArea` first, to route known winding roads and loved stretches by their coordinates, and to search roads only when memory has none
+- **AND** `recallArea` is among the tools it is given

@@ -11,9 +11,19 @@ and the rider's rhythm, and put the stops where the phone will announce them.
 
 The system SHALL keep one profile in the database: tank range, reserve, pause interval, max stint, lunch yes/no, with defaults 250 km, 40 km, 75 min, 90 min, yes. It SHALL be settable from the CLI (`rides bike`), the prompt (`/bike`) and MCP (`rideSettings`), and shown in the settings line.
 
+#### Scenario: No profile set
+
+- **WHEN** the rider has never set a profile
+- **THEN** the settings line reads tank range 250 km, fuel by 210 km (40 km reserve), pause every 75 min, max stint 90 min, lunch when the ride spans midday
+
 ### Requirement: Candidates along the route
 
 Fuel stations, cafés, bakeries and restaurants within a detour of the route SHALL be found from OpenStreetMap along the exact line, spread over the whole route when the list is cut, with opening hours, address and detour, and cached 30 days per route line.
+
+#### Scenario: More fuel stations than the list holds
+
+- **WHEN** twelve fuel stations lie along the route and five are kept
+- **THEN** the five are spread over the route in km order, not bunched at the start, and a café comes with its opening hours and village
 
 ### Requirement: Plan
 
@@ -42,6 +52,16 @@ When the ride date is known, each candidate SHALL be checked against its opening
 
 Every planned stop SHALL carry its name and where it is in words: street and village from the map's address, else the road and nearest village by reverse geocoding, else both combined.
 
+#### Scenario: A stop without an address
+
+- **WHEN** a planned café has no street or village in the map
+- **THEN** it is described by the road and the nearest village found by reverse geocoding, while a stop mapped at "Rue X, Mont" keeps that address
+
 ### Requirement: Stops on the bike
 
 Planned stops SHALL be waypoints in the navigation links and named stages and waypoints in the GPX, with their time. The export and the views SHALL state each stop's position in the GPX route point list for apps that show unnamed stages.
+
+#### Scenario: A pause in the GPX
+
+- **WHEN** a ride with a pause at "Café" at 10:05 is exported
+- **THEN** the GPX has the stage and waypoint "pause: Café (10:05)", and the export says at which route point of the list it sits ("route point 18 of 40")

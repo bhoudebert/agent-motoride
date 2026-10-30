@@ -11,9 +11,20 @@ settings on evidence.
 
 Every session SHALL have a run row updated after each turn: model, effort, turns, model calls, tool calls, tokens (input, cache writes, cache reads, output), wall time, estimated cost from list prices, the resulting ride's distance, time, open road, 70 km/h share, slow zones, motorway km, linked roadbook, and error. Unsaved and failed runs SHALL be kept.
 
+#### Scenario: A failed turn
+
+- **WHEN** a planning turn fails and nothing is saved
+- **THEN** the run row is kept with its model, effort, tokens, estimated cost, the last routed trip's figures if any, and the error, with no linked roadbook
+
 ### Requirement: Trace
 
 Every step SHALL be traced with its scope (planner or scout), kind, name, duration and payload: rider messages, model responses with tokens and tools called, tool calls with input and output, final answers, errors. `rides trace <run>` SHALL replay it as a timeline with a summary per tool; `--full` SHALL show payloads.
+
+#### Scenario: Replay a run
+
+- **WHEN** the rider runs `rides trace 12`
+- **THEN** each step is shown with its time, scope and kind (rider message, model call with tokens and tools called, tool call with its result summarised, answer, error), followed by the usage and, per tool, its calls, total time and failures
+- **AND** `--full` also prints each step's payload
 
 ### Requirement: OpenTelemetry export
 
@@ -28,6 +39,16 @@ Every step SHALL be traced with its scope (planner or scout), kind, name, durati
 
 `/usage` SHALL show the session's consumption so far; the settings line SHALL show model and effort; an unknown model id SHALL trigger a warning.
 
+#### Scenario: Usage so far
+
+- **WHEN** the rider types `/usage` after two turns
+- **THEN** the prompt prints the model and effort, 2 turns with their model and tool calls, tokens in, from cache and out, the time spent and the estimated cost
+
 ### Requirement: Benchmarking
 
 `rides runs` SHALL list all runs in a table (and CSV) fit for comparing models and effort levels; the README SHALL record the benchmark results and the recommended settings.
+
+#### Scenario: Runs as CSV
+
+- **WHEN** the rider runs `rides runs --csv`
+- **THEN** every run is a row with its model, effort, turns, calls, tokens, seconds, cost, distance, riding time, road shares, linked roadbook and status

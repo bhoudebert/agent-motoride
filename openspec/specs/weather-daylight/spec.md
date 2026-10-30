@@ -11,6 +11,11 @@ ride, the daylight frame of the day, and the traffic delay at departure.
 
 `getWeather` SHALL return, for a place and a day up to 16 days ahead, hourly temperature, rain probability and amount, wind, gusts and sky for a chosen hour window, with a summary and a `dry` flag, plus the day's daylight.
 
+#### Scenario: Morning in Lille
+
+- **WHEN** the forecast is asked for Lille on 10 October from 9 to 12
+- **THEN** four hours come back, the summary says dry with the strongest gust, and the day's sunrise and sunset are attached
+
 ### Requirement: Daylight for any date
 
 `getDaylight` SHALL compute sunrise, sunset, first and last usable light and daylight hours for any date, localised with the timezone's offset on that date (summer and winter time).
@@ -23,6 +28,11 @@ ride, the daylight frame of the day, and the traffic delay at departure.
 ### Requirement: Weather on planned rides
 
 On save and refresh, when the ride date is within forecast range, the forecast SHALL be stored at four points of the route for the hours the rider would be there, stamped with its time; beyond range the previous forecast SHALL be kept and the view SHALL say so.
+
+#### Scenario: Ride next week
+
+- **WHEN** a ride dated within the 16-day range is saved or refreshed
+- **THEN** the forecast is stored for the start, one third, two thirds and the finish of the route, each for the hours the rider would be there, and the view says when it was gathered and how many hours ago
 
 ### Requirement: Traffic
 

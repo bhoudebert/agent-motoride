@@ -63,21 +63,50 @@ The profile SHALL report the long straights of the route: runs that stay within 
 
 Riding time SHALL be estimated per segment as the limit scaled by a bend factor (about 95% straight, 80% flowing bends, 50% hairpins), capped at 85% of the limit in town, excluding stops and traffic. The router's own time SHALL be returned only as an upper bound.
 
+#### Scenario: Straight road and town street
+
+- **WHEN** a segment runs straight on a road limited to 80, and another runs straight through town at 50
+- **THEN** the first is ridden at an estimated 76 km/h (95%) and the second at 42.5 km/h (capped at 85%)
+- **AND** the router's own time is returned only as `routerUpperBoundTime` and per leg as router minutes
+
 ### Requirement: 70 km/h readings
 
 Every routed trip SHALL report the share of riding time on roads limited to 70 or more and the share at an estimated 70 or more, and the share of distance with a limit of 70 or more.
+
+#### Scenario: A straight 70 road
+
+- **WHEN** a trip runs straight on a road limited to 70
+- **THEN** its time counts toward the time on roads limited to 70 or more and its distance toward the distance limited to 70 or more
+- **AND** it does not count toward the time at an estimated 70 or more, since it is ridden at about 66 km/h
 
 ### Requirement: Legs
 
 Each leg SHALL carry from and to labels (place names, never bare coordinates), coordinates, distance, estimated minutes, average speed, router minutes, motorway flag and the main roads by km.
 
+#### Scenario: Leg from a coordinate waypoint
+
+- **WHEN** a loop is routed from Lille through a waypoint given as "50.33,4.88"
+- **THEN** each leg carries a from and a to label with a place or road name for that waypoint, its coordinates, distance, estimated and router minutes, average speed, motorway flag and up to four main roads with their km
+
 ### Requirement: Road search
 
 `searchRoads` SHALL return paved secondary and tertiary roads around a place, ranked by curviness (cumulative heading change per km, with the area median for scale), with end coordinates usable as waypoints, plus named mountain passes.
 
+#### Scenario: Winding roads around a town
+
+- **WHEN** `searchRoads` runs around Ciney and finds a paved tertiary road, a winding secondary road and a gravel road
+- **THEN** the gravel road is left out and the paved roads come most winding first, with their curviness in degrees per km, the area median curviness, and from and to coordinates usable as waypoints
+- **AND** named mountain passes in the area are listed with their elevation
+
 ### Requirement: Duplicate verdict
 
 Every routed trip SHALL be compared with roadbooks and carry a verdict: new, similar (40% or more shared cells), duplicate (70% or more, rejected unless repeats are allowed), or variant of the ride the session evolves.
+
+#### Scenario: Same loop as a saved roadbook
+
+- **WHEN** a new session routes the Lille - Cassel loop already saved as roadbook #1
+- **THEN** the trip's saved-ride verdict starts with "DUPLICATE" and names roadbook #1
+- **AND** saving it is refused unless forced
 
 ### Requirement: Road surface
 

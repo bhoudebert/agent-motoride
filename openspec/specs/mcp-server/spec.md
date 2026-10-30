@@ -11,9 +11,20 @@ Context Protocol client, so the client's model can plan on its own account.
 
 The server SHALL speak the protocol over stdio with all logging on stderr (or, for several riders, over HTTP with a token: spec multi-user-server), SHALL hold one session context for its lifetime (routed trips, preferences, stop plans), SHALL create a run row at start and trace every tool call, and SHALL refuse ride tools until a start point is set (from `RIDE_HOME` or `rideSettings`).
 
+#### Scenario: No start point yet
+
+- **WHEN** the server starts without `RIDE_HOME` and the client calls `calculateTrip`
+- **THEN** the call fails with "No start point yet: call rideSettings with the rider's home first."
+- **AND** after `rideSettings` with home "Lille", the ride tools run, each call traced on the session's run row
+
 ### Requirement: Tools
 
 The server SHALL expose the planner's tools (`listSavedRides`, `getWeather`, `searchRoads`, `calculateTrip`, `getTraffic`, `getDaylight`, `getSpeedCameras`, `findStops`, `planStops`, `scoutAreas`) and the library tools `rideSettings`, `saveRide` (route id of the session only), `showRide`, `refreshRide` (full or stops only), `rideBriefing`, `exportGpx`, `exportMarkdown`, `listRoadbooks` and `listRides` (the rides by date), both paged with `page`, `planRide` (a ride from a roadbook on a day), `cancelRide`, `restoreRoadbook`, `copyRoadbook`, `rateStretch`, `listRatedRoads`, the destructive `deleteStretchRating`, and the destructive `deleteRoadbook` and `deleteRide`, confirmed by the rider.
+
+#### Scenario: Saving a route from elsewhere
+
+- **WHEN** the client calls `saveRide` with a route id that no `calculateTrip` of this session returned
+- **THEN** nothing is saved and the call fails with "Unknown routeId ...; it must come from calculateTrip in this session."
 
 ### Requirement: Prompts
 
@@ -36,6 +47,12 @@ When the client advertises form elicitation, `reviewRide` SHALL ask the rider in
 ### Requirement: Resources
 
 The server SHALL publish, as text: `ride://library` (the 20 newest roadbooks, one line each, ending with how to page through the rest with `listRoadbooks`), `ride://ride/{id}` (one roadbook, as `showRide` returns it, offered for the 20 newest and readable for any), and `ride://roads/rated` (road stretches, rides and legs rated, with their ratings).
+
+#### Scenario: A large library
+
+- **WHEN** the library holds 23 roadbooks
+- **THEN** `ride://library` lists the 20 newest, newest first, and ends with "Page 1 of 2 (23 roadbooks). Next: call listRoadbooks with page 2"
+- **AND** 20 `ride://ride/{id}` resources are offered, while `ride://ride/1` still opens
 
 ### Requirement: Client portability
 
@@ -90,6 +107,17 @@ or site list SHALL fail the documentation check.
 
 MCP runs SHALL record the prompt requests, the ride figures from the saved or last routed trip, and the scouts' tokens and cost; the client's own tokens SHALL be reported as unknown.
 
+#### Scenario: A session planned in the client
+
+- **WHEN** the rider uses `plan-ride` and the client routes a loop, with API scouts off
+- **THEN** the run row holds the request and the loop's distance, riding time and open-road and 50-zone shares
+- **AND** its tokens and cost are the scouts' only (none here), and `rides runs` says the client's model is not visible
+
 ### Requirement: Reload
 
 Code and `.env` changes SHALL require a full relaunch of the client; a new run row SHALL prove the new process.
+
+#### Scenario: A code change
+
+- **WHEN** a contributor changes a tool and relaunches the client
+- **THEN** a new `mcp session` run row appears in `npm run rides -- runs`, proving the new process serves the tools

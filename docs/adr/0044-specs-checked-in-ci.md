@@ -15,7 +15,7 @@ reads it.
 ## Decision
 
 - The PR title check is a required status check on `main`.
-- A `Specs` workflow validates every spec with `openspec validate --specs` on
+- A `Specs` workflow validates every spec and open proposal with `openspec validate --all` on
   every pull request and on `main`. The tool comes from the flake's locked
   nixpkgs, the same version the dev shell provides (`nix/modules/openspec.nix`).
 - The same workflow fails a pull request that changes `src/` without changing

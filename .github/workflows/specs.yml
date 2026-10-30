@@ -1,7 +1,7 @@
 name: Specs
 
-# Specs are the contract (docs/EVOLVING.md, ADR 0044): every spec must parse
-# with a scenario per requirement, and a pull request that changes code must
+# Specs are the contract (docs/EVOLVING.md, ADR 0044): every spec and open
+# proposal must parse with a scenario per requirement, and a pull request that changes code must
 # also change a spec or the docs, unless labelled `no-spec`.
 on:
   push:
@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: cachix/install-nix-action@v31
       # openspec from the flake's locked nixpkgs: the same version as the dev shell.
-      - run: nix shell --inputs-from . nixpkgs#openspec -c openspec validate --specs --no-interactive
+      - run: nix shell --inputs-from . nixpkgs#openspec -c openspec validate --all --no-interactive
 
   spec-with-code:
     name: Spec or docs with code

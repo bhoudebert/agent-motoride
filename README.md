@@ -20,7 +20,9 @@ and files to put it on your phone.
 
 The agent decides where to look and what to propose. Everything it states comes
 from tools: road geometry and speed limits from OpenStreetMap, routing from
-Valhalla, forecasts from Open-Meteo, traffic from TomTom when you have a key.
+Valhalla, forecasts from Open-Meteo, the phone's traffic from open government data
+(TomTom as an alternative), the planner's traffic check from TomTom when you
+have a key.
 The code enforces your hard rules (no motorways unless you say so, a loop you
 already have is never silently duplicated) and keeps your library: **roadbooks**,
 the loops you designed and rated, and **rides**, a roadbook on a given day. Ride
@@ -189,7 +191,7 @@ agentMotoride is **MIT-licensed and built in the open**, on top of open data.
 - API mode: an Anthropic API key from <https://platform.claude.com/>, billed per token.
 - MCP mode: Claude Code, Codex or another MCP client. No API key needed: without one, Claude Code scouts with its own subagents.
 - Internet access to the public data services listed in [the engineering notes](docs/ENGINEERING.md#tools).
-- Optional: a TomTom API key (free tier at <https://developer.tomtom.com/>) for traffic checks.
+- Optional: a TomTom API key (free tier at <https://developer.tomtom.com/>) for the planner's traffic check, or as the phone's traffic source instead of open data.
 
 ## Licence, data and disclaimer
 

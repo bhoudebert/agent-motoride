@@ -109,6 +109,126 @@ at the end gives tokens, cost, scouts used, and time per tool. Use it to see
 where a run wasted calls, why a ride came out as it did, or what a scout found
 that the planner ignored.
 
+## The harness
+
+The harness is the code around the model: it runs the loop (the model asks
+for a tool, code runs it, the result goes back), supplies every fact, and
+holds the rider's rules. Constraints act on three layers:
+
+| Layer                | What                                                                                  | Where                                                            | Can the model skip it? |
+| -------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ---------------------- |
+| Soft: prompt         | The method, "treat caps as hard limits"                                               | `SYSTEM` in `src/agent.ts`, server instructions, `planningGuide` | Yes                    |
+| Hard: tool code      | Motorway exclusion, known route ids, repeat guard, duplicate refusal, facts from data | `src/tools/`, `src/store.ts`                                     | No                     |
+| Check: verify output | Caps, motorways, repeats, rated roads, stated distance                                | `src/checks.ts` (ADR 0014)                                       | No, but only reports   |
+
+Who runs the loop depends on the mode. In API mode our code is the harness; in
+MCP mode the client (Claude Code, Codex) is, and agentMotoride only answers
+tool calls. The tool code is the same in both, which is why a rule that must
+never break goes in a tool or in `checks.ts`, never only in a prompt (ADR 0002).
+
+### API mode: the planner session runs the loop
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor R as Rider
+  participant P as Planner session<br/>agent.ts
+  participant M as Claude API
+  participant T as Tools<br/>tools/index.ts
+  participant S as Scouts<br/>scouts.ts
+  participant D as Map services
+  participant C as checks.ts
+  participant DB as SQLite
+
+  R->>P: "Loop from Lille, under 250 km, Saturday 9:00"
+  P->>D: setGeoAnchor(home), fail fast on a typo
+  P->>DB: startRun(), every step is traced against it
+  P->>P: parseLimits(rider words), maxDistanceKm 250
+  P->>M: toolRunner(SYSTEM, tools, max_iterations 40, schema RideAnswer)
+  loop at most 40 rounds
+    M-->>P: tool_use (listSavedRides, recallArea, scoutAreas, calculateTrip, ...)
+    P->>T: traced(): repeat guard, then the tool
+    opt scoutAreas
+      T->>S: 2-4 scouts in parallel, 14 rounds each
+      S->>T: recallArea, searchRoads, calculateTrip, getWeather
+      S-->>T: one candidate loop per area, with routeId
+    end
+    T->>D: Overpass (serialised), Valhalla, Open-Meteo
+    Note over T: calculateTrip excludes motorways when the rider forbids them,<br/>whatever the model passed, and stores the route under its routeId
+    T-->>P: tool_result
+    P->>DB: trace model step and tool call
+    P->>M: tool_results
+  end
+  M-->>P: end_turn, JSON {message, ride: {routeId, ...}}
+  P->>P: routeId must be in context.routes
+  P->>C: checkItinerary(route, text, limits)
+  alt violation not acknowledged
+    P->>M: correctionMessage, one retry
+    M-->>P: fixed itinerary, or "cannot meet"
+  end
+  P-->>R: itinerary, then what still fails, if anything
+  R->>P: /save
+  P->>DB: saveRide from the routed trip, duplicates refused
+```
+
+When the repeat guard keeps firing, the session stops the loop and asks for
+the answer with `tool_choice: none`. A prose answer instead of the JSON gets
+one `FORMAT_REMINDER`.
+
+### MCP mode: the client runs the loop
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor R as Rider
+  participant CC as MCP client<br/>model and loop
+  participant SA as Client subagents
+  participant MS as rideServer.ts
+  participant T as Tools<br/>same code
+  participant C as checks.ts
+  participant DB as SQLite
+
+  CC->>MS: initialize (stdio)
+  MS-->>CC: server instructions, prompts, tools
+  R->>CC: "Loop from Lille, under 250 km, Saturday 9:00"
+  CC->>MS: planningGuide(request)
+  MS-->>CC: the method to follow
+  CC->>MS: listSavedRides, recallArea
+  par one subagent per area (ADR 0021)
+    SA->>MS: recallArea, searchRoads, calculateTrip, getWeather
+    MS->>T: same hard rules: motorways, routeIds, repeat guard
+    MS-->>SA: results with routeId
+  end
+  SA-->>CC: candidate loops
+  CC->>MS: getDaylight, getWeather, getSpeedCameras, planStops, ...
+  CC->>MS: checkItinerary(routeId, request, draft), asked by the instructions
+  MS->>C: parseLimits + checkItinerary
+  MS-->>CC: violations to fix once
+  CC-->>R: itinerary in plain text, "Route: <routeId>"
+  R->>CC: "Save it"
+  CC->>MS: saveRide(routeId)
+  MS->>DB: routeId must exist, duplicates refused or asked by elicitation
+```
+
+### Who enforces what
+
+| Guarantee                      | API mode                     | MCP mode                        |
+| ------------------------------ | ---------------------------- | ------------------------------- |
+| Figures come from data         | Enforced                     | Enforced                        |
+| No motorway when forbidden     | Enforced                     | Enforced                        |
+| Route ids must be real         | Enforced                     | Enforced                        |
+| Duplicate rides refused        | Enforced                     | Enforced                        |
+| Repeat-call guard              | Enforced, then answer forced | Guard note only                 |
+| Planning method followed       | Asked (`SYSTEM`)             | Asked (instructions)            |
+| Tool round cap                 | 40 planner, 14 per scout     | The client decides              |
+| Answer matches a schema        | `RideAnswer`                 | Free text                       |
+| Itinerary checked against caps | Always, one retry            | When the client calls the check |
+| Steps traced                   | Model and tools              | Tools only                      |
+
+Last checked against the code: 2026-10-30 (after 1.10.0). Update the diagrams
+and this table when the planner loop, the MCP flow, a hard rule or the checks
+change, and refresh the date when you re-read them against the code.
+
 ## Tools
 
 | Tool              | Input                                                                   | Returns                                                                                                                                                                                                                                                                                                                                                                                                        | Source                                                                                                                                                                       | Key              |

@@ -1,3 +1,4 @@
+import { BUILT_UP_SHARE, builtUpShare, type BuiltUpLookup, type InBuiltUp } from "./builtUp.ts";
 import { decodePolyline, encodePolyline, type LatLon } from "./geometry.ts";
 import { haversineKm } from "./tools/geo.ts";
 import { effectiveLimit, traceLeg, type TraceAttributesResponse, type TraceEdge } from "./tools/trip.ts";
@@ -17,7 +18,7 @@ export interface RoadbookFile {
   /** `waypoint`: a point of the loop, which the rider can skip. `stop`: a planned fuel, café or pause stop on the route. */
   stops: Array<{ lat: number; lon: number; name: string; kind: "waypoint" | "stop" }>;
   /** Speed limit per stretch, by index into the decoded line: from point `from` to point `to`. */
-  limits: Array<{ from: number; to: number; kmh: number; posted: boolean; road?: string }>;
+  limits: Array<{ from: number; to: number; kmh: number; posted: boolean; road?: string; source?: "inferred" }>;
   cameras: Array<{ lat: number; lon: number; kmh: number | null; bearing: number | null; direction: "both" | null }>;
   /** Roundabouts on the line: where the rider enters and leaves the ring, the exits and the one taken. */
   junctions: RoundaboutJunction[];
@@ -167,7 +168,8 @@ function lengthKm(points: LatLon[]): number {
 export async function buildRoadbookFile(
   input: RoadbookFileInput,
   trace: Trace = traceLeg,
-): Promise<{ file: RoadbookFile; limitsError: string | null }> {
+  builtUp?: BuiltUpLookup,
+): Promise<{ file: RoadbookFile; limitsError: string | null; builtUpError: string | null }> {
   const line: LatLon[] = [];
   const limits: RoadbookFile["limits"] = [];
   const junctions: RoadbookFile["junctions"] = [];
@@ -175,6 +177,18 @@ export async function buildRoadbookFile(
   const legEndKm: number[] = [];
   const errors: string[] = [];
   let km = 0;
+
+  // Untagged roads through towns have no limit in OpenStreetMap, and the country default (80, 90) is wrong there:
+  // built-up land says they are town roads. Without the map service the defaults stand, and the export says so.
+  let inBuiltUp: InBuiltUp | null = null;
+  let builtUpError: string | null = null;
+  if (builtUp) {
+    try {
+      inBuiltUp = await builtUp(input.shapes.flatMap((shape) => decodePolyline(shape)));
+    } catch (e) {
+      builtUpError = `Built-up areas not checked (${e instanceof Error ? e.message.slice(0, 120) : String(e)}); untagged roads in towns keep the country default.`;
+    }
+  }
 
   for (const [i, routed] of input.shapes.entries()) {
     let points: LatLon[];
@@ -204,9 +218,23 @@ export async function buildRoadbookFile(
           if (lastCountry && lastCountry.code === code && lastCountry.to === base + from) lastCountry.to = base + to;
           else countries.push({ from: base + from, to: base + to, code });
         }
-        const { kmh, posted } = effectiveLimit(edge, data.admins);
+        const { kmh: defaultKmh, posted } = effectiveLimit(edge, data.admins);
+        // An untagged road mostly inside built-up land is a town road: 50 at most, marked as inferred.
+        const inferred =
+          !posted &&
+          defaultKmh > 50 &&
+          inBuiltUp !== null &&
+          builtUpShare(points, from, to, inBuiltUp) >= BUILT_UP_SHARE;
+        const kmh = inferred ? 50 : defaultKmh;
         const road = roadLabel(edge.names);
-        const stretch = { from: base + from, to: base + to, kmh, posted, ...(road ? { road } : {}) };
+        const stretch = {
+          from: base + from,
+          to: base + to,
+          kmh,
+          posted,
+          ...(road ? { road } : {}),
+          ...(inferred ? { source: "inferred" as const } : {}),
+        };
         // Edges of one road under one limit are one stretch.
         const previous = limits.at(-1);
         if (
@@ -214,7 +242,8 @@ export async function buildRoadbookFile(
           previous.to === stretch.from &&
           previous.kmh === kmh &&
           previous.posted === posted &&
-          previous.road === road
+          previous.road === road &&
+          previous.source === stretch.source
         ) {
           previous.to = stretch.to;
         } else limits.push(stretch);
@@ -297,5 +326,6 @@ export async function buildRoadbookFile(
         : {}),
     },
     limitsError: errors.length ? `Speed limits missing for ${errors.join("; ")}` : null,
+    builtUpError,
   };
 }

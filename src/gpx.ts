@@ -1,3 +1,4 @@
+import { overpassBuiltUp } from "./builtUp.ts";
 import { exportDir, inRoot } from "./requestContext.ts";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -194,15 +195,19 @@ export function roadbookFilePath(gpxPath: string): string {
 
 /** The roadbook file of a saved ride, from the GPX input already built for it (one tracing, shared by export and share). */
 export function savedRideRoadbook(ride: SavedRide, gpx: GpxInput) {
-  return buildRoadbookFile({
-    name: gpx.name,
-    description: gpx.description,
-    legs: gpx.legs,
-    shapes: gpx.shapes,
-    stops: gpx.stops,
-    cameras: ride.extras?.cameras ?? [],
-    origin: { roadbook: ride.id, ride: ride.rideDayId, name: ride.name },
-  });
+  return buildRoadbookFile(
+    {
+      name: gpx.name,
+      description: gpx.description,
+      legs: gpx.legs,
+      shapes: gpx.shapes,
+      stops: gpx.stops,
+      cameras: ride.extras?.cameras ?? [],
+      origin: { roadbook: ride.id, ride: ride.rideDayId, name: ride.name },
+    },
+    undefined,
+    overpassBuiltUp,
+  );
 }
 
 /**
@@ -218,21 +223,27 @@ export async function exportSavedRide(
   path: string;
   roadbookFile: string;
   limitsError: string | null;
+  /** Why built-up areas were not checked, so untagged town roads kept the country default; null when they were. */
+  builtUpError: string | null;
   rerouted: boolean;
   stopsAt: Array<{ label: string; index: number; total: number }>;
 }> {
   const { gpx, rerouted } = await savedRideGpx(store, ride);
   const input = { ...gpx, maxRoutePoints };
   const path = writeGpx(input, ride.id, file);
-  const { file: roadbook, limitsError } = await savedRideRoadbook(ride, gpx);
+  const { file: roadbook, limitsError, builtUpError } = await savedRideRoadbook(ride, gpx);
   const roadbookFile = roadbookFilePath(path);
   writeFileSync(roadbookFile, JSON.stringify(roadbook));
-  return { path, roadbookFile, limitsError, rerouted, stopsAt: routePointIndex(input) };
+  return { path, roadbookFile, limitsError, builtUpError, rerouted, stopsAt: routePointIndex(input) };
 }
 
 /** The line telling where the roadbook file went, and what is missing from it. */
-export function describeRoadbookFile(result: { roadbookFile: string; limitsError: string | null }): string {
-  return `Roadbook file (speed limits and cameras, for the MobileMotoRide app): ${result.roadbookFile}${result.limitsError ? `\n(${result.limitsError}; the file has no limits there.)` : ""}`;
+export function describeRoadbookFile(result: {
+  roadbookFile: string;
+  limitsError: string | null;
+  builtUpError?: string | null;
+}): string {
+  return `Roadbook file (speed limits and cameras, for the MobileMotoRide app): ${result.roadbookFile}${result.limitsError ? `\n(${result.limitsError}; the file has no limits there.)` : ""}${result.builtUpError ? `\n(${result.builtUpError})` : ""}`;
 }
 
 /** "pause: X at route point 18 of 40" lines, for the rider to find the stops in an app's stage list. */

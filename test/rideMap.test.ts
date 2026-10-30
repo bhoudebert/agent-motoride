@@ -8,7 +8,7 @@ import { routeCells } from "../src/geometry.ts";
 import { writeRideMarkdown } from "../src/markdown.ts";
 import { DEFAULT_PREFERENCES } from "../src/preferences.ts";
 import { rideMapPng, rideMapSvg, townOf, writeRideMap } from "../src/rideMap.ts";
-import { startShareServer } from "../src/share.ts";
+import { importLink, once, startShareServer } from "../src/share.ts";
 import { type SavedRide, Store } from "../src/store.ts";
 import { bentLine, encodePolyline } from "./helpers/polyline.ts";
 
@@ -163,6 +163,79 @@ test("ride map: the phone page shows the picture", async () => {
     const image = await fetch(`${base}/map.png`);
     assert.equal(image.headers.get("content-type"), "image/png");
     assert.equal(Buffer.from(await image.arrayBuffer()).length, picture.length);
+  } finally {
+    server.close();
+  }
+});
+
+test("share page: the roadbook file is served and opens in the app", async () => {
+  let made = 0;
+  const shared = {
+    name: "Loop",
+    mapsUrl: "https://maps",
+    itinerary: "text",
+    gpx: { name: "Loop", description: "", legs: [], shapes: [] },
+    roadbookFile: once(async () => {
+      made++;
+      return '{"format":"motoride-roadbook","version":1}';
+    }),
+  };
+  const { server } = await startShareServer(() => shared, 0);
+  try {
+    const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    const page = await (await fetch(`${base}/`)).text();
+    assert.ok(
+      page.includes(
+        importLink(`http://127.0.0.1:${(server.address() as AddressInfo).port}/ride.motoride.json`).replace(
+          /&/g,
+          "&amp;",
+        ),
+      ),
+    );
+    const file = await fetch(`${base}/ride.motoride.json`);
+    assert.match(file.headers.get("content-type") ?? "", /application\/json/);
+    assert.match(file.headers.get("content-disposition") ?? "", /ride\.motoride\.json/);
+    assert.equal(JSON.parse(await file.text()).format, "motoride-roadbook");
+    await fetch(`${base}/ride.motoride.json`);
+    assert.equal(made, 1, "traced once, not per request");
+  } finally {
+    server.close();
+  }
+});
+
+test("share page: a failed roadbook file answers 502 and is tried again", async () => {
+  let calls = 0;
+  const shared = {
+    name: "Loop",
+    mapsUrl: "https://maps",
+    itinerary: "text",
+    gpx: { name: "Loop", description: "", legs: [], shapes: [] },
+    roadbookFile: once(async () => {
+      if (++calls === 1) throw new Error("Valhalla 429");
+      return "{}";
+    }),
+  };
+  const { server } = await startShareServer(() => shared, 0);
+  try {
+    const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    assert.equal((await fetch(`${base}/ride.motoride.json`)).status, 502);
+    assert.equal((await fetch(`${base}/ride.motoride.json`)).status, 200);
+  } finally {
+    server.close();
+  }
+});
+
+test("share page: a ride without a roadbook file shows no app button", async () => {
+  const shared = {
+    name: "Loop",
+    mapsUrl: "https://maps",
+    itinerary: "t",
+    gpx: { name: "Loop", description: "", legs: [], shapes: [] },
+  };
+  const { server } = await startShareServer(() => shared, 0);
+  try {
+    const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    assert.ok(!(await (await fetch(`${base}/`)).text()).includes("Open in MotoRide"));
   } finally {
     server.close();
   }

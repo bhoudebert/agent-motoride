@@ -29,7 +29,24 @@ export interface Shared {
   itinerary: string;
   /** The ride's map picture (PNG), for a saved ride. */
   picture?: Buffer;
+  /** The roadbook file (`.motoride.json`) for the MobileMotoRide app, made on first request: it traces the route. */
+  roadbookFile?: () => Promise<string>;
 }
+
+/** Run an async job once and share its result; a failure is not kept, so the next request tries again. */
+export function once<T>(job: () => Promise<T>): () => Promise<T> {
+  let pending: Promise<T> | undefined;
+  return () => {
+    pending ??= job().catch((e: unknown) => {
+      pending = undefined;
+      throw e;
+    });
+    return pending;
+  };
+}
+
+/** The link that makes the MotoRide app download and import a roadbook file (`mobilemotoride://import?url=`). */
+export const importLink = (fileUrl: string) => `mobilemotoride://import?url=${encodeURIComponent(fileUrl)}`;
 
 /** Escape text for HTML content and quoted attributes. */
 export const escapeHtml = (t: string) =>
@@ -52,6 +69,23 @@ export function startShareServer(
     if (!shared) {
       res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
       return res.end("No itinerary to share yet.");
+    }
+    if (req.url?.startsWith("/ride.motoride.json") && shared.roadbookFile) {
+      shared
+        .roadbookFile()
+        .then((body) => {
+          res.writeHead(200, {
+            "content-type": "application/json; charset=utf-8",
+            "content-disposition": 'attachment; filename="ride.motoride.json"',
+            "cache-control": "no-store",
+          });
+          res.end(body);
+        })
+        .catch(() => {
+          res.writeHead(502, { "content-type": "text/plain; charset=utf-8" });
+          res.end("The roadbook file could not be made right now; try again.");
+        });
+      return;
     }
     if (req.url?.startsWith("/map.png") && shared.picture) {
       res.writeHead(200, { "content-type": "image/png", "cache-control": "no-store" });
@@ -77,6 +111,7 @@ export function startShareServer(
       .join("")}
 ${shared.overviewUrl && isWebLink(shared.overviewUrl) ? `<a href="${esc(shared.overviewUrl)}" style="display:inline-block;margin:.2rem .4rem .2rem 0;padding:.8rem 1.2rem;background:#fff;color:#1a73e8;border:2px solid #1a73e8;border-radius:.5rem;text-decoration:none">Whole ride (overview)</a>` : ""}
 &nbsp; <a href="/ride.gpx" style="display:inline-block;padding:.8rem 1.2rem;background:#444;color:#fff;border-radius:.5rem;text-decoration:none">Download GPX</a></p>
+${shared.roadbookFile ? `<p><a href="${esc(importLink(`http://${req.headers.host ?? "localhost"}/ride.motoride.json`))}" style="display:inline-block;padding:.8rem 1.2rem;background:#0a7d3b;color:#fff;border-radius:.5rem;text-decoration:none">Open in MotoRide</a> <a href="/ride.motoride.json" style="display:inline-block;padding:.8rem 1.2rem;background:#444;color:#fff;border-radius:.5rem;text-decoration:none">Roadbook file</a></p>` : ""}
 ${shared.picture ? `<p><img src="/map.png" alt="Map of the ride" style="width:100%;height:auto;border-radius:.5rem"></p>` : ""}
 <pre style="white-space:pre-wrap;background:#f4f4f4;padding:1rem;border-radius:.5rem">${esc(shared.itinerary)}</pre>
 </body>`);

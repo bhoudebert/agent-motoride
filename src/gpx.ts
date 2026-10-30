@@ -192,6 +192,19 @@ export function roadbookFilePath(gpxPath: string): string {
   return `${gpxPath.replace(/\.gpx$/i, "")}.motoride.json`;
 }
 
+/** The roadbook file of a saved ride, from the GPX input already built for it (one tracing, shared by export and share). */
+export function savedRideRoadbook(ride: SavedRide, gpx: GpxInput) {
+  return buildRoadbookFile({
+    name: gpx.name,
+    description: gpx.description,
+    legs: gpx.legs,
+    shapes: gpx.shapes,
+    stops: gpx.stops,
+    cameras: ride.extras?.cameras ?? [],
+    origin: { roadbook: ride.id, ride: ride.rideDayId, name: ride.name },
+  });
+}
+
 /**
  * Export a saved ride as a GPX file and as a roadbook file for the MobileMotoRide app (limits, cameras).
  * The roadbook file is always written; when Valhalla cannot give the limits it has none and `limitsError` says why.
@@ -211,15 +224,7 @@ export async function exportSavedRide(
   const { gpx, rerouted } = await savedRideGpx(store, ride);
   const input = { ...gpx, maxRoutePoints };
   const path = writeGpx(input, ride.id, file);
-  const { file: roadbook, limitsError } = await buildRoadbookFile({
-    name: gpx.name,
-    description: gpx.description,
-    legs: gpx.legs,
-    shapes: gpx.shapes,
-    stops: gpx.stops,
-    cameras: ride.extras?.cameras ?? [],
-    origin: { roadbook: ride.id, ride: ride.rideDayId, name: ride.name },
-  });
+  const { file: roadbook, limitsError } = await savedRideRoadbook(ride, gpx);
   const roadbookFile = roadbookFilePath(path);
   writeFileSync(roadbookFile, JSON.stringify(roadbook));
   return { path, roadbookFile, limitsError, rerouted, stopsAt: routePointIndex(input) };

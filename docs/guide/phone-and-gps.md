@@ -131,8 +131,13 @@ show roadbook 7
 
 :::
 
-The share page has every map part, the whole-ride overview, the itinerary and
-a GPX download. It stays on your local network; nothing is put online.
+The share page has every map part, the whole-ride overview, the itinerary, a
+GPX download and, for a saved ride, the roadbook file for the MotoRide app: an
+"Open in MotoRide" button (and a second QR code in the terminal) that makes the
+app download and import it. Phone and computer must be on the same Wi-Fi; some
+routers isolate devices on guest networks, and then the phone cannot reach the
+computer. Any other way of getting the one `.motoride.json` file to the phone
+(share sheet, AirDrop, e-mail, cable) works with the app's import button. It stays on your local network; nothing is put online.
 
 ## For the GPS
 

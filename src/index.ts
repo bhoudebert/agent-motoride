@@ -3,7 +3,7 @@ import { parseArgs } from "node:util";
 import Anthropic from "@anthropic-ai/sdk";
 import { openRide, type RideSession } from "./agent.ts";
 import { addRideNote, pendingNotesSummary } from "./feedback.ts";
-import { describeRoadbookFile, exportSavedRide, savedRideGpx, writeGpx } from "./gpx.ts";
+import { describeRoadbookFile, exportSavedRide, savedRideGpx, savedRideRoadbook, writeGpx } from "./gpx.ts";
 import {
   DuplicateRideError,
   enrichRide,
@@ -30,7 +30,7 @@ import {
   preferencesFromEnv,
 } from "./preferences.ts";
 import { describeProfile, parseProfileArgs } from "./profile.ts";
-import { printQr, type Shared, startShareServer } from "./share.ts";
+import { importLink, once, printQr, type Shared, startShareServer } from "./share.ts";
 import { type SavedRide, Store } from "./store.ts";
 import { usePersistentGeoCache } from "./tools/geo.ts";
 import { formatTrace } from "./trace.ts";
@@ -645,6 +645,7 @@ async function sharedRide(session: RideSession, savedId: number | null): Promise
     overviewUrl: nav.overview,
     itinerary: ride.itinerary,
     gpx,
+    roadbookFile: once(async () => JSON.stringify((await savedRideRoadbook(ride, gpx)).file)),
   };
   return lastShared;
 }
@@ -896,6 +897,10 @@ async function refineLoop(
               `Scan with the phone (same Wi-Fi): ${shareUrl}\nThe page follows the current itinerary and stays up until you quit.`,
             );
             await printQr(shareUrl);
+            if (lastShared?.roadbookFile) {
+              console.log("Or scan this one to open the roadbook in the MotoRide app:");
+              await printQr(importLink(`${shareUrl}ride.motoride.json`));
+            }
             break;
           }
           case "gpx": {

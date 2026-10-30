@@ -46,7 +46,7 @@ Every step SHALL be traced with its scope (planner or scout), kind, name, durati
 
 ### Requirement: Benchmarking
 
-`rides runs` SHALL list all runs in a table (and CSV) fit for comparing models and effort levels; the README SHALL record the benchmark results and the recommended settings.
+`rides runs` SHALL list all runs in a table (and CSV) fit for comparing models and effort levels; `docs/ENGINEERING.md` SHALL record the benchmark results and the recommended settings.
 
 #### Scenario: Runs as CSV
 

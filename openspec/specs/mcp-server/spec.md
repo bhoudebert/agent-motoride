@@ -19,7 +19,32 @@ The server SHALL speak the protocol over stdio with all logging on stderr (or, f
 
 ### Requirement: Tools
 
-The server SHALL expose the planner's tools (`listSavedRides`, `getWeather`, `searchRoads`, `calculateTrip`, `getTraffic`, `getDaylight`, `getSpeedCameras`, `findStops`, `planStops`, `scoutAreas`) and the library tools `rideSettings`, `saveRide` (route id of the session only), `showRide`, `refreshRide` (full or stops only), `rideBriefing`, `exportGpx`, `exportMarkdown`, `listRoadbooks` and `listRides` (the rides by date), both paged with `page`, `planRide` (a ride from a roadbook on a day), `cancelRide`, `restoreRoadbook`, `copyRoadbook`, `rateStretch`, `listRatedRoads`, the destructive `deleteStretchRating`, and the destructive `deleteRoadbook` and `deleteRide`, confirmed by the rider.
+The server SHALL expose these 40 tools, the planner's own shared with the API
+runner, and SHALL refuse a `saveRide` whose route id no tool of the session
+returned. Each tool's behaviour is specified in the capability named next to it.
+
+- Settings and help: `rideSettings` (start point, motorways, targets: this
+  spec, "Transport and state"), `capabilities` and `planningGuide` (this spec,
+  "Everything discoverable", "Client portability").
+- Planning and routing: `listSavedRides` (the library near a place, read
+  before planning: saved-rides, "Duplicate avoidance"), `recallArea`
+  (road-memory), `searchRoads` and `calculateTrip` (route-analysis),
+  `importRoute` (route-import), `scoutAreas` (ride-planning, "Scouts for new
+  rides"), `reportScout` (this spec, "Client scouting when API scouts are
+  off"), `checkItinerary` (ride-planning, "Itinerary checked by code").
+- Finishing a ride: `getWeather`, `getDaylight`, `checkConditions` and
+  `getTraffic` (weather-daylight, traffic), `getSpeedCameras`
+  (external-lookups), `findStops` and `planStops` (stop-planning).
+- Library: `saveRide`, `showRide`, `refreshRide` (full or stops only),
+  `listRoadbooks` and `listRides` (paged with `page`), `planRide` (a ride from
+  a roadbook on a day), `keepRideVersion`, `restoreRoadbook`, `copyRoadbook`,
+  `cancelRide`, and the destructive `deleteRoadbook` and `deleteRide`,
+  confirmed by the rider (saved-rides).
+- Exports: `exportGpx`, `exportMarkdown` and `showRideMap` (route-exports).
+- Ride day: `rideBriefing` (saved-rides, "Ride-day briefing").
+- Feedback and memory: `addRideNote`, `reviewRide`, `rateStretch`,
+  `listRatedRoads` and the destructive `deleteStretchRating` (ride-feedback),
+  `rateRide` (saved-rides, "Ratings").
 
 #### Scenario: Saving a route from elsewhere
 
@@ -28,7 +53,7 @@ The server SHALL expose the planner's tools (`listSavedRides`, `getWeather`, `se
 
 ### Requirement: Prompts
 
-The server SHALL expose prompts that become slash commands: `plan-ride`, `commute`, `edit-ride`, `save-ride`, `export-gpx`, `export-md`, `show-ride`, `refresh`, `today`, `list-rides`, `help`. `plan-ride` SHALL carry the shared planning instructions, the rules for MCP (use the tools, plain text, end with a `Route:` line, settings changes through `rideSettings`), the request and the current settings.
+The server SHALL expose 17 prompts that become slash commands: `plan-ride`, `commute`, `edit-ride`, `plan-from` (planning); `save-ride`, `show-ride`, `refresh`, `list-roadbooks`, `list-rides` (library); `export-gpx`, `export-md` (exports); `today` (ride day); `note`, `review`, `rate`, `rate-stretch` (feedback); `help`. Each, except `help` (rendered from the catalogue, no tool call), SHALL ask the client's model to call the matching tools with the rider's arguments. `plan-ride` SHALL carry the shared planning instructions, the rules for MCP (use the tools, plain text, end with a `Route:` line, settings changes through `rideSettings`), the request and the current settings.
 
 #### Scenario: Settings change in the request
 
@@ -105,13 +130,20 @@ or site list SHALL fail the documentation check.
 
 ### Requirement: Run accounting
 
-MCP runs SHALL record the prompt requests, the ride figures from the saved or last routed trip, and the scouts' tokens and cost; the client's own tokens SHALL be reported as unknown.
+Each MCP session SHALL keep one run row with the model recorded as
+`mcp-client` and the effort as `n/a`; the row SHALL hold the requests given to
+`plan-ride`, `commute`, `edit-ride` and `planningGuide` (for a new ride), the tool calls, the
+ride figures (distance, riding time, open-road, 50-zone and 30-zone shares,
+motorway km) from the ride saved last in the session, else the last routed
+trip, and as tokens and cost only those of the API scouts, priced at the scout
+model. The client's own model and tokens are not visible to the server and
+SHALL NOT be counted; `rides runs` SHALL say so for `mcp-client` rows.
 
 #### Scenario: A session planned in the client
 
 - **WHEN** the rider uses `plan-ride` and the client routes a loop, with API scouts off
-- **THEN** the run row holds the request and the loop's distance, riding time and open-road and 50-zone shares
-- **AND** its tokens and cost are the scouts' only (none here), and `rides runs` says the client's model is not visible
+- **THEN** the run row holds the request and the loop's distance, riding time and open-road and 50-zone shares, with model `mcp-client`
+- **AND** it counts no tokens and no cost (no scout ran), and `rides runs` says the client's model is not visible
 
 ### Requirement: Reload
 

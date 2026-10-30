@@ -27,12 +27,22 @@ ride, the daylight frame of the day, and the traffic delay at departure.
 
 ### Requirement: Weather on planned rides
 
-On save and refresh, when the ride date is within forecast range, the forecast SHALL be stored at four points of the route for the hours the rider would be there, stamped with its time; beyond range the previous forecast SHALL be kept and the view SHALL say so.
+On save and refresh, when the ride date is within forecast range, the forecast SHALL be stored at four points of the route for the hours the rider would be there, stamped with its time. Beyond the 16-day range no forecast SHALL be stored (a previous one is dropped) and the view SHALL say "Weather: no forecast stored (date beyond the 16-day range at the last refresh)". When the lookup fails, the previous forecast SHALL be kept and the failure shown.
 
 #### Scenario: Ride next week
 
 - **WHEN** a ride dated within the 16-day range is saved or refreshed
 - **THEN** the forecast is stored for the start, one third, two thirds and the finish of the route, each for the hours the rider would be there, and the view says when it was gathered and how many hours ago
+
+#### Scenario: Ride beyond the forecast range
+
+- **WHEN** a ride dated three weeks ahead is refreshed
+- **THEN** no forecast is stored, any earlier one is dropped, and the view says "Weather: no forecast stored (date beyond the 16-day range at the last refresh)"
+
+#### Scenario: Forecast lookup fails
+
+- **WHEN** a ride within range is refreshed and the weather lookup fails
+- **THEN** the forecast gathered last time is kept, and the view says the last lookup failed, showing the previous result
 
 ### Requirement: Traffic
 

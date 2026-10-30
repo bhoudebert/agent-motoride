@@ -90,6 +90,12 @@ For a new leisure ride the planner SHALL first call `scoutAreas` with two to fou
 
 The planner SHALL state only what tools returned and SHALL mark unverified parts as such when a tool fails or has no data source.
 
+#### Scenario: Speed limits not fetched
+
+- **WHEN** the speed-limit lookup fails for a routed loop
+- **THEN** the trip says "Slow-zone share is unverified for this route" and its time is the router's estimate only
+- **AND** the itinerary says the slow-zone share is unverified instead of giving a figure
+
 ### Requirement: Structured final answer (API mode)
 
 The built-in planner's final answer SHALL be validated by the API against a schema with `message` (text for the rider) and `ride` (route id, date, departure, name, or null for a plain answer). An answer naming a route id unknown to the session SHALL be shown with a warning and SHALL NOT be saveable. A model that does not enforce structured output may wrap the JSON in a code fence or prose, or give `ride` as one string (route id, date and name joined by `_`): the answer SHALL be read from any of these forms, and an answer that cannot be read SHALL be asked for again once, as the JSON object only; if the second answer cannot be read either, it SHALL be shown as the message with `ride: null`.
@@ -113,17 +119,41 @@ The built-in planner's final answer SHALL be validated by the API against a sche
 
 The itinerary SHALL be plain text for a terminal: name and reason; departure, distance, estimated riding time, average speed, realistic total; open-road share, time at 70 km/h or more (both readings), motorway use, slow-zone shares against targets; daylight; numbered legs with town names (never bare coordinates), main roads, distance, time, average speed; weather by time of day; traffic or "not checked"; cameras; planned stops with times; navigation links; one alternative.
 
+#### Scenario: Loop presented without traffic data
+
+- **WHEN** a loop through a waypoint given as coordinates is presented and no traffic was looked up
+- **THEN** its legs are numbered and named by towns or roads ("D 531 near Villard-de-Lans"), not by the coordinates
+- **AND** the traffic line reads "not checked"
+
 ### Requirement: Follow-ups
 
 A follow-up SHALL be treated as an edit of the current itinerary: keep what was not asked to change, reuse lookups, re-route and re-check weather for what changed, and answer with the full updated itinerary.
+
+#### Scenario: Shorter loop
+
+- **WHEN** after an itinerary the rider says "shorter, skip Die"
+- **THEN** the loop is routed again without Die, the forecast is fetched for any new place, and the departure and lookups that did not change are kept
+- **AND** the answer is the full updated itinerary, opening with one line on what changed
 
 ### Requirement: Practical trips
 
 When the request is a practical trip (commute, arrive by a time), the planner SHALL route point to point, use motorways when permitted, skip road discovery and slow-zone optimisation, check weather and traffic for the travel hours, give the arrival time, and ignore saved-ride overlap.
 
+#### Scenario: Commute with motorways permitted
+
+- **WHEN** the rider permits motorways and asks to reach the office by 08:30
+- **THEN** the trip is routed point to point with motorways allowed, without scouts or road search, with weather and traffic for the travel hours and the arrival time
+- **AND** the code check does not send it back for fast expressways, long straights or slow zones
+
 ### Requirement: Order of completion
 
 Once a loop is chosen the planner SHALL run traffic, cameras and the stop plan on that loop, and reconsider departure or loop only when traffic or daylight demands it.
+
+#### Scenario: Finishing the chosen loop
+
+- **WHEN** a scout's loop is chosen
+- **THEN** traffic for the departure, the speed cameras and the stop plan are run on that loop's route id before it is presented
+- **AND** the departure and the loop stay as they are unless the traffic delay or the daylight demands a change
 
 ### Requirement: The routing engine is the host's choice
 

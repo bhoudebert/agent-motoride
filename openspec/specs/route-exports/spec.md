@@ -11,6 +11,11 @@ chosen roads or the stops.
 
 Google Maps links SHALL include pass-through points taken from the exact route line at the places farthest from the straight line between stops, within about ten points per link; a long ride SHALL be split into parts sharing a boundary point, preferably a planned stop, else a leg end; a tiny tail link SHALL be avoided by dropping the least useful points; a ride over 120 km with a stop near its middle SHALL get two parts. The view and the Markdown SHALL say where each part ends.
 
+#### Scenario: Long loop with a pause near its middle
+
+- **WHEN** a loop of more than 120 km would fit in one link and has a planned pause between a third and two thirds of the way
+- **THEN** it gets two links of at most ten points each, the first ending at the pause and the second starting from it
+
 ### Requirement: Whole-ride overview link
 
 When a ride needs several navigation links, an overview link SHALL also be given: one Google Maps link through at most ten points spread over the whole ride (start, end, and the waypoints or pass-through points that keep its shape), labelled as a view of the whole ride, not for navigation. It SHALL appear wherever the parts do: the routing and stop-plan tool results, the itinerary, the roadbook view, the Markdown export and the phone share page.
@@ -23,6 +28,11 @@ When a ride needs several navigation links, an overview link SHALL also be given
 ### Requirement: GPX
 
 The GPX SHALL hold a track (exact line, one segment per leg), a route (loop stops, planned stops as named stages, pass-through points, 40 by default, `--pins N` to cap) and waypoints (stops and planned stops with their time). Rides saved before the route line was stored SHALL be re-routed on first export and the line kept.
+
+#### Scenario: Three legs and a café pause
+
+- **WHEN** a three-leg ride with a pause at "Café" at 10:05 is exported
+- **THEN** the GPX holds three track segments, a route with pass-through points between the stops and the stage "pause: Café (10:05)", and a waypoint for the café
 
 ### Requirement: Roadbook file
 
@@ -47,6 +57,12 @@ Exporting a saved ride SHALL also write a roadbook file next to the GPX, same na
 
 A ride SHALL export as a Markdown document in a fixed layout: headline figures, date and start, request, navigation links, figures, road mix with 70 km/h readings, legs table, daylight, weather table, stop plan table with locations, fixed cameras (one row per spot, doubled entries marked), fuel and café stops, planning metadata, itinerary text as planned, waypoints. Available from the CLI, the prompt and MCP.
 
+#### Scenario: Two cameras at one spot
+
+- **WHEN** a saved ride with two fixed cameras at 130 at km 4 is exported as Markdown
+- **THEN** the document has the road mix, legs, daylight, weather, stop plan, fixed cameras, fuel stops and itinerary sections
+- **AND** the two cameras make one row marked "4 (x2)"
+
 ### Requirement: Ride map
 
 A roadbook SHALL be drawable as a picture from its own data, without map tiles or network: the route leg by leg, the towns at the leg ends in riding order (never coordinates or country names), planned stops with their arrival times, fixed cameras with their posted limits, km marks every 25 km (left out where they would sit on a marker or on the same road ridden back), a scale bar, north, the ride's figures and the OpenStreetMap attribution. It SHALL be a PNG rendered with bundled fonts only, the same on every machine, available as `rides map`, `/map`, the `showRideMap` MCP tool (returning the image), next to the Markdown export (shown at its top) and on the phone share page.
@@ -59,3 +75,9 @@ A roadbook SHALL be drawable as a picture from its own data, without map tiles o
 ### Requirement: Phone handoff
 
 `/qr` SHALL print a QR code of the first navigation link. `/share` SHALL serve a page on the local network with one button per link part, the itinerary and a GPX download, print its QR code, follow the current itinerary while the session runs, and stop on quit.
+
+#### Scenario: A ride in two parts on the phone
+
+- **WHEN** the rider types `/share` for a ride with two navigation parts
+- **THEN** a page on the local network shows a button for each part, the itinerary and a GPX download, and its QR code is printed
+- **AND** the page stops when the rider quits

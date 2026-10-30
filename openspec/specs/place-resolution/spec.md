@@ -28,3 +28,9 @@ Ambiguous names SHALL resolve to a town of that very name before towns that only
 ### Requirement: Reverse geocoding
 
 Coordinates used as waypoints or stops SHALL be described as a road near a village, a pass or a settlement; postcodes, boundaries and bare numbers SHALL be rejected as labels. Results SHALL be cached permanently.
+
+#### Scenario: Waypoint near a postcode
+
+- **WHEN** a waypoint is given as coordinates and the reverse geocoder returns a postcode and the D 531 in Villard-de-Lans
+- **THEN** the waypoint is labelled "D 531 near Villard-de-Lans", not the postcode
+- **AND** the same point asked again later is answered from the cache

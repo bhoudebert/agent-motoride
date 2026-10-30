@@ -68,3 +68,8 @@ The points SHALL be rounded to a hundredth of a degree (about a kilometre) befor
 ### Requirement: What the server learns
 
 The points sent are on the road ahead of the rider, so a server that answers them learns roughly where the rider rides (to a kilometre); the guide SHALL say so, and that traffic is for a server one trusts (one's own, or a host's one trusts). TomTom learns only the cells, from the server's address with the host's key, never the rider's identity. Live sharing (spec live-sharing) is unchanged: it stays end-to-end encrypted.
+
+#### Scenario: A host reads about traffic
+
+- **WHEN** a host reads the guide's section on traffic for the phone
+- **THEN** it says the phone sends points of the road ahead, so the server learns roughly where a rider rides, and to run it for people one trusts

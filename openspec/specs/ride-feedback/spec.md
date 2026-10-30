@@ -55,6 +55,12 @@ Without a track, the review SHALL place notes on the planned route by elapsed
 time since departure, at the plan's pace without stops, and mark them
 approximate. A note outside the planned riding time is reported, not placed.
 
+#### Scenario: Notes placed on the plan
+
+- **WHEN** a 30-minute, 22 km ride left at 09:00 has a note "nice bends" given at 09:15 and a note "home" given at 12:20, and no track is given
+- **THEN** "nice bends" is placed on 09:05-09:15, about km 7 of the plan, and marked approximate
+- **AND** "home" is reported as outside the planned riding time and not placed
+
 ### Requirement: Rating a stretch directly
 
 The rider SHALL be able to rate a stretch of road they rode, outside any
@@ -88,7 +94,18 @@ avoid, 4 or 5 loved. A stretch SHALL keep its two ends as coordinates (from the
 route for a directly rated stretch, from its first and last squares for a
 reviewed note), returned by the road memory with loved and avoided stretches.
 
+#### Scenario: A bad stretch in a loved roadbook
+
+- **WHEN** a roadbook rated 5 contains a stretch rated 0
+- **THEN** the next routed trip counts the stretch's roads as avoided and the rest of the roadbook as loved
+- **AND** the road memory around the place returns loved and avoided stretches with their two ends as coordinates
+
 ### Requirement: Nothing to remember
 
 Rides with pending notes SHALL be announced when the CLI menu opens and in the
 MCP help and settings text.
+
+#### Scenario: A note waiting
+
+- **WHEN** one note on roadbook #1 is not reviewed yet
+- **THEN** the CLI menu shows "1 ride note waiting for review (roadbook #1)" with the review command, and the MCP settings text asks to offer `reviewRide`

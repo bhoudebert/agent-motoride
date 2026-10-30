@@ -35,6 +35,12 @@ The library SHALL keep **roadbooks** (the design of a loop or trip) and **rides*
 
 Libraries from before roadbooks SHALL be migrated once (schema step 2): each saved ride becomes a roadbook with the same number; it also becomes a ride with its date and day data; the saved ride's rating and notes go to the roadbook; notes taken during a ride go to the ride of their day, created as ridden when missing; a parent link becomes "variant of"; numbers of deleted rides are never reused. A backup SHALL be written before.
 
+#### Scenario: Two saved rides and a note
+
+- **WHEN** a library from before roadbooks holds ride 1 (dated 2026-10-10), ride 2 copied from it (dated 2026-10-11, rated 4) and a note left on ride 2 on 2026-10-04, ride 3 having been deleted
+- **THEN** roadbooks 1 and 2 exist with their rides on those dates, roadbook 2 is a variant of 1 and keeps its rating of 4, and a ridden ride of 2026-10-04 holds the note
+- **AND** the next roadbook saved is number 4
+
 ### Requirement: Saving
 
 A roadbook SHALL be saved only on request, from a route id routed in the session, under a name (default the planner's title), with a first ride, dated when the plan has a date. Saving after a change to the roadbook in hand (opened for a change, or saved earlier in the session) SHALL change it in place (Requirement "Editing a roadbook"); a separate roadbook, recorded as a variant, SHALL be saved only when asked (`/save --copy`, `asCopy`). A new ride planned in the same MCP session SHALL be saved as a new roadbook. Stored: name, home, date, departure, waypoints, legs, speed profile, preferences actually used (including the motorway setting of that trip), requests, itinerary text, map link, route line, 500 m grid footprint, session usage.
@@ -48,9 +54,25 @@ A roadbook SHALL be saved only on request, from a route id routed in the session
 
 Right after a save, on every `refresh`, when a ride is planned from a roadbook and in the briefing, the system SHALL gather and store what a ride needs: route-bound extras (fixed cameras, fuel and café shortlists) on the roadbook, gathered again when its route changes; day-bound extras (daylight, the forecast within range, conditions, the stop plan) on the ride. A lookup that fails SHALL keep the previous result and record the reason; the view SHALL show it.
 
+#### Scenario: Forecast lookup fails on refresh
+
+- **WHEN** roadbook 7 is refreshed and the weather lookup times out
+- **THEN** the ride keeps the forecast gathered last time, the reason is recorded, and the view says "Weather: last lookup failed (timeout), showing the previous result. Run: npm run rides -- refresh 7"
+
 ### Requirement: Refresh
 
 `refresh` SHALL re-route the saved waypoints with the ride's own motorway setting, update distance, times, road mix, leg names and route line, then gather the extras. `refresh --stops` SHALL rebuild only the stop plan from the current bike profile, using cached candidates. Refresh SHALL NOT rewrite the itinerary text.
+
+#### Scenario: Refresh a saved loop
+
+- **WHEN** the rider runs `rides refresh 7`
+- **THEN** roadbook 7 is routed again with its own motorway setting, its distance, times, leg names and route line are updated, and the old and new distance and time are printed
+- **AND** its itinerary text is unchanged
+
+#### Scenario: Stops only
+
+- **WHEN** the rider changes the bike's tank range and runs `rides refresh 7 --stops`
+- **THEN** only the stop plan of roadbook 7 is rebuilt, from the cached candidates, and printed
 
 ### Requirement: Duplicate avoidance
 
@@ -69,6 +91,11 @@ the prompt, the menu and the `rateRide` MCP tool; 0 means never again. A ride
 rate-day`, `rateRide` with `day`); that rating SHALL mark the ride ridden and
 SHALL NOT count as a rating of the roads. Every rating SHALL record when it
 was given.
+
+#### Scenario: A cold day on a loved loop
+
+- **WHEN** roadbook 7 is rated 5 "superb bends" and its ride of Saturday is rated 2 "freezing, fog" with `rides rate-day`
+- **THEN** roadbook 7 keeps 5 "superb bends", Saturday's ride is ridden, and the roadbook's view lists it with ★★☆☆☆ "freezing, fog"
 
 ### Requirement: Ratings by precision
 
@@ -187,6 +214,11 @@ go to the planner as a change.
 
 The CLI SHALL list, show (plain or Markdown), rate, rate a leg, export, refresh, delete, cancel, tidy and clear the cache without a model call.
 
+#### Scenario: Show without a model
+
+- **WHEN** the rider runs `rides show 7 --md`
+- **THEN** roadbook 7 is printed as Markdown and no model call is made
+
 ### Requirement: Deleting and cancelling
 
 The rider SHALL be able, in the terminal and over MCP, to delete a roadbook,
@@ -211,6 +243,12 @@ into the library file and compact it, report the size before and after, and
 list the other files in the data folder (migration backups, old libraries)
 with their sizes, without deleting them. Traces SHALL be kept. The MCP server,
 like the terminal app, SHALL remove expired lookups when it starts.
+
+#### Scenario: Tidy a library with a backup
+
+- **WHEN** the cache holds one expired and one fresh lookup and the data folder holds `library.db.bak-v0`
+- **THEN** `rides tidy` removes the expired lookup only, reports the library size before and after, and lists `library.db.bak-v0` with its size as not touched
+- **AND** the traces and the saved roadbooks are kept
 
 ### Requirement: Ride-day briefing
 

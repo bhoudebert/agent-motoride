@@ -61,13 +61,18 @@ Right after a save, on every `refresh`, when a ride is planned from a roadbook a
 
 ### Requirement: Refresh
 
-`refresh` SHALL re-route the saved waypoints with the ride's own motorway setting, update distance, times, road mix, leg names and route line, then gather the extras. `refresh --stops` SHALL rebuild only the stop plan from the current bike profile, using cached candidates. Refresh SHALL NOT rewrite the itinerary text.
+`refresh` SHALL re-route the saved waypoints with the ride's own motorway setting, update distance, times, road mix, leg names and route line, then gather the extras. `refresh --stops` SHALL rebuild only the stop plan from the current bike profile, using cached candidates. Refresh SHALL NOT rewrite the itinerary text. When the re-route gives a different number of legs than the roadbook has, refresh SHALL leave it unchanged and fail with "Roadbook #N now routes into X legs instead of Y; not updated.".
 
 #### Scenario: Refresh a saved loop
 
 - **WHEN** the rider runs `rides refresh 7`
 - **THEN** roadbook 7 is routed again with its own motorway setting, its distance, times, leg names and route line are updated, and the old and new distance and time are printed
 - **AND** its itinerary text is unchanged
+
+#### Scenario: Re-route changes the legs
+
+- **WHEN** roadbook 7 has four legs and its waypoints now route into five
+- **THEN** refresh stops with "Roadbook #7 now routes into 5 legs instead of 4; not updated." and roadbook 7 keeps its figures, legs and route line
 
 #### Scenario: Stops only
 

@@ -81,7 +81,7 @@ Every routed trip SHALL report the share of riding time on roads limited to 70 o
 
 ### Requirement: Legs
 
-Each leg SHALL carry from and to labels (place names, never bare coordinates), coordinates, distance, estimated minutes, average speed, router minutes, motorway flag and the main roads by km.
+Each leg SHALL carry from and to labels (the waypoint's resolved name; a waypoint given as coordinates is described by reverse geocoding, and keeps its bare coordinates only when that lookup fails), coordinates, distance, estimated minutes, average speed, router minutes, motorway flag and the main roads by km.
 
 #### Scenario: Leg from a coordinate waypoint
 
@@ -90,23 +90,33 @@ Each leg SHALL carry from and to labels (place names, never bare coordinates), c
 
 ### Requirement: Road search
 
-`searchRoads` SHALL return paved secondary and tertiary roads around a place, ranked by curviness (cumulative heading change per km, with the area median for scale), with end coordinates usable as waypoints, plus named mountain passes.
+`searchRoads` SHALL return paved secondary and tertiary roads carrying a road number (`ref` tag) around a place, grouped by that number, of at least the minimum length (5 km by default), ranked by curviness (cumulative heading change per km, with the area median for scale), with end coordinates usable as waypoints, plus named mountain passes.
 
 #### Scenario: Winding roads around a town
 
-- **WHEN** `searchRoads` runs around Ciney and finds a paved tertiary road, a winding secondary road and a gravel road
-- **THEN** the gravel road is left out and the paved roads come most winding first, with their curviness in degrees per km, the area median curviness, and from and to coordinates usable as waypoints
+- **WHEN** `searchRoads` runs around Ciney and finds a paved tertiary road, a winding secondary road, a gravel road and an unnumbered lane
+- **THEN** the gravel road and the unnumbered lane are left out and the paved roads come most winding first, with their curviness in degrees per km, the area median curviness, and from and to coordinates usable as waypoints
 - **AND** named mountain passes in the area are listed with their elevation
 
 ### Requirement: Duplicate verdict
 
-Every routed trip SHALL be compared with roadbooks and carry a verdict: new, similar (40% or more shared cells), duplicate (70% or more, rejected unless repeats are allowed), or variant of the ride the session evolves.
+Every routed trip SHALL be compared with roadbooks and carry a verdict, listing up to three roadbooks sharing 20% or more of its cells: new, variant of the ride the session evolves, similar (40% or more shared cells), duplicate (70% or more of a roadbook outside the session's lineage, rejected unless repeats are allowed), "repeat of roadbook ..." for the same overlap when repeats are allowed, or "LIKE A LOOP THE RIDER DISLIKED" for 50% or more of a roadbook rated 0-1 outside the lineage when repeats are not allowed. Duplicate SHALL take precedence over disliked, and disliked over similar.
 
 #### Scenario: Same loop as a saved roadbook
 
 - **WHEN** a new session routes the Lille - Cassel loop already saved as roadbook #1
 - **THEN** the trip's saved-ride verdict starts with "DUPLICATE" and names roadbook #1
 - **AND** saving it is refused unless forced
+
+#### Scenario: Big overlap with a disliked loop
+
+- **WHEN** a trip shares 55% of its cells with roadbook #4, rated 1 "too many towns", and repeats are not allowed
+- **THEN** its verdict starts with "LIKE A LOOP THE RIDER DISLIKED", names roadbook #4, its rating and the rider's note
+
+#### Scenario: Repeats allowed
+
+- **WHEN** repeats are allowed this session and a trip shares 80% of its cells with roadbook #1
+- **THEN** its verdict reads "repeat of roadbook #1 ... repeats are allowed this session", not "DUPLICATE"
 
 ### Requirement: Road surface
 

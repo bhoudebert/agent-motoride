@@ -28,13 +28,18 @@ Cameras and stops SHALL be queried along the simplified route line in chunks of 
 
 ### Requirement: Caching
 
-Results SHALL be cached in SQLite with per-tool lifetimes (roads 30 days, routes 7 days, cameras and stops 30 days keyed by route line, daylight and place names a year, weather an hour, traffic never) and a version key that invalidates old shapes.
+Results SHALL be cached in SQLite with per-tool lifetimes (roads 30 days, routes 7 days, cameras and stops 30 days keyed by route line, daylight and place names a year, weather an hour, traffic never) and a version key that invalidates old shapes. Traffic SHALL instead be kept in memory per road cell of about 1 km, shared between riders, for its provider's cache time, and only for a provider that allows it (TomTom keeps nothing).
 
 #### Scenario: Same loop routed again
 
 - **WHEN** the same waypoints are routed again from the same start point within 7 days
 - **THEN** the trip comes from the cache with no request to the router
 - **AND** after a change of the cache version, the old entry is ignored and the router is asked again
+
+#### Scenario: Traffic from a provider that allows caching
+
+- **WHEN** a provider with a one-minute cache time is asked for two points in the same road cell within that minute
+- **THEN** it is asked once, and asked again for that cell after the minute
 
 ### Requirement: Visible failure
 

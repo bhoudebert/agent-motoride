@@ -2,7 +2,9 @@
 
 ## Purpose
 
-Let the MotoRide phone show where the traffic is slow on the road ahead, with the host's own TomTom key, without the phone holding a key or talking to TomTom (ADR 0030). It informs the rider; it never changes a roadbook or re-routes.
+Let the MotoRide phone show where the traffic is slow on the road ahead, from the source the server's host chose: French open government data by default, with no key (ADR 0042), or TomTom with the host's own key (ADR 0041), without the phone holding a key or talking to any traffic service (ADR 0030). It informs the rider; it never changes a roadbook or re-routes.
+
+This is the phone's road-ahead flow (`POST /traffic`). The planner's traffic check, the travel time and delay of a chosen loop for a departure (`getTraffic`, TomTom Routing with `TOMTOM_API_KEY`, whatever `TRAFFIC_PROVIDER` says), is the "Traffic" requirement of spec weather-daylight.
 
 ## Requirements
 
@@ -17,7 +19,7 @@ The server SHALL offer traffic from the provider named by `TRAFFIC_PROVIDER`: `o
 
 ### Requirement: The provider is the host's choice
 
-The flow SHALL come from the provider named by `TRAFFIC_PROVIDER` (default `open-data`; `tomtom-flow` is TomTom Flow Segment Data; ADR 0041), behind the same answer for every provider: a level and a ratio per point, `unknown` where the provider cannot tell. The rounding, the cache, the daily cap and the rate limit SHALL apply whatever the provider. A name that is not a known provider SHALL stop the server at start with the list of known ones.
+The flow SHALL come from the provider named by `TRAFFIC_PROVIDER` (default `open-data`; `tomtom-flow` is TomTom Flow Segment Data; ADR 0041), behind the same answer for every provider: a level and a ratio per point, `unknown` where the provider cannot tell. The rounding and the rate limit SHALL apply whatever the provider; an answer SHALL be kept only for the time the provider declares (none for either provider today), and the daily cap SHALL apply only to a provider that costs a remote request per place (TomTom). A name that is not a known provider SHALL stop the server at start with the list of known ones.
 
 #### Scenario: A mistyped provider
 
@@ -35,12 +37,12 @@ The `open-data` provider SHALL answer from public government feeds, read at most
 
 #### Scenario: Outside the covered countries
 
-- **WHEN** a phone asks for a point in Spain
+- **WHEN** a phone asks for a point in central Spain
 - **THEN** the point is `unknown` and no feed is read
 
 ### Requirement: Reachable through the proxy
 
-The deployment examples (Caddy, the NixOS module, nginx) SHALL pass `/traffic` with the other public routes, the compose file and the NixOS module SHALL hand `TOMTOM_API_KEY` and `TRAFFIC_MAX_PER_DAY` to the container (the module through a file kept out of the Nix store), and a test SHALL fail when a route of the server is missing from an example.
+The deployment examples (Caddy, the NixOS module, nginx) SHALL pass `/traffic` with the other public routes, the compose file and the NixOS module SHALL hand `TRAFFIC_PROVIDER` (default `open-data`), `TOMTOM_API_KEY` and `TRAFFIC_MAX_PER_DAY` to the container (the module through a file kept out of the Nix store), and a test SHALL fail when a route of the server is missing from an example.
 
 #### Scenario: Behind Caddy
 
@@ -49,25 +51,25 @@ The deployment examples (Caddy, the NixOS module, nginx) SHALL pass `/traffic` w
 
 ### Requirement: Flow at points of the road ahead
 
-`POST /traffic` with the rider's token (spec multi-user-server) and `{points: [[lat, lon], ...]}` of one to eight points SHALL answer `{at, budget, points: [{lat, lon, level, ratio}]}`: for each point TomTom's flow at the road nearest to it (Flow Segment Data), as `ratio`, the current speed over the speed of an empty road, and a `level`: `free` (0.8 or more), `slow` (0.5 to under 0.8), `heavy` (under 0.5), `closed` (the road is closed), or `unknown` (no answer from TomTom, or a confidence under 0.5). A point TomTom could not answer SHALL be `unknown` and SHALL NOT fail the others. Anything else than one to eight valid points SHALL be refused with 400, a body over 2 KiB with 413, and a missing or wrong token with 401. A rider SHALL be allowed six requests a minute.
+`POST /traffic` with the rider's token (spec multi-user-server) and `{points: [[lat, lon], ...]}` of one to eight points SHALL answer `{at, budget, points: [{lat, lon, level, ratio}]}`: for each point the provider's flow at the road nearest to it, as `ratio`, the current speed over the speed of an empty road (for open data, the station's usual speed), and a `level`: `free` (0.8 or more), `slow` (0.5 to under 0.8), `heavy` (under 0.5), `closed` (the road is closed, as TomTom reports it), or `unknown` (no measured road near the point, no answer from the provider, or, with TomTom, a confidence under 0.5). A point the provider could not answer SHALL be `unknown` and SHALL NOT fail the others. Anything else than one to eight valid points SHALL be refused with 400, a body over 2 KiB with 413, and a missing or wrong token with 401. A rider SHALL be allowed six requests a minute.
 
 #### Scenario: A slow stretch
 
-- **WHEN** a phone sends two points and TomTom reports 20 km/h on a road of 60 km/h at the first
+- **WHEN** a server uses `tomtom-flow`, a phone sends two points and TomTom reports 20 km/h on a road of 60 km/h at the first
 - **THEN** the first point comes back `heavy` with ratio 0.33 and the second as TomTom says
 
 ### Requirement: The host's quota is kept
 
-The points SHALL be rounded to a hundredth of a degree (about a kilometre) before TomTom is asked, and the server SHALL NOT keep TomTom's results to serve other riders (TomTom's terms forbid caching to serve several clients, clause 11.4): each request asks TomTom again. The server SHALL ask TomTom at most `TRAFFIC_MAX_PER_DAY` times a UTC day (600 by default); past it the points SHALL come back `unknown` and `budget` SHALL be `false`, until the next day. A provider that costs nothing per place and allows it MAY keep an answer for the time it declares. The key SHALL never be sent to a phone nor written to a log.
+The points SHALL be rounded to a hundredth of a degree (about a kilometre) before any provider is asked. With TomTom, the server SHALL NOT keep TomTom's results to serve other riders (TomTom's terms forbid caching to serve several clients, clause 11.4): each request asks TomTom again. The server SHALL ask TomTom at most `TRAFFIC_MAX_PER_DAY` times a UTC day (600 by default); past it the points SHALL come back `unknown` and `budget` SHALL be `false`, until the next day. Open data costs nothing per place: it SHALL NOT count against the cap and `budget` SHALL stay `true`. A provider that costs nothing per place and allows it MAY keep an answer for the time it declares. The key SHALL never be sent to a phone nor written to a log.
 
 #### Scenario: The daily budget
 
-- **WHEN** the budget of the day is used up and a phone asks for a cell
+- **WHEN** a server uses `tomtom-flow`, the budget of the day is used up and a phone asks for a cell
 - **THEN** it comes back `unknown` with `budget: false`, and TomTom is not asked
 
 ### Requirement: What the server learns
 
-The points sent are on the road ahead of the rider, so a server that answers them learns roughly where the rider rides (to a kilometre); the guide SHALL say so, and that traffic is for a server one trusts (one's own, or a host's one trusts). TomTom learns only the cells, from the server's address with the host's key, never the rider's identity. Live sharing (spec live-sharing) is unchanged: it stays end-to-end encrypted.
+The points sent are on the road ahead of the rider, so a server that answers them learns roughly where the rider rides (to a kilometre); the guide SHALL say so, and that traffic is for a server one trusts (one's own, or a host's one trusts). With open data the points go to no one: the server reads the whole public feed and matches the points itself. With TomTom, TomTom learns only the cells, from the server's address with the host's key, never the rider's identity. Live sharing (spec live-sharing) is unchanged: it stays end-to-end encrypted.
 
 #### Scenario: A host reads about traffic
 

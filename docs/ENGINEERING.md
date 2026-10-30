@@ -133,9 +133,12 @@ sequenceDiagram
   autonumber
   actor R as Rider
   participant P as Planner session<br/>agent.ts
-  participant M as Claude API
+  box rgba(181, 101, 29, 0.15) The LLM, remote (Anthropic API)
+    participant M as Planner LLM<br/>Claude
+    participant SL as Scout LLM<br/>smaller model
+  end
   participant T as Tools<br/>tools/index.ts
-  participant S as Scouts<br/>scouts.ts
+  participant S as Scout sessions<br/>scouts.ts
   participant D as Map services
   participant C as checks.ts
   participant DB as SQLite
@@ -144,26 +147,36 @@ sequenceDiagram
   P->>D: setGeoAnchor(home), fail fast on a typo
   P->>DB: startRun(), every step is traced against it
   P->>P: parseLimits(rider words), maxDistanceKm 250
-  P->>M: toolRunner(SYSTEM, tools, max_iterations 40, schema RideAnswer)
+  P->>M: SYSTEM prompt + rider text + tool schemas (toolRunner, schema RideAnswer)
+  Note over P,M: The LLM never runs code. It only answers with tool_use requests,<br/>and the planner session runs them locally.
   loop at most 40 rounds
+    Note over M: LLM reads the conversation, then picks the next tools and their inputs
     M-->>P: tool_use (listSavedRides, recallArea, scoutAreas, calculateTrip, ...)
     P->>T: traced(): repeat guard, then the tool
     opt scoutAreas
-      T->>S: 2-4 scouts in parallel, 14 rounds each
-      S->>T: recallArea, searchRoads, calculateTrip, getWeather
+      T->>S: 2-4 scout sessions in parallel
+      loop each scout, at most 14 rounds
+        S->>SL: scout brief + results so far
+        Note over SL: Scout LLM picks roads and waypoints for its area
+        SL-->>S: tool_use (recallArea, searchRoads, calculateTrip, getWeather)
+        S->>T: run the tool, same hard rules
+        T-->>S: tool_result
+      end
       S-->>T: one candidate loop per area, with routeId
     end
     T->>D: Overpass (serialised), Valhalla, Open-Meteo
-    Note over T: calculateTrip excludes motorways when the rider forbids them,<br/>whatever the model passed, and stores the route under its routeId
+    Note over T: calculateTrip excludes motorways when the rider forbids them,<br/>whatever the LLM passed, and stores the route under its routeId
     T-->>P: tool_result
     P->>DB: trace model step and tool call
-    P->>M: tool_results
+    P->>M: tool_results appended to the conversation
   end
+  Note over M: LLM compares the candidates and writes the itinerary<br/>from the figures the tools returned
   M-->>P: end_turn, JSON {message, ride: {routeId, ...}}
   P->>P: routeId must be in context.routes
   P->>C: checkItinerary(route, text, limits)
   alt violation not acknowledged
     P->>M: correctionMessage, one retry
+    Note over M: LLM reroutes (more tool rounds) or says the limit cannot be met
     M-->>P: fixed itinerary, or "cannot meet"
   end
   P-->>R: itinerary, then what still fails, if anything
@@ -181,7 +194,7 @@ one `FORMAT_REMINDER`.
 sequenceDiagram
   autonumber
   actor R as Rider
-  participant CC as MCP client<br/>model and loop
+  participant CC as MCP client<br/>its own LLM + loop
   participant SA as Client subagents
   participant MS as rideServer.ts
   participant T as Tools<br/>same code

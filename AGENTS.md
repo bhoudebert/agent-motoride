@@ -25,7 +25,9 @@ The full path every feature follows, from idea to release, is in
    concern per commit. Full rules and examples: `CONTRIBUTING.md`, section
    "Commits". The commit-msg hook and CI reject anything else.
 3. **Spec first when behaviour changes.** Update or add the requirement in
-   `openspec/specs/...` in the same PR, before or with the code. CI fails a
+   `openspec/specs/...` directly, in the same PR, before or with the code (a
+   proposal in `openspec/changes/` only for a feature spanning several PRs;
+   see `openspec/README.md`). CI fails a
    PR that changes `src/` without touching `openspec/` or `docs/`; the
    `no-spec` label is only for refactors and internal fixes. A significant
    architectural choice gets a decision record in `docs/adr/` (read the
@@ -66,6 +68,6 @@ npm test             # unit tests only
 npm run smoke        # live tools, no model
 npm run mcp:smoke    # MCP server over stdio, no model
 npm run docs:reference  # regenerate the guide's reference after changing commands, tools or settings
-openspec validate --specs  # every spec parses, a scenario per requirement (nix develop provides it)
+openspec validate --all    # specs and open proposals parse, a scenario per requirement (nix develop provides it)
 npm run rides -- runs | trace <id>   # what a planning session did
 ```

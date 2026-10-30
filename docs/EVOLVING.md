@@ -28,9 +28,15 @@ features inside an existing shape need no record.
 Update or add `openspec/specs/<capability>/spec.md`: requirements written as
 SHALL statements, each with at least one scenario (WHEN / THEN). A new
 capability gets its own folder and a line in `openspec/README.md`. The spec is
-written first and reviewed with the code in the same pull request.
+written first and reviewed with the code in the same pull request: edit
+`specs/` directly, no proposal needed.
 
-CI checks it (ADR 0044): every spec must pass `openspec validate --specs`
+A change proposal (`openspec/changes/<id>/`) is the exception, for a feature
+that spans several pull requests or whose design is agreed before any code. It
+is archived into `specs/` (`openspec archive <id>`) in the last pull request
+of that feature, not in one of its own. `openspec/README.md` explains both.
+
+CI checks it (ADR 0044): the specs and any open proposal must pass `openspec validate --all`
 (run it in the dev shell, `nix develop`), and a pull request that changes
 `src/` must also change something under `openspec/` or `docs/`. A change with
 no behaviour or usage change (a refactor, an internal fix) takes the `no-spec`

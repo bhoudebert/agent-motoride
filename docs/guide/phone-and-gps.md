@@ -101,11 +101,13 @@ Beyond the gauges, the app will help during a ride, each with its own switch whe
   anyone who has its page open (nothing is pushed to them), and a message for your emergency contact and a call to 112 are one tap
   away on the screen for whoever holds the phone. The app calls and texts no one by itself, and it can miss a crash or raise a false
   alert: it is an aid, not a guarantee.
-- **Traffic ahead** (needs your server with a TomTom key). The next 60 km coloured orange or red where the traffic is slow, from
-  points every 10 km, and a line such as "Slow in 12 km". It only informs you: your roadbook never changes, and you decide whether to
-  use Skip or take another road. The key is the **server host's** (`TOMTOM_API_KEY`, free tier at developer.tomtom.com); the phone
-  holds none. The host accepts TomTom's terms and chooses the daily cap (`TRAFFIC_MAX_PER_DAY`, 600 by default). The points are
-  sent to your server, which therefore learns about where you ride: use a server you trust.
+- **Traffic ahead** (needs your server). The next 60 km coloured orange or red where the traffic is slow, from points every
+  10 km, and a line such as "Slow in 12 km". It only informs you: your roadbook never changes, and you decide whether to use Skip
+  or take another road. By default the server reads **open government data** (France today, the main measured roads), with no key
+  and no cost; elsewhere a point shows no traffic. A host can choose **TomTom** instead with their own key
+  (`TRAFFIC_PROVIDER=tomtom-flow`, `TOMTOM_API_KEY`, a daily cap `TRAFFIC_MAX_PER_DAY`, 600 by default), see
+  [Self-hosting](/self-hosting). The phone holds no key and talks to no traffic service. The points are sent to your server, which
+  therefore learns about where you ride: use a server you trust.
 - **Looking back.** From "My rides", open a recorded ride for its track coloured by speed, its figures and a replay.
 - **The phone's look and language.** Light or dark, English or French, following the phone or chosen in the menu. The voice lowers
   the music while it speaks.

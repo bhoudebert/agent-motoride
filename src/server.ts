@@ -32,7 +32,7 @@ export interface ServeOptions {
   now?: () => number;
   /** Limits of the live sharing relay (ADR 0028). */
   live?: LiveOptions;
-  /** TomTom flow for the phone's Traffic (ADR 0030): a key and a daily budget; none and the server offers no traffic. */
+  /** The phone's traffic (ADR 0030, 0041, 0042): the provider, open data by default, and TomTom's key and daily budget. */
   traffic?: TrafficOptions;
 }
 
@@ -188,7 +188,7 @@ export function createHttpServer(options: ServeOptions): {
     return json(res, 405, { error: "Method not allowed." }, { Allow: "GET, PUT, POST, DELETE" });
   }
 
-  /** Traffic flow at a few points of the road ahead (ADR 0030): the rider's token, the host's TomTom key. */
+  /** Traffic flow at a few points of the road ahead (ADR 0030): the rider's token, the host's provider. */
   async function handleTraffic(req: IncomingMessage, res: ServerResponse): Promise<void> {
     if (req.method !== "POST") return json(res, 405, { error: "Method not allowed." }, { Allow: "POST" });
     const token = bearer(req);

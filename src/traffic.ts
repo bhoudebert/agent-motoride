@@ -2,9 +2,10 @@ import { fetchJson } from "./http.ts";
 import { openData } from "./traffic-open.ts";
 
 /**
- * Traffic flow for the phone (ADR 0030, spec traffic): the server asks TomTom for the flow at a few points of the road ahead,
- * with its own key, and tells the phone how fast the traffic goes there compared with an empty road. The phone never holds a
- * key and never talks to TomTom; the host answers for their own key and quota.
+ * Traffic flow for the phone (ADR 0030, 0041, 0042, spec traffic): the server asks its provider for the flow at a few points of the
+ * road ahead and tells the phone how fast the traffic goes there compared with a free road. The default provider reads open
+ * government data with no key; a host can choose TomTom with their own key and quota. The phone never holds a key and never
+ * talks to a traffic service.
  */
 export type TrafficLevel = "free" | "slow" | "heavy" | "closed" | "unknown";
 
@@ -115,7 +116,7 @@ export function providerFor(
 }
 
 export interface TrafficOptions {
-  /** TomTom key, empty for none; without one the server offers no traffic. Default `TOMTOM_API_KEY`. */
+  /** TomTom key for the `tomtom-flow` provider, empty for none. Default `TOMTOM_API_KEY`. */
   key?: string;
   /** Which provider answers (default `TRAFFIC_PROVIDER`, else `open-data`). */
   provider?: string;
@@ -154,7 +155,7 @@ export class TrafficFlow {
     return this.#provider?.countries ?? [];
   }
 
-  /** Flow at each point, from the cache or from TomTom; a point TomTom could not answer is `unknown`. */
+  /** Flow at each point, from the cache or from the provider; a point the provider could not answer is `unknown`. */
   async flow(points: Array<[number, number]>): Promise<{ points: TrafficPoint[]; budget: boolean }> {
     const t = this.#now();
     const today = new Date(t).toISOString().slice(0, 10);

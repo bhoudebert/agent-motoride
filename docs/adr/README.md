@@ -41,3 +41,4 @@ not rewritten.
 | [0042](0042-traffic-from-open-government-data.md)              | Traffic from open government data, by country                                    | accepted |
 | [0043](0043-an-own-valhalla-is-optional.md)                    | An own Valhalla is optional, chosen by one address                               | accepted |
 | [0044](0044-specs-checked-in-ci.md)                            | Check the specs in CI and require a spec or docs change with code                | accepted |
+| [0045](0045-untagged-town-roads-are-inferred-from-land-use.md) | Untagged town roads are inferred from land use                                   | accepted |

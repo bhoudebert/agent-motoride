@@ -146,6 +146,24 @@ roadbooks of the library on that server can be fetched by the app itself: `GET /
 stamp and `GET /roadbook/<id>` gives the file. Nothing to export or carry. This needs a server; without one, use the
 share page or any way of moving the one `.motoride.json` file.
 
+If you plan on a library that is not on the server (your own computer), push the roadbook file there. Put the server's
+address and your rider token in `.env` (`RIDE_REMOTE_URL`, `RIDE_REMOTE_TOKEN`, the token from `npm run admin -- add`):
+
+::: code-group
+
+```bash [Terminal]
+npm run rides -- export 7 --push
+```
+
+```text [Claude Code / Codex]
+export roadbook 7 as GPX and push it to my server
+```
+
+:::
+
+The phone lists it under your server, with the download and refresh icons. Pushing the same roadbook again replaces the
+earlier copy; if nothing changed, the phone sees no new version.
+
 ## For the GPS
 
 ::: code-group

@@ -82,3 +82,13 @@ being exported:
   limits alone; `refresh` on the server is what brings those in.
 - Errors: 401 no or wrong token, 404 no such roadbook, 429 too many requests, 502 the route could not be traced (try
   again).
+
+## Pushing to a server
+
+A rider who plans on a library that is not on the server can send the file there: `PUT /roadbooks` with
+`Authorization: Bearer <rider token>` and the file as the JSON body (up to 5 MiB). The answer is
+`{"id", "stamp", "replaced"}`; 400 for a body that is not a version 1 roadbook file, 401 for a wrong token, 409 when the
+server already keeps 100, 413 too large, 429 too many. A file with an `origin` replaces the earlier push of the same
+roadbook; otherwise the name decides. The file then appears in `GET /roadbooks` with an `id` of 1,000,000 or more (the
+phone must use the `id` as given, not assume it is the roadbook's number) and is served as it was kept. Its `stamp`
+leaves out `generatedAt`, so pushing an unchanged roadbook again does not make the phone offer a refresh.

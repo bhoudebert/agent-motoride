@@ -23,6 +23,8 @@ import {
 import { deleteForm, duplicateForm, scopeForm, type ElicitForm, reviewDecisions, reviewForm } from "./elicit.ts";
 import { deleteRideQuestion, deleteRoadbookQuestion, rideOnDay, rideToBrief, roadbookOf } from "./housekeeping.ts";
 import { describeRoadbookFile, exportSavedRide, writeGpx } from "./gpx.ts";
+import { pushExported } from "./remote.ts";
+import { currentContext } from "./requestContext.ts";
 import { rideMapPng } from "./rideMap.ts";
 import { localDay, parseRideDay, planRideFrom } from "./planRide.ts";
 import {
@@ -518,6 +520,12 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
         rideId: z.number().int().optional(),
         name: z.string().optional().describe("Name inside the file, for a routeId"),
         file: z.string().optional().describe("Destination path; default exports/ in the project"),
+        push: z
+          .boolean()
+          .optional()
+          .describe(
+            "Also send the roadbook file to the rider's own server (RIDE_REMOTE_URL, RIDE_REMOTE_TOKEN), where the MotoRide app lists it. Only when the rider asks; a saved ride only.",
+          ),
       }),
     },
     async (args) => {
@@ -525,8 +533,12 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
         const ride = store.findRide(String(args.rideId));
         if (!ride) throw new Error(`No roadbook #${args.rideId}`);
         const exported = await exportSavedRide(store, ride, args.file);
-        return text(`GPX written: ${exported.path}\n${describeRoadbookFile(exported)}`);
+        if (args.push && currentContext().fileRoot)
+          throw new Error("This library already lives on a server: the MotoRide app lists it there, nothing to push.");
+        const pushed = args.push ? `\n${await pushExported(exported.roadbookFile)}` : "";
+        return text(`GPX written: ${exported.path}\n${describeRoadbookFile(exported)}${pushed}`);
       }
+      if (args.push) throw new Error("Only a saved ride can be pushed: give its rideId.");
       const route = args.routeId ? context.routes.get(args.routeId) : undefined;
       if (!route) throw new Error("Give a routeId from calculateTrip in this session, or a saved rideId.");
       const { trip } = route;

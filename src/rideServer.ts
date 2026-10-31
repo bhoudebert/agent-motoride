@@ -605,7 +605,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
     "refreshRide",
     {
       description:
-        "Recompute a saved ride without changing it: route the same waypoints again with the ride's own motorway setting, update distance, times, road mix and leg names, then re-gather daylight, weather, fixed cameras and stops, and rebuild the stop plan from the current bike profile. Deterministic, no planning involved; takes a minute or two. Use it when the rider says refresh, update or recompute a ride; with stopsOnly when only the stops or the bike profile changed. Returns the refreshed view, or the new stop plan.",
+        "Recompute a saved ride without changing it (this is not how the phone's roadbook file or its speed limits are renewed: the phone's own refresh does that): route the same waypoints again with the ride's own motorway setting, update distance, times, road mix and leg names, then re-gather daylight, weather, fixed cameras and stops, and rebuild the stop plan from the current bike profile. Deterministic, no planning involved; takes a minute or two. Use it when the rider says refresh, update or recompute a ride; with stopsOnly when only the stops or the bike profile changed. Returns the refreshed view, or the new stop plan.",
       annotations: hintsOf("refreshRide"),
       inputSchema: z.object({
         ride: z.string().describe("Roadbook number or name"),
@@ -1145,7 +1145,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
     "reviewRecordedRide",
     {
       description:
-        "Compares a recorded, uploaded ride (latest by default) with the roadbook it followed and lists the speed limits the roadbook only guessed that look too high, because the rider held a steady lower speed there (a speed never raises a limit, and posted or sign limits are never questioned). Show the list exactly as returned and ask the rider which to confirm or reject; never decide for them. Then call again with decisions, all of the rider's answers in one call (the numbers change once some are kept): a confirmed limit replaces the guess on that road in every roadbook from its next refresh; a rejected one is not proposed again.",
+        "Compares a recorded, uploaded ride (latest by default) with the roadbook it followed and lists the speed limits the roadbook only guessed that look too high, because the rider held a steady lower speed there (a speed never raises a limit, and posted or sign limits are never questioned). Show the list exactly as returned and ask the rider which to confirm or reject; never decide for them. Then call again with decisions, all of the rider's answers in one call (the numbers change once some are kept): a confirmed limit replaces the guess on that road in the roadbook file for the phone, which the phone's refresh makes again (do not call refreshRide: that routes the roadbook again and does not touch limits); a rejected one is not proposed again.",
       annotations: hintsOf("reviewRecordedRide"),
       inputSchema: z.object({
         ride: z.string().optional().describe("Recorded ride id, or a part of its id or name; default the latest"),

@@ -101,7 +101,7 @@ export function applyProposalDecisions(store: Store, review: RecordedReview, dec
   }
   if (out.some((l) => !/turned down|not kept|No proposal/.test(l)))
     out.push(
-      "Roadbooks that pass there use it from their next refresh (the phone shows 'under refresh', then the new file).",
+      "Kept. The roadbook file for the phone is made again by the phone's own refresh (open the roadbook in the app: 'under refresh', then the new file). Do not call refreshRide for this: it routes the roadbook again, which changes the saved route, not the limits.",
     );
   return out;
 }

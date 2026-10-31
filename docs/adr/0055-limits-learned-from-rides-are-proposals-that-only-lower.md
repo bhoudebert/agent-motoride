@@ -24,10 +24,10 @@ The server may propose a corrected limit from an uploaded ride that followed a r
    must be at most 8 km/h above the median (a plateau, not a bend or a stop), and the 85th percentile must be at least 20 km/h below the
    guess. The proposed limit is the smallest usual value (30, 50, 60, 70, 80, 90) not below the 85th percentile minus 3 km/h, which leaves room
    for a rider who is a little under or a little over. It is never above the guess.
-4. **The rider decides.** A proposal says where, the guess, the speed held and the number of rides that agree; one ride gives a weak
-   proposal, two or more a stronger one. Nothing changes until the rider confirms it. A confirmed correction is kept in the library with the
-   place and the direction, and applies to every roadbook that passes there, in place of the guess. A rejected one is not proposed again for
-   that place.
+4. **The rider decides.** A proposal says where, the guess and the speed held, from one ride: that is weak evidence, which the list says. Nothing
+   changes until the rider confirms it. A confirmed correction is kept in the library with the place (the road, either way), and applies to every
+   roadbook that passes there, in place of the guess. A rejected one is not proposed again for that place. Weighing several rides that agree is
+   left for later.
 
 The first delivery is a list the rider reads (the MCP tool and the terminal), with the phone's screen decided afterwards.
 
@@ -35,7 +35,7 @@ The first delivery is a list the rider reads (the MCP tool and the terminal), wi
 
 Guesses that are too high get corrected by the rider's own riding, the safe way. Guesses that are too low stay as they are: only a sign
 or OpenStreetMap can raise a limit. A rider who is always cautious on a road gets a lower limit proposed there; confirming is their
-choice, and the effect is an earlier warning. One ride is weak evidence, which is why the strength is shown. The matching of a ride to a
+choice, and the effect is an earlier warning. One ride is weak evidence, which is why the list says so. The matching of a ride to a
 roadbook uses the line and needs the ride linked to it, by origin, or by exact name when only one roadbook has it.
 
 ## Alternatives considered

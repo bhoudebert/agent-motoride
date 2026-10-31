@@ -112,12 +112,12 @@ MCP help and settings text.
 
 ### Requirement: Limit proposals from an uploaded ride
 
-For an uploaded ride (ADR 0054) that followed a roadbook of the library, the system SHALL propose lower limits for stretches whose planned limit was a guess or inferred. It SHALL NOT propose a change for a limit posted by OpenStreetMap or given by a sign, and SHALL NOT propose a higher limit than the planned one. A stretch SHALL be proposed only where the rider's moving points (above 5 km/h) cover at least 15 s, the 85th percentile is at most 8 km/h above the median, and the 85th percentile is at least 20 km/h below the guess; the proposed limit SHALL be the smallest of 30, 50, 60, 70, 80, 90 not below the 85th percentile minus 3 km/h. Each proposal SHALL give the place, the guess, the speed held and how many rides agree. Nothing SHALL change until the rider confirms; a confirmed correction SHALL be kept in the library by place and direction and replace the guess in every roadbook that passes there, and a rejected one SHALL not be proposed again for that place.
+For an uploaded ride (ADR 0054) that followed a roadbook of the library, the system SHALL propose lower limits for stretches whose planned limit was a guess or inferred. It SHALL NOT propose a change for a limit posted by OpenStreetMap or given by a sign, and SHALL NOT propose a higher limit than the planned one. A stretch SHALL be proposed only where the rider's moving points (above 5 km/h) cover at least 15 s, the 85th percentile is at most 8 km/h above the median, and the 85th percentile is at least 20 km/h below the guess; the proposed limit SHALL be the smallest of 30, 50, 60, 70, 80, 90 not below the 85th percentile minus 3 km/h. Each proposal SHALL give the place, the guess, and the speed held. Nothing SHALL change until the rider confirms; a confirmed correction SHALL be kept in the library by place (the road, either way) and replace the guess in every roadbook that passes there, and a rejected one SHALL not be proposed again for that place.
 
 #### Scenario: A steady 50 on a guessed 80
 
 - **WHEN** a ride holds 49 to 51 km/h for 30 s on a stretch planned at a guessed 80
-- **THEN** a proposal of 50 is listed, with the speed held and one ride
+- **THEN** a proposal of 50 is listed, with the speed held
 - **AND** the roadbook keeps 80 until the rider confirms
 
 #### Scenario: Faster than planned or on a posted limit

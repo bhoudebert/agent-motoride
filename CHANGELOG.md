@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.11.0](https://github.com/bhoudebert/agent-motoride/compare/v1.10.0...v1.11.0) (2026-10-31)
+
+
+### Features
+
+* **deploy:** choose the Valhalla server by VALHALLA_URL and offer an own one ([#125](https://github.com/bhoudebert/agent-motoride/issues/125)) ([8c14596](https://github.com/bhoudebert/agent-motoride/commit/8c14596472f1896c2b6baafdbe9a97588fdfd284))
+* **deploy:** run a second Valhalla and rebuild the older of the two in turn ([#144](https://github.com/bhoudebert/agent-motoride/issues/144)) ([522d1f2](https://github.com/bhoudebert/agent-motoride/commit/522d1f2656ae6a46c9ed3222690f972c22da0678))
+* **export:** infer 50 on untagged roads that run through built-up land ([#137](https://github.com/bhoudebert/agent-motoride/issues/137)) ([9feff71](https://github.com/bhoudebert/agent-motoride/commit/9feff715f2ebcca8fee29222617b6b196982a4a8))
+* **export:** let speed limit signs from Mapillary set the limit of a stretch ([#139](https://github.com/bhoudebert/agent-motoride/issues/139)) ([2b5d53a](https://github.com/bhoudebert/agent-motoride/commit/2b5d53a5240990cf3b85d5500ee57a09a75312e2))
+* **routing:** let VALHALLA_URL list several servers and use the one with the newest map ([#143](https://github.com/bhoudebert/agent-motoride/issues/143)) ([f15c382](https://github.com/bhoudebert/agent-motoride/commit/f15c3828c024960934b7c295c8e9be0feb51a025))
+* **server:** let a rider push a roadbook file to their server ([#138](https://github.com/bhoudebert/agent-motoride/issues/138)) ([ad6bd4c](https://github.com/bhoudebert/agent-motoride/commit/ad6bd4c7ccdbcb013f624b3ea62b6e6959e4e57f))
+* **server:** list a rider's roadbooks and serve their files to the phone ([#136](https://github.com/bhoudebert/agent-motoride/issues/136)) ([dd918b3](https://github.com/bhoudebert/agent-motoride/commit/dd918b3e84c01ac0b8dbf908cf036927f9cbf92b))
+* **share:** serve the roadbook file and an open-in-app link on the phone page ([#135](https://github.com/bhoudebert/agent-motoride/issues/135)) ([ec90a85](https://github.com/bhoudebert/agent-motoride/commit/ec90a85b3bb10a76f3b78a7fa9a461a79aa5ec08))
+
+
+### Bug Fixes
+
+* **checks:** let a practical trip repeat a saved roadbook ([005e82f](https://github.com/bhoudebert/agent-motoride/commit/005e82fc0136710303127e63a426ad8278e32219))
+* **deploy:** refresh the map of an own Valhalla with one script ([#140](https://github.com/bhoudebert/agent-motoride/issues/140)) ([59562c2](https://github.com/bhoudebert/agent-motoride/commit/59562c2afa152b183e1d187badbac3b232fa7d27))
+* **valhalla:** send an X-Client-Id to the public Valhalla server ([#122](https://github.com/bhoudebert/agent-motoride/issues/122)) ([7949929](https://github.com/bhoudebert/agent-motoride/commit/7949929541dbd0531895232911ad94f492dc539f))
+
 ## [1.10.0](https://github.com/bhoudebert/agent-motoride/compare/v1.9.0...v1.10.0) (2026-10-23)
 
 

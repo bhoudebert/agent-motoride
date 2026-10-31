@@ -117,7 +117,7 @@ test("the roadbook list and file need a rider's token and only show the rider's 
   }
 });
 
-type Listed = { id: number; stamp: string; state: string; mapDay?: string; error?: string };
+type Listed = { id: number; stamp: string; state: string; mapDay?: string; error?: string; errorCode?: string };
 const list = async (s: Awaited<ReturnType<typeof setup>>, token = s.alice.token) =>
   ((await (await s.get("/roadbooks", token)).json()) as { roadbooks: Listed[] }).roadbooks;
 /** Polls the list until the first roadbook is in `state` (the refresh runs in the background). */
@@ -202,7 +202,8 @@ test("a refresh that fails says so, keeps serving the ready file and can be aske
     s.failNext();
     await post(s, `/roadbook/${s.first}/refresh`);
     const failed = await until(s, "failed");
-    assert.match(failed.error ?? "", /Valhalla 429/);
+    assert.equal(failed.errorCode, "rate_limited");
+    assert.ok(failed.error && failed.error.length <= 80 && !/429|Valhalla/.test(failed.error), failed.error ?? "");
     assert.equal(`"${failed.stamp}"`, etag);
     assert.equal(
       (await s.get(`/roadbook/${s.first}`, s.alice.token)).headers.get("etag"),
@@ -303,4 +304,15 @@ test("ready files survive a restart and are forgotten with their roadbook", asyn
     await s.app.close();
     s.registry.close();
   }
+});
+
+test("a failed refresh is told in a few words and a stable code, whatever the technical detail", async () => {
+  const { describeFailure } = await import("../src/roadbookDownload.ts");
+  assert.equal(describeFailure(new Error("valhalla1.openstreetmap.de responded 429: slow down")).code, "rate_limited");
+  assert.equal(describeFailure(new Error("No Valhalla server answered (2 tried): fetch failed")).code, "map_down");
+  assert.equal(describeFailure(new Error("host responded 503: x")).code, "map_down");
+  assert.equal(describeFailure(new Error("The operation was aborted due to timeout")).code, "timeout");
+  const other = describeFailure(new Error("Cannot read properties of undefined (reading 'x')"));
+  assert.equal(other.code, "other");
+  for (const e of [other, describeFailure(new Error("x responded 429"))]) assert.ok(e.error.length <= 80);
 });

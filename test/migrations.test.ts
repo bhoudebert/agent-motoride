@@ -223,3 +223,27 @@ test("migrations: each saved ride becomes a roadbook with the same id and its ri
   assert.equal(next, 4, "the id of a deleted ride is never reused");
   store.close();
 });
+
+test("migrations: a pushed loop that listed its start twice lists it once, other roadbooks are left alone", () => {
+  const path = file();
+  new Store(path).close();
+  const db = new DatabaseSync(path);
+  const insert = db.prepare(
+    `INSERT INTO roadbooks (name, created_at, updated_at, home, distance_km, riding_minutes, waypoints, round_trip, speed_limits,
+       preferences, request, itinerary, maps_url, cells, center_lat, center_lon, version)
+     VALUES (?, '2026-10-01', '2026-10-01', 'A', 10, 10, ?, ?, '{}', '{}', ?, '', '', '[]', 50, 3, 1)`,
+  );
+  insert.run("Pushed loop", '["A","B","C","A"]', 1, "roadbook file agentRide:3:Pushed loop");
+  insert.run("Pushed line", '["A","B","C"]', 0, "roadbook file agentRide:4:Pushed line");
+  insert.run("Planned loop", '["A","B","A"]', 1, "plan a loop");
+  db.exec("PRAGMA user_version = 6");
+  db.close();
+  const after = new Store(path);
+  const waypoints = Object.fromEntries(after.listRides().map((r) => [r.name, r.waypoints]));
+  assert.deepEqual(waypoints, {
+    "Pushed loop": ["A", "B", "C"],
+    "Pushed line": ["A", "B", "C"],
+    "Planned loop": ["A", "B", "A"],
+  });
+  after.close();
+});

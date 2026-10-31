@@ -183,6 +183,16 @@ export const MIGRATIONS: Migration[] = [
 )`);
     },
   },
+  {
+    version: 7,
+    name: "pushed loops list their start once",
+    up(db) {
+      // A roadbook made from a pushed file used to list the start again as its last waypoint while being a round trip, so routing
+      // it again closed the loop twice (one leg more than saved). The closing waypoint is dropped.
+      db.exec(`UPDATE roadbooks SET waypoints = json_remove(waypoints, '$[#-1]')
+WHERE request LIKE 'roadbook file %' AND round_trip = 1 AND json_array_length(waypoints) > 1`);
+    },
+  },
 ];
 
 /**

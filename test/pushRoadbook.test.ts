@@ -91,6 +91,34 @@ test("a roadbook with no waypoints is one leg between the ends of its line, and 
   store.close();
 });
 
+test("a pushed loop lists its start once, so routing it again gives as many legs as the file has", () => {
+  const store = library();
+  const loop = [...points.slice(0, 20), ...points.slice(0, 20).reverse()];
+  const named = (i: number) => ({ lat: loop[i]!.lat, lon: loop[i]!.lon });
+  const { id } = importRoadbookFile(
+    store,
+    file({
+      line: encodePolyline(loop),
+      stops: [
+        { ...named(0), name: "Start: Home", kind: "waypoint" },
+        { ...named(10), name: "1. Hollain", kind: "waypoint" },
+        { ...named(19), name: "2. Ere", kind: "waypoint" },
+        { ...named(39), name: "Finish: Home", kind: "waypoint" },
+      ],
+      origin: undefined,
+      name: "Closed loop",
+    }),
+  );
+  const ride = store.findRide(String(id))!;
+  assert.equal(ride.roundTrip, true);
+  assert.deepEqual(ride.waypoints, ["Home", "Hollain", "Ere"], "the closing waypoint is the start again");
+  assert.equal(ride.legs.length, 3);
+  // What a refresh routes: the waypoints, then back to the first.
+  assert.equal(ride.waypoints.length, ride.legs.length);
+  assert.match(ride.itinerary, /Home → Hollain → Ere → Home/, "the text still tells the whole loop");
+  store.close();
+});
+
 test("pushing the same roadbook again replaces it, keeping the earlier version; unchanged, it changes nothing", () => {
   const store = library();
   const first = importRoadbookFile(store, file());

@@ -162,7 +162,11 @@ export function importRoadbookFile(store: Store, doc: unknown): { id: number; re
   const ridingMinutes = described
     ? Number(described[1]) * 60 + Number(described[2])
     : legs.reduce((s, l) => s + l.ridingMinutes, 0);
-  const waypointNames = marks.map((m) => m.name);
+  // A loop closes on its first waypoint by itself (roundTrip): the library lists the start once, so a route made again from the
+  // waypoints has as many legs as the file has, not one more.
+  const isLoop = haversineKm(first, last) < LOOP_KM;
+  const markNames = marks.map((m) => m.name);
+  const waypointNames = isLoop && markNames.length > 1 ? markNames.slice(0, -1) : markNames;
 
   // Cameras as the library keeps them: how far along the route, which leg, the limit, the direction and the place.
   const cum: number[] = [0];
@@ -193,9 +197,9 @@ export function importRoadbookFile(store: Store, doc: unknown): { id: number; re
   const centre = centroid(line);
   const design = {
     waypoints: waypointNames,
-    roundTrip: haversineKm(first, last) < LOOP_KM,
+    roundTrip: isLoop,
     preferences: DEFAULT_PREFERENCES,
-    itinerary: `${typeof file["description"] === "string" ? file["description"] : name}\n\nWaypoints: ${waypointNames.join(" → ")}`,
+    itinerary: `${typeof file["description"] === "string" ? file["description"] : name}\n\nWaypoints: ${markNames.join(" → ")}`,
     distanceKm,
     ridingMinutes,
     speedLimits: {},

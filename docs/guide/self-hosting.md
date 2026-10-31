@@ -260,6 +260,10 @@ The token goes in the same places as the TomTom key: `.env` for the terminal app
 in); the environment file for NixOS. Whoever builds a roadbook file needs it: the machine that runs the export (your computer, or the server for
 the phone's downloads). Check it with `npm run check`.
 
+When the server makes a file for the phone, its log (`docker compose … logs ride`) says how long it took (`[roadbook] … made in N ms`) and,
+for each place where a sign differs from OpenStreetMap, the road, the place and both limits (`sign lower, used` and `sign higher, ignored`,
+ten at most), so you can check them without a full export.
+
 Check it: `curl https://rides.example.org/health` says `"traffic":true`. The phone shows a traffic chip only then. The phone
 sends the server seven points of the road ahead, so the server learns roughly where a rider rides: run it for people you trust.
 

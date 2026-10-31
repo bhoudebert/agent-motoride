@@ -59,8 +59,19 @@ export type MakeRoadbookFile = (store: Store, ride: SavedRide) => Promise<string
 
 export const traceRoadbookFile: MakeRoadbookFile = async (store, ride) => {
   const { gpx } = await savedRideGpx(store, ride);
-  return JSON.stringify((await savedRideRoadbook(ride, gpx)).file);
+  const { file, signsError, signLowered, signHigher } = await savedRideRoadbook(ride, gpx);
+  logSigns(ride.id, signsError, signLowered, signHigher);
+  return JSON.stringify(file);
 };
+
+/** The places where a road sign differs from OpenStreetMap, to the server log (at most 10 each), so a rider can check them. */
+function logSigns(id: number, signsError: string | null, lowered: string[], higher: string[]): void {
+  if (signsError) console.log(`[roadbook] #${id} signs: ${signsError}`);
+  if (lowered.length)
+    console.log(`[roadbook] #${id} sign lower, used (${lowered.length}): ${lowered.slice(0, 10).join("; ")}`);
+  if (higher.length)
+    console.log(`[roadbook] #${id} sign higher, ignored (${higher.length}): ${higher.slice(0, 10).join("; ")}`);
+}
 
 interface Meta {
   stamp: string;

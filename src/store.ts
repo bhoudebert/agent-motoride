@@ -5,6 +5,7 @@ import { DATA_DIR, tenantDbPath } from "./dataDir.ts";
 import { migrate } from "./migrations.ts";
 import { type BikeProfile, DEFAULT_PROFILE } from "./profile.ts";
 import { type RidePreferences, type RiderSettings, SETTING_KEYS } from "./preferences.ts";
+import type { RecordedRide } from "./recordedRides.ts";
 import type { RideConditions } from "./conditions.ts";
 import type { StopPlan } from "./stops.ts";
 import type { RunUsage } from "./usage.ts";
@@ -1294,6 +1295,74 @@ export class Store {
       if (value !== undefined) upsert.run(key, JSON.stringify(value));
     }
     return this.getSettings();
+  }
+
+  /** The content hash of a recorded ride, undefined when there is none under that id. */
+  recordedRideHash(id: string): string | undefined {
+    return (
+      this.#db.prepare("SELECT sha256 FROM recorded_rides WHERE id = ?").get(id) as { sha256: string } | undefined
+    )?.sha256;
+  }
+
+  countRecordedRides(): number {
+    return (this.#db.prepare("SELECT COUNT(*) AS n FROM recorded_rides").get() as { n: number }).n;
+  }
+
+  /** Keeps an uploaded ride (ADR 0054), replacing the one under the same id. */
+  putRecordedRide(ride: Omit<RecordedRide, "uploadedAt">, sha256: string, gpx: Buffer): void {
+    this.#db
+      .prepare(
+        `INSERT OR REPLACE INTO recorded_rides
+           (id, name, started_at, ended_at, distance_km, points, roadbook_id, roadbook_name, sha256, gpx, uploaded_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        ride.id,
+        ride.name,
+        ride.startedAt,
+        ride.endedAt,
+        ride.distanceKm,
+        ride.points,
+        ride.roadbook?.id ?? null,
+        ride.roadbook?.name ?? null,
+        sha256,
+        gpx,
+        new Date().toISOString(),
+      );
+  }
+
+  /** The uploaded rides, the latest start first. The roadbook is null once that roadbook is gone from the library. */
+  listRecordedRides(): RecordedRide[] {
+    const rows = this.#db
+      .prepare(
+        `SELECT id, name, started_at, ended_at, distance_km, points, roadbook_id, roadbook_name, uploaded_at
+         FROM recorded_rides ORDER BY started_at DESC`,
+      )
+      .all() as Array<Record<string, string | number | null>>;
+    return rows.map((r) => ({
+      id: String(r["id"]),
+      name: String(r["name"]),
+      startedAt: String(r["started_at"]),
+      endedAt: String(r["ended_at"]),
+      distanceKm: Number(r["distance_km"]),
+      points: Number(r["points"]),
+      roadbook:
+        r["roadbook_id"] !== null && this.findRide(String(r["roadbook_id"]))
+          ? { id: Number(r["roadbook_id"]), name: String(r["roadbook_name"]) }
+          : null,
+      uploadedAt: String(r["uploaded_at"]),
+    }));
+  }
+
+  /** The compressed GPX of an uploaded ride. */
+  recordedRideGpx(id: string): Buffer | undefined {
+    const row = this.#db.prepare("SELECT gpx FROM recorded_rides WHERE id = ?").get(id) as
+      { gpx: Uint8Array } | undefined;
+    return row ? Buffer.from(row.gpx) : undefined;
+  }
+
+  deleteRecordedRide(id: string): boolean {
+    return Number(this.#db.prepare("DELETE FROM recorded_rides WHERE id = ?").run(id).changes) > 0;
   }
 
   /** Forgets what the rider set: the host's defaults apply again. */

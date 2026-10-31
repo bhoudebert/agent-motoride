@@ -132,3 +132,21 @@ server's own map when the file is made for the phone (so they are as good as the
 planned fuel and pause stops are not kept: `refreshRide` plans them again from the rider's bike profile. Roadbooks that
 older servers kept as files in a `pushed` folder are brought into the library once, and the folder is renamed
 `pushed.imported`.
+
+## Uploading a recorded ride
+
+A phone can send a ride it recorded (the GPX of "My rides") to the rider's server, when the rider asks (ADR 0054). It is kept in the
+rider's own library; nothing is sent otherwise.
+
+- `PUT /rides/<id>` with `Authorization: Bearer <rider token>` and the GPX **as it is** as the body (up to 25 MiB; `Content-Encoding:
+gzip` is accepted, the limit applies once unzipped too). `<id>` is the phone's own id for the ride (letters, digits, `.`, `_`, `-`, at
+  most 120 characters), for example `2026-10-31T09-00-00-pays-des-collines-loop`. At least two track points with a `<time>` are needed.
+- The answer is `{"id", "status", "roadbook"}`. `status` is `created` (201), `replaced` (200: same id, other content, e.g. a repaired
+  file) or `unchanged` (200: same id and same file, so a retry after a lost answer is safe). `roadbook` is `{"id", "name"}` when the
+  ride's header names a roadbook of this library (`source`, `sourceRoadbook`, `sourceName` of the `motoride:ride` element; the number
+  **and** the name must match, as for `review`), and `null` for a free-roaming ride, which is kept all the same.
+- `GET /rides` lists the rider's rides: `{"rides": [{"id", "name", "startedAt", "endedAt", "distanceKm", "points", "roadbook",
+"uploadedAt"}]}`, latest first. `GET /rides/<id>` gives the GPX back as it was sent. `DELETE /rides/<id>` removes it **on the
+  server only**; the phone's copy is not touched, and a deletion on the phone never reaches the server.
+- Errors: 400 not a GPX ride or a bad id, 401 no or wrong token, 404 no such ride, 405 wrong method, 409 the library holds 200 rides,
+  413 too large, 415 an encoding other than gzip, 429 too many (10 uploads a minute).

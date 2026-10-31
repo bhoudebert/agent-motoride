@@ -8,6 +8,7 @@ import { tenantDbPath, tenantDir } from "./dataDir.ts";
 import { CHANNEL, LiveShares, type LiveOptions } from "./live.ts";
 import { join } from "node:path";
 import { importLegacyPushed, importRoadbookFile, MAX_PUSHED_BYTES, PushRefused } from "./importRoadbook.ts";
+import { keepRide, MAX_RIDE_BYTES, RIDE_ID, rideGpx, RideRefused, unzipUpload } from "./recordedRides.ts";
 import { type MakeRoadbookFile, ReadyRoadbooks } from "./roadbookDownload.ts";
 import { MAX_POINTS, TrafficFlow, type TrafficOptions } from "./traffic.ts";
 import { type RequestContext, runInContext } from "./requestContext.ts";
@@ -93,6 +94,17 @@ async function readBody(req: IncomingMessage, max: number): Promise<unknown> {
   }
   if (!chunks.length) return undefined;
   return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+}
+
+async function readRaw(req: IncomingMessage, max: number): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of req) {
+    size += (chunk as Buffer).length;
+    if (size > max) throw new TooBig();
+    chunks.push(chunk as Buffer);
+  }
+  return Buffer.concat(chunks);
 }
 
 const bearer = (req: IncomingMessage): string | null => {
@@ -335,6 +347,70 @@ export function createHttpServer(options: ServeOptions): {
     }
   }
 
+  /** The rides a rider recorded and uploaded (ADR 0054): kept in their library, listed, read back, deleted here only. */
+  async function handleRides(req: IncomingMessage, res: ServerResponse, path: string): Promise<void> {
+    const one = /^\/rides\/([^/]+)$/.exec(path);
+    if (path !== "/rides" && !one) return json(res, 404, { error: "Not found" });
+    const allowed = path === "/rides" ? ["GET"] : ["GET", "PUT", "DELETE"];
+    if (!allowed.includes(req.method ?? ""))
+      return json(res, 405, { error: "Method not allowed." }, { Allow: allowed.join(", ") });
+    const token = bearer(req);
+    const tenant = token ? registry.verify(token) : null;
+    if (!tenant) return json(res, 401, { error: "A rider's token is needed." }, { "WWW-Authenticate": "Bearer" });
+    if (limited(tenant)) return json(res, 429, { error: "Too many requests; wait a minute." }, { "Retry-After": "60" });
+    let id = "";
+    if (one) {
+      try {
+        id = decodeURIComponent(one[1]!);
+      } catch {
+        return json(res, 400, { error: "Bad ride id." });
+      }
+      if (!RIDE_ID.test(id)) return json(res, 400, { error: "Bad ride id." });
+    }
+    const store = new Store(tenantDbPath(tenant.id));
+    try {
+      if (!one) return json(res, 200, { rides: store.listRecordedRides() });
+      if (req.method === "PUT") {
+        // A rider uploads at most 10 rides a minute.
+        const t = now();
+        const w = windows.get(`ride:${tenant.id}`);
+        if (!w || t - w.start >= 60_000) windows.set(`ride:${tenant.id}`, { start: t, count: 1 });
+        else if (++w.count > 10)
+          return json(res, 429, { error: "Too many requests; wait a minute." }, { "Retry-After": "30" });
+        try {
+          const raw = await readRaw(req, MAX_RIDE_BYTES);
+          const encoding = req.headers["content-encoding"];
+          const gpx = unzipUpload(raw, Array.isArray(encoding) ? encoding[0] : encoding).toString("utf8");
+          const kept = keepRide(store, id, gpx);
+          return json(res, kept.status === "created" ? 201 : 200, {
+            id,
+            status: kept.status,
+            roadbook: store.listRecordedRides().find((r) => r.id === id)?.roadbook ?? null,
+          });
+        } catch (e) {
+          if (e instanceof TooBig) return json(res, 413, { error: "Too large." });
+          if (e instanceof RideRefused) return json(res, e.status, { error: e.message });
+          console.error(`[ride upload] ${e instanceof Error ? e.message : String(e)}`);
+          return json(res, 500, { error: "The ride could not be kept." });
+        }
+      }
+      if (req.method === "DELETE") {
+        return store.deleteRecordedRide(id)
+          ? json(res, 200, { id, deleted: true })
+          : json(res, 404, { error: "No such ride." });
+      }
+      const gpx = rideGpx(store, id);
+      if (gpx === undefined) return json(res, 404, { error: "No such ride." });
+      res.writeHead(200, {
+        "Content-Type": "application/gpx+xml; charset=utf-8",
+        "Cache-Control": "private, no-cache",
+      });
+      return void res.end(gpx);
+    } finally {
+      store.close();
+    }
+  }
+
   /** A phone exchanges the code of its invitation (and the PIN, when there is one) for a token of its own. */
   async function handleEnrol(req: IncomingMessage, res: ServerResponse): Promise<void> {
     if (req.method !== "POST") return json(res, 405, { error: "Method not allowed." }, { Allow: "POST" });
@@ -375,6 +451,7 @@ export function createHttpServer(options: ServeOptions): {
     if (url.pathname === "/traffic") return handleTraffic(req, res);
     if (url.pathname === "/roadbooks" || url.pathname.startsWith("/roadbook/"))
       return handleRoadbooks(req, res, url.pathname);
+    if (url.pathname === "/rides" || url.pathname.startsWith("/rides/")) return handleRides(req, res, url.pathname);
     if (url.pathname === "/follow.js" && req.method === "GET")
       return sendFile(res, FOLLOW_JS, "text/javascript; charset=utf-8");
     // The page is the same for every link, so it says nothing of whether a ride exists.

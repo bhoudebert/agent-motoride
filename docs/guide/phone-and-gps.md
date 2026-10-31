@@ -251,3 +251,11 @@ metadata. `review` reads the track and ignores them.
 The track says which roadbook it followed, so you do not have to name it. The numbers are those of your own library, and
 they repeat from one library to another, so the match needs the number **and** the name: a track whose roadbook 7 is
 "Eifel loop" will not be taken for your roadbook 7 "Pays des Collines", it is refused and you name the roadbook yourself.
+
+### Keeping a recorded ride on your server
+
+With the MotoRide app connected to your server, a recorded ride can be uploaded to your library, from the end of the ride or later from
+"My rides". It is yours alone: the server keeps the GPX in your library, lists it, gives it back, and you can delete it there. Deleting it
+on the phone does not delete it on the server, nor the other way round. A ride you never uploaded exists only on the phone, so deleting
+it there loses it for good. A ride with no roadbook (you rode without a plan) is kept too. The details for app makers are in
+[the roadbook file](../roadbook-file.md#uploading-a-recorded-ride).

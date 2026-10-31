@@ -146,6 +146,27 @@ export const MIGRATIONS: Migration[] = [
       db.exec("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)");
     },
   },
+  {
+    version: 5,
+    name: "recorded rides",
+    up(db) {
+      // Rides recorded on the phone and uploaded by the rider (ADR 0054): the GPX compressed, and what the list shows.
+      // roadbook_id is the roadbook of the library the ride followed; no reference, a ride outlives its roadbook.
+      db.exec(`CREATE TABLE IF NOT EXISTS recorded_rides (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  started_at TEXT NOT NULL,
+  ended_at TEXT NOT NULL,
+  distance_km REAL NOT NULL,
+  points INTEGER NOT NULL,
+  roadbook_id INTEGER,
+  roadbook_name TEXT,
+  sha256 TEXT NOT NULL,
+  gpx BLOB NOT NULL,
+  uploaded_at TEXT NOT NULL
+)`);
+    },
+  },
 ];
 
 /**

@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.12.0](https://github.com/bhoudebert/agent-motoride/compare/v1.11.0...v1.12.0) (2026-10-31)
+
+
+### Features
+
+* **server:** keep a ride recorded on the phone in the rider's library ([#156](https://github.com/bhoudebert/agent-motoride/issues/156)) ([5387e03](https://github.com/bhoudebert/agent-motoride/commit/5387e035fc949115e17536186705d400b41d21fb))
+* **server:** log where a sign differs from the map when a roadbook file is made ([#154](https://github.com/bhoudebert/agent-motoride/issues/154)) ([74d33c9](https://github.com/bhoudebert/agent-motoride/commit/74d33c9233be3edfb6dc66baa533e23efec132ad))
+* **server:** refresh roadbooks on demand, with a state the phone can show ([#145](https://github.com/bhoudebert/agent-motoride/issues/145)) ([b0b3f6d](https://github.com/bhoudebert/agent-motoride/commit/b0b3f6d58d03f87aa8ebf08ba06eefedcdca862b))
+* **server:** tell a failed roadbook refresh in a few words and a stable code ([#147](https://github.com/bhoudebert/agent-motoride/issues/147)) ([52fb755](https://github.com/bhoudebert/agent-motoride/commit/52fb755323f2ca0259582ea2513167c55969d481))
+* **settings:** keep a rider's start point and road preferences in their library ([#148](https://github.com/bhoudebert/agent-motoride/issues/148)) ([79a2e8f](https://github.com/bhoudebert/agent-motoride/commit/79a2e8f5bbe40a50e19e6e9ef55e1d67b7940cf7))
+
+
+### Bug Fixes
+
+* **export:** a sign never raises a limit, and a lower sign is used ([#153](https://github.com/bhoudebert/agent-motoride/issues/153)) ([1455552](https://github.com/bhoudebert/agent-motoride/commit/1455552035030e905dac95aac20d35ff26d9221e))
+* **export:** push without tracing, looking up land use or asking for signs ([#152](https://github.com/bhoudebert/agent-motoride/issues/152)) ([f601348](https://github.com/bhoudebert/agent-motoride/commit/f601348c677fe4142c4a8b5345b4e65270fa0312))
+* **server:** add a pushed roadbook to the rider's library, not to a folder ([#149](https://github.com/bhoudebert/agent-motoride/issues/149)) ([982c14b](https://github.com/bhoudebert/agent-motoride/commit/982c14ba8c05fd9af919557457ea3371dbd97080))
+* **server:** answer a long route's first file at once instead of holding the request ([#150](https://github.com/bhoudebert/agent-motoride/issues/150)) ([fbfcdd8](https://github.com/bhoudebert/agent-motoride/commit/fbfcdd84f57f223643d9be2e81e9e10d3b8216a3))
+
 ## [1.11.0](https://github.com/bhoudebert/agent-motoride/compare/v1.10.0...v1.11.0) (2026-10-31)
 
 

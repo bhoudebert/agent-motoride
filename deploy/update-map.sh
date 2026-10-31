@@ -55,7 +55,8 @@ wait_for_valhalla() {
   return 1
 }
 
-echo "1/4 Stopping Valhalla"
+echo "1/4 Fetching the latest Valhalla image, then stopping it"
+$DC pull valhalla
 $DC stop valhalla
 
 echo "2/4 Removing the old extracts, so fresh ones are downloaded"

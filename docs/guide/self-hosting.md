@@ -173,8 +173,9 @@ cores to serve. Run the first build at a quiet hour.
 `VALHALLA_URL` can list several servers, separated by commas: `VALHALLA_URL=http://valhalla:8002,http://valhalla2:8002`. The server asks each one's
 `/status` for the date its map was built (kept five minutes) and uses the newest; when it fails or is rebuilding, the next answers. `npm run check`
 shows each one's map date. Put the public server in the list only if you want it to compete: its map is rebuilt often, so it would usually win.
-Unset `VALHALLA_URL` and it goes back to the public server. The image and its settings are the
-[gis-ops docker-valhalla](https://github.com/gis-ops/docker-valhalla) ones (archived: it no longer changes, read its README if a variable seems different).
+Unset `VALHALLA_URL` and it goes back to the public server. The image is Valhalla's own,
+[`ghcr.io/valhalla/valhalla-scripted`](https://github.com/valhalla/valhalla/tree/master/docker): read its README if a variable seems different. (Earlier
+versions of this guide used the community image `gis-ops/docker-valhalla`, now archived; moving over means one rebuild, so run `deploy/update-map.sh`.)
 The phone still asks the public server itself; having the phone use yours through the rider's server is the next step (ADR 0043).
 
 ### Keep the map current

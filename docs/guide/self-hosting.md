@@ -145,7 +145,12 @@ build at a quiet hour.
    tiles; follow it with `docker compose logs -f valhalla`. It builds the administrative boundaries (the countries of a roadbook come from them) and no elevation.
 2. Once it answers, put `VALHALLA_URL=http://valhalla:8002` in `deploy/.env` and restart the server (`up -d ride`). Nothing is published: only the server reaches it.
    Check it: `docker compose exec ride node src/check.ts` (or `npm run check`) tests the route service it uses.
-3. Keep the roads current: once a month set `VALHALLA_REBUILD=True` for one start (it downloads fresh extracts and rebuilds), then back to `False`.
+3. Keep the roads current: the map is the one downloaded at the first start, and nothing refreshes it on its own. Run `deploy/update-map.sh`
+   (add `--yes` to skip the question, or `MAP_COMPOSE_FILE=docker-compose.yml` for the other compose file). It stops Valhalla, deletes the old extracts, downloads
+   today's from Geofabrik, rebuilds the tiles and restarts it. About once a month is enough: OpenStreetMap changes daily, but limits and roads change slowly.
+   Routing is down while it builds (about 2 hours for France and Belgium) and it needs about 20 GB of free disk; the server cannot route or build roadbook
+   files until Valhalla answers again. To run it at night on the first of each month: `0 3 1 * * cd /path/to/deploy && ./update-map.sh --yes >> update-map.log 2>&1` in
+   `crontab -e`. Rebuilding with `VALHALLA_REBUILD=True` alone does not download anything: it rebuilds from the old extracts.
 
 Unset `VALHALLA_URL` and it goes back to the public server. The image and its settings are the
 [gis-ops docker-valhalla](https://github.com/gis-ops/docker-valhalla) ones: read its README if a variable has changed. The phone still asks the public

@@ -39,7 +39,8 @@ available for other apps; the app reads a GPX too, but without limits or cameras
   Consecutive stretches share their boundary point: the next `from` is the previous `to`. `kmh` is the limit that applies,
   `posted` tells a tagged limit (true) from an assumed one, the country or built-up default (false), `source` is
   `"inferred"` on an untagged road that lies in built-up land and was set to 50 from OpenStreetMap land use
-  (ADR 0045), absent otherwise (a reader that does not know it ignores it), `road` is the
+  (ADR 0045), `"sign"` where a speed limit sign seen in street-level photos set the limit, over OpenStreetMap's
+  too (`posted` is then true; ADR 0046), absent otherwise (a reader that does not know it ignores it), `road` is the
   road ref or name, optional. Entries are in order and should not overlap; a gap means unknown. Optional.
 - `cameras`: fixed speed cameras near the line. `kmh` is the camera's limit or null. `bearing` is the direction the
   camera faces, degrees clockwise from north (0 to 359), when OpenStreetMap gives it as degrees or a compass point;

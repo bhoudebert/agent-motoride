@@ -123,6 +123,14 @@ add(
   process.env.TOMTOM_API_KEY ? "key set" : "no TOMTOM_API_KEY: traffic reported as not checked",
 );
 
+add(
+  process.env.MAPILLARY_ACCESS_TOKEN?.trim() ? "ok" : "warn",
+  "Mapillary road signs",
+  process.env.MAPILLARY_ACCESS_TOKEN?.trim()
+    ? "token set"
+    : "no MAPILLARY_ACCESS_TOKEN: roadbook limits come from OpenStreetMap and guesses only",
+);
+
 // Database
 const store = new Store();
 const rides = store.listRides();

@@ -16,6 +16,8 @@ services:
       RIDE_SERVER_URL: ${RIDE_SERVER_URL:?set RIDE_SERVER_URL, e.g. https://rides.example.org}
       # The phone's Traffic (optional): your TomTom key, and the most TomTom requests a day it may cause. Empty: no traffic.
       TOMTOM_API_KEY: ${TOMTOM_API_KEY:-}
+      # Road signs for the roadbook files (optional): your Mapillary token. Empty: limits from OpenStreetMap and guesses only.
+      MAPILLARY_ACCESS_TOKEN: ${MAPILLARY_ACCESS_TOKEN:-}
       TRAFFIC_MAX_PER_DAY: ${TRAFFIC_MAX_PER_DAY:-600}
       TRAFFIC_PROVIDER: ${TRAFFIC_PROVIDER:-open-data}
       # Your own Valhalla (optional, the `valhalla` service below): http://valhalla:8002. Empty: the public server.

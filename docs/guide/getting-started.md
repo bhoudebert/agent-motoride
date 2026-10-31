@@ -26,12 +26,13 @@ cp .env.example .env
 
 Then edit `.env`:
 
-| Setting             | What for                                                                     |
-| ------------------- | ---------------------------------------------------------------------------- |
-| `RIDE_HOME`         | Your start and end point, e.g. `Grenoble` or a street address                |
-| `ANTHROPIC_API_KEY` | The terminal app. In Claude Code or Codex, only needed for scouts            |
-| `TOMTOM_API_KEY`    | Optional: traffic at departure (free tier at developer.tomtom.com)           |
-| `RIDE_MODEL`        | Optional: the model of the terminal app, `claude-sonnet-5-5` is a good value |
+| Setting                  | What for                                                                          |
+| ------------------------ | --------------------------------------------------------------------------------- |
+| `RIDE_HOME`              | Your start and end point, e.g. `Grenoble` or a street address                     |
+| `ANTHROPIC_API_KEY`      | The terminal app. In Claude Code or Codex, only needed for scouts                 |
+| `TOMTOM_API_KEY`         | Optional: traffic at departure (free tier at developer.tomtom.com)                |
+| `MAPILLARY_ACCESS_TOKEN` | Optional: speed limit signs for the roadbook file (free, mapillary.com/developer) |
+| `RIDE_MODEL`             | Optional: the model of the terminal app, `claude-sonnet-5-5` is a good value      |
 
 Check what is ready and whether the map and weather services answer from your
 machine:

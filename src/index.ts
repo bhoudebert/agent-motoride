@@ -151,6 +151,7 @@ function describeSettings(
     `50 zones: aim <= ${preferences.max50Pct}%`,
     `fast expressway: <= ${preferences.maxFastPct ?? DEFAULT_MAX_FAST_PCT}%`,
     `traffic check: ${process.env.TOMTOM_API_KEY ? "on" : "off (no TOMTOM_API_KEY)"}`,
+    `road signs: ${process.env.MAPILLARY_ACCESS_TOKEN?.trim() ? "on" : "off (no MAPILLARY_ACCESS_TOKEN)"}`,
     `model: ${process.env.RIDE_MODEL || "claude-opus-5-5"}, effort ${process.env.RIDE_EFFORT || "high"}`,
   ].join("  |  ");
 }

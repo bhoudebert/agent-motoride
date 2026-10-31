@@ -43,7 +43,8 @@ services:
       build_admins: "True"
       build_time_zones: "True"
       server_threads: ${VALHALLA_THREADS:-4}
-      # Set to True for one start to rebuild the tiles from fresh extracts, then back to False.
+      # Rebuilds the tiles from the extracts already on disk: it does NOT download new ones. Do not set it by hand:
+      # run deploy/update-map.sh, which deletes the old extracts, rebuilds, and clears this flag.
       force_rebuild: ${VALHALLA_REBUILD:-False}
     volumes:
       - valhalla-data:/custom_files

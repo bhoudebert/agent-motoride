@@ -224,7 +224,7 @@ test("migrations: each saved ride becomes a roadbook with the same id and its ri
   store.close();
 });
 
-test("migrations: a pushed loop that listed its start twice lists it once, other roadbooks are left alone", () => {
+test("migrations: a pushed roadbook keeps its waypoints as the coordinates of its legs, the start once on a loop", () => {
   const path = file();
   new Store(path).close();
   const db = new DatabaseSync(path);
@@ -233,16 +233,29 @@ test("migrations: a pushed loop that listed its start twice lists it once, other
        preferences, request, itinerary, maps_url, cells, center_lat, center_lon, version)
      VALUES (?, '2026-10-01', '2026-10-01', 'A', 10, 10, ?, ?, '{}', '{}', ?, '', '', '[]', 50, 3, 1)`,
   );
-  insert.run("Pushed loop", '["A","B","C","A"]', 1, "roadbook file agentRide:3:Pushed loop");
-  insert.run("Pushed line", '["A","B","C"]', 0, "roadbook file agentRide:4:Pushed line");
+  const leg = db.prepare(
+    `INSERT INTO legs (roadbook_id, seq, from_label, to_label, from_coords, to_coords, distance_km, riding_minutes, main_roads)
+     VALUES (?, ?, ?, ?, ?, ?, 1, 1, '[]')`,
+  );
+  const loop = Number(
+    insert.run("Pushed loop", '["A","B","C","A"]', 1, "roadbook file agentRide:3:Pushed loop").lastInsertRowid,
+  );
+  leg.run(loop, 1, "A", "B", "50.1,3.1", "50.2,3.2");
+  leg.run(loop, 2, "B", "C", "50.2,3.2", "50.3,3.3");
+  leg.run(loop, 3, "C", "A", "50.3,3.3", "50.1,3.1");
+  const line = Number(
+    insert.run("Pushed line", '["A","B","C"]', 0, "roadbook file agentRide:4:Pushed line").lastInsertRowid,
+  );
+  leg.run(line, 1, "A", "B", "50.1,3.1", "50.2,3.2");
+  leg.run(line, 2, "B", "C", "50.2,3.2", "50.3,3.3");
   insert.run("Planned loop", '["A","B","A"]', 1, "plan a loop");
   db.exec("PRAGMA user_version = 6");
   db.close();
   const after = new Store(path);
   const waypoints = Object.fromEntries(after.listRides().map((r) => [r.name, r.waypoints]));
   assert.deepEqual(waypoints, {
-    "Pushed loop": ["A", "B", "C"],
-    "Pushed line": ["A", "B", "C"],
+    "Pushed loop": ["50.1,3.1", "50.2,3.2", "50.3,3.3"],
+    "Pushed line": ["50.1,3.1", "50.2,3.2", "50.3,3.3"],
     "Planned loop": ["A", "B", "A"],
   });
   after.close();

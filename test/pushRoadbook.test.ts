@@ -49,7 +49,16 @@ test("a pushed roadbook file becomes a roadbook of the library: legs, waypoints,
   assert.equal(replaced, false);
   const ride = store.findRide(String(id))!;
   assert.equal(ride.name, "Device loop");
-  assert.deepEqual(ride.waypoints, ["Start", "Middle", "End"], "the planned stop is not a waypoint");
+  assert.deepEqual(
+    ride.waypoints,
+    [0, 20, 40].map((i) => `${points[i]!.lat},${points[i]!.lon}`),
+    "the waypoints are kept as coordinates, so a route made again goes through the same places; the planned stop is not one",
+  );
+  assert.deepEqual(
+    ride.legs.map((l) => l.from),
+    ["Start", "Middle"],
+    "the names stay on the legs",
+  );
   assert.equal(ride.shapes!.length, 2, "one leg per pair of waypoints");
   assert.deepEqual(
     ride.legs.map((l) => [l.from, l.to]),
@@ -111,7 +120,11 @@ test("a pushed loop lists its start once, so routing it again gives as many legs
   );
   const ride = store.findRide(String(id))!;
   assert.equal(ride.roundTrip, true);
-  assert.deepEqual(ride.waypoints, ["Home", "Hollain", "Ere"], "the closing waypoint is the start again");
+  assert.deepEqual(
+    ride.waypoints,
+    [0, 10, 19].map((i) => `${loop[i]!.lat},${loop[i]!.lon}`),
+    "the closing waypoint, the start again, is not listed",
+  );
   assert.equal(ride.legs.length, 3);
   // What a refresh routes: the waypoints, then back to the first.
   assert.equal(ride.waypoints.length, ride.legs.length);
@@ -342,7 +355,7 @@ test("a push sends the line, waypoints and cameras without asking anything of th
   const there = library();
   const kept = importRoadbookFile(there, body);
   assert.equal(there.findRide(String(kept.id))!.name, "Device loop");
-  assert.deepEqual(there.findRide(String(kept.id))!.waypoints, ["Start", "Middle", "End"]);
+  assert.deepEqual(there.findRide(String(kept.id))!.waypoints, ride.waypoints);
   store.close();
   there.close();
 });

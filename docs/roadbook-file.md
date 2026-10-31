@@ -127,7 +127,7 @@ again changes nothing. The file the server then serves keeps the `origin` it was
 and the name in the library it came from), not the number it got in this library, so a phone that already holds that
 roadbook recognises it and replaces it in place; the number in `GET /roadbooks` is the one to ask the server with.
 
-A loop (a line that ends where it starts) is kept as a round trip that lists its start once, so routing it again (`refreshRide`) gives as many legs as the file has.
+The waypoints are kept as coordinates, as the planner keeps them (the names stay on the legs), so routing the roadbook again (`refreshRide`) goes through the same places. A loop (a line that ends where it starts) is kept as a round trip that lists its start once, so a route made again has as many legs as the file has.
 
 What is kept: the line, cut into one leg per pair of waypoints, the waypoints (the `stops` of kind `waypoint`), the
 cameras, the distance and the riding time. What is not: the speed limits, countries and roundabouts are traced again on the

@@ -21,6 +21,8 @@ export interface RoadbookListing {
   /** The version of the file ready to download; the phone compares it with the one it kept. */
   stamp: string;
   state: RoadbookState;
+  /** Whether a file is ready to download now. False for a roadbook whose first file has not been made. */
+  ready: boolean;
   /** The day (UTC) of the own Valhalla map the ready file was made on; absent when the host runs none. */
   mapDay?: string;
   /** Why the last refresh failed, in one short sentence a rider can read, when `state` is `failed`. */
@@ -88,6 +90,8 @@ export interface ReadyOptions {
   retryAfterMs?: number;
   /** A ride this soon (days) is refreshed by the list; the others wait for the rider's tap. */
   soonDays?: number;
+  /** How long a request for a roadbook with no file yet waits for it to be made before answering "preparing", ms. */
+  firstFileWaitMs?: number;
 }
 
 /**
@@ -103,6 +107,7 @@ export class ReadyRoadbooks {
   readonly #maxJobs: number;
   readonly #retryAfterMs: number;
   readonly #soonMs: number;
+  readonly #firstFileWaitMs: number;
   readonly #jobs = new Map<string, Promise<void>>();
   readonly #failures = new Map<string, Failure>();
   readonly #waiting: Array<() => void> = [];
@@ -116,6 +121,7 @@ export class ReadyRoadbooks {
     this.#maxJobs = options.maxJobs ?? 200;
     this.#retryAfterMs = options.retryAfterMs ?? 5 * 60_000;
     this.#soonMs = (options.soonDays ?? 14) * 24 * 3_600_000;
+    this.#firstFileWaitMs = options.firstFileWaitMs ?? 20_000;
   }
 
   #dir(tenantId: string): string {
@@ -159,11 +165,15 @@ export class ReadyRoadbooks {
   /** Makes and keeps the file of roadbook `id` as it is now, on the map in use. Throws when it cannot be made. */
   async #produce(tenantId: string, id: number): Promise<void> {
     const store = new Store(tenantDbPath(tenantId));
+    const started = this.#now();
     try {
       const ride = store.findRide(String(id));
       if (!ride) return;
       const mapDay = await this.#mapDay();
       const body = await this.#make(store, ride);
+      console.log(
+        `[roadbook] ${tenantId} #${id} made in ${this.#now() - started} ms (${(body.length / 1024).toFixed(0)} KB)`,
+      );
       this.#keep(tenantId, id, body, {
         stamp: rideStamp(ride, mapDay),
         fingerprint: fingerprint(ride),
@@ -176,12 +186,17 @@ export class ReadyRoadbooks {
     }
   }
 
-  /** Starts making the file, behind the others; false when too many are waiting. A failure is written down, not thrown. */
-  #enqueue(tenantId: string, ride: SavedRide, mapDay: string): boolean {
+  /**
+   * Starts making the file, behind the others (or at once, for the first file of a roadbook, which someone waits for); null when too
+   * many are waiting. A failure is written down, not thrown. The job that is running is returned when there is one.
+   */
+  #enqueue(tenantId: string, ride: SavedRide, mapDay: string, immediate = false): Promise<void> | null {
     const key = `${tenantId}:${ride.id}`;
-    if (this.#jobs.has(key)) return true;
-    if (this.#jobs.size >= this.#maxJobs) return false;
-    const job = this.#slot(() => this.#produce(tenantId, ride.id))
+    const running = this.#jobs.get(key);
+    if (running) return running;
+    if (this.#jobs.size >= this.#maxJobs) return null;
+    const make = () => this.#produce(tenantId, ride.id);
+    const job = (immediate ? make() : this.#slot(make))
       .catch((e: unknown) => {
         this.#failures.set(key, {
           at: this.#now(),
@@ -193,7 +208,7 @@ export class ReadyRoadbooks {
       })
       .finally(() => this.#jobs.delete(key));
     this.#jobs.set(key, job);
-    return true;
+    return job;
   }
 
   #stateOf(tenantId: string, ride: SavedRide, mapDay: string): RoadbookListing["state"] {
@@ -237,6 +252,7 @@ export class ReadyRoadbooks {
         // With no ready file the stamp is the one the file will have; a phone that downloads then waits for it to be made.
         stamp: meta?.stamp ?? rideStamp(ride, mapDay),
         state,
+        ready: meta !== null,
         ...((meta?.mapDay ?? mapDay) ? { mapDay: meta?.mapDay ?? mapDay } : {}),
         ...(failure ? { error: failure.error, errorCode: failure.code } : {}),
       };
@@ -264,9 +280,15 @@ export class ReadyRoadbooks {
 
   /**
    * The file ready for roadbook `id`, at once, even when it is outdated; null when there is no such roadbook. When there is no
-   * file yet it is made now (the first time only) and the caller waits for it; a failure then is thrown and not kept.
+   * file yet it is made now and the caller waits for it, at most `firstFileWaitMs`: a short route is answered in the same request,
+   * a long one is answered "preparing" (the build goes on, and the phone asks again or watches the list). A failure is thrown.
    */
-  async get(tenantId: string, store: Store, id: number): Promise<{ stamp: string; body: string } | null> {
+  async get(
+    tenantId: string,
+    store: Store,
+    id: number,
+    waitMs = this.#firstFileWaitMs,
+  ): Promise<{ stamp: string; body: string } | "preparing" | null> {
     const ride = store.findRide(String(id));
     if (!ride) return null;
     const read = (): { stamp: string; body: string } | null => {
@@ -281,20 +303,19 @@ export class ReadyRoadbooks {
     const ready = read();
     if (ready) return ready;
     const key = `${tenantId}:${id}`;
-    const running = this.#jobs.get(key);
-    if (running) await running;
-    else {
-      // The first file of a roadbook: made now, in front of the refreshes that wait.
-      const job = this.#produce(tenantId, id).finally(() => this.#jobs.delete(key));
-      this.#jobs.set(
-        key,
-        job.catch(() => undefined),
-      );
-      await job;
-    }
+    const job = this.#enqueue(tenantId, ride, await this.#mapDay(), true);
+    if (!job) throw new Error("Too many roadbook files are being made; try again in a moment.");
+    let timer: NodeJS.Timeout | undefined;
+    await Promise.race([
+      job,
+      new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, waitMs);
+      }),
+    ]).finally(() => clearTimeout(timer));
     const made = read();
-    if (!made) throw new Error("The roadbook file could not be made.");
-    return made;
+    if (made) return made;
+    if (this.#jobs.has(key)) return "preparing";
+    throw new Error(this.#failures.get(key)?.error ?? "The roadbook file could not be made.");
   }
 
   /**

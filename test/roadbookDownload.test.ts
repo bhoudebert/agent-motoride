@@ -51,11 +51,14 @@ async function setup() {
   const made: string[] = [];
   let failNext = false;
   let mapDay = "";
+  let gate: Promise<void> | null = null;
   const app = createHttpServer({
     registry,
     mapDay: async () => mapDay,
+    firstFileWaitMs: 60,
     makeRoadbookFile: async (_store, r) => {
       made.push(r.name);
+      if (gate) await gate;
       if (failNext) {
         failNext = false;
         throw new Error("Valhalla 429");
@@ -78,6 +81,15 @@ async function setup() {
     made,
     failNext: () => (failNext = true),
     setMapDay: (day: string) => (mapDay = day),
+    /** The next files are held until the returned function is called. */
+    hold: () => {
+      let release!: () => void;
+      gate = new Promise<void>((resolve) => (release = resolve));
+      return () => {
+        gate = null;
+        release();
+      };
+    },
   };
 }
 
@@ -295,7 +307,10 @@ test("ready files survive a restart and are forgotten with their roadbook", asyn
     const store = new Store(tenantDbPath(s.alice.tenant.id));
     const listed = await restarted.list(s.alice.tenant.id, store);
     assert.deepEqual([listed[0]!.state, `"${listed[0]!.stamp}"`], ["current", etag]);
-    assert.equal((await restarted.get(s.alice.tenant.id, store, s.first))!.stamp, etag.slice(1, -1));
+    assert.equal(
+      ((await restarted.get(s.alice.tenant.id, store, s.first)) as { stamp: string }).stamp,
+      etag.slice(1, -1),
+    );
     assert.ok(store.deleteRide(s.first));
     assert.deepEqual(await restarted.list(s.alice.tenant.id, store), []);
     assert.equal(existsSync(join(tenantDir(s.alice.tenant.id), "roadbooks-ready", `${s.first}.json`)), false);
@@ -315,4 +330,63 @@ test("a failed refresh is told in a few words and a stable code, whatever the te
   const other = describeFailure(new Error("Cannot read properties of undefined (reading 'x')"));
   assert.equal(other.code, "other");
   for (const e of [other, describeFailure(new Error("x responded 429"))]) assert.ok(e.error.length <= 80);
+});
+
+test("a first file that takes longer than the wait is answered 202 at once, the build goes on, and the list says it is not ready", async () => {
+  const s = await setup();
+  try {
+    const release = s.hold();
+    const asked = await s.get(`/roadbook/${s.first}`, s.alice.token);
+    assert.equal(asked.status, 202, "the request is not held until a gateway gives up");
+    assert.deepEqual(await asked.json(), { id: s.first, state: "refreshing" });
+    assert.equal(asked.headers.get("retry-after"), "5");
+    assert.equal(asked.headers.get("etag"), null);
+    const waiting = (await list(s))[0]!;
+    assert.deepEqual([waiting.state, (waiting as { ready?: boolean }).ready], ["refreshing", false]);
+    assert.equal(
+      (await s.get(`/roadbook/${s.first}`, s.alice.token)).status,
+      202,
+      "asking again does not start another build",
+    );
+    assert.equal(s.made.length, 1);
+
+    release();
+    const done = await until(s, "current");
+    assert.equal((done as { ready?: boolean }).ready, true);
+    const file = await s.get(`/roadbook/${s.first}`, s.alice.token);
+    assert.equal(file.status, 200);
+    assert.equal(file.headers.get("etag"), `"${done.stamp}"`);
+  } finally {
+    await s.app.close();
+    s.registry.close();
+  }
+});
+
+test("a first file that is made within the wait is answered in the same request, and the roadbook is ready", async () => {
+  const s = await setup();
+  try {
+    assert.equal(((await list(s))[0] as { ready?: boolean }).ready, false, "no file yet");
+    assert.equal((await s.get(`/roadbook/${s.first}`, s.alice.token)).status, 200);
+    assert.equal(((await list(s))[0] as { ready?: boolean }).ready, true);
+  } finally {
+    await s.app.close();
+    s.registry.close();
+  }
+});
+
+test("a first file that cannot be made is answered 502 within the request, and the list says failed", async () => {
+  const s = await setup();
+  try {
+    s.failNext();
+    assert.equal((await s.get(`/roadbook/${s.first}`, s.alice.token)).status, 502);
+    const failed = (await list(s))[0]!;
+    assert.deepEqual(
+      [failed.state, failed.errorCode, (failed as { ready?: boolean }).ready],
+      ["failed", "rate_limited", false],
+    );
+    assert.equal((await s.get(`/roadbook/${s.first}`, s.alice.token)).status, 200, "asking again tries again");
+  } finally {
+    await s.app.close();
+    s.registry.close();
+  }
 });

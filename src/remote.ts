@@ -37,8 +37,13 @@ export async function pushRoadbookFile(
 
 /** Push the roadbook file at `path` to the configured server; the line to tell the rider. */
 export async function pushExported(path: string, config = remoteConfig()): Promise<string> {
+  return pushFile(readFileSync(path, "utf8"), config);
+}
+
+/** Push a roadbook file (its JSON) to the configured server; the line to tell the rider. */
+export async function pushFile(body: string, config = remoteConfig()): Promise<string> {
   if (!config)
     throw new Error("No server to push to: set RIDE_REMOTE_URL and RIDE_REMOTE_TOKEN (your server and your token).");
-  const kept = await pushRoadbookFile(readFileSync(path, "utf8"), config);
+  const kept = await pushRoadbookFile(body, config);
   return `Pushed to ${config.url}: ${kept.replaced ? "replaced the earlier copy" : "new"}, version ${kept.stamp}. The MotoRide app lists it under your server.`;
 }

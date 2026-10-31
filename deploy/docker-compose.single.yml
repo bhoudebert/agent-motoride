@@ -32,7 +32,7 @@ services:
   # VALHALLA_URL=http://valhalla:8002. The first start downloads the map extracts and builds the tiles (hours, a lot of memory);
   # it answers once that is done. Reached by the ride service only: nothing is published.
   valhalla:
-    image: ghcr.io/gis-ops/docker-valhalla/valhalla:latest
+    image: ghcr.io/valhalla/valhalla-scripted:latest
     profiles: ["valhalla"]
     restart: unless-stopped
     environment:

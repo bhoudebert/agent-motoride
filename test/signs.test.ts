@@ -106,47 +106,68 @@ const tracing = (edges: unknown[]) => async (shape: string) => ({ shape, admins:
 const input = { name: "Loop", description: "", legs, shapes: [encodePolyline(line)] };
 const withSign: SignLookup = async () => (_points, _from, to) => (to <= 30 ? 70 : null);
 
-test("roadbook file: a sign fills a stretch OSM does not know, marked as from a sign", async () => {
-  const { file, signDisagreements } = await buildRoadbookFile(
+test("roadbook file: a sign fills a stretch OSM does not post, marked as from a sign", async () => {
+  const { file, signLowered, signHigher } = await buildRoadbookFile(
     input,
     tracing([edge(0, 30), edge(30, 60)]),
     undefined,
     withSign,
   );
   assert.deepEqual(
-    file.limits.map((l) => [l.from, l.to, l.kmh, l.posted, l.source]),
+    file.limits.map((l) => [l.from, l.to, l.kmh, l.posted, l.source, l.osm]),
     [
-      [0, 30, 70, true, "sign"],
-      [30, 60, 80, false, undefined],
+      [0, 30, 70, true, "sign", undefined],
+      [30, 60, 80, false, undefined, undefined],
     ],
   );
-  assert.deepEqual(signDisagreements, []);
+  assert.deepEqual([signLowered, signHigher], [[], []]);
 });
 
-test("roadbook file: OpenStreetMap's posted limit is kept; a sign that says otherwise is only reported, once", async () => {
-  const { file, signDisagreements } = await buildRoadbookFile(
+test("roadbook file: a sign lower than a posted limit is used, with the OSM limit kept beside it, and told once", async () => {
+  const { file, signLowered, signHigher } = await buildRoadbookFile(
     input,
     tracing([edge(0, 10, { speed_limit: 90 }), edge(10, 30, { speed_limit: 90 }), edge(30, 60, { speed_limit: 90 })]),
     undefined,
     withSign,
   );
   assert.deepEqual(
-    file.limits.map((l) => [l.from, l.to, l.kmh, l.posted, l.source]),
-    [[0, 60, 90, true, undefined]],
-    "the posted 90 stays whatever the sign says",
+    file.limits.map((l) => [l.from, l.to, l.kmh, l.posted, l.source, l.osm]),
+    [
+      [0, 30, 70, true, "sign", 90],
+      [30, 60, 90, true, undefined, undefined],
+    ],
+    "a warning that is early is safe: the lower limit is the one shown",
   );
-  assert.equal(signDisagreements.length, 1);
-  assert.match(signDisagreements[0]!, /N 507 near 50\.\d+,3\.\d+: sign says 70, OSM says 90/);
+  assert.equal(signLowered.length, 1);
+  assert.match(signLowered[0]!, /N 507 near 50\.\d+,3\.\d+: sign says 70, OSM says 90/);
+  assert.deepEqual(signHigher, []);
+});
+
+test("roadbook file: a sign never raises a posted limit, it is only told", async () => {
+  const { file, signLowered, signHigher } = await buildRoadbookFile(
+    input,
+    tracing([edge(0, 30, { speed_limit: 50 })]),
+    undefined,
+    withSign,
+  );
+  assert.deepEqual(
+    file.limits.map((l) => [l.kmh, l.source, l.osm]),
+    [[50, undefined, undefined]],
+  );
+  assert.deepEqual(signLowered, []);
+  assert.equal(signHigher.length, 1);
+  assert.match(signHigher[0]!, /sign says 70, OSM says 50/);
 });
 
 test("roadbook file: a sign agreeing with OSM is nothing to report", async () => {
-  const { signDisagreements } = await buildRoadbookFile(
+  const { file, signLowered, signHigher } = await buildRoadbookFile(
     input,
     tracing([edge(0, 30, { speed_limit: 70 })]),
     undefined,
     withSign,
   );
-  assert.deepEqual(signDisagreements, []);
+  assert.deepEqual([signLowered, signHigher], [[], []]);
+  assert.equal(file.limits[0]!.source, undefined);
 });
 
 test("roadbook file: a roundabout's ring takes no sign", async () => {
@@ -187,10 +208,10 @@ test("roadbook file: when the sign service fails the guesses stand and the file 
 });
 
 test("roadbook file: without a sign lookup nothing changes", async () => {
-  const { file, signsError, signDisagreements } = await buildRoadbookFile(input, tracing([edge(0, 60)]));
+  const { file, signsError, signLowered, signHigher } = await buildRoadbookFile(input, tracing([edge(0, 60)]));
   assert.equal(file.limits[0]!.source, undefined);
   assert.equal(signsError, null);
-  assert.deepEqual(signDisagreements, []);
+  assert.deepEqual([signLowered, signHigher], [[], []]);
 });
 
 const flat = [

@@ -14,11 +14,14 @@ the ride and for the local rules, including on speed-camera information.
   commercial or industrial areas), which it sets to 50 and marks as inferred. Both are guesses: the app marks them
   "assumed". Planning figures (slow-zone share, riding time) still use the country default for those roads.
 - With a Mapillary token (`MAPILLARY_ACCESS_TOKEN`, optional), speed limit signs seen in street-level photos fill the limit
-  where OpenStreetMap has none (a guess otherwise), never over a limit OpenStreetMap posts. Coverage is patchy: on a 74 km loop about 11 signs stood by the road. A sign
+  where OpenStreetMap has none (a guess otherwise). Where OpenStreetMap posts a limit, a sign never raises it, but a sign that
+  says a lower one is used, because a warning that is early is safe and one that is late is not: the file keeps the
+  OpenStreetMap limit beside it (`osm`) so the app can show it. Coverage is patchy: on a 74 km loop about 11 signs stood by the road. A sign
   counts only if it faces along the road, stands within 12 m, was seen in the last two years and has no roadworks sign
   within 40 m; a roundabout's ring takes none. A new permanent limit that nobody has photographed yet is missed, and so is
-  a removed sign that is still in the data. Where a sign says something else than a limit OpenStreetMap posts,
-  OpenStreetMap is kept and the export lists the place, so you can check the sign or correct the map.
+  a removed sign that is still in the data. The export lists each place where a sign
+  says a different limit than OpenStreetMap, so you can check the sign or correct the map; a lower sign that is only roadworks
+  gives an early warning there, a higher one is ignored.
 - Road data comes from OpenStreetMap and can be incomplete or out of date. Routes and tagged limits come from Valhalla's snapshot of
   it: the public server's, or your own, which is as old as the last `deploy/update-map.sh` (see [Host it yourself](self-hosting.md)).
   Closures and roadworks are not checked.

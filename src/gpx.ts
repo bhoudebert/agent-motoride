@@ -230,7 +230,8 @@ export async function exportSavedRide(
   /** Why road signs were not checked (a token is set but the service failed); null when they were or are off. */
   signsError: string | null;
   /** Where a sign says another limit than the one OpenStreetMap posts: OpenStreetMap is kept; the rider may check the sign or fix the map. */
-  signDisagreements: string[];
+  signLowered: string[];
+  signHigher: string[];
   rerouted: boolean;
   stopsAt: Array<{ label: string; index: number; total: number }>;
 }> {
@@ -242,7 +243,8 @@ export async function exportSavedRide(
     limitsError,
     builtUpError,
     signsError,
-    signDisagreements,
+    signLowered,
+    signHigher,
   } = await savedRideRoadbook(ride, gpx);
   const roadbookFile = roadbookFilePath(path);
   writeFileSync(roadbookFile, JSON.stringify(roadbook));
@@ -252,7 +254,8 @@ export async function exportSavedRide(
     limitsError,
     builtUpError,
     signsError,
-    signDisagreements,
+    signLowered,
+    signHigher,
     rerouted,
     stopsAt: routePointIndex(input),
   };
@@ -264,9 +267,10 @@ export function describeRoadbookFile(result: {
   limitsError: string | null;
   builtUpError?: string | null;
   signsError?: string | null;
-  signDisagreements?: string[];
+  signLowered?: string[];
+  signHigher?: string[];
 }): string {
-  return `Roadbook file (speed limits and cameras, for the MobileMotoRide app): ${result.roadbookFile}${result.limitsError ? `\n(${result.limitsError}; the file has no limits there.)` : ""}${result.builtUpError ? `\n(${result.builtUpError})` : ""}${result.signsError ? `\n(${result.signsError})` : ""}${result.signDisagreements?.length ? `\nA road sign says another limit than OpenStreetMap here (OpenStreetMap is kept in the file; check the sign, or the map):\n- ${result.signDisagreements.join("\n- ")}` : ""}`;
+  return `Roadbook file (speed limits and cameras, for the MobileMotoRide app): ${result.roadbookFile}${result.limitsError ? `\n(${result.limitsError}; the file has no limits there.)` : ""}${result.builtUpError ? `\n(${result.builtUpError})` : ""}${result.signsError ? `\n(${result.signsError})` : ""}${result.signLowered?.length ? `\nA road sign says a lower limit than OpenStreetMap here and the lower one is in the file (a warning that is early is safe; check the sign, or the map):\n- ${result.signLowered.join("\n- ")}` : ""}${result.signHigher?.length ? `\nA road sign says a higher limit than OpenStreetMap here; OpenStreetMap is kept (a sign never raises a limit):\n- ${result.signHigher.join("\n- ")}` : ""}`;
 }
 
 /** "pause: X at route point 18 of 40" lines, for the rider to find the stops in an app's stage list. */

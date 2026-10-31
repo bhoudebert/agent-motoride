@@ -101,7 +101,12 @@ export function importRoadbookFile(store: Store, doc: unknown): { id: number; re
   let from = 0;
   for (const stop of stops.filter((s) => s.kind !== "stop" && Number.isFinite(s.lat) && Number.isFinite(s.lon))) {
     const index = nearestIndex(line, stop, from);
-    marks.push({ name: String(stop.name).slice(0, 120) || label(stop), at: stop, index });
+    // The file labels its waypoints "Start: X", "1. X", "Finish: X"; the place is X.
+    const place = String(stop.name)
+      .replace(/^(Start|Finish): /, "")
+      .replace(/^\d+\. /, "")
+      .slice(0, 120);
+    marks.push({ name: place || label(stop), at: stop, index });
     from = index;
   }
   if (marks.length < 2) {

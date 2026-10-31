@@ -121,7 +121,9 @@ The answer is `{"id", "stamp", "replaced"}` (`id` is the roadbook's number in th
 version 1 roadbook file, 401 for a wrong token, 409 when the library already holds 100 sent roadbooks, 413 too large,
 429 too many. A file with an `origin` replaces the earlier push of the same roadbook (the earlier version is kept in
 the roadbook's versions, so `restoreRoadbook` brings it back); otherwise the name decides. Pushing an unchanged file
-again changes nothing.
+again changes nothing. The file the server then serves keeps the `origin` it was sent with (the app, the roadbook number
+and the name in the library it came from), not the number it got in this library, so a phone that already holds that
+roadbook recognises it and replaces it in place; the number in `GET /roadbooks` is the one to ask the server with.
 
 What is kept: the line, cut into one leg per pair of waypoints, the waypoints (the `stops` of kind `waypoint`), the
 cameras, the distance and the riding time. What is not: the speed limits, countries and roundabouts are traced again on the

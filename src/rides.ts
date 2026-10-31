@@ -17,7 +17,15 @@ import {
   rideToReview,
 } from "./feedback.ts";
 import { routeCells } from "./geometry.ts";
-import { describeRoadbookFile, describeStopsAt, exportSavedRide, savedRideGpx, savedRideRoadbook } from "./gpx.ts";
+import {
+  describeRoadbookFile,
+  describeStopsAt,
+  exportSavedRide,
+  exportSavedRideGpx,
+  pushableRoadbookFile,
+  savedRideGpx,
+  savedRideRoadbook,
+} from "./gpx.ts";
 import {
   DuplicateRideError,
   enrichRide,
@@ -43,7 +51,7 @@ import { startPoint } from "./start.ts";
 import { formatRideMarkdown, writeRideMarkdown } from "./markdown.ts";
 import { rideMapPng, writeRideMap } from "./rideMap.ts";
 import { describeProfile, parseProfileArgs } from "./profile.ts";
-import { pushExported } from "./remote.ts";
+import { pushFile } from "./remote.ts";
 import { importLink, once, printQr, startShareServer } from "./share.ts";
 import { formatStopPlan } from "./stops.ts";
 import { Store } from "./store.ts";
@@ -95,7 +103,7 @@ const USAGE = `Usage: npm run rides -- <command>
   review [id|name] [track.gpx] [--yes]  After the ride: place the notes on the recorded track (or on the plan without one),
                                         show detours and pace, then confirm a rating per road stretch (--yes: accept all proposals)
   export <id|name> [file.gpx] [--pins N] [--push]  Write the ride as a GPX file (default: exports/ in the project); --pins caps the route points;
-                                        --push also sends the roadbook file to your server (RIDE_REMOTE_URL, RIDE_REMOTE_TOKEN)
+                                        --push sends the roadbook to your server (RIDE_REMOTE_URL, RIDE_REMOTE_TOKEN), quickly: the GPX and the line, waypoints and cameras, no limits traced
   qr <id|name>                          QR code of the ride's Google Maps link
   share <id|name>                       Serve the ride to the phone on the local Wi-Fi (QR code), until Ctrl-C
   trace <run> [--full]                  Replay a planning session step by step (run ids from "runs")
@@ -359,13 +367,19 @@ try {
       const pinsAt = args.indexOf("--pins");
       const maxPoints = pinsAt >= 0 ? Number(args[pinsAt + 1]) : undefined;
       const file = args.slice(1).find((a, i) => !a.startsWith("--") && args[i] !== "--pins");
+      if (args.includes("--push")) {
+        // A push sends the line, the waypoints and the cameras; the server traces the limits itself, so nothing is traced here.
+        const gpx = await exportSavedRideGpx(store, target, file, maxPoints);
+        console.log(`GPX written: ${gpx.path}`);
+        console.log(await pushFile(await pushableRoadbookFile(store, target)));
+        break;
+      }
       const exported = await exportSavedRide(store, target, file, maxPoints);
       const { path, rerouted, stopsAt } = exported;
       console.log(
         `GPX written: ${path}${rerouted ? "\n(Route line was not stored for this ride; it was routed again from its waypoints.)" : ""}`,
       );
       console.log(describeRoadbookFile(exported));
-      if (args.includes("--push")) console.log(await pushExported(exported.roadbookFile));
       if (stopsAt.length)
         console.log(
           `Planned stops in the route point list (as an app numbers the stages):\n${describeStopsAt(stopsAt).join("\n")}`,

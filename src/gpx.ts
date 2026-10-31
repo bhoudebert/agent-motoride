@@ -194,22 +194,60 @@ export function roadbookFilePath(gpxPath: string): string {
   return `${gpxPath.replace(/\.gpx$/i, "")}.motoride.json`;
 }
 
+/**
+ * Which roadbook the file says it is. A roadbook sent from another library (importRoadbookFile) keeps the origin it was sent with, so
+ * the phone recognises it as the roadbook it already holds; every other roadbook is itself, by its number in this library and its day.
+ */
+export function originOf(ride: Pick<SavedRide, "id" | "rideDayId" | "name" | "request">): {
+  roadbook: number;
+  ride: number | null;
+  name: string;
+} {
+  const sent = /^roadbook file agentRide:(\d+):/.exec(ride.request);
+  return sent
+    ? { roadbook: Number(sent[1]), ride: null, name: ride.name }
+    : { roadbook: ride.id, ride: ride.rideDayId, name: ride.name };
+}
+
+function roadbookInput(ride: SavedRide, gpx: GpxInput) {
+  return {
+    name: gpx.name,
+    description: gpx.description,
+    legs: gpx.legs,
+    shapes: gpx.shapes,
+    stops: gpx.stops,
+    cameras: ride.extras?.cameras ?? [],
+    origin: originOf(ride),
+  };
+}
+
 /** The roadbook file of a saved ride, from the GPX input already built for it (one tracing, shared by export and share). */
 export function savedRideRoadbook(ride: SavedRide, gpx: GpxInput) {
-  return buildRoadbookFile(
-    {
-      name: gpx.name,
-      description: gpx.description,
-      legs: gpx.legs,
-      shapes: gpx.shapes,
-      stops: gpx.stops,
-      cameras: ride.extras?.cameras ?? [],
-      origin: { roadbook: ride.id, ride: ride.rideDayId, name: ride.name },
-    },
-    undefined,
-    overpassBuiltUp,
-    configuredSigns(),
-  );
+  return buildRoadbookFile(roadbookInput(ride, gpx), undefined, overpassBuiltUp, configuredSigns());
+}
+
+/**
+ * The roadbook file a push sends: the line, the waypoints and the cameras, with nothing traced, no land use and no signs asked for.
+ * The server takes none of the limits from a file (it traces them on its own map), so doing it here would only be waiting.
+ */
+export async function pushableRoadbookFile(store: Store, ride: SavedRide): Promise<string> {
+  const { gpx } = await savedRideGpx(store, ride);
+  const { file } = await buildRoadbookFile(roadbookInput(ride, gpx), async () => {
+    throw new Error("not traced: the server does it");
+  });
+  return JSON.stringify(file);
+}
+
+/** The GPX of a saved ride alone: no roadbook file, so nothing traced and no lookups. */
+export async function exportSavedRideGpx(
+  store: Store,
+  ride: SavedRide,
+  file?: string,
+  maxRoutePoints?: number,
+): Promise<{ path: string; rerouted: boolean; stopsAt: Array<{ label: string; index: number; total: number }> }> {
+  const { gpx, rerouted } = await savedRideGpx(store, ride);
+  const input = { ...gpx, maxRoutePoints };
+  return { path: writeGpx(input, ride.id, file), rerouted, stopsAt: routePointIndex(input) };
 }
 
 /**

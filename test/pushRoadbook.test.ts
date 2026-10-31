@@ -26,10 +26,10 @@ const file = (extra: Record<string, unknown> = {}) => ({
   generatedAt: "2026-10-30T10:00:00.000Z",
   line,
   stops: [
-    { ...at(0), name: "Start", kind: "waypoint" },
+    { ...at(0), name: "Start: Start", kind: "waypoint" },
     { ...at(10), name: "Café", kind: "stop" },
-    { ...at(20), name: "Middle", kind: "waypoint" },
-    { ...at(40), name: "End", kind: "waypoint" },
+    { ...at(20), name: "1. Middle", kind: "waypoint" },
+    { ...at(40), name: "Finish: End", kind: "waypoint" },
   ],
   limits: [
     { from: 0, to: 20, kmh: 50, posted: true, road: "D 1" },
@@ -268,4 +268,53 @@ test("the client pushes with the rider's token and says what went wrong", async 
     await s.app.close();
     s.registry.close();
   }
+});
+
+test("the file served for a roadbook sent from another library keeps the origin it was sent with, and its name", async () => {
+  const { originOf } = await import("../src/gpx.ts");
+  const store = library();
+  const sent = importRoadbookFile(store, file({ origin: { app: "agentRide", roadbook: 7, name: "Device loop" } }));
+  const ride = store.findRide(String(sent.id))!;
+  assert.deepEqual(originOf(ride), { roadbook: 7, ride: null, name: "Device loop" }, "not this library's number");
+  const own = store.saveRide({
+    ...ride,
+    parentId: null,
+    request: "a loop",
+    rideDate: null,
+    departure: null,
+    extras: null,
+  });
+  assert.notEqual(own, sent.id);
+  const planned = store.findRide(String(own))!;
+  assert.deepEqual(
+    originOf(planned),
+    { roadbook: own, ride: planned.rideDayId, name: planned.name },
+    "a roadbook planned here is itself",
+  );
+  store.close();
+});
+
+test("a push sends the line, waypoints and cameras without asking anything of the network, and the server takes it in", async (t) => {
+  const { pushableRoadbookFile } = await import("../src/gpx.ts");
+  const store = library();
+  const sent = importRoadbookFile(store, file());
+  const ride = store.findRide(String(sent.id))!;
+  t.mock.method(globalThis, "fetch", async () => assert.fail("nothing is asked of the network"));
+  const body = JSON.parse(await pushableRoadbookFile(store, ride)) as Record<string, unknown> & {
+    stops: unknown[];
+    cameras: unknown[];
+    limits: unknown[];
+  };
+  assert.equal(body["format"], "motoride-roadbook");
+  assert.equal(body["name"], "Device loop");
+  assert.equal(body.cameras.length, 1);
+  assert.deepEqual(body.limits, [], "no limits: the server traces them on its own map");
+  assert.ok(body.stops.length >= 3, "the waypoints are in it");
+  // The other end takes it in as the same roadbook.
+  const there = library();
+  const kept = importRoadbookFile(there, body);
+  assert.equal(there.findRide(String(kept.id))!.name, "Device loop");
+  assert.deepEqual(there.findRide(String(kept.id))!.waypoints, ["Start", "Middle", "End"]);
+  store.close();
+  there.close();
 });

@@ -385,7 +385,7 @@ Write a ride as a GPX file for a GPS app: either a routeId from this session or 
 - `rideId` (integer, optional)
 - `name` (string, optional): Name inside the file, for a routeId
 - `file` (string, optional): Destination path; default exports/ in the project
-- `push` (boolean, optional): Also send the roadbook file to the rider's own server (RIDE_REMOTE_URL, RIDE_REMOTE_TOKEN), where the MotoRide app lists it. Only when the rider asks; a saved ride only.
+- `push` (boolean, optional): Send the roadbook to the rider's own server (RIDE_REMOTE_URL, RIDE_REMOTE_TOKEN), where it is added to their library and the MotoRide app lists it. Only when the rider asks; a saved ride only. Quick: writes the GPX and sends the line, waypoints and cameras; the server traces the speed limits itself, so no roadbook file is written here.
 
 #### `refreshRide`
 

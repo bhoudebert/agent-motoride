@@ -46,3 +46,4 @@ not rewritten.
 | [0047](0047-an-own-valhalla-runs-the-official-image.md)        | An own Valhalla runs the official image                                          | accepted |
 | [0048](0048-several-valhalla-servers-the-newest-answers.md)    | Several Valhalla servers: the newest answers                                     | accepted |
 | [0049](0049-two-valhalla-servers-are-rebuilt-in-turn.md)       | Two Valhalla servers are rebuilt in turn                                         | accepted |
+| [0050](0050-roadbooks-are-refreshed-on-demand-with-a-state.md) | Roadbooks are refreshed on demand, with a state for the phone                    | accepted |

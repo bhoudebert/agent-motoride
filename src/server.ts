@@ -8,7 +8,7 @@ import { tenantDbPath, tenantDir } from "./dataDir.ts";
 import { CHANNEL, LiveShares, type LiveOptions } from "./live.ts";
 import { join } from "node:path";
 import { PUSHED_ID_BASE, MAX_PUSHED_BYTES, PushedRoadbooks, PushRefused } from "./pushedRoadbooks.ts";
-import { listRoadbooks, type MakeRoadbookFile, RoadbookFiles } from "./roadbookDownload.ts";
+import { type MakeRoadbookFile, ReadyRoadbooks } from "./roadbookDownload.ts";
 import { MAX_POINTS, TrafficFlow, type TrafficOptions } from "./traffic.ts";
 import { type RequestContext, runInContext } from "./requestContext.ts";
 import { valhallaMapDay } from "./http.ts";
@@ -119,7 +119,7 @@ export function createHttpServer(options: ServeOptions): {
   } = options;
   const live = new LiveShares({ now, ...options.live });
   const traffic = new TrafficFlow({ now, ...options.traffic });
-  const roadbookFiles = new RoadbookFiles(options.makeRoadbookFile);
+  const roadbooks = new ReadyRoadbooks({ make: options.makeRoadbookFile, mapDay: options.mapDay ?? valhallaMapDay });
   const sessions = new Map<string, Session>();
   const windows = new Map<string, { start: number; count: number }>();
 
@@ -241,14 +241,22 @@ export function createHttpServer(options: ServeOptions): {
   /** The rider's roadbooks for the phone: a list with version stamps, and one roadbook file (docs/roadbook-file.md). */
   async function handleRoadbooks(req: IncomingMessage, res: ServerResponse, path: string): Promise<void> {
     const pushing = req.method === "PUT" && path === "/roadbooks";
-    if (req.method !== "GET" && !pushing)
-      return json(res, 405, { error: "Method not allowed." }, { Allow: path === "/roadbooks" ? "GET, PUT" : "GET" });
+    const refreshing = req.method === "POST" && /^\/roadbook\/\d{1,9}\/refresh$/.test(path);
+    if (req.method !== "GET" && !pushing && !refreshing)
+      return json(
+        res,
+        405,
+        { error: "Method not allowed." },
+        { Allow: path === "/roadbooks" ? "GET, PUT" : path.endsWith("/refresh") ? "POST" : "GET" },
+      );
     const token = bearer(req);
     const tenant = token ? registry.verify(token) : null;
     if (!tenant) return json(res, 401, { error: "A rider's token is needed." }, { "WWW-Authenticate": "Bearer" });
     if (limited(tenant)) return json(res, 429, { error: "Too many requests; wait a minute." }, { "Retry-After": "60" });
     const file = /^\/roadbook\/(\d{1,9})$/.exec(path);
-    if (path !== "/roadbooks" && !file) return json(res, 404, { error: "Not found" });
+    const refresh = /^\/roadbook\/(\d{1,9})\/refresh$/.exec(path);
+    if (path !== "/roadbooks" && !file && !refresh) return json(res, 404, { error: "Not found" });
+    if (refresh && req.method !== "POST") return json(res, 405, { error: "Method not allowed." }, { Allow: "POST" });
     const pushed = new PushedRoadbooks(join(tenantDir(tenant.id), "pushed"));
     if (pushing) {
       // A rider pushes at most 10 files a minute.
@@ -271,7 +279,29 @@ export function createHttpServer(options: ServeOptions): {
         return json(res, 500, { error: "The roadbook file could not be kept." });
       }
     }
-    // A file costs a route tracing on the public router: a rider asks for at most 30 a minute.
+    // A refresh traces a roadbook again: a rider asks for at most 20 a minute.
+    if (refresh) {
+      const t = now();
+      const w = windows.get(`refresh:${tenant.id}`);
+      if (!w || t - w.start >= 60_000) windows.set(`refresh:${tenant.id}`, { start: t, count: 1 });
+      else if (++w.count > 20)
+        return json(res, 429, { error: "Too many requests; wait a minute." }, { "Retry-After": "30" });
+      const id = Number(refresh[1]);
+      // A pushed file is the rider's own: there is nothing to refresh.
+      if (id >= PUSHED_ID_BASE)
+        return pushed.get(id)
+          ? json(res, 200, { id, state: "current" })
+          : json(res, 404, { error: "No such roadbook." });
+      const store = new Store(tenantDbPath(tenant.id));
+      try {
+        const state = await roadbooks.refresh(tenant.id, store, id);
+        if (state === null) return json(res, 404, { error: "No such roadbook." });
+        return json(res, state === "refreshing" || state === "outdated" ? 202 : 200, { id, state });
+      } finally {
+        store.close();
+      }
+    }
+    // A file is served from disk and costs nothing; the first one of a roadbook traces it. A rider asks for at most 30 a minute.
     if (file) {
       const t = now();
       const w = windows.get(`roadbook:${tenant.id}`);
@@ -297,9 +327,14 @@ export function createHttpServer(options: ServeOptions): {
     }
     const store = new Store(tenantDbPath(tenant.id));
     try {
-      const mapDay = await (options.mapDay ?? valhallaMapDay)();
-      if (!file) return json(res, 200, { roadbooks: [...listRoadbooks(store, mapDay), ...pushed.list()] });
-      const made = await roadbookFiles.get(tenant.id, store, Number(file[1]), mapDay);
+      if (!file)
+        return json(res, 200, {
+          roadbooks: [
+            ...(await roadbooks.list(tenant.id, store)),
+            ...pushed.list().map((p) => ({ ...p, state: "current" as const })),
+          ],
+        });
+      const made = await roadbooks.get(tenant.id, store, Number(file[1]));
       if (!made) return json(res, 404, { error: "No such roadbook." });
       const etag = `"${made.stamp}"`;
       if (req.headers["if-none-match"] === etag) {

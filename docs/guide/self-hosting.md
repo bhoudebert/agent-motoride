@@ -193,8 +193,9 @@ more without the rebuild flag and prints the extract dates. It uses `docker-comp
 
 - **Why the extracts are deleted.** `VALHALLA_REBUILD=True` alone only rebuilds from the files already on disk, so it spends hours rebuilding the same old map.
   The image downloads when the extracts are missing (seen on a real server). That is why you should not set the flag by hand.
-- **What the phones see.** After a rebuild every roadbook gets a new version, so the app offers the update on each one and
-  the download carries the limits of the new map. With two servers, this happens when the first of them finishes a newer map.
+- **What the phones see.** After a rebuild every roadbook is _outdated_ on the phone: the old file still works, and a tap makes the
+  server trace it again on the new map, in the background, one roadbook at a time. The server does not go through the riders' libraries
+  when the map changes: a rider's phone asking for its list is what starts a refresh, for a ride dated in the next two weeks.
 - **How often.** About once a month. OpenStreetMap changes daily, but speed limits and roads change slowly. Weekly costs the same downtime for little gain.
 - **Downtime.** While it builds (about 2 hours for France and Belgium) the server cannot route or build roadbook files, and there is no fallback to the
   public server. It needs about 20 GB of free disk while old and new files exist together. Pick a night.

@@ -76,15 +76,30 @@ A phone enrolled on an agentRide server (the token it got from its invitation) c
 being exported:
 
 - `GET /roadbooks` with `Authorization: Bearer <token>` gives `{"roadbooks": [{"id", "name", "distanceKm",
-"ridingMinutes", "stamp"}]}`, the rider's roadbooks.
-- `GET /roadbook/<id>` gives the file above. Its `ETag` is the roadbook's `stamp`; send it back in `If-None-Match` to
-  get 304 when the copy you hold is current. The file is traced on first request, which can take several seconds.
-- The stamp changes when the route, the stops, the cameras or the name change. On a server that runs its own Valhalla
-  (`VALHALLA_URL` set) it also changes when that map is rebuilt, by the day of the newest map (it never goes back, a restart of the server included: the day is kept in the data folder), so
-  every roadbook is offered again and comes back with the limits of the new map. A change of OpenStreetMap limits that
-  the map has not picked up yet is not seen, and neither is the public server's map: its schedule is not the host's.
-- Errors: 401 no or wrong token, 404 no such roadbook, 429 too many requests, 502 the route could not be traced (try
-  again).
+"ridingMinutes", "stamp", "state", "mapDay"?, "error"?}]}`, the rider's roadbooks. It answers at once and never
+  waits for a file. `stamp` is the version of the file that is **ready to download now**; `state` says where the
+  roadbook stands:
+  - `current`: the ready file is made from the roadbook as it is and on the map in use;
+  - `outdated`: the ready file is older (the roadbook changed, or the host rebuilt its Valhalla map), or there is
+    none yet; the old file still works;
+  - `refreshing`: the server is making a new file; poll the list;
+  - `failed`: the last try failed (`error` says why); the ready file is still served; a tap tries again.
+    `mapDay` (UTC day, only on a host with its own Valhalla) is the map the ready file was made on. A reader that
+    ignores `state` sees a stamp that only changes when a new file is ready, so it never offers an update early.
+- `GET /roadbook/<id>` gives the file above, **at once**, even when it is outdated. Its `ETag` is the ready file's
+  `stamp`; send it back in `If-None-Match` to get 304 when the copy you hold is the ready one. The first file of a
+  roadbook is made on that first request (several seconds); after that files are kept on disk.
+- `POST /roadbook/<id>/refresh` asks for a new file: 202 `{"id", "state": "refreshing"}` when it starts (or is
+  already running), 200 `{"id", "state"}` when the roadbook is already `current`, 404 for a roadbook that is not the
+  rider's. The server makes it in the background, one at a time for the whole server; the phone shows "under refresh"
+  and polls `GET /roadbooks` until the state is `current`, then downloads the file. A list also starts, by itself,
+  the refresh of an outdated roadbook with a ride dated in the next 14 days. Nothing runs for riders who are not
+  asking.
+- On a server that runs its own Valhalla (`VALHALLA_URL` set) a rebuilt map makes every roadbook `outdated`, with the
+  limits of the new map available on refresh. A change of OpenStreetMap limits that the map has not picked up yet
+  is not seen, and neither is the public server's map: its schedule is not the host's.
+- Errors: 401 no or wrong token, 404 no such roadbook, 405 wrong method, 429 too many requests, 502 the first file of
+  a roadbook could not be made (try again).
 
 ## Pushing to a server
 

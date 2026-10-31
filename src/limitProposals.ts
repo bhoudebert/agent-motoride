@@ -22,6 +22,8 @@ const NEAR_LINE_M = 40;
 /** A correction applies to a road within this distance of where it was made, m, and along it. */
 const CORRECTION_REACH_M = 15;
 const AXIS_TOLERANCE_DEG = 35;
+/** A stretch is judged in windows of this many line points (about 200 m on a roadbook's line). */
+const WINDOW = 10;
 
 export interface RidePoint {
   lat: number;
@@ -120,19 +122,26 @@ export interface LimitCorrection {
 
 const bearingOf = (points: LatLon[], from: number, to: number): number => bearingDeg(points[from]!, points[to]!);
 
-/** The corrections whose road the stretch of `points` (indexes from to to) lies on: near its middle and along it. */
+/**
+ * The corrections whose road the stretch of `points` (indexes from to to) lies on: near its middle and along it. With `whole`, its
+ * two ends must lie on the correction too, so a correction that covers only part of a long edge does not lower all of it.
+ */
 function onCorrection(
   corrections: Array<{ points: LatLon[]; kmh: number | null }>,
   points: LatLon[],
   from: number,
   to: number,
+  whole = false,
 ) {
   const mid = points[Math.round((from + to) / 2)]!;
   const way = bearingOf(points, from, to);
+  const near = (c: { points: LatLon[] }, p: LatLon) =>
+    c.points.some((q, i) => i + 1 < c.points.length && metresToSegment(p, q, c.points[i + 1]!) <= CORRECTION_REACH_M);
   return corrections.filter((c) => {
     for (let i = 0; i + 1 < c.points.length; i++) {
       if (metresToSegment(mid, c.points[i]!, c.points[i + 1]!) > CORRECTION_REACH_M) continue;
-      if (axisAngle(way, bearingDeg(c.points[i]!, c.points[i + 1]!)) <= AXIS_TOLERANCE_DEG) return true;
+      if (axisAngle(way, bearingDeg(c.points[i]!, c.points[i + 1]!)) > AXIS_TOLERANCE_DEG) continue;
+      return !whole || (near(c, points[from]!) && near(c, points[to]!));
     }
     return false;
   });
@@ -148,7 +157,7 @@ export function correctedLimits(corrections: LimitCorrection[]): CorrectedLimit 
   const confirmed = decoded(corrections.filter((c) => c.kmh !== null));
   if (!confirmed.length) return undefined;
   return (points, from, to) => {
-    const kmh = onCorrection(confirmed, points, from, to)[0]?.kmh;
+    const kmh = onCorrection(confirmed, points, from, to, true)[0]?.kmh;
     return kmh ?? null;
   };
 }
@@ -174,43 +183,67 @@ export function proposeLowerLimits(
   const out: LimitProposal[] = [];
   for (const stretch of file.limits) {
     if (stretch.posted || stretch.source === "sign" || stretch.source === "ride") continue;
-    const inside: RidePoint[] = [];
-    let seconds = 0;
-    let before: { time: number } | null = null;
+    // The ride's moving points on this stretch, each in the window (of WINDOW line points, about 200 m) it was ridden in.
+    const inside: Array<{ p: RidePoint; w: number }> = [];
     for (const [i, p] of ride.entries()) {
       const at = placed[i];
-      if (at === null || at === undefined || at < stretch.from || at >= stretch.to) {
-        before = null;
-        continue;
-      }
-      if (p.kmh > MOVING_KMH) {
-        inside.push(p);
-        if (before && p.time - before.time <= 5000) seconds += (p.time - before.time) / 1000;
-      }
-      before = p;
+      if (at === null || at === undefined || at < stretch.from || at >= stretch.to || p.kmh <= MOVING_KMH) continue;
+      inside.push({ p, w: Math.floor((at - stretch.from) / WINDOW) });
     }
-    if (seconds < MIN_SECONDS) continue;
-    const speeds = inside.map((p) => p.kmh).sort((a, b) => a - b);
-    const median = quantile(speeds, 0.5);
-    const p85 = quantile(speeds, 0.85);
-    if (p85 - median > MAX_SPREAD_KMH || stretch.kmh - p85 < MIN_GAP_KMH) continue;
-    const proposed = USUAL_LIMITS.find((v) => v >= p85 - MARGIN_KMH);
-    if (proposed === undefined || proposed >= stretch.kmh) continue;
-    if (onCorrection(known, line, stretch.from, stretch.to).length) continue;
-    const mid = line[Math.round((stretch.from + stretch.to) / 2)]!;
-    out.push({
-      n: 0,
-      from: stretch.from,
-      to: stretch.to,
-      at: mid,
-      ...(stretch.road ? { road: stretch.road } : {}),
-      guess: stretch.kmh,
-      median: Math.round(median),
-      p85: Math.round(p85),
-      seconds: Math.round(seconds),
-      proposed,
-      shape: encodePolyline(line.slice(stretch.from, stretch.to + 1)),
-    });
+    // A guessed stretch can cover several real zones (a village, then open road): it is cut into runs of windows ridden at one speed,
+    // and each run is judged alone, so a correction only covers the part that was ridden steadily low.
+    const median = (xs: number[]) =>
+      quantile(
+        [...xs].sort((a, b) => a - b),
+        0.5,
+      );
+    const byWindow = new Map<number, number[]>();
+    for (const { p, w } of inside) byWindow.set(w, [...(byWindow.get(w) ?? []), p.kmh]);
+    const runs: number[][] = [];
+    let current: { ws: number[]; speeds: number[] } | null = null;
+    for (const w of [...byWindow.keys()].sort((a, b) => a - b)) {
+      const speeds = byWindow.get(w)!;
+      if (speeds.length < 2) continue;
+      if (current && Math.abs(median(speeds) - median(current.speeds)) <= MAX_SPREAD_KMH) {
+        current.ws.push(w);
+        current.speeds.push(...speeds);
+      } else {
+        if (current) runs.push(current.ws);
+        current = { ws: [w], speeds: [...speeds] };
+      }
+    }
+    if (current) runs.push(current.ws);
+    for (const ws of runs) {
+      const mine = inside.filter(({ w }) => ws.includes(w));
+      let seconds = 0;
+      for (let k = 1; k < mine.length; k++) {
+        const dt = mine[k]!.p.time - mine[k - 1]!.p.time;
+        if (dt > 0 && dt <= 5000) seconds += dt / 1000;
+      }
+      if (seconds < MIN_SECONDS) continue;
+      const speeds = mine.map(({ p }) => p.kmh).sort((a, b) => a - b);
+      const med = quantile(speeds, 0.5);
+      const p85 = quantile(speeds, 0.85);
+      if (p85 - med > MAX_SPREAD_KMH || stretch.kmh - p85 < MIN_GAP_KMH) continue;
+      const proposed = USUAL_LIMITS.find((v) => v >= p85 - MARGIN_KMH);
+      if (proposed === undefined || proposed >= stretch.kmh) continue;
+      const from = stretch.from + ws[0]! * WINDOW;
+      const to = Math.min(stretch.to, stretch.from + (ws.at(-1)! + 1) * WINDOW);
+      if (onCorrection(known, line, from, to).length) continue;
+      out.push({
+        n: 0,
+        from,
+        to,
+        at: line[Math.round((from + to) / 2)]!,
+        ...(stretch.road ? { road: stretch.road } : {}),
+        guess: stretch.kmh,
+        median: Math.round(med),
+        p85: Math.round(p85),
+        seconds: Math.round(seconds),
+        proposed,
+        shape: encodePolyline(line.slice(from, to + 1)),
+      });
+    }
   }
   return out.sort((a, b) => a.from - b.from).map((p, i) => ({ ...p, n: i + 1 }));
 }

@@ -300,3 +300,51 @@ test("a rejected proposal is not proposed again, and a ride with no roadbook has
     store.close();
   }
 });
+
+test("a guessed stretch that covers two real zones is cut: only the part ridden steadily low is proposed", async () => {
+  // One guessed 80 over the whole line; the rider is in a village (50) for the first half and on open road (80) after.
+  const { file } = await buildRoadbookFile(input, tracing([edge(0, 60)]));
+  assert.equal(file.limits.length, 1);
+  const proposals = proposeLowerLimits(
+    file,
+    ride((i) => (i < 40 ? 49 + (i % 3) : 80)),
+  );
+  assert.equal(proposals.length, 1);
+  assert.deepEqual([proposals[0]!.from, proposals[0]!.to, proposals[0]!.proposed], [0, 40, 50]);
+  assert.ok(decodePolyline(proposals[0]!.shape).length <= 41, "the correction covers the village only");
+  // Applied, the open road keeps its guess (the roadbook's edges end where the village does).
+  const { file: after } = await buildRoadbookFile(
+    input,
+    tracing([edge(0, 40), edge(40, 60)]),
+    undefined,
+    undefined,
+    correctedLimits([{ shape: proposals[0]!.shape, kmh: 50 }]),
+  );
+  assert.deepEqual(
+    after.limits.map((l) => [l.from, l.kmh, l.source]),
+    [
+      [0, 50, "ride"],
+      [40, 80, undefined],
+    ],
+  );
+});
+
+test("a confirmed correction does not lower an edge it covers only in part", async () => {
+  const { file } = await buildRoadbookFile(input, tracing([edge(0, 60)]));
+  const [p] = proposeLowerLimits(
+    file,
+    ride((i) => (i < 40 ? 50 : 80)),
+  );
+  const { file: after } = await buildRoadbookFile(
+    input,
+    tracing([edge(0, 60)]),
+    undefined,
+    undefined,
+    correctedLimits([{ shape: p!.shape, kmh: 50 }]),
+  );
+  assert.deepEqual(
+    after.limits.map((l) => [l.from, l.to, l.kmh]),
+    [[0, 60, 80]],
+    "one edge of 60 points, a correction on 40 of them: the guess stays, as before",
+  );
+});

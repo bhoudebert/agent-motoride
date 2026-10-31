@@ -25,7 +25,7 @@ the ride and for the local rules, including on speed-camera information.
 - A ride you recorded with the app and uploaded to your server can correct the guesses. Ask Claude to check your last recorded ride
   (`reviewRecordedRide`, or `npm run rides -- review-recorded` on the server): it compares your speed with the limits the roadbook only
   guessed. Where you held a steady speed at least 20 km/h under the guess (15 seconds or more, 85% of the time within 8 km/h of the
-  median), it proposes the usual limit just above your speed, with a margin of 3 km/h. It never questions a limit posted by
+  median), it proposes the usual limit just above your speed, with a margin of 3 km/h. A guessed stretch that covers two zones (a village, then open road) is cut about every 200 m and each part is judged alone, so only the part you rode steadily low is proposed. It never questions a limit posted by
   OpenStreetMap or a sign, and a speed never raises a limit: riding faster than planned proposes nothing. One ride is weak evidence (you
   may have been cautious), so nothing changes until you confirm each proposal; a confirmed limit then replaces the guess on that road in
   every roadbook that passes there, from its next refresh, and a rejected one is not proposed again.

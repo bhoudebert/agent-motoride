@@ -50,8 +50,10 @@ async function setup() {
   bobStore.close();
   const made: string[] = [];
   let failNext = false;
+  let mapDay = "";
   const app = createHttpServer({
     registry,
+    mapDay: async () => mapDay,
     makeRoadbookFile: async (_store, r) => {
       made.push(r.name);
       if (failNext) {
@@ -65,7 +67,18 @@ async function setup() {
   const url = `http://127.0.0.1:${(app.http.address() as AddressInfo).port}`;
   const get = (path: string, token?: string, headers: Record<string, string> = {}) =>
     fetch(`${url}${path}`, { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...headers } });
-  return { registry, alice, bob, first, app, url, get, made, failNext: () => (failNext = true) };
+  return {
+    registry,
+    alice,
+    bob,
+    first,
+    app,
+    url,
+    get,
+    made,
+    failNext: () => (failNext = true),
+    setMapDay: (day: string) => (mapDay = day),
+  };
 }
 
 test("the roadbook list and file need a rider's token and only show the rider's own roadbooks", async () => {
@@ -133,6 +146,36 @@ test("a roadbook file is made once per version, answers 304 to the stamp, and a 
     store2.close();
     assert.equal((await s.get(`/roadbook/${s.first}`, s.alice.token)).status, 502);
     assert.equal((await s.get(`/roadbook/${s.first}`, s.alice.token)).status, 200, "a failure is not kept");
+  } finally {
+    await s.app.close();
+    s.registry.close();
+  }
+});
+
+test("a rebuilt Valhalla map changes the version of every roadbook, and a host without its own map keeps its stamps", async () => {
+  const s = await setup();
+  try {
+    const stampOf = async () =>
+      ((await (await s.get("/roadbooks", s.alice.token)).json()) as { roadbooks: Array<{ stamp: string }> })
+        .roadbooks[0]!.stamp;
+    const none = await stampOf();
+    const { rideStamp } = await import("../src/roadbookDownload.ts");
+    const reader = new Store(tenantDbPath(s.alice.tenant.id));
+    assert.equal(none, rideStamp(reader.findRide("1")!), "without a map day the stamp is what it was");
+    reader.close();
+    s.setMapDay("2026-10-31");
+    const oct = await stampOf();
+    assert.notEqual(oct, none);
+    assert.equal(await stampOf(), oct, "the same map gives the same stamp");
+
+    const file = await s.get(`/roadbook/${s.first}`, s.alice.token, { "If-None-Match": `"${none}"` });
+    assert.equal(file.status, 200, "a phone holding the old stamp is sent the file again");
+    assert.equal(file.headers.get("etag"), `"${oct}"`);
+    assert.equal(s.made.length, 1);
+    s.setMapDay("2026-11-14");
+    assert.notEqual(await stampOf(), oct);
+    await s.get(`/roadbook/${s.first}`, s.alice.token);
+    assert.equal(s.made.length, 2, "made again for the new map");
   } finally {
     await s.app.close();
     s.registry.close();

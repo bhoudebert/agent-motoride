@@ -8,23 +8,33 @@ export interface RoadbookListing {
   name: string;
   distanceKm: number;
   ridingMinutes: number;
-  /** Changes when the route, the stops, the cameras or the name change; the phone compares it with the one it kept. */
+  /**
+   * Changes when the route, the stops, the cameras or the name change, and, on a host that runs its own Valhalla, when its map is
+   * rebuilt (the limits come from it); the phone compares it with the one it kept.
+   */
   stamp: string;
 }
 
 /** What the roadbook file is made of, short and stable: the same saved ride always gives the same stamp. */
-export function rideStamp(ride: SavedRide): string {
-  const content = JSON.stringify([ride.name, ride.shapes, ride.extras?.cameras ?? [], ride.extras?.stopPlan ?? null]);
+export function rideStamp(ride: SavedRide, mapDay = ""): string {
+  const content = JSON.stringify([
+    ride.name,
+    ride.shapes,
+    ride.extras?.cameras ?? [],
+    ride.extras?.stopPlan ?? null,
+    // Added only when there is one, so a host without its own map keeps the stamps it had.
+    ...(mapDay ? [mapDay] : []),
+  ]);
   return createHash("sha256").update(content).digest("hex").slice(0, 16);
 }
 
-export function listRoadbooks(store: Store): RoadbookListing[] {
+export function listRoadbooks(store: Store, mapDay = ""): RoadbookListing[] {
   return store.listRides().map((ride) => ({
     id: ride.id,
     name: ride.name,
     distanceKm: ride.distanceKm,
     ridingMinutes: ride.ridingMinutes,
-    stamp: rideStamp(ride),
+    stamp: rideStamp(ride, mapDay),
   }));
 }
 
@@ -50,10 +60,10 @@ export class RoadbookFiles {
   }
 
   /** The file of roadbook `id` of the rider, or null when there is no such roadbook. A failure is not kept. */
-  async get(tenantId: string, store: Store, id: number): Promise<{ stamp: string; body: string } | null> {
+  async get(tenantId: string, store: Store, id: number, mapDay = ""): Promise<{ stamp: string; body: string } | null> {
     const ride = store.findRide(String(id));
     if (!ride) return null;
-    const stamp = rideStamp(ride);
+    const stamp = rideStamp(ride, mapDay);
     const key = `${tenantId}:${id}:${stamp}`;
     let made = this.#made.get(key);
     if (!made) {

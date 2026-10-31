@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test, type TestContext } from "node:test";
-import { PUBLIC_VALHALLA, resetValhallaRanking, valhallaJson, valhallaUrls } from "../src/http.ts";
+import { PUBLIC_VALHALLA, resetValhallaRanking, valhallaJson, valhallaMapDay, valhallaUrls } from "../src/http.ts";
 
 const A = "http://valhalla:8002";
 const B = "http://valhalla2:8002";
@@ -98,4 +98,21 @@ test("when every server fails the error says so and keeps the cause", async (t) 
     () => valhallaJson("/route"),
     (e: Error) => /No Valhalla server answered \(2 tried\)/.test(e.message) && e.cause instanceof Error,
   );
+});
+
+test("the map day is the newest build day of the host's own servers, never goes back, and is empty without own servers", async (t) => {
+  withUrls(t, undefined);
+  assert.equal(await valhallaMapDay(), "", "the public server is not followed");
+  withUrls(t, `${A},${B}`);
+  const day = (iso: string) => Math.floor(Date.parse(iso) / 1000);
+  const state: Record<string, Server> = {
+    "valhalla:8002": { built: day("2026-10-23T19:26:00Z") },
+    "valhalla2:8002": { built: day("2026-10-31T14:40:00Z") },
+  };
+  servers(t, state);
+  assert.equal(await valhallaMapDay(), "2026-10-31");
+  // The newest server is down for a moment: the day does not go back to the older map's.
+  state["valhalla2:8002"] = { down: true };
+  await valhallaJson("/route"); // answered by the other server; a failure makes the next call ask the dates again
+  assert.equal(await valhallaMapDay(), "2026-10-31");
 });

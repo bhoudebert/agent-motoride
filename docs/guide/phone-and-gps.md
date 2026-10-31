@@ -144,7 +144,10 @@ computer. Any other way of getting the one `.motoride.json` file to the phone
 With the phone enrolled on your server (the invitation QR, see [Run it for several riders](/several-riders)), the
 roadbooks of the library on that server can be fetched by the app itself: `GET /roadbooks` lists them with a version
 stamp and `GET /roadbook/<id>` gives the file. Nothing to export or carry. This needs a server; without one, use the
-share page or any way of moving the one `.motoride.json` file.
+share page or any way of moving the one `.motoride.json` file. A roadbook's version changes when its route, stops or
+cameras change (`refresh` it on the server to bring new cameras in), and, if your server runs its own Valhalla, each
+time you rebuild its map ([Keep the map current](/self-hosting)): the app then offers the update on every roadbook and the
+download carries the speed limits of the new map.
 
 If you plan on a library that is not on the server (your own computer), push the roadbook file there. Put the server's
 address and your rider token in `.env` (`RIDE_REMOTE_URL`, `RIDE_REMOTE_TOKEN`, the token from `npm run admin -- add`):

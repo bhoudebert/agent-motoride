@@ -11,6 +11,7 @@ import { PUSHED_ID_BASE, MAX_PUSHED_BYTES, PushedRoadbooks, PushRefused } from "
 import { listRoadbooks, type MakeRoadbookFile, RoadbookFiles } from "./roadbookDownload.ts";
 import { MAX_POINTS, TrafficFlow, type TrafficOptions } from "./traffic.ts";
 import { type RequestContext, runInContext } from "./requestContext.ts";
+import { valhallaMapDay } from "./http.ts";
 import { createRideServer } from "./rideServer.ts";
 import { Store } from "./store.ts";
 import type { Registry, Tenant } from "./tenants.ts";
@@ -39,6 +40,8 @@ export interface ServeOptions {
   traffic?: TrafficOptions;
   /** Makes the roadbook file of a saved ride; traces the route by default (tests give a fake). */
   makeRoadbookFile?: MakeRoadbookFile;
+  /** The day the host's own Valhalla map was built, "" when it runs none; part of a roadbook's version. Tests give their own. */
+  mapDay?: () => Promise<string>;
 }
 
 interface Session {
@@ -294,8 +297,9 @@ export function createHttpServer(options: ServeOptions): {
     }
     const store = new Store(tenantDbPath(tenant.id));
     try {
-      if (!file) return json(res, 200, { roadbooks: [...listRoadbooks(store), ...pushed.list()] });
-      const made = await roadbookFiles.get(tenant.id, store, Number(file[1]));
+      const mapDay = await (options.mapDay ?? valhallaMapDay)();
+      if (!file) return json(res, 200, { roadbooks: [...listRoadbooks(store, mapDay), ...pushed.list()] });
+      const made = await roadbookFiles.get(tenant.id, store, Number(file[1]), mapDay);
       if (!made) return json(res, 404, { error: "No such roadbook." });
       const etag = `"${made.stamp}"`;
       if (req.headers["if-none-match"] === etag) {

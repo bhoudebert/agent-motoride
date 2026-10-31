@@ -189,7 +189,7 @@ export class ReadyRoadbooks {
       const ride = store.findRide(String(id));
       if (!ride) return;
       const mapDay = await this.#mapDay();
-      const corrections = store.limitCorrectionsVersion();
+      const corrections = store.limitCorrectionsVersion(ride.shapes);
       const body = await this.#make(store, ride);
       console.log(
         `[roadbook] ${tenantId} #${id} made in ${this.#now() - started} ms (${(body.length / 1024).toFixed(0)} KB)`,
@@ -261,9 +261,9 @@ export class ReadyRoadbooks {
   async list(tenantId: string, store: Store): Promise<RoadbookListing[]> {
     const mapDay = await this.#mapDay();
     const rides = store.listRides();
-    const corrections = store.limitCorrectionsVersion();
     const today = this.#now();
     const out = rides.map((ride) => {
+      const corrections = store.limitCorrectionsVersion(ride.shapes);
       let state = this.#stateOf(tenantId, ride, mapDay, corrections);
       if (state === "outdated" && ride.rideDate) {
         const ahead = Date.parse(`${ride.rideDate}T00:00:00Z`) - today;
@@ -355,7 +355,7 @@ export class ReadyRoadbooks {
     if (!ride) return null;
     const mapDay = await this.#mapDay();
     this.#failures.delete(`${tenantId}:${id}`);
-    const state = this.#stateOf(tenantId, ride, mapDay, store.limitCorrectionsVersion());
+    const state = this.#stateOf(tenantId, ride, mapDay, store.limitCorrectionsVersion(ride.shapes));
     if (state !== "outdated") return state;
     return this.#enqueue(tenantId, ride, mapDay) ? "refreshing" : "outdated";
   }

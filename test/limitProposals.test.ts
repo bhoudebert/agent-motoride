@@ -348,3 +348,43 @@ test("a confirmed correction does not lower an edge it covers only in part", asy
     "one edge of 60 points, a correction on 40 of them: the guess stays, as before",
   );
 });
+
+test("a confirmed correction changes the version only of the roadbooks that pass there", async () => {
+  const store = new Store(join(mkdtempSync(join(tmpdir(), "ride-version-")), "rides.db"));
+  try {
+    const { importRoadbookFile } = await import("../src/importRoadbook.ts");
+    const mk = (name: string, a: { lat: number; lon: number }, b: { lat: number; lon: number }) =>
+      importRoadbookFile(store, {
+        format: "motoride-roadbook",
+        version: 1,
+        name,
+        line: encodePolyline(bentLine(a, b, 61)),
+        stops: [],
+        limits: [],
+        cameras: [],
+      }).id;
+    const near = mk("Near", { lat: 50.4, lon: 3.0 }, { lat: 50.42, lon: 3.0 });
+    const crossing = mk("Crossing", { lat: 50.41, lon: 2.99 }, { lat: 50.41, lon: 3.01 });
+    const far = mk("Far", { lat: 51.0, lon: 4.0 }, { lat: 51.02, lon: 4.0 });
+    const shapesOf = (id: number) => store.findRide(String(id))!.shapes!;
+    const versions = () => [near, crossing, far].map((id) => store.limitCorrectionsVersion(shapesOf(id)));
+    assert.deepEqual(versions(), ["", "", ""]);
+
+    // A stretch of the first road, 40 points of it.
+    store.addLimitCorrection({ shape: encodePolyline(line.slice(0, 41)), kmh: 50 });
+    assert.deepEqual(versions(), ["1.1", "1.1", ""], "the road and the one crossing it; the far one is left alone");
+    assert.equal(store.limitCorrectionsVersion(), "1.1", "no route: every confirmed correction counts");
+
+    // A rejection changes nothing; a correction on the far road changes only the far roadbook.
+    store.addLimitCorrection({ shape: encodePolyline(line.slice(40, 61)), kmh: null });
+    assert.deepEqual(versions(), ["1.1", "1.1", ""]);
+    store.addLimitCorrection({
+      shape: encodePolyline(bentLine({ lat: 51.0, lon: 4.0 }, { lat: 51.01, lon: 4.0 }, 30)),
+      kmh: 50,
+    });
+    assert.deepEqual(versions(), ["1.1", "1.1", "1.3"], "the first two keep their stamp");
+    assert.equal(store.limitCorrectionsVersion(null), "");
+  } finally {
+    store.close();
+  }
+});

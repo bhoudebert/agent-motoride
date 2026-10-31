@@ -28,7 +28,7 @@ the ride and for the local rules, including on speed-camera information.
   median), it proposes the usual limit just above your speed, with a margin of 3 km/h. A guessed stretch that covers two zones (a village, then open road) is cut about every 200 m and each part is judged alone, so only the part you rode steadily low is proposed. It never questions a limit posted by
   OpenStreetMap or a sign, and a speed never raises a limit: riding faster than planned proposes nothing. One ride is weak evidence (you
   may have been cautious), so nothing changes until you confirm each proposal; a confirmed limit then replaces the guess on that road in
-  every roadbook that passes there, from its next refresh, and a rejected one is not proposed again.
+  every roadbook that passes there, from its next refresh (the phone offers it; the other roadbooks are not touched), and a rejected one is not proposed again.
 - Road data comes from OpenStreetMap and can be incomplete or out of date. Routes and tagged limits come from Valhalla's snapshot of
   it: the public server's, or your own, which is as old as the last `deploy/update-map.sh` (see [Host it yourself](self-hosting.md)).
   Closures and roadworks are not checked.

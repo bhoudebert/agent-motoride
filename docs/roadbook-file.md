@@ -76,7 +76,7 @@ A phone enrolled on an agentRide server (the token it got from its invitation) c
 being exported:
 
 - `GET /roadbooks` with `Authorization: Bearer <token>` gives `{"roadbooks": [{"id", "name", "distanceKm",
-"ridingMinutes", "stamp", "state", "mapDay"?, "error"?}]}`, the rider's roadbooks. It answers at once and never
+"ridingMinutes", "stamp", "state", "ready", "mapDay"?, "error"?, "errorCode"?}]}`, the rider's roadbooks. It answers at once and never
   waits for a file. `stamp` is the version of the file that is **ready to download now**; `state` says where the
   roadbook stands:
   - `current`: the ready file is made from the roadbook as it is and on the map in use;
@@ -92,8 +92,12 @@ being exported:
     to move after a refresh. A reader that
     ignores `state` sees a stamp that only changes when a new file is ready, so it never offers an update early.
 - `GET /roadbook/<id>` gives the file above, **at once**, even when it is outdated. Its `ETag` is the ready file's
-  `stamp`; send it back in `If-None-Match` to get 304 when the copy you hold is the ready one. The first file of a
-  roadbook is made on that first request (several seconds); after that files are kept on disk.
+  `stamp`; send it back in `If-None-Match` to get 304 when the copy you hold is the ready one. A roadbook with no file
+  yet is made on that first request and answered in the same request when that takes 20 seconds or less; a long route
+  is answered `202 {"id", "state": "refreshing"}` with `Retry-After: 5` while the build goes on (one build per roadbook,
+  however many times it is asked): poll `GET /roadbooks` until its `state` is `current`, or ask again. After that the
+  file is kept on disk. `ready` in the list is false until the first file exists, so a phone can show "to prepare" and
+  start it with `POST /roadbook/<id>/refresh` without trying a download first.
 - `POST /roadbook/<id>/refresh` asks for a new file: 202 `{"id", "state": "refreshing"}` when it starts (or is
   already running), 200 `{"id", "state"}` when the roadbook is already `current`, 404 for a roadbook that is not the
   rider's. The server makes it in the background, one at a time for the whole server; the phone shows "under refresh"

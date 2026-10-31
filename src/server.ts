@@ -42,6 +42,8 @@ export interface ServeOptions {
   makeRoadbookFile?: MakeRoadbookFile;
   /** The day the host's own Valhalla map was built, "" when it runs none; part of a roadbook's version. Tests give their own. */
   mapDay?: () => Promise<string>;
+  /** How long a request for a roadbook with no file yet waits for it before answering 202, ms (20 s; tests give less). */
+  firstFileWaitMs?: number;
 }
 
 interface Session {
@@ -119,7 +121,11 @@ export function createHttpServer(options: ServeOptions): {
   } = options;
   const live = new LiveShares({ now, ...options.live });
   const traffic = new TrafficFlow({ now, ...options.traffic });
-  const roadbooks = new ReadyRoadbooks({ make: options.makeRoadbookFile, mapDay: options.mapDay ?? valhallaMapDay });
+  const roadbooks = new ReadyRoadbooks({
+    make: options.makeRoadbookFile,
+    mapDay: options.mapDay ?? valhallaMapDay,
+    firstFileWaitMs: options.firstFileWaitMs,
+  });
   const sessions = new Map<string, Session>();
   const windows = new Map<string, { start: number; count: number }>();
 
@@ -307,6 +313,9 @@ export function createHttpServer(options: ServeOptions): {
       if (!file) return json(res, 200, { roadbooks: await roadbooks.list(tenant.id, store) });
       const made = await roadbooks.get(tenant.id, store, Number(file[1]));
       if (!made) return json(res, 404, { error: "No such roadbook." });
+      // A long route's first file is still being made: the phone is told so, before a gateway gives up on the request.
+      if (made === "preparing")
+        return json(res, 202, { id: Number(file[1]), state: "refreshing" }, { "Retry-After": "5" });
       const etag = `"${made.stamp}"`;
       if (req.headers["if-none-match"] === etag) {
         res.writeHead(304, { ETag: etag });

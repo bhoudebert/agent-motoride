@@ -183,6 +183,26 @@ export const MIGRATIONS: Migration[] = [
 )`);
     },
   },
+  {
+    version: 7,
+    name: "pushed roadbooks keep their waypoints as coordinates",
+    up(db) {
+      // A roadbook made from a pushed file kept its waypoints as place names (the start again as the last one, on a loop), so routing
+      // it again found the names elsewhere or closed the loop twice. They become the coordinates its legs already hold, the start
+      // once on a loop, as the planner keeps them.
+      const books = db
+        .prepare("SELECT id, round_trip FROM roadbooks WHERE request LIKE 'roadbook file %'")
+        .all() as Array<{ id: number; round_trip: number }>;
+      const legsOf = db.prepare("SELECT from_coords, to_coords FROM legs WHERE roadbook_id = ? ORDER BY seq");
+      const set = db.prepare("UPDATE roadbooks SET waypoints = ? WHERE id = ?");
+      for (const book of books) {
+        const legs = legsOf.all(book.id) as Array<{ from_coords: string; to_coords: string }>;
+        if (!legs.length) continue;
+        const points = [legs[0]!.from_coords, ...legs.map((l) => l.to_coords)];
+        set.run(JSON.stringify(book.round_trip && points.length > 1 ? points.slice(0, -1) : points), book.id);
+      }
+    },
+  },
 ];
 
 /**

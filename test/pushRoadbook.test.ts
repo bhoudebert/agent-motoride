@@ -49,7 +49,16 @@ test("a pushed roadbook file becomes a roadbook of the library: legs, waypoints,
   assert.equal(replaced, false);
   const ride = store.findRide(String(id))!;
   assert.equal(ride.name, "Device loop");
-  assert.deepEqual(ride.waypoints, ["Start", "Middle", "End"], "the planned stop is not a waypoint");
+  assert.deepEqual(
+    ride.waypoints,
+    [0, 20, 40].map((i) => `${points[i]!.lat},${points[i]!.lon}`),
+    "the waypoints are kept as coordinates, so a route made again goes through the same places; the planned stop is not one",
+  );
+  assert.deepEqual(
+    ride.legs.map((l) => l.from),
+    ["Start", "Middle"],
+    "the names stay on the legs",
+  );
   assert.equal(ride.shapes!.length, 2, "one leg per pair of waypoints");
   assert.deepEqual(
     ride.legs.map((l) => [l.from, l.to]),
@@ -88,6 +97,38 @@ test("a roadbook with no waypoints is one leg between the ends of its line, and 
     file({ line: encodePolyline(loop), stops: [], origin: undefined, name: "Loop" }),
   );
   assert.equal(store.findRide(String(closed.id))!.roundTrip, true);
+  store.close();
+});
+
+test("a pushed loop lists its start once, so routing it again gives as many legs as the file has", () => {
+  const store = library();
+  const loop = [...points.slice(0, 20), ...points.slice(0, 20).reverse()];
+  const named = (i: number) => ({ lat: loop[i]!.lat, lon: loop[i]!.lon });
+  const { id } = importRoadbookFile(
+    store,
+    file({
+      line: encodePolyline(loop),
+      stops: [
+        { ...named(0), name: "Start: Home", kind: "waypoint" },
+        { ...named(10), name: "1. Hollain", kind: "waypoint" },
+        { ...named(19), name: "2. Ere", kind: "waypoint" },
+        { ...named(39), name: "Finish: Home", kind: "waypoint" },
+      ],
+      origin: undefined,
+      name: "Closed loop",
+    }),
+  );
+  const ride = store.findRide(String(id))!;
+  assert.equal(ride.roundTrip, true);
+  assert.deepEqual(
+    ride.waypoints,
+    [0, 10, 19].map((i) => `${loop[i]!.lat},${loop[i]!.lon}`),
+    "the closing waypoint, the start again, is not listed",
+  );
+  assert.equal(ride.legs.length, 3);
+  // What a refresh routes: the waypoints, then back to the first.
+  assert.equal(ride.waypoints.length, ride.legs.length);
+  assert.match(ride.itinerary, /Home → Hollain → Ere → Home/, "the text still tells the whole loop");
   store.close();
 });
 
@@ -314,7 +355,7 @@ test("a push sends the line, waypoints and cameras without asking anything of th
   const there = library();
   const kept = importRoadbookFile(there, body);
   assert.equal(there.findRide(String(kept.id))!.name, "Device loop");
-  assert.deepEqual(there.findRide(String(kept.id))!.waypoints, ["Start", "Middle", "End"]);
+  assert.deepEqual(there.findRide(String(kept.id))!.waypoints, ride.waypoints);
   store.close();
   there.close();
 });

@@ -1,3 +1,7 @@
+import { readFileSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { DATA_DIR } from "./dataDir.ts";
+
 // Contact-style agent string: some public instances reject free-text or browser-like agents.
 const USER_AGENT = "agentMotoride/0.1 (+https://github.com/bhoudebert/agent-motoride)";
 
@@ -99,18 +103,37 @@ async function rank(urls: string[], now = Date.now()): Promise<Ranked> {
 }
 
 let lastMapDay = "";
+/** Where the newest map day is kept, so a restart (perhaps while the servers are down) does not lose it. */
+const MAP_DAY_FILE = resolve(DATA_DIR, "valhalla-map-day");
+
+function readMapDay(file: string): string {
+  try {
+    const day = readFileSync(file, "utf8").trim();
+    return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : "";
+  } catch {
+    return "";
+  }
+}
 
 /**
  * The day (UTC, "2026-10-31") the newest map of the host's own Valhalla servers was built, or "" when the host runs none
- * (the public server is not followed: its map changes on a schedule that is not the host's). It never goes back: a server that
- * is down for a moment must not undo a newer day. Kept five minutes with the ranking.
+ * (the public server is not followed: its map changes on a schedule that is not the host's). It never goes back, not even after
+ * a restart while the servers are down: the phone would be offered every roadbook again, twice. Kept five minutes with the ranking.
  */
-export async function valhallaMapDay(): Promise<string> {
+export async function valhallaMapDay(file = MAP_DAY_FILE): Promise<string> {
   if (!process.env.VALHALLA_URL?.trim()) return "";
+  if (!lastMapDay) lastMapDay = readMapDay(file);
   const { newest } = await rank(valhallaUrls());
   if (newest !== null) {
     const day = new Date(newest * 1000).toISOString().slice(0, 10);
-    if (day > lastMapDay) lastMapDay = day;
+    if (day > lastMapDay) {
+      lastMapDay = day;
+      try {
+        writeFileSync(file, `${day}\n`);
+      } catch {
+        // A folder that cannot be written only means the day is lost at a restart.
+      }
+    }
   }
   return lastMapDay;
 }

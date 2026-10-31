@@ -57,10 +57,7 @@ test("the compose files hand VALHALLA_URL to the server and offer an own Valhall
   for (const file of ["deploy/docker-compose.yml", "deploy/docker-compose.single.yml"]) {
     const compose = read(file);
     assert.ok(compose.includes("VALHALLA_URL: ${VALHALLA_URL:-}"), `${file} passes the address`);
-    assert.ok(
-      /valhalla:\n\s+image: ghcr\.io\/gis-ops\/docker-valhalla\/valhalla/.test(compose),
-      `${file} has the service`,
-    );
+    assert.ok(/valhalla:\n\s+image: ghcr\.io\/valhalla\/valhalla-scripted/.test(compose), `${file} has the service`);
     assert.ok(compose.includes('profiles: ["valhalla"]'), `${file}: the service starts only with its profile`);
     assert.ok(compose.includes("build_admins:"), `${file}: the countries of a roadbook need the admin boundaries`);
     // The service block ends at the next service or at the top-level volumes.
@@ -98,6 +95,7 @@ test("update-map.sh is a runnable script that rebuilds Valhalla from fresh extra
     calls.map((l) => /(stop|run|up)\b/.exec(l)![1]),
     ["stop", "run", "up", "up"],
   );
+  assert.ok(readFileSync(log, "utf8").includes("pull valhalla"), "it pulls the image first");
   assert.match(calls[1]!, /rm -f \/custom_files\/\*\.osm\.pbf/);
   assert.match(calls[2]!, /--force-recreate valhalla \[rebuild=True\]/);
   assert.match(calls[3]!, /--force-recreate valhalla \[rebuild=False\]/);

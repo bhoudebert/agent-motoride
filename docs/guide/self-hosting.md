@@ -170,8 +170,9 @@ cores to serve. Run the first build at a quiet hour.
 2. Once it answers, put `VALHALLA_URL=http://valhalla:8002` in `deploy/.env` and restart the server (`up -d ride`). Nothing is published: only the server reaches it.
    Check it: `docker compose exec ride node src/check.ts` (or `npm run check`) tests the route service it uses.
 
-Unset `VALHALLA_URL` and it goes back to the public server. The image and its settings are the
-[gis-ops docker-valhalla](https://github.com/gis-ops/docker-valhalla) ones (archived: it no longer changes, read its README if a variable seems different).
+Unset `VALHALLA_URL` and it goes back to the public server. The image is Valhalla's own,
+[`ghcr.io/valhalla/valhalla-scripted`](https://github.com/valhalla/valhalla/tree/master/docker): read its README if a variable seems different. (Earlier
+versions of this guide used the community image `gis-ops/docker-valhalla`, now archived; moving over means one rebuild, so run `deploy/update-map.sh`.)
 The phone still asks the public server itself; having the phone use yours through the rider's server is the next step (ADR 0043).
 
 ### Keep the map current

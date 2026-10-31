@@ -174,6 +174,16 @@ It takes the place of the open data when you choose it.
 - **The single-container file** (`deploy/docker-compose.single.yml`, no Caddy): the same lines; `--env-file` or a `.env` next to it.
 - **Your own proxy:** pass `/traffic` too (it is in the example above); a proxy that lists paths answers 404 for it otherwise.
 
+### Road signs for the roadbook files (optional)
+
+The roadbook file takes its speed limits from OpenStreetMap, then guesses. With a [Mapillary](https://www.mapillary.com/developer) token in
+`MAPILLARY_ACCESS_TOKEN` it also reads the speed limit signs seen in street-level photos near the route, and uses them where they are reliable
+(see [Limits](limits.md)). The token is free: log in to Mapillary, register an application in its developer dashboard and copy its client token.
+You accept Mapillary's terms of use and answer for them; read them before you share roadbook files with others. Without a token nothing changes.
+The token goes in the same places as the TomTom key: `.env` for the terminal app, MCP and CLI; `deploy/.env` for Docker (the compose files pass it
+in); the environment file for NixOS. Whoever builds a roadbook file needs it: the machine that runs the export (your computer, or the server for
+the phone's downloads). Check it with `npm run check`.
+
 Check it: `curl https://rides.example.org/health` says `"traffic":true`. The phone shows a traffic chip only then. The phone
 sends the server seven points of the road ahead, so the server learns roughly where a rider rides: run it for people you trust.
 

@@ -157,12 +157,22 @@ Once a loop is chosen the planner SHALL run traffic, cameras and the stop plan o
 
 ### Requirement: The routing engine is the host's choice
 
-Routes and traces (the trip calculation, the roadbook legs, the `check` command) SHALL be asked of the Valhalla server named by `VALHALLA_URL` when it is set, and of the public Valhalla server otherwise. The address SHALL be read at each use. An address that is not an http or https URL SHALL be refused with a message naming `VALHALLA_URL`. Every request to Valhalla SHALL send the `X-Client-Id` header.
+Routes and traces (the trip calculation, the roadbook legs, the `check` command) SHALL be asked of the Valhalla server named by `VALHALLA_URL` when it is set, and of the public Valhalla server otherwise. The address SHALL be read at each use. An address that is not an http or https URL SHALL be refused with a message naming `VALHALLA_URL`. `VALHALLA_URL` MAY list several servers separated by commas, each checked the same way. With several, a request SHALL go to the server whose map is newest, as the `tileset_last_modified` of its `/status` says (kept for five minutes), a server that does not answer or does not say its date coming after those that do, in the order given; when that server fails to answer, answers 5xx or answers 429, the next SHALL be tried and what was known of the servers forgotten; a request that a server refuses as wrong (another 4xx) SHALL NOT be tried on another; when none answers the error SHALL say how many were tried. With one server `/status` SHALL NOT be asked. `check` SHALL show, for each server, when its map was built. Every request to Valhalla SHALL send the `X-Client-Id` header.
 
 #### Scenario: An own Valhalla
 
 - **WHEN** `VALHALLA_URL=http://valhalla:8002` is set and a trip is calculated
 - **THEN** the route is asked of `http://valhalla:8002/route` and not of the public server
+
+#### Scenario: Two own servers, one rebuilding
+
+- **WHEN** `VALHALLA_URL=http://valhalla:8002,http://valhalla2:8002` is set, the first was built a month ago, and the second is rebuilding and does not answer `/status`
+- **THEN** routes and traces are asked of the first; once the second answers with a newer map they are asked of it
+
+#### Scenario: The newest server fails
+
+- **WHEN** the server with the newest map answers 503 to a route
+- **THEN** the route is asked of the next server and answered, and the next request asks the servers' dates again
 
 #### Scenario: A mistyped address
 

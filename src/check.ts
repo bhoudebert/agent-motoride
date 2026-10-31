@@ -1,7 +1,7 @@
 // Environment check: what each mode needs, which services answer from here,
 // and the state of the database. No model call, no cost.
 import { existsSync } from "node:fs";
-import { fetchJson, valhallaUrl, VALHALLA_CLIENT_ID } from "./http.ts";
+import { fetchJson, valhallaJson, valhallaUrls, VALHALLA_CLIENT_ID } from "./http.ts";
 import { MODEL, SCOUT_MODEL } from "./model.ts";
 import { describeProfile } from "./profile.ts";
 import { Store } from "./store.ts";
@@ -71,8 +71,8 @@ const forecast = await timed(() =>
 );
 add(forecast.value ? "ok" : "fail", "Open-Meteo forecast", forecast.value ? `${forecast.ms} ms` : forecast.error!);
 const route = await timed(() =>
-  fetchJson<{ trip?: unknown }>(
-    `${valhallaUrl()}/route`,
+  valhallaJson<{ trip?: unknown }>(
+    "/route",
     {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Client-Id": VALHALLA_CLIENT_ID },
@@ -89,6 +89,20 @@ const route = await timed(() =>
   ),
 );
 add(route.value ? "ok" : "fail", "Valhalla routing", route.value ? `${route.ms} ms` : route.error!);
+// Each Valhalla server of the list, with the age of its map: the one asked first is the newest.
+for (const url of valhallaUrls()) {
+  const status = await timed(() => fetchJson<{ tileset_last_modified?: number }>(`${url}/status`, {}, 5000));
+  const built = status.value?.tileset_last_modified;
+  add(
+    status.value ? "ok" : "warn",
+    `Valhalla map ${new URL(url).host}`,
+    status.value
+      ? built
+        ? `built ${new Date(built * 1000).toISOString().slice(0, 10)}`
+        : "answers, does not say when its map was built"
+      : `does not answer: ${status.error}`,
+  );
+}
 const photon = await timed(() =>
   fetchJson<{ features?: unknown[] }>("https://photon.komoot.io/api/?q=Lille&limit=1", {}, 10_000),
 );

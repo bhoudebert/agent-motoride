@@ -5,6 +5,7 @@ import { DATA_DIR, tenantDbPath } from "./dataDir.ts";
 import { migrate } from "./migrations.ts";
 import { type BikeProfile, DEFAULT_PROFILE } from "./profile.ts";
 import { type RidePreferences, type RiderSettings, SETTING_KEYS } from "./preferences.ts";
+import type { LimitCorrection } from "./limitProposals.ts";
 import type { RecordedRide } from "./recordedRides.ts";
 import type { RideConditions } from "./conditions.ts";
 import type { StopPlan } from "./stops.ts";
@@ -1363,6 +1364,36 @@ export class Store {
 
   deleteRecordedRide(id: string): boolean {
     return Number(this.#db.prepare("DELETE FROM recorded_rides WHERE id = ?").run(id).changes) > 0;
+  }
+
+  /** Keeps a limit the rider confirmed (or turned down, kmh null) from a ride (ADR 0055). */
+  addLimitCorrection(correction: LimitCorrection & { road?: string; rideId?: string }): void {
+    this.#db
+      .prepare("INSERT INTO limit_corrections (shape, kmh, road, ride_id, created_at) VALUES (?, ?, ?, ?, ?)")
+      .run(
+        correction.shape,
+        correction.kmh,
+        correction.road ?? null,
+        correction.rideId ?? null,
+        new Date().toISOString(),
+      );
+  }
+
+  listLimitCorrections(): LimitCorrection[] {
+    return (
+      this.#db.prepare("SELECT shape, kmh FROM limit_corrections ORDER BY id").all() as Array<{
+        shape: string;
+        kmh: number | null;
+      }>
+    ).map((r) => ({ shape: r.shape, kmh: r.kmh }));
+  }
+
+  /** Changes whenever the confirmed corrections do, "" while there are none: a roadbook file made before is then out of date. */
+  limitCorrectionsVersion(): string {
+    const row = this.#db
+      .prepare("SELECT COUNT(*) AS n, COALESCE(MAX(id), 0) AS last FROM limit_corrections WHERE kmh IS NOT NULL")
+      .get() as { n: number; last: number };
+    return row.n ? `${row.n}.${row.last}` : "";
   }
 
   /** Forgets what the rider set: the host's defaults apply again. */

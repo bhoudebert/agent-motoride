@@ -47,11 +47,17 @@ function fingerprint(ride: SavedRide): string {
 }
 
 /** The version of a roadbook file: the roadbook's content, and the map of the host's own Valhalla it was made on, if any. */
-export function rideStamp(ride: SavedRide, mapDay = ""): string {
-  // The map day is added only when there is one, so a host without its own map keeps the stamps it had.
-  const content = mapDay
-    ? JSON.stringify([...(JSON.parse(fingerprint(ride)) as unknown[]), mapDay])
-    : fingerprint(ride);
+export function rideStamp(ride: SavedRide, mapDay = "", corrections = ""): string {
+  // The map day and the rider's confirmed corrections (ADR 0055) are added only when there are some, so a host without them keeps
+  // the stamps it had.
+  const content =
+    mapDay || corrections
+      ? JSON.stringify([
+          ...(JSON.parse(fingerprint(ride)) as unknown[]),
+          ...(mapDay ? [mapDay] : []),
+          ...(corrections ? [{ corrections }] : []),
+        ])
+      : fingerprint(ride);
   return createHash("sha256").update(content).digest("hex").slice(0, 16);
 }
 
@@ -59,7 +65,7 @@ export type MakeRoadbookFile = (store: Store, ride: SavedRide) => Promise<string
 
 export const traceRoadbookFile: MakeRoadbookFile = async (store, ride) => {
   const { gpx } = await savedRideGpx(store, ride);
-  const { file, signsError, signLowered, signHigher } = await savedRideRoadbook(ride, gpx);
+  const { file, signsError, signLowered, signHigher } = await savedRideRoadbook(ride, gpx, store);
   logSigns(ride.id, signsError, signLowered, signHigher);
   return JSON.stringify(file);
 };
@@ -77,6 +83,8 @@ interface Meta {
   stamp: string;
   fingerprint: string;
   mapDay: string;
+  /** The version of the rider's confirmed limit corrections the file was made with, "" for none (ADR 0055). */
+  corrections?: string;
   madeAt: string;
 }
 
@@ -181,14 +189,16 @@ export class ReadyRoadbooks {
       const ride = store.findRide(String(id));
       if (!ride) return;
       const mapDay = await this.#mapDay();
+      const corrections = store.limitCorrectionsVersion();
       const body = await this.#make(store, ride);
       console.log(
         `[roadbook] ${tenantId} #${id} made in ${this.#now() - started} ms (${(body.length / 1024).toFixed(0)} KB)`,
       );
       this.#keep(tenantId, id, body, {
-        stamp: rideStamp(ride, mapDay),
+        stamp: rideStamp(ride, mapDay, corrections),
         fingerprint: fingerprint(ride),
         mapDay,
+        corrections,
         madeAt: new Date(this.#now()).toISOString(),
       });
       this.#failures.delete(`${tenantId}:${id}`);
@@ -222,11 +232,17 @@ export class ReadyRoadbooks {
     return job;
   }
 
-  #stateOf(tenantId: string, ride: SavedRide, mapDay: string): RoadbookListing["state"] {
+  #stateOf(tenantId: string, ride: SavedRide, mapDay: string, corrections: string): RoadbookListing["state"] {
     const key = `${tenantId}:${ride.id}`;
     if (this.#jobs.has(key)) return "refreshing";
     const meta = this.#meta(tenantId, ride.id);
-    if (meta && meta.fingerprint === fingerprint(ride) && meta.mapDay === mapDay) return "current";
+    if (
+      meta &&
+      meta.fingerprint === fingerprint(ride) &&
+      meta.mapDay === mapDay &&
+      (meta.corrections ?? "") === corrections
+    )
+      return "current";
     const failure = this.#failures.get(key);
     if (
       failure &&
@@ -245,9 +261,10 @@ export class ReadyRoadbooks {
   async list(tenantId: string, store: Store): Promise<RoadbookListing[]> {
     const mapDay = await this.#mapDay();
     const rides = store.listRides();
+    const corrections = store.limitCorrectionsVersion();
     const today = this.#now();
     const out = rides.map((ride) => {
-      let state = this.#stateOf(tenantId, ride, mapDay);
+      let state = this.#stateOf(tenantId, ride, mapDay, corrections);
       if (state === "outdated" && ride.rideDate) {
         const ahead = Date.parse(`${ride.rideDate}T00:00:00Z`) - today;
         if (ahead > -24 * 3_600_000 && ahead <= this.#soonMs && this.#enqueue(tenantId, ride, mapDay))
@@ -261,7 +278,7 @@ export class ReadyRoadbooks {
         distanceKm: ride.distanceKm,
         ridingMinutes: ride.ridingMinutes,
         // With no ready file the stamp is the one the file will have; a phone that downloads then waits for it to be made.
-        stamp: meta?.stamp ?? rideStamp(ride, mapDay),
+        stamp: meta?.stamp ?? rideStamp(ride, mapDay, corrections),
         state,
         ready: meta !== null,
         ...((meta?.mapDay ?? mapDay) ? { mapDay: meta?.mapDay ?? mapDay } : {}),
@@ -338,7 +355,7 @@ export class ReadyRoadbooks {
     if (!ride) return null;
     const mapDay = await this.#mapDay();
     this.#failures.delete(`${tenantId}:${id}`);
-    const state = this.#stateOf(tenantId, ride, mapDay);
+    const state = this.#stateOf(tenantId, ride, mapDay, store.limitCorrectionsVersion());
     if (state !== "outdated") return state;
     return this.#enqueue(tenantId, ride, mapDay) ? "refreshing" : "outdated";
   }

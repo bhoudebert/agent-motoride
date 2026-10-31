@@ -22,6 +22,13 @@ the ride and for the local rules, including on speed-camera information.
   a removed sign that is still in the data. The export lists each place where a sign
   says a different limit than OpenStreetMap, so you can check the sign or correct the map; a lower sign that is only roadworks
   gives an early warning there, a higher one is ignored.
+- A ride you recorded with the app and uploaded to your server can correct the guesses. Ask Claude to check your last recorded ride
+  (`reviewRecordedRide`, or `npm run rides -- review-recorded` on the server): it compares your speed with the limits the roadbook only
+  guessed. Where you held a steady speed at least 20 km/h under the guess (15 seconds or more, 85% of the time within 8 km/h of the
+  median), it proposes the usual limit just above your speed, with a margin of 3 km/h. It never questions a limit posted by
+  OpenStreetMap or a sign, and a speed never raises a limit: riding faster than planned proposes nothing. One ride is weak evidence (you
+  may have been cautious), so nothing changes until you confirm each proposal; a confirmed limit then replaces the guess on that road in
+  every roadbook that passes there, from its next refresh, and a rejected one is not proposed again.
 - Road data comes from OpenStreetMap and can be incomplete or out of date. Routes and tagged limits come from Valhalla's snapshot of
   it: the public server's, or your own, which is as old as the last `deploy/update-map.sh` (see [Host it yourself](self-hosting.md)).
   Closures and roadworks are not checked.

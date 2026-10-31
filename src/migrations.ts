@@ -167,6 +167,22 @@ export const MIGRATIONS: Migration[] = [
 )`);
     },
   },
+  {
+    version: 6,
+    name: "limits corrected by the rider",
+    up(db) {
+      // A limit the rider confirmed from a ride (ADR 0055): the road it holds on (an encoded polyline) and the limit.
+      // kmh NULL: the rider turned the proposal down, so it is not made again there.
+      db.exec(`CREATE TABLE IF NOT EXISTS limit_corrections (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  shape TEXT NOT NULL,
+  kmh INTEGER,
+  road TEXT,
+  ride_id TEXT,
+  created_at TEXT NOT NULL
+)`);
+    },
+  },
 ];
 
 /**

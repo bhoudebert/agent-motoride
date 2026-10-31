@@ -27,7 +27,7 @@ import {
   DEFAULT_MAX_FAST_PCT,
   DEFAULT_MAX_STRAIGHT_PCT,
   DEFAULT_PREFERENCES,
-  preferencesFromEnv,
+  effectivePreferences,
 } from "./preferences.ts";
 import { describeProfile, parseProfileArgs } from "./profile.ts";
 import { importLink, once, printQr, type Shared, startShareServer } from "./share.ts";
@@ -46,7 +46,7 @@ Usage: npm run ride                              Start menu: plan a new ride or 
   npm run ride -- "plan a ride from roadbook 3 on Saturday at 9"     a ride on a day, no copy, no model call
 
 Options:
-  --from <place>        Start and end point. Defaults to RIDE_HOME, or the roadbook's start with --roadbook.
+  --from <place>        Start and end point. Defaults to the one you saved, else RIDE_HOME, or the roadbook's start with --roadbook.
   --show <id|name>      Display a saved ride and exit. No planning, no API call.
   --roadbook <id|name>  Work on a saved roadbook (also --ride). With a request: apply it. Without: open the prompt on it.
   --allow-repeat        Accept rides that repeat saved ones. Default: near-duplicates are rejected.
@@ -130,7 +130,8 @@ if (values.help || (!hasRequest && !interactive)) {
   process.exit(values.help ? 0 : 1);
 }
 
-const motorwayDefault = () => Boolean(values["allow-motorways"] ?? !preferencesFromEnv().avoidMotorways);
+const motorwayDefault = () =>
+  Boolean(values["allow-motorways"] ?? !effectivePreferences(store.getSettings()).avoidMotorways);
 
 /** One line stating the settings a session runs with, so nothing is implicit. */
 function describeSettings(
@@ -288,13 +289,14 @@ async function plan(
   from: string | undefined,
   allowMotorways?: boolean,
 ): Promise<Outcome> {
-  const home = from ?? baseRide?.home ?? process.env.RIDE_HOME;
+  const home = from ?? baseRide?.home ?? store.getSettings().home ?? process.env.RIDE_HOME;
   if (!home) throw new Error('No start point: pass --from "<place>" or set RIDE_HOME.');
   if (request === null && !(baseRide && interactive)) {
     throw new Error("Editing a saved ride needs a terminal and a ride to open.");
   }
 
-  const fromEnv = preferencesFromEnv();
+  // What the rider saved over the host's environment over the defaults.
+  const fromEnv = effectivePreferences(store.getSettings());
   const preferences = {
     // Explicit choice first (menu answer or flag), then a saved ride's own setting, then the env default.
     avoidMotorways: !(
@@ -500,7 +502,7 @@ async function startMenu(): Promise<
       );
       if (prompt === QUIT) return undefined;
       if (prompt === BACK || !prompt || isCancel(prompt)) continue;
-      const defaultHome = values.from ?? process.env.RIDE_HOME;
+      const defaultHome = values.from ?? store.getSettings().home ?? process.env.RIDE_HOME;
       const homeAnswer = await ask(`Start point${defaultHome ? ` [${defaultHome}]` : ""}: `);
       if (homeAnswer === QUIT) return undefined;
       if (homeAnswer === BACK) continue;

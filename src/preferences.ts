@@ -48,3 +48,27 @@ export function preferencesFromEnv(env: NodeJS.ProcessEnv = process.env): RidePr
     maxStraightPct: pct(env.RIDE_MAX_STRAIGHT_PCT, DEFAULT_MAX_STRAIGHT_PCT),
   };
 }
+
+/** What a rider has set and the library keeps: home and the road preferences. Absent means the host's default applies. */
+export interface RiderSettings extends Partial<RidePreferences> {
+  /** The start and end point, as the rider gave it (a town, an address or "lat,lon"). */
+  home?: string;
+}
+
+/** The keys a library may keep, with what each accepts. */
+export const SETTING_KEYS = ["home", "avoidMotorways", "max30Pct", "max50Pct", "maxFastPct", "maxStraightPct"] as const;
+
+/**
+ * The preferences a session starts with: the rider's saved ones over the host's environment over the defaults. The
+ * environment is where a host (or a person using the terminal) sets what a rider has not chosen; what a rider saved wins.
+ */
+export function effectivePreferences(saved: RiderSettings, env: NodeJS.ProcessEnv = process.env): RidePreferences {
+  const base = preferencesFromEnv(env);
+  const out = { ...base };
+  for (const key of SETTING_KEYS) {
+    if (key === "home") continue;
+    const value = saved[key];
+    if (value !== undefined) (out as Record<string, unknown>)[key] = value;
+  }
+  return out;
+}

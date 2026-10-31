@@ -138,6 +138,14 @@ export const MIGRATIONS: Migration[] = [
     name: "when ratings were given, and the ends of stretches",
     up: ratingsByPrecision,
   },
+  {
+    version: 4,
+    name: "the rider's settings",
+    up(db) {
+      // Home and the road preferences a rider has set, kept for the next session (key, JSON value), over the host's defaults.
+      db.exec("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)");
+    },
+  },
 ];
 
 /**

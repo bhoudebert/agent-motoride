@@ -455,7 +455,9 @@ export function createHttpServer(options: ServeOptions): {
         if (sessionId) void drop(sessionId);
       };
       await runInContext(context, async () => {
-        const { server } = createRideServer(store, { home: "" });
+        const { server, restoreHome } = createRideServer(store, { home: "" });
+        // The start point the rider saved in their library, so a session need not be told it again.
+        await restoreHome();
         await server.connect(opened.transport);
       });
       session = opened;

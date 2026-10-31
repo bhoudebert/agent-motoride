@@ -19,7 +19,7 @@ Usage: npm run ride                              Start menu: plan a new ride or 
   npm run ride -- "plan a ride from roadbook 3 on Saturday at 9"     a ride on a day, no copy, no model call
 
 Options:
-  --from <place>        Start and end point. Defaults to RIDE_HOME, or the roadbook's start with --roadbook.
+  --from <place>        Start and end point. Defaults to the one you saved, else RIDE_HOME, or the roadbook's start with --roadbook.
   --show <id|name>      Display a saved ride and exit. No planning, no API call.
   --roadbook <id|name>  Work on a saved roadbook (also --ride). With a request: apply it. Without: open the prompt on it.
   --allow-repeat        Accept rides that repeat saved ones. Default: near-duplicates are rejected.
@@ -322,7 +322,7 @@ Send one scout per area, in parallel, to find the best loop from the start point
 
 _writes · not destructive · idempotent · uses online services_
 
-Show or change the rider's settings for this session: start and end point, whether motorways are permitted, the long-straight and slow-zone targets. Call it first with the home when the rider has not set one. Returns the settings in force.
+Show or change the rider's settings: start and end point, whether motorways are permitted, the long-straight and slow-zone targets, the bike profile. What the rider sets is saved in their library and applies to their next sessions too (reset forgets it). Call it first with the home when the rider has not set one. Returns the settings in force.
 
 - `home` (string, optional): Start and end point: town, address or "lat,lon"
 - `allowMotorways` (boolean, optional)
@@ -336,6 +336,7 @@ Show or change the rider's settings for this session: start and end point, wheth
 - `pauseEveryMin` (number, optional): Bike profile: pause after this much riding
 - `maxStintMin` (number, optional)
 - `lunch` (boolean, optional): Bike profile: plan a lunch stop when the ride spans midday
+- `reset` (boolean, optional): Forget the settings saved for this rider (start point, road preferences): the host's defaults apply again
 
 #### `reportScout`
 
@@ -630,7 +631,7 @@ Slash commands in Claude Code (`/mcp__ride__<name>`); plain words do the same in
 | ------------------------ | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `ANTHROPIC_API_KEY`      | to set                      | Anthropic API key (https://platform.claude.com/): the terminal app, and scouts in Claude Code or Codex                                                                                                                                                                                     |
 | `ANTHROPIC_AUTH_TOKEN`   | unset                       | Or a bearer token instead of the key, as the Anthropic SDK accepts (e.g. behind a gateway)                                                                                                                                                                                                 |
-| `RIDE_HOME`              | to set                      | Your start and end point: a town, a street or an address, or "lat,lon" (overridden by --from)                                                                                                                                                                                              |
+| `RIDE_HOME`              | to set                      | Your start and end point: a town, a street or an address, or "lat,lon". It is only a default: what you save with rideSettings (kept in your library) wins, and --from wins for one plan. On a server it is every rider's default.                                                          |
 | `VALHALLA_URL`           | `http://localhost:8002`     | Your own Valhalla for routes and traces (docs/guide/self-hosting.md); unset: the public server (rate-limited, shared) Several own servers: separate them with commas, the one with the newest map answers (docs/guide/self-hosting.md)                                                     |
 | `TOMTOM_API_KEY`         | to set                      | Optional TomTom key (https://developer.tomtom.com/, free tier): traffic at departure                                                                                                                                                                                                       |
 | `TRAFFIC_MAX_PER_DAY`    | `600`                       | The phone's Traffic (multi-user server) uses the same key: most TomTom requests the server makes a day (default 600)                                                                                                                                                                       |

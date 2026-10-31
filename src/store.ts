@@ -3,8 +3,8 @@ import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { DATA_DIR, tenantDbPath } from "./dataDir.ts";
 import { migrate } from "./migrations.ts";
-import type { RidePreferences } from "./preferences.ts";
 import { type BikeProfile, DEFAULT_PROFILE } from "./profile.ts";
+import { type RidePreferences, type RiderSettings, SETTING_KEYS } from "./preferences.ts";
 import type { RideConditions } from "./conditions.ts";
 import type { StopPlan } from "./stops.ts";
 import type { RunUsage } from "./usage.ts";
@@ -1269,6 +1269,36 @@ export class Store {
     const rows = this.#db.prepare("SELECT key, value FROM profile").all() as Array<{ key: string; value: string }>;
     const stored = Object.fromEntries(rows.map((r) => [r.key, JSON.parse(r.value)]));
     return { ...DEFAULT_PROFILE, ...stored };
+  }
+
+  /** What the rider has set (home, road preferences), over nothing: an absent key means the host's default applies. */
+  getSettings(): RiderSettings {
+    const rows = this.#db.prepare("SELECT key, value FROM settings").all() as Array<{ key: string; value: string }>;
+    const out: Record<string, unknown> = {};
+    for (const { key, value } of rows) {
+      if (!(SETTING_KEYS as readonly string[]).includes(key)) continue;
+      try {
+        out[key] = JSON.parse(value);
+      } catch {
+        // A value that is not JSON is ignored: the default applies.
+      }
+    }
+    return out as RiderSettings;
+  }
+
+  /** Keeps the rider's settings (only the known keys, only what is given). */
+  setSettings(changes: RiderSettings): RiderSettings {
+    const upsert = this.#db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)");
+    for (const key of SETTING_KEYS) {
+      const value = changes[key];
+      if (value !== undefined) upsert.run(key, JSON.stringify(value));
+    }
+    return this.getSettings();
+  }
+
+  /** Forgets what the rider set: the host's defaults apply again. */
+  clearSettings(): void {
+    this.#db.exec("DELETE FROM settings");
   }
 
   setProfile(changes: Partial<BikeProfile>): BikeProfile {

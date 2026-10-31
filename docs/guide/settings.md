@@ -6,9 +6,27 @@ are enforced in code, whatever the model is told.
 
 ## Your start point
 
-`RIDE_HOME` in `.env` is your start and end point: a town, a street or an
-address, or `"lat,lon"`. Override it per plan with `--from` in the terminal or
-"from Namur" in your request.
+Your start and end point is a town, a street or an address, or `"lat,lon"`. Tell
+it once, "my home is Lille" (or `rideSettings` with `home`): it is saved in your
+library and every later session starts from it, in Claude Code, Codex, the terminal
+and on a server where each rider has their own library. `RIDE_HOME` in `.env` is only
+the default for someone who has not saved one. Override it per plan with `--from` in the
+terminal or "from Namur" in your request.
+
+### What is saved, and what wins
+
+What you set with `rideSettings` is kept in your library, not only for the session:
+your start point, whether motorways are allowed, and the targets for 30 and 50
+zones, long straights and fast expressways. The order, from strongest to weakest:
+
+1. what you say for this plan (`--from`, `--max-30-pct`, "allow motorways for this ride");
+2. what you saved in your library;
+3. the host's environment (`RIDE_HOME`, `RIDE_ALLOW_MOTORWAYS`, `RIDE_MAX_*_PCT` in `.env`);
+4. the built-in defaults.
+
+So on a server, `.env` gives every rider a starting point and each rider's own choices
+win. `rideSettings` with `reset` forgets what you saved and goes back to the host's defaults.
+The bike profile (tank range, pauses) has always been kept in your library the same way.
 
 ## What counts as a motorway
 

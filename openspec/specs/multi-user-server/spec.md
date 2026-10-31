@@ -149,3 +149,18 @@ The terminal commands and the stdio MCP server SHALL use a tenant's library when
 
 - **WHEN** `RIDE_TENANT=<id> npm run rides -- roadbooks` runs
 - **THEN** it lists that tenant's roadbooks
+
+### Requirement: Recorded rides uploaded to the library
+
+A rider SHALL be able to send a ride recorded on their phone to their server: `PUT /rides/<id>` with their token and the GPX as the body (gzip allowed with `Content-Encoding: gzip`), `<id>` being the phone's id for the ride (letters, digits, `.`, `_`, `-`, at most 120 characters). The server SHALL refuse a body that is not a GPX with at least two time-stamped track points (400), a bad id (400) or a body over 25 MiB (413), at most 10 a minute, and at most 200 rides in a library (409 beyond). It SHALL keep the ride in that rider's own library (a table, the GPX compressed) with its start and end, distance, number of points and name. A ride whose GPX header says which roadbook it followed (`origin`: app, number, name) SHALL be linked to that roadbook when it is in the library; a ride with no roadbook (free-roaming) SHALL be kept all the same. The same id with the same content SHALL change nothing (200); with other content it SHALL replace the ride (200); a new one gets 201. `GET /rides` SHALL list the rider's rides, `GET /rides/<id>` return the GPX, and `DELETE /rides/<id>` remove it from the server only. A rider SHALL never see another rider's rides. Nothing is sent unless the rider asks.
+
+#### Scenario: Retry after a lost answer
+
+- **WHEN** the phone sends a ride twice with the same id and file
+- **THEN** the library holds one ride
+- **AND** the second answer is 200, the first was 201
+
+#### Scenario: Free-roaming ride
+
+- **WHEN** a ride with no roadbook in its header is sent
+- **THEN** it is stored with no roadbook link and listed with the others

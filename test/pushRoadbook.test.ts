@@ -269,3 +269,27 @@ test("the client pushes with the rider's token and says what went wrong", async 
     s.registry.close();
   }
 });
+
+test("the file served for a roadbook sent from another library keeps the origin it was sent with, and its name", async () => {
+  const { originOf } = await import("../src/gpx.ts");
+  const store = library();
+  const sent = importRoadbookFile(store, file({ origin: { app: "agentRide", roadbook: 7, name: "Device loop" } }));
+  const ride = store.findRide(String(sent.id))!;
+  assert.deepEqual(originOf(ride), { roadbook: 7, ride: null, name: "Device loop" }, "not this library's number");
+  const own = store.saveRide({
+    ...ride,
+    parentId: null,
+    request: "a loop",
+    rideDate: null,
+    departure: null,
+    extras: null,
+  });
+  assert.notEqual(own, sent.id);
+  const planned = store.findRide(String(own))!;
+  assert.deepEqual(
+    originOf(planned),
+    { roadbook: own, ride: planned.rideDayId, name: planned.name },
+    "a roadbook planned here is itself",
+  );
+  store.close();
+});

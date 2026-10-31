@@ -194,6 +194,21 @@ export function roadbookFilePath(gpxPath: string): string {
   return `${gpxPath.replace(/\.gpx$/i, "")}.motoride.json`;
 }
 
+/**
+ * Which roadbook the file says it is. A roadbook sent from another library (importRoadbookFile) keeps the origin it was sent with, so
+ * the phone recognises it as the roadbook it already holds; every other roadbook is itself, by its number in this library and its day.
+ */
+export function originOf(ride: Pick<SavedRide, "id" | "rideDayId" | "name" | "request">): {
+  roadbook: number;
+  ride: number | null;
+  name: string;
+} {
+  const sent = /^roadbook file agentRide:(\d+):/.exec(ride.request);
+  return sent
+    ? { roadbook: Number(sent[1]), ride: null, name: ride.name }
+    : { roadbook: ride.id, ride: ride.rideDayId, name: ride.name };
+}
+
 /** The roadbook file of a saved ride, from the GPX input already built for it (one tracing, shared by export and share). */
 export function savedRideRoadbook(ride: SavedRide, gpx: GpxInput) {
   return buildRoadbookFile(
@@ -204,7 +219,7 @@ export function savedRideRoadbook(ride: SavedRide, gpx: GpxInput) {
       shapes: gpx.shapes,
       stops: gpx.stops,
       cameras: ride.extras?.cameras ?? [],
-      origin: { roadbook: ride.id, ride: ride.rideDayId, name: ride.name },
+      origin: originOf(ride),
     },
     undefined,
     overpassBuiltUp,

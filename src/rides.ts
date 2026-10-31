@@ -50,7 +50,7 @@ import { Store } from "./store.ts";
 import { setGeoAnchor } from "./tools/geo.ts";
 import { computeTrip } from "./tools/trip.ts";
 import { otlpEndpoint, otlpHeaders, runToOtlp, sendOtlp } from "./otel.ts";
-import { preferencesFromEnv } from "./preferences.ts";
+import { effectivePreferences } from "./preferences.ts";
 import { importRoute, readRouteFile } from "./routeImport.ts";
 import { type RideContext, registerRoute } from "./session.ts";
 import {
@@ -546,7 +546,7 @@ try {
       const path = args.find((a) => /\.(gpx|kml)$/i.test(a));
       if (!path) throw new Error("Which file? e.g. npm run rides -- import ~/Downloads/route.gpx");
       const file = readRouteFile(path);
-      const preferences = preferencesFromEnv();
+      const preferences = effectivePreferences(store.getSettings());
       const start = file.points[0]!;
       const runId = store.startRun({
         home: `${start.lat},${start.lon}`,

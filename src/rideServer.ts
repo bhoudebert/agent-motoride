@@ -49,7 +49,7 @@ import { formatRideMarkdown, writeRideMarkdown } from "./markdown.ts";
 import { SCOUT_MODEL } from "./model.ts";
 import { formatForClients } from "./capabilities.ts";
 import { SCOUT_SYSTEM, type ScoutInput, scoutBrief, scoutStart, scoutsUnavailable } from "./scouts.ts";
-import { preferencesFromEnv } from "./preferences.ts";
+import { effectivePreferences } from "./preferences.ts";
 import { describeProfile } from "./profile.ts";
 import type { RideContext } from "./session.ts";
 import { formatStopPlan } from "./stops.ts";
@@ -66,6 +66,8 @@ export interface RideServer {
   runId: number;
   /** Set the start point (from `RIDE_HOME`, say) before the first tool call. */
   setHome(location: string): Promise<string>;
+  /** Set the start point the rider saved in their library, if there is one; false when there is none or it cannot be found. */
+  restoreHome(): Promise<boolean>;
 }
 
 /**
@@ -98,7 +100,8 @@ export function createRideServer(
 
   const context: RideContext = {
     store,
-    preferences: preferencesFromEnv(),
+    // The rider's saved preferences over the host's environment over the defaults.
+    preferences: effectivePreferences(store.getSettings()),
     // Placeholder until a start point is set; tools refuse to run before that.
     home: { lat: 0, lon: 0, label: "" },
     allowRepeat: false,
@@ -160,6 +163,18 @@ export function createRideServer(
     homeInput = location;
     syncRun();
     return point.label;
+  }
+
+  /** The start point the rider saved, set for this session; a place that cannot be found now is left for the rider to give again. */
+  async function restoreHome(): Promise<boolean> {
+    const saved = store.getSettings().home;
+    if (!saved) return false;
+    try {
+      await setHome(saved);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   const settingsText = () => {
@@ -291,7 +306,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
     "rideSettings",
     {
       description:
-        "Show or change the rider's settings for this session: start and end point, whether motorways are permitted, the long-straight and slow-zone targets. Call it first with the home when the rider has not set one. Returns the settings in force.",
+        "Show or change the rider's settings: start and end point, whether motorways are permitted, the long-straight and slow-zone targets, the bike profile. What the rider sets is saved in their library and applies to their next sessions too (reset forgets it). Call it first with the home when the rider has not set one. Returns the settings in force.",
       annotations: hintsOf("rideSettings"),
       inputSchema: z.object({
         home: z.string().optional().describe('Start and end point: town, address or "lat,lon"'),
@@ -324,6 +339,12 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
         pauseEveryMin: z.number().positive().optional().describe("Bike profile: pause after this much riding"),
         maxStintMin: z.number().positive().optional(),
         lunch: z.boolean().optional().describe("Bike profile: plan a lunch stop when the ride spans midday"),
+        reset: z
+          .boolean()
+          .optional()
+          .describe(
+            "Forget the settings saved for this rider (start point, road preferences): the host's defaults apply again",
+          ),
       }),
     },
     async (args) => {
@@ -331,12 +352,28 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       if ([tankRangeKm, reserveKm, pauseEveryMin, maxStintMin, lunch].some((v) => v !== undefined)) {
         store.setProfile({ tankRangeKm, reserveKm, pauseEveryMin, maxStintMin, lunch });
       }
-      if (args.home) await setHome(args.home);
+      if (args.reset) {
+        // Back to the host's defaults: what the rider saved is forgotten (the start point stays for this session).
+        store.clearSettings();
+        Object.assign(context.preferences, effectivePreferences({}));
+      }
+      if (args.home) {
+        await setHome(args.home);
+        store.setSettings({ home: args.home });
+      }
       if (args.allowMotorways !== undefined) context.preferences.avoidMotorways = !args.allowMotorways;
       if (args.max30Pct !== undefined) context.preferences.max30Pct = args.max30Pct;
       if (args.max50Pct !== undefined) context.preferences.max50Pct = args.max50Pct;
       if (args.maxFastPct !== undefined) context.preferences.maxFastPct = args.maxFastPct;
       if (args.maxStraightPct !== undefined) context.preferences.maxStraightPct = args.maxStraightPct;
+      // What the rider chose is kept for their next sessions.
+      store.setSettings({
+        avoidMotorways: args.allowMotorways === undefined ? undefined : !args.allowMotorways,
+        max30Pct: args.max30Pct,
+        max50Pct: args.max50Pct,
+        maxFastPct: args.maxFastPct,
+        maxStraightPct: args.maxStraightPct,
+      });
       if (args.allowRepeat !== undefined) context.allowRepeat = args.allowRepeat;
       return text(settingsText());
     },
@@ -1468,5 +1505,5 @@ Current settings:
 ${settingsText()}`),
   );
 
-  return { server, context, runId, setHome };
+  return { server, context, runId, setHome, restoreHome };
 }

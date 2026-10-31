@@ -9,7 +9,12 @@ Context Protocol client, so the client's model can plan on its own account.
 
 ### Requirement: Transport and state
 
-The server SHALL speak the protocol over stdio with all logging on stderr (or, for several riders, over HTTP with a token: spec multi-user-server), SHALL hold one session context for its lifetime (routed trips, preferences, stop plans), SHALL create a run row at start and trace every tool call, and SHALL refuse ride tools until a start point is set (from `RIDE_HOME` or `rideSettings`).
+The server SHALL speak the protocol over stdio with all logging on stderr (or, for several riders, over HTTP with a token: spec multi-user-server), SHALL hold one session context for its lifetime (routed trips, preferences, stop plans), SHALL create a run row at start and trace every tool call, and SHALL refuse ride tools until a start point is set (from the start point the rider saved, else `RIDE_HOME`, or `rideSettings`). What a rider sets with `rideSettings` (start point, motorways, the slow-zone, long-straight and fast-expressway targets) SHALL be kept in the rider's own library and applied at the start of their next sessions, over the host's environment (`RIDE_ALLOW_MOTORWAYS`, `RIDE_MAX_*_PCT`, `RIDE_HOME`), which stays the default for what a rider has not set; `rideSettings` with `reset` SHALL forget what was saved. A saved start point that cannot be found SHALL leave the start point unset, not fail the session.
+
+#### Scenario: Settings kept for the next session
+
+- **WHEN** a rider calls `rideSettings` with home "Lille" and `max30Pct` 7, and later opens a new session
+- **THEN** the new session starts with start point Lille and a 30 km/h target of 7%, the other settings from the host's environment or the defaults, with no call; and after `rideSettings` with `reset` it starts from the host's defaults again
 
 #### Scenario: No start point yet
 

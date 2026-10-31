@@ -3,9 +3,10 @@ import { createRideServer } from "./rideServer.ts";
 import { Store } from "./store.ts";
 
 // The MCP server of the terminal's own client, over stdio: one rider, the library `Store` finds (ADR 0027).
-const { server, context, runId, setHome } = createRideServer(new Store());
+const { server, context, runId, setHome, restoreHome } = createRideServer(new Store());
 
-if (process.env.RIDE_HOME) {
+// The start point the rider saved wins; RIDE_HOME is what a person who has not chosen one gets.
+if (!(await restoreHome()) && process.env.RIDE_HOME) {
   try {
     await setHome(process.env.RIDE_HOME);
   } catch (error) {

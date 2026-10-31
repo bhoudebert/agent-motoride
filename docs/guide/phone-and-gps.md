@@ -258,4 +258,4 @@ With the MotoRide app connected to your server, a recorded ride can be uploaded 
 "My rides". It is yours alone: the server keeps the GPX in your library, lists it, gives it back, and you can delete it there. Deleting it
 on the phone does not delete it on the server, nor the other way round. A ride you never uploaded exists only on the phone, so deleting
 it there loses it for good. A ride with no roadbook (you rode without a plan) is kept too. The details for app makers are in
-[the roadbook file](../roadbook-file.md#uploading-a-recorded-ride).
+`docs/roadbook-file.md`, section "Uploading a recorded ride".

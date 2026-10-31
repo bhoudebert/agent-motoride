@@ -109,9 +109,19 @@ being exported:
 ## Pushing to a server
 
 A rider who plans on a library that is not on the server can send the file there: `PUT /roadbooks` with
-`Authorization: Bearer <rider token>` and the file as the JSON body (up to 5 MiB). The answer is
-`{"id", "stamp", "replaced"}`; 400 for a body that is not a version 1 roadbook file, 401 for a wrong token, 409 when the
-server already keeps 100, 413 too large, 429 too many. A file with an `origin` replaces the earlier push of the same
-roadbook; otherwise the name decides. The file then appears in `GET /roadbooks` with an `id` of 1,000,000 or more (the
-phone must use the `id` as given, not assume it is the roadbook's number) and is served as it was kept. Its `stamp`
-leaves out `generatedAt`, so pushing an unchanged roadbook again does not make the phone offer a refresh.
+`Authorization: Bearer <rider token>` and the file as the JSON body (up to 5 MiB). The server **adds it to the rider's
+own library as a roadbook of theirs**, as if it had been planned there; from then on it is listed, downloaded, refreshed
+and deleted like any other roadbook, under an ordinary number.
+
+The answer is `{"id", "stamp", "replaced"}` (`id` is the roadbook's number in that library); 400 for a body that is not a
+version 1 roadbook file, 401 for a wrong token, 409 when the library already holds 100 sent roadbooks, 413 too large,
+429 too many. A file with an `origin` replaces the earlier push of the same roadbook (the earlier version is kept in
+the roadbook's versions, so `restoreRoadbook` brings it back); otherwise the name decides. Pushing an unchanged file
+again changes nothing.
+
+What is kept: the line, cut into one leg per pair of waypoints, the waypoints (the `stops` of kind `waypoint`), the
+cameras, the distance and the riding time. What is not: the speed limits, countries and roundabouts are traced again on the
+server's own map when the file is made for the phone (so they are as good as the server's map and its sources), and the
+planned fuel and pause stops are not kept: `refreshRide` plans them again from the rider's bike profile. Roadbooks that
+older servers kept as files in a `pushed` folder are brought into the library once, and the folder is renamed
+`pushed.imported`.

@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { tenantDbPath, tenantDir } from "./dataDir.ts";
 import { CHANNEL, LiveShares, type LiveOptions } from "./live.ts";
 import { join } from "node:path";
-import { PUSHED_ID_BASE, MAX_PUSHED_BYTES, PushedRoadbooks, PushRefused } from "./pushedRoadbooks.ts";
+import { importLegacyPushed, importRoadbookFile, MAX_PUSHED_BYTES, PushRefused } from "./importRoadbook.ts";
 import { type MakeRoadbookFile, ReadyRoadbooks } from "./roadbookDownload.ts";
 import { MAX_POINTS, TrafficFlow, type TrafficOptions } from "./traffic.ts";
 import { type RequestContext, runInContext } from "./requestContext.ts";
@@ -257,83 +257,54 @@ export function createHttpServer(options: ServeOptions): {
     const refresh = /^\/roadbook\/(\d{1,9})\/refresh$/.exec(path);
     if (path !== "/roadbooks" && !file && !refresh) return json(res, 404, { error: "Not found" });
     if (refresh && req.method !== "POST") return json(res, 405, { error: "Method not allowed." }, { Allow: "POST" });
-    const pushed = new PushedRoadbooks(join(tenantDir(tenant.id), "pushed"));
-    if (pushing) {
-      // A rider pushes at most 10 files a minute.
-      const t = now();
-      const w = windows.get(`push:${tenant.id}`);
-      if (!w || t - w.start >= 60_000) windows.set(`push:${tenant.id}`, { start: t, count: 1 });
-      else if (++w.count > 10)
-        return json(res, 429, { error: "Too many requests; wait a minute." }, { "Retry-After": "30" });
-      let body: unknown;
-      try {
-        body = await readBody(req, MAX_PUSHED_BYTES);
-      } catch (e) {
-        return e instanceof TooBig ? json(res, 413, { error: "Too large." }) : json(res, 400, { error: "Not JSON." });
-      }
-      try {
-        return json(res, 200, pushed.put(body));
-      } catch (e) {
-        if (e instanceof PushRefused) return json(res, e.status, { error: e.message });
-        console.error(`[roadbook push] ${e instanceof Error ? e.message : String(e)}`);
-        return json(res, 500, { error: "The roadbook file could not be kept." });
-      }
-    }
-    // A refresh traces a roadbook again: a rider asks for at most 20 a minute.
-    if (refresh) {
-      const t = now();
-      const w = windows.get(`refresh:${tenant.id}`);
-      if (!w || t - w.start >= 60_000) windows.set(`refresh:${tenant.id}`, { start: t, count: 1 });
-      else if (++w.count > 20)
-        return json(res, 429, { error: "Too many requests; wait a minute." }, { "Retry-After": "30" });
-      const id = Number(refresh[1]);
-      // A pushed file is the rider's own: there is nothing to refresh.
-      if (id >= PUSHED_ID_BASE)
-        return pushed.get(id)
-          ? json(res, 200, { id, state: "current" })
-          : json(res, 404, { error: "No such roadbook." });
-      const store = new Store(tenantDbPath(tenant.id));
-      try {
-        const state = await roadbooks.refresh(tenant.id, store, id);
-        if (state === null) return json(res, 404, { error: "No such roadbook." });
-        return json(res, state === "refreshing" || state === "outdated" ? 202 : 200, { id, state });
-      } finally {
-        store.close();
-      }
-    }
-    // A file is served from disk and costs nothing; the first one of a roadbook traces it. A rider asks for at most 30 a minute.
-    if (file) {
-      const t = now();
-      const w = windows.get(`roadbook:${tenant.id}`);
-      if (!w || t - w.start >= 60_000) windows.set(`roadbook:${tenant.id}`, { start: t, count: 1 });
-      else if (++w.count > 30)
-        return json(res, 429, { error: "Too many requests; wait a minute." }, { "Retry-After": "30" });
-    }
-    // A pushed file is served as it was kept: nothing to trace.
-    if (file && Number(file[1]) >= PUSHED_ID_BASE) {
-      const kept = pushed.get(Number(file[1]));
-      if (!kept) return json(res, 404, { error: "No such roadbook." });
-      const etag = `"${kept.stamp}"`;
-      if (req.headers["if-none-match"] === etag) {
-        res.writeHead(304, { ETag: etag });
-        return void res.end();
-      }
-      res.writeHead(200, {
-        "Content-Type": "application/json; charset=utf-8",
-        ETag: etag,
-        "Cache-Control": "private, no-cache",
-      });
-      return void res.end(kept.body);
-    }
+    // The rider's library: what a phone lists, downloads, refreshes, and what a push is added to.
     const store = new Store(tenantDbPath(tenant.id));
     try {
-      if (!file)
-        return json(res, 200, {
-          roadbooks: [
-            ...(await roadbooks.list(tenant.id, store)),
-            ...pushed.list().map((p) => ({ ...p, state: "current" as const })),
-          ],
-        });
+      // Roadbooks pushed before they went into the library (files in a folder) are brought in once.
+      importLegacyPushed(store, join(tenantDir(tenant.id), "pushed"));
+      if (pushing) {
+        // A rider pushes at most 10 files a minute.
+        const t = now();
+        const w = windows.get(`push:${tenant.id}`);
+        if (!w || t - w.start >= 60_000) windows.set(`push:${tenant.id}`, { start: t, count: 1 });
+        else if (++w.count > 10)
+          return json(res, 429, { error: "Too many requests; wait a minute." }, { "Retry-After": "30" });
+        let body: unknown;
+        try {
+          body = await readBody(req, MAX_PUSHED_BYTES);
+        } catch (e) {
+          return e instanceof TooBig ? json(res, 413, { error: "Too large." }) : json(res, 400, { error: "Not JSON." });
+        }
+        try {
+          const kept = importRoadbookFile(store, body);
+          const stamp = (await roadbooks.list(tenant.id, store)).find((r) => r.id === kept.id)?.stamp ?? "";
+          return json(res, 200, { ...kept, stamp });
+        } catch (e) {
+          if (e instanceof PushRefused) return json(res, e.status, { error: e.message });
+          console.error(`[roadbook push] ${e instanceof Error ? e.message : String(e)}`);
+          return json(res, 500, { error: "The roadbook file could not be kept." });
+        }
+      }
+      // A refresh traces a roadbook again: a rider asks for at most 20 a minute.
+      if (refresh) {
+        const t = now();
+        const w = windows.get(`refresh:${tenant.id}`);
+        if (!w || t - w.start >= 60_000) windows.set(`refresh:${tenant.id}`, { start: t, count: 1 });
+        else if (++w.count > 20)
+          return json(res, 429, { error: "Too many requests; wait a minute." }, { "Retry-After": "30" });
+        const state = await roadbooks.refresh(tenant.id, store, Number(refresh[1]));
+        if (state === null) return json(res, 404, { error: "No such roadbook." });
+        return json(res, state === "refreshing" || state === "outdated" ? 202 : 200, { id: Number(refresh[1]), state });
+      }
+      // A file is served from disk and costs nothing; the first one of a roadbook traces it. A rider asks for at most 30 a minute.
+      if (file) {
+        const t = now();
+        const w = windows.get(`roadbook:${tenant.id}`);
+        if (!w || t - w.start >= 60_000) windows.set(`roadbook:${tenant.id}`, { start: t, count: 1 });
+        else if (++w.count > 30)
+          return json(res, 429, { error: "Too many requests; wait a minute." }, { "Retry-After": "30" });
+      }
+      if (!file) return json(res, 200, { roadbooks: await roadbooks.list(tenant.id, store) });
       const made = await roadbooks.get(tenant.id, store, Number(file[1]));
       if (!made) return json(res, 404, { error: "No such roadbook." });
       const etag = `"${made.stamp}"`;

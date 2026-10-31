@@ -47,4 +47,5 @@ not rewritten.
 | [0048](0048-several-valhalla-servers-the-newest-answers.md)    | Several Valhalla servers: the newest answers                                     | accepted |
 | [0049](0049-two-valhalla-servers-are-rebuilt-in-turn.md)       | Two Valhalla servers are rebuilt in turn                                         | accepted |
 | [0050](0050-roadbooks-are-refreshed-on-demand-with-a-state.md) | Roadbooks are refreshed on demand, with a state for the phone                    | accepted |
+| [0052](0052-a-pushed-roadbook-is-added-to-the-library.md)      | A pushed roadbook is added to the library                                        | accepted |
 | [0051](0051-a-riders-settings-are-kept-in-their-library.md)    | A rider's settings are kept in their library                                     | accepted |

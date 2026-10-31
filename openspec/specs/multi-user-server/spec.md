@@ -92,17 +92,22 @@ The server SHALL give a rider's phone its roadbooks without a file being exporte
 
 ### Requirement: Roadbooks pushed to the server
 
-A rider who plans on a library kept elsewhere SHALL be able to send a roadbook file to their server: `PUT /roadbooks` with their token and the roadbook file as the body, up to 5 MiB, at most 10 a minute, at most 100 kept. The server SHALL refuse a body that is not JSON (400), not a `motoride-roadbook` version 1 file with a name and a line of at least two points (400), or too large (413), and SHALL keep the file in that rider's own folder. A file that says which roadbook it is (`origin`: number and name) SHALL replace the earlier push of the same roadbook; any other SHALL be told by its name. The answer SHALL give the id, the version stamp (computed without the time the file was made, so the same roadbook pushed twice is one version) and whether it replaced an earlier copy. Pushed files SHALL be listed by `GET /roadbooks` after the rider's library, with ids from 1,000,000 up so that they never meet a library number, and served by `GET /roadbook/<id>` as kept, with the same `ETag` rules and without tracing. A rider SHALL never see another rider's pushed files. The terminal (`rides export <id> --push`) and the `exportGpx` tool (`push`) SHALL send the file of a saved ride to `RIDE_REMOTE_URL` with `RIDE_REMOTE_TOKEN`, and say plainly when either is missing or the server refuses the token; on a server, where the library is already there, the tool SHALL refuse.
+A rider who plans on a library kept elsewhere SHALL be able to send a roadbook file to their server: `PUT /roadbooks` with their token and the roadbook file as the body, up to 5 MiB, at most 10 a minute. The server SHALL refuse a body that is not JSON (400), not a `motoride-roadbook` version 1 file with a name and a line of at least two points (400), or too large (413), and SHALL add the file to that rider's own library as a roadbook of theirs (a roadbook number like any other, no separate store): the line cut into one leg per pair of waypoints at the file's waypoints, the waypoints, the cameras, the distance and the riding time. The speed limits, countries and roundabouts SHALL NOT be taken from the file: they are traced on the server's own map when the file is made for the phone, and planned stops are left to a refresh. A file that says which roadbook it is (`origin`: number and name) SHALL replace the earlier push of the same roadbook, keeping the earlier version in the roadbook's versions; any other SHALL be told by its name; an unchanged file SHALL change nothing. At most 100 sent roadbooks SHALL be kept in a library (409 beyond). The answer SHALL give the roadbook's number, the version stamp of the file the phone will download, and whether it replaced an earlier copy. Roadbooks that an older server kept as files in a `pushed` folder SHALL be brought into the rider's library once, the folder renamed `pushed.imported`. A rider SHALL never see another rider's roadbooks. The terminal (`rides export <id> --push`) and the `exportGpx` tool (`push`) SHALL send the file of a saved ride to `RIDE_REMOTE_URL` with `RIDE_REMOTE_TOKEN`, and say plainly when either is missing or the server refuses the token; on a server, where the library is already there, the tool SHALL refuse.
 
 #### Scenario: A rider plans locally and pushes
 
 - **WHEN** a rider with a local library runs `rides export 7 --push` with their server and token set
-- **THEN** the server keeps the roadbook file, the phone enrolled with the same rider lists it, and pushing it again unchanged gives the same version stamp
+- **THEN** the roadbook is a row of the rider's library on the server, the phone enrolled with the same rider lists it under its number, and pushing it again unchanged gives the same roadbook and the same version stamp
 
-#### Scenario: Another rider's server folder
+#### Scenario: A push is a roadbook like the others
 
-- **WHEN** a second rider lists roadbooks or asks for the first rider's pushed id
-- **THEN** the list is empty of it and the id answers 404
+- **WHEN** a rider has pushed a roadbook and then asks the server to `refreshRide` or `deleteRoadbook` it, or the phone to download or refresh it
+- **THEN** it behaves as a roadbook planned on the server, with its limits traced on the server's map
+
+#### Scenario: Another rider's library
+
+- **WHEN** a second rider lists roadbooks or asks for the first rider's roadbook number
+- **THEN** the list is empty of it and the number answers 404
 
 ### Requirement: The tools over HTTP
 

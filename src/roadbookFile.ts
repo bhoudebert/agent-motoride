@@ -183,8 +183,8 @@ export async function buildRoadbookFile(
   limitsError: string | null;
   builtUpError: string | null;
   signsError: string | null;
-  /** Where a sign overrode the limit OpenStreetMap posts: "D 955 near 50.5388,3.4263: sign says 70, OSM says 90". */
-  signOverrides: string[];
+  /** Where a sign says another limit than the one OpenStreetMap posts (OpenStreetMap is kept): "D 955 near 50.5388,3.4263: sign says 70, OSM says 90". */
+  signDisagreements: string[];
 }> {
   const line: LatLon[] = [];
   const limits: RoadbookFile["limits"] = [];
@@ -209,8 +209,8 @@ export async function buildRoadbookFile(
   // A speed limit sign seen in street-level photos beats a guess. Without the sign service the guesses stand.
   let signLimit: SignLimit | null = null;
   let signsError: string | null = null;
-  const signOverrides: string[] = [];
-  let overrideKey = "";
+  const signDisagreements: string[] = [];
+  let differKey = "";
   if (signs) {
     try {
       signLimit = await signs(input.shapes.flatMap((shape) => decodePolyline(shape)));
@@ -248,8 +248,10 @@ export async function buildRoadbookFile(
           else countries.push({ from: base + from, to: base + to, code });
         }
         const { kmh: defaultKmh, posted } = effectiveLimit(edge, data.admins);
-        // A limit sign beside the road beats OpenStreetMap and the guesses. A roundabout's ring has no sign of its own.
-        const signKmh = signLimit && !edge.roundabout ? signLimit(points, from, to) : null;
+        // OpenStreetMap's posted limit is the fact: a sign never changes it. Where OpenStreetMap is only assuming a limit, a limit sign
+        // beside the road is better than the guess. A roundabout's ring has no sign of its own.
+        const seen = signLimit && !edge.roundabout ? signLimit(points, from, to) : null;
+        const signKmh = posted ? null : seen;
         // Else an untagged road mostly inside built-up land is a town road: 50 at most, marked as inferred.
         const inferred =
           !posted &&
@@ -259,12 +261,12 @@ export async function buildRoadbookFile(
           builtUpShare(points, from, to, inBuiltUp) >= BUILT_UP_SHARE;
         const kmh = signKmh ?? (inferred ? 50 : defaultKmh);
         const road = roadLabel(edge.names);
-        if (signKmh !== null && posted && signKmh !== defaultKmh) {
+        if (seen !== null && posted && seen !== defaultKmh) {
           const at = points[from]!;
-          const said = `${road ?? "road"} near ${at.lat.toFixed(4)},${at.lon.toFixed(4)}: sign says ${signKmh}, OSM says ${defaultKmh}`;
+          const said = `${road ?? "road"} near ${at.lat.toFixed(4)},${at.lon.toFixed(4)}: sign says ${seen}, OSM says ${defaultKmh}`;
           // The edges of one road under the same two limits are told once.
-          if (overrideKey !== `${road}|${signKmh}|${defaultKmh}`) signOverrides.push(said);
-          overrideKey = `${road}|${signKmh}|${defaultKmh}`;
+          if (differKey !== `${road}|${seen}|${defaultKmh}`) signDisagreements.push(said);
+          differKey = `${road}|${seen}|${defaultKmh}`;
         }
         const stretch: RoadbookFile["limits"][number] = {
           from: base + from,
@@ -367,6 +369,6 @@ export async function buildRoadbookFile(
     limitsError: errors.length ? `Speed limits missing for ${errors.join("; ")}` : null,
     builtUpError,
     signsError,
-    signOverrides,
+    signDisagreements,
   };
 }

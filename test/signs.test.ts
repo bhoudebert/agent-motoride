@@ -107,7 +107,7 @@ const input = { name: "Loop", description: "", legs, shapes: [encodePolyline(lin
 const withSign: SignLookup = async () => (_points, _from, to) => (to <= 30 ? 70 : null);
 
 test("roadbook file: a sign fills a stretch OSM does not know, marked as from a sign", async () => {
-  const { file, signOverrides } = await buildRoadbookFile(
+  const { file, signDisagreements } = await buildRoadbookFile(
     input,
     tracing([edge(0, 30), edge(30, 60)]),
     undefined,
@@ -120,35 +120,33 @@ test("roadbook file: a sign fills a stretch OSM does not know, marked as from a 
       [30, 60, 80, false, undefined],
     ],
   );
-  assert.deepEqual(signOverrides, []);
+  assert.deepEqual(signDisagreements, []);
 });
 
-test("roadbook file: a sign beats a posted limit and the override is reported once", async () => {
-  const { file, signOverrides } = await buildRoadbookFile(
+test("roadbook file: OpenStreetMap's posted limit is kept; a sign that says otherwise is only reported, once", async () => {
+  const { file, signDisagreements } = await buildRoadbookFile(
     input,
     tracing([edge(0, 10, { speed_limit: 90 }), edge(10, 30, { speed_limit: 90 }), edge(30, 60, { speed_limit: 90 })]),
     undefined,
     withSign,
   );
   assert.deepEqual(
-    file.limits.map((l) => [l.from, l.to, l.kmh, l.source]),
-    [
-      [0, 30, 70, "sign"],
-      [30, 60, 90, undefined],
-    ],
+    file.limits.map((l) => [l.from, l.to, l.kmh, l.posted, l.source]),
+    [[0, 60, 90, true, undefined]],
+    "the posted 90 stays whatever the sign says",
   );
-  assert.equal(signOverrides.length, 1);
-  assert.match(signOverrides[0]!, /N 507 near 50\.\d+,3\.\d+: sign says 70, OSM says 90/);
+  assert.equal(signDisagreements.length, 1);
+  assert.match(signDisagreements[0]!, /N 507 near 50\.\d+,3\.\d+: sign says 70, OSM says 90/);
 });
 
-test("roadbook file: a sign agreeing with OSM is not an override", async () => {
-  const { signOverrides } = await buildRoadbookFile(
+test("roadbook file: a sign agreeing with OSM is nothing to report", async () => {
+  const { signDisagreements } = await buildRoadbookFile(
     input,
     tracing([edge(0, 30, { speed_limit: 70 })]),
     undefined,
     withSign,
   );
-  assert.deepEqual(signOverrides, []);
+  assert.deepEqual(signDisagreements, []);
 });
 
 test("roadbook file: a roundabout's ring takes no sign", async () => {
@@ -189,10 +187,10 @@ test("roadbook file: when the sign service fails the guesses stand and the file 
 });
 
 test("roadbook file: without a sign lookup nothing changes", async () => {
-  const { file, signsError, signOverrides } = await buildRoadbookFile(input, tracing([edge(0, 60)]));
+  const { file, signsError, signDisagreements } = await buildRoadbookFile(input, tracing([edge(0, 60)]));
   assert.equal(file.limits[0]!.source, undefined);
   assert.equal(signsError, null);
-  assert.deepEqual(signOverrides, []);
+  assert.deepEqual(signDisagreements, []);
 });
 
 const flat = [

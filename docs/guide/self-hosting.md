@@ -196,9 +196,30 @@ more without the rebuild flag and prints the extract dates. It uses `docker-comp
 - **Automatic.** At 3 am on the first of each month, in `crontab -e`: `0 3 1 * * cd /path/to/deploy && ./update-map.sh --yes >> update-map.log 2>&1`.
 - **How old is my map?** `docker compose -f docker-compose.single.yml --profile valhalla exec valhalla ls -l /custom_files`: the dates of the two
   `.osm.pbf` files are the age of the map.
+- **With two servers it rebuilds only the older one.** See the next section: the other keeps answering, so there is no downtime.
 - **If the script stops half way.** It says why. If Valhalla ran out of memory, free some and run it again. If the container was left with the rebuild flag
   on, any restart would rebuild again: run `VALHALLA_REBUILD=False docker compose -f docker-compose.single.yml --profile valhalla up -d --force-recreate valhalla`
   once the build has finished.
+
+### Two Valhalla servers: updates without downtime
+
+A single own Valhalla is down for the 2 hours of each rebuild. With two, one keeps answering while the other rebuilds, and agentRide always
+uses the one whose map is newest (it asks each one's `/status`, see `VALHALLA_URL` above). You pay for it twice in disk and memory.
+
+**What it takes.** About 11 GB of disk per instance (the two extracts and the tiles), so about 22 GB, plus the temporary files of a build. Memory:
+2 to 4 GB for each to serve, and 8 to 16 GB more while one builds. A server with 16 GB or more is comfortable; one with 8 GB should keep a single instance.
+
+1. Create the second instance (its first build is a full one, about 2 hours, while the first keeps serving; run it at a quiet hour):
+   `docker compose -f deploy/docker-compose.yml --env-file deploy/.env --profile valhalla2 up -d valhalla2`
+   (for the single-container file, `-f deploy/docker-compose.single.yml`). Follow it with `docker compose logs -f valhalla2`.
+2. In `deploy/.env`, list both: `VALHALLA_URL=http://valhalla:8002,http://valhalla2:8002`, and restart the server (`up -d ride`).
+   `npm run check` then shows the map date of each.
+3. From now on `deploy/update-map.sh` asks both instances when their map was built and rebuilds only the older one. The newest keeps serving
+   meanwhile, and when the rebuilt one is done it is the newest and takes over. There is no switch to flip and no file to edit.
+
+Because nothing goes down, you can run it more often: every week keeps the newest map under a week old (each run refreshes the older of the two,
+so the pair alternates). A server that does not answer `/status` counts as the oldest and is rebuilt first. The public server is not in the list on
+purpose: its map is rebuilt often, so it would usually win and yours would idle; add it only as a last resort you accept.
 
 ## Traffic for the phone (optional)
 

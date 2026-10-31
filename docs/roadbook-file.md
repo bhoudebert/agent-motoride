@@ -80,7 +80,7 @@ being exported:
 - `GET /roadbook/<id>` gives the file above. Its `ETag` is the roadbook's `stamp`; send it back in `If-None-Match` to
   get 304 when the copy you hold is current. The file is traced on first request, which can take several seconds.
 - The stamp changes when the route, the stops, the cameras or the name change. On a server that runs its own Valhalla
-  (`VALHALLA_URL` set) it also changes when that map is rebuilt, by the day of the newest map (it never goes back), so
+  (`VALHALLA_URL` set) it also changes when that map is rebuilt, by the day of the newest map (it never goes back, a restart of the server included: the day is kept in the data folder), so
   every roadbook is offered again and comes back with the limits of the new map. A change of OpenStreetMap limits that
   the map has not picked up yet is not seen, and neither is the public server's map: its schedule is not the host's.
 - Errors: 401 no or wrong token, 404 no such roadbook, 429 too many requests, 502 the route could not be traced (try

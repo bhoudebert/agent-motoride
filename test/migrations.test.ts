@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { test } from "node:test";
+import { gzipSync } from "node:zlib";
 import { type Migration, MIGRATIONS, migrate } from "../src/migrations.ts";
 import { Store } from "../src/store.ts";
 
@@ -258,5 +259,27 @@ test("migrations: a pushed roadbook keeps its waypoints as the coordinates of it
     "Pushed line": ["50.1,3.1", "50.2,3.2", "50.3,3.3"],
     "Planned loop": ["A", "B", "A"],
   });
+  after.close();
+});
+
+test("migrations: rides uploaded before the header fields are read again for their state, climb, leans and size", () => {
+  const path = file();
+  new Store(path).close();
+  const db = new DatabaseSync(path);
+  for (const column of ["state", "climb_m", "peak_left_deg", "peak_right_deg", "bytes"])
+    db.exec(`ALTER TABLE recorded_rides DROP COLUMN ${column}`);
+  const gpx = `<gpx><metadata><name>Loop, 2026-10-30</name><extensions><motoride:ride roadbook="r" name="Loop" state="stopped" climbM="229" peakLeftDeg="30"/></extensions></metadata></gpx>`;
+  db.prepare(
+    `INSERT INTO recorded_rides (id, name, started_at, ended_at, distance_km, points, sha256, gpx, uploaded_at)
+     VALUES ('r1', 'Loop, 2026-10-30', '2026-10-30', '2026-10-30', 1, 2, 'x', ?, '2026-10-31')`,
+  ).run(gzipSync(Buffer.from(gpx)));
+  db.exec("PRAGMA user_version = 7");
+  db.close();
+  const after = new Store(path);
+  const [ride] = after.listRecordedRides();
+  assert.deepEqual(
+    [ride!.name, ride!.state, ride!.climbM, ride!.peakLeftDeg, ride!.peakRightDeg, ride!.bytes],
+    ["Loop", "stopped", 229, 30, undefined, Buffer.byteLength(gpx)],
+  );
   after.close();
 });

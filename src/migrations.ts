@@ -1,3 +1,5 @@
+import { gunzipSync } from "node:zlib";
+import { rideHeader } from "./rideHeader.ts";
 import { existsSync } from "node:fs";
 import type { DatabaseSync } from "node:sqlite";
 
@@ -200,6 +202,36 @@ export const MIGRATIONS: Migration[] = [
         if (!legs.length) continue;
         const points = [legs[0]!.from_coords, ...legs.map((l) => l.to_coords)];
         set.run(JSON.stringify(book.round_trip && points.length > 1 ? points.slice(0, -1) : points), book.id);
+      }
+    },
+  },
+  {
+    version: 8,
+    name: "what a recorded ride's header says",
+    up(db) {
+      // The phone's card for a ride (ADR 0054): its state, climb and peak leans, and the size of its GPX, read from the header at
+      // upload. Rides already uploaded are read again; `name` becomes the roadbook's name when the header has it.
+      const have = new Set(
+        (db.prepare("PRAGMA table_info(recorded_rides)").all() as Array<{ name: string }>).map((c) => c.name),
+      );
+      for (const column of ["state TEXT", "climb_m REAL", "peak_left_deg REAL", "peak_right_deg REAL", "bytes INTEGER"])
+        if (!have.has(column.split(" ")[0]!)) db.exec(`ALTER TABLE recorded_rides ADD COLUMN ${column}`);
+      const rows = db.prepare("SELECT id, gpx FROM recorded_rides").all() as Array<{ id: string; gpx: Uint8Array }>;
+      const set = db.prepare(
+        "UPDATE recorded_rides SET name = coalesce(?, name), state = ?, climb_m = ?, peak_left_deg = ?, peak_right_deg = ?, bytes = ? WHERE id = ?",
+      );
+      for (const row of rows) {
+        const gpx = gunzipSync(Buffer.from(row.gpx)).toString("utf8");
+        const h = rideHeader(gpx);
+        set.run(
+          h.name ?? null,
+          h.state ?? null,
+          h.climbM ?? null,
+          h.peakLeftDeg ?? null,
+          h.peakRightDeg ?? null,
+          Buffer.byteLength(gpx),
+          row.id,
+        );
       }
     },
   },

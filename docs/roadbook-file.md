@@ -149,7 +149,10 @@ gzip` is accepted, the limit applies once unzipped too). `<id>` is the phone's o
   ride's header names a roadbook of this library (`source`, `sourceRoadbook`, `sourceName` of the `motoride:ride` element; the number
   **and** the name must match, as for `review`), and `null` for a free-roaming ride, which is kept all the same.
 - `GET /rides` lists the rider's rides: `{"rides": [{"id", "name", "startedAt", "endedAt", "distanceKm", "points", "roadbook",
-"uploadedAt"}]}`, latest first. `GET /rides/<id>` gives the GPX back as it was sent. `DELETE /rides/<id>` removes it **on the
+"bytes", "uploadedAt", "state"?, "climbM"?, "peakLeftDeg"?, "peakRightDeg"?}]}`, latest first. `name` is the roadbook's name from
+  the header (the `name` of `motoride:ride`), else the GPX title; `startedAt`, `endedAt` and `uploadedAt` are ISO 8601 strings in UTC,
+  `distanceKm` a number of kilometres, `bytes` the size of the GPX a download weighs; `state` (`completed`, `stopped` or
+  `recovered`), `climbM` and the peak leans (degrees) are read from the header and left out when it has none. `GET /rides/<id>` gives the GPX back as it was sent. `DELETE /rides/<id>` removes it **on the
   server only**; the phone's copy is not touched, and a deletion on the phone never reaches the server.
 - Errors: 400 not a GPX ride or a bad id, 401 no or wrong token, 404 no such ride, 405 wrong method, 409 the library holds 200 rides,
   413 too large, 415 an encoding other than gzip, 429 too many (10 uploads a minute).

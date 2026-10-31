@@ -1314,8 +1314,9 @@ export class Store {
     this.#db
       .prepare(
         `INSERT OR REPLACE INTO recorded_rides
-           (id, name, started_at, ended_at, distance_km, points, roadbook_id, roadbook_name, sha256, gpx, uploaded_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           (id, name, started_at, ended_at, distance_km, points, roadbook_id, roadbook_name, sha256, gpx, uploaded_at,
+            state, climb_m, peak_left_deg, peak_right_deg, bytes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         ride.id,
@@ -1329,6 +1330,11 @@ export class Store {
         sha256,
         gpx,
         new Date().toISOString(),
+        ride.state ?? null,
+        ride.climbM ?? null,
+        ride.peakLeftDeg ?? null,
+        ride.peakRightDeg ?? null,
+        ride.bytes,
       );
   }
 
@@ -1336,7 +1342,8 @@ export class Store {
   listRecordedRides(): RecordedRide[] {
     const rows = this.#db
       .prepare(
-        `SELECT id, name, started_at, ended_at, distance_km, points, roadbook_id, roadbook_name, uploaded_at
+        `SELECT id, name, started_at, ended_at, distance_km, points, roadbook_id, roadbook_name, uploaded_at,
+                state, climb_m, peak_left_deg, peak_right_deg, bytes
          FROM recorded_rides ORDER BY started_at DESC`,
       )
       .all() as Array<Record<string, string | number | null>>;
@@ -1351,7 +1358,12 @@ export class Store {
         r["roadbook_id"] !== null && this.findRide(String(r["roadbook_id"]))
           ? { id: Number(r["roadbook_id"]), name: String(r["roadbook_name"]) }
           : null,
+      bytes: Number(r["bytes"] ?? 0),
       uploadedAt: String(r["uploaded_at"]),
+      ...(r["state"] !== null ? { state: r["state"] as RecordedRide["state"] } : {}),
+      ...(r["climb_m"] !== null ? { climbM: Number(r["climb_m"]) } : {}),
+      ...(r["peak_left_deg"] !== null ? { peakLeftDeg: Number(r["peak_left_deg"]) } : {}),
+      ...(r["peak_right_deg"] !== null ? { peakRightDeg: Number(r["peak_right_deg"]) } : {}),
     }));
   }
 

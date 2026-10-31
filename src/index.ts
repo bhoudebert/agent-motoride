@@ -648,7 +648,7 @@ async function sharedRide(session: RideSession, savedId: number | null): Promise
     overviewUrl: nav.overview,
     itinerary: ride.itinerary,
     gpx,
-    roadbookFile: once(async () => JSON.stringify((await savedRideRoadbook(ride, gpx)).file)),
+    roadbookFile: once(async () => JSON.stringify((await savedRideRoadbook(ride, gpx, store)).file)),
   };
   return lastShared;
 }

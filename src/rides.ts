@@ -1,5 +1,6 @@
 // Manage the saved-ride library without starting a planning session.
 
+import { applyProposalDecisions, formatRecordedReview, reviewRecordedRide } from "./recordedReview.ts";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
@@ -102,6 +103,9 @@ const USAGE = `Usage: npm run rides -- <command>
   notes [--all]                         Notes waiting for review (--all: reviewed and dismissed ones too)
   review [id|name] [track.gpx] [--yes]  After the ride: place the notes on the recorded track (or on the plan without one),
                                         show detours and pace, then confirm a rating per road stretch (--yes: accept all proposals)
+  recorded                              The rides you recorded with the app and uploaded to this library (the server's), latest first
+  review-recorded [id] [--confirm 1,2] [--reject 3]
+                                        Guessed limits an uploaded ride suggests are too high; with --confirm / --reject, keep your answers
   export <id|name> [file.gpx] [--pins N] [--push]  Write the ride as a GPX file (default: exports/ in the project); --pins caps the route points;
                                         --push sends the roadbook to your server (RIDE_REMOTE_URL, RIDE_REMOTE_TOKEN), quickly: the GPX and the line, waypoints and cameras, no limits traced
   qr <id|name>                          QR code of the ride's Google Maps link
@@ -362,6 +366,33 @@ try {
       for (const line of applyReview(store, decisions)) console.log(line);
       break;
     }
+    case "recorded": {
+      const rides = store.listRecordedRides();
+      if (!rides.length) console.log("No recorded ride in this library (the app uploads them to your server).");
+      for (const r of rides)
+        console.log(
+          `${r.id}  ${r.distanceKm} km  ${r.startedAt.slice(0, 16).replace("T", " ")} UTC  ${r.roadbook ? `roadbook #${r.roadbook.id} "${r.roadbook.name}"` : "no roadbook"}`,
+        );
+      break;
+    }
+    case "review-recorded": {
+      const numbers = (flag: string) =>
+        (args[args.indexOf(flag) + 1] ?? "")
+          .split(",")
+          .map(Number)
+          .filter((n) => Number.isInteger(n) && n > 0);
+      const flagged = new Set(["--confirm", "--reject"]);
+      const which = args.find((a, i) => !a.startsWith("--") && !flagged.has(args[i - 1] ?? ""));
+      const review = await reviewRecordedRide(store, which);
+      const decisions = [
+        ...(args.includes("--confirm") ? numbers("--confirm").map((n) => ({ n, action: "confirm" as const })) : []),
+        ...(args.includes("--reject") ? numbers("--reject").map((n) => ({ n, action: "reject" as const })) : []),
+      ];
+      console.log(
+        decisions.length ? applyProposalDecisions(store, review, decisions).join("\n") : formatRecordedReview(review),
+      );
+      break;
+    }
     case "export": {
       const target = ride(args[0]);
       const pinsAt = args.indexOf("--pins");
@@ -432,7 +463,7 @@ try {
         overviewUrl: nav.overview,
         itinerary: target.itinerary,
         gpx,
-        roadbookFile: once(async () => JSON.stringify((await savedRideRoadbook(target, gpx)).file)),
+        roadbookFile: once(async () => JSON.stringify((await savedRideRoadbook(target, gpx, store)).file)),
       };
       const { url } = await startShareServer(() => shared, Number(process.env.RIDE_SHARE_PORT) || 8787);
       console.log(`Scan with the phone (same Wi-Fi): ${url}\nServing until Ctrl-C.`);

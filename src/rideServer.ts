@@ -53,6 +53,7 @@ import { effectivePreferences } from "./preferences.ts";
 import { describeProfile } from "./profile.ts";
 import type { RideContext } from "./session.ts";
 import { formatStopPlan } from "./stops.ts";
+import { applyProposalDecisions, formatRecordedReview, reviewRecordedRide } from "./recordedReview.ts";
 import { Store } from "./store.ts";
 import { resolvePoint, setGeoAnchor, usePersistentGeoCache } from "./tools/geo.ts";
 import { createToolDefinitions } from "./tools/index.ts";
@@ -254,6 +255,9 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
     addRideNote: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     // stores placements and road ratings; map matching online
     reviewRide: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+    listRecordedRides: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    // stores the limits the rider confirmed or turned down; the same answers again change nothing more
+    reviewRecordedRide: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     listRides: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     listRoadbooks: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     // Adds or updates a ride; the same call again changes nothing more. Reads forecasts and map data.
@@ -1110,6 +1114,64 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
     },
     async (args) =>
       text(formatRoadbookPage(store.listRoadbooks(args.page ?? 1), (n) => `call listRoadbooks with page ${n}`)),
+  );
+
+  server.registerTool(
+    "listRecordedRides",
+    {
+      description:
+        "The rides the rider recorded with the MotoRide app and uploaded to this server (not planned rides: listRides and listRoadbooks are those), latest first: id, name, date, distance, points, the roadbook it followed. Use it for 'my last ride', 'the ride I recorded', 'the track I uploaded'.",
+      annotations: hintsOf("listRecordedRides"),
+      inputSchema: z.object({}),
+    },
+    async () => {
+      const rides = store.listRecordedRides();
+      if (!rides.length)
+        return text(
+          "No recorded ride in this library. The MotoRide app uploads one from the end of a ride or from My rides, to the rider's server.",
+        );
+      return text(
+        rides
+          .map(
+            (r) =>
+              `${r.id}: "${r.name}", ${r.distanceKm} km, ${r.startedAt.slice(0, 16).replace("T", " ")} UTC, ${r.points} points${r.roadbook ? `, followed roadbook #${r.roadbook.id} "${r.roadbook.name}"` : ", no roadbook of this library"}`,
+          )
+          .join("\n"),
+      );
+    },
+  );
+
+  server.registerTool(
+    "reviewRecordedRide",
+    {
+      description:
+        "Compares a recorded, uploaded ride (latest by default) with the roadbook it followed and lists the speed limits the roadbook only guessed that look too high, because the rider held a steady lower speed there (a speed never raises a limit, and posted or sign limits are never questioned). Show the list exactly as returned and ask the rider which to confirm or reject; never decide for them. Then call again with decisions, all of the rider's answers in one call (the numbers change once some are kept): a confirmed limit replaces the guess on that road in every roadbook from its next refresh; a rejected one is not proposed again.",
+      annotations: hintsOf("reviewRecordedRide"),
+      inputSchema: z.object({
+        ride: z.string().optional().describe("Recorded ride id, or a part of its id or name; default the latest"),
+        decisions: z
+          .array(
+            z.object({
+              n: z.number().int().min(1).describe("The proposal's number in the list"),
+              action: z.enum(["confirm", "reject"]),
+              kmh: z
+                .number()
+                .int()
+                .optional()
+                .describe("Another usual limit (30, 50, 60, 70, 80, 90) than the proposed one, lower than the guess"),
+            }),
+          )
+          .optional()
+          .describe("The rider's answers, after a first call without decisions"),
+      }),
+    },
+    async (args) => {
+      if (!store.listRecordedRides().length)
+        return text("No recorded ride in this library. The MotoRide app uploads one to the rider's server.");
+      const review = await reviewRecordedRide(store, args.ride);
+      if (!args.decisions) return text(formatRecordedReview(review));
+      return text(applyProposalDecisions(store, review, args.decisions).join("\n"));
+    },
   );
 
   server.registerTool(

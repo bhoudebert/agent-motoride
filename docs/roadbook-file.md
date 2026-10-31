@@ -41,7 +41,8 @@ available for other apps; the app reads a GPX too, but without limits or cameras
   `"inferred"` on an untagged road that lies in built-up land and was set to 50 from OpenStreetMap land use
   (ADR 0045), `"sign"` where a speed limit sign seen in street-level photos set the limit: one OpenStreetMap
   did not post, or a lower one than OpenStreetMap posts, in which case `osm` is the OpenStreetMap limit it replaced
-  (`posted` is then true; a sign never raises a limit; ADR 0046, 0053), absent otherwise (a reader that does not know it ignores it), `road` is the
+  (`posted` is then true; a sign never raises a limit; ADR 0046, 0053), `"ride"` where the rider confirmed, from a ride they recorded, a
+  lower limit than the guess (`posted` is then true; never on a posted limit or a sign, and never higher; ADR 0055), absent otherwise (a reader that does not know it ignores it), `road` is the
   road ref or name, optional. Entries are in order and should not overlap; a gap means unknown. Optional.
 - `cameras`: fixed speed cameras near the line. `kmh` is the camera's limit or null. `bearing` is the direction the
   camera faces, degrees clockwise from north (0 to 359), when OpenStreetMap gives it as degrees or a compass point;

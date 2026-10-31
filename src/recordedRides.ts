@@ -30,19 +30,28 @@ export interface RecordedRide {
   uploadedAt: string;
 }
 
-/** The roadbook a ride's header names (`sourceRoadbook`, `sourceName`), when it is one of the rider's library; null otherwise. */
-function roadbookOf(store: Store, header: string): { id: number; name: string } | null {
+/**
+ * The roadbook of the library a recorded ride followed: the one its header names (`sourceRoadbook` and `sourceName`, which must both
+ * match), else the one roadbook that has exactly the name the ride gives (a phone that rode a bundled copy has no origin). Null when
+ * none, or when two roadbooks share the name.
+ */
+export function roadbookOfGpx(store: Store, gpx: string): { id: number; name: string } | null {
+  const header = /<motoride:ride\b([^>]*)\/?>/.exec(gpx)?.[1] ?? "";
   const attr = (name: string) => new RegExp(`\\b${name}="([^"]*)"`).exec(header)?.[1];
+  const rides = store.listRides();
   const app = attr("source");
   const number = Number(attr("sourceRoadbook"));
   const named = unescapeXml(attr("sourceName") ?? "");
-  if (!app || !Number.isInteger(number) || !named) return null;
-  const rides = store.listRides();
-  // A roadbook sent from the rider's other library is kept under the key of where it came from; one planned here under its own number.
-  const sent = rides.find((r) => r.request === `roadbook file ${app}:${number}:${named}`);
-  const own = rides.find((r) => r.id === number && r.name === named && !r.request.startsWith("roadbook file "));
-  const found = sent ?? own;
-  return found ? { id: found.id, name: found.name } : null;
+  if (app && Number.isInteger(number) && named) {
+    // A roadbook sent from the rider's other library is kept under the key of where it came from; one planned here under its own number.
+    const sent = rides.find((r) => r.request === `roadbook file ${app}:${number}:${named}`);
+    const own = rides.find((r) => r.id === number && r.name === named && !r.request.startsWith("roadbook file "));
+    const found = sent ?? own;
+    if (found) return { id: found.id, name: found.name };
+  }
+  const called = unescapeXml(attr("name") ?? "");
+  const same = called ? rides.filter((r) => r.name === called) : [];
+  return same.length === 1 ? { id: same[0]!.id, name: same[0]!.name } : null;
 }
 
 const unescapeXml = (s: string): string =>
@@ -66,7 +75,6 @@ export function describeRide(store: Store, id: string, gpx: string): Omit<Record
   let km = 0;
   for (let i = 1; i < points.length; i++) km += haversineKm(points[i - 1]!, points[i]!);
   const name = unescapeXml(/<metadata>[\s\S]*?<name>([^<]*)<\/name>/.exec(gpx)?.[1] ?? "").trim() || id;
-  const header = /<motoride:ride\b([^>]*)\/?>/.exec(gpx)?.[1] ?? "";
   return {
     id,
     name: name.slice(0, 200),
@@ -74,7 +82,7 @@ export function describeRide(store: Store, id: string, gpx: string): Omit<Record
     endedAt: new Date(points.at(-1)!.time).toISOString(),
     distanceKm: Math.round(km * 10) / 10,
     points: points.length,
-    roadbook: roadbookOf(store, header),
+    roadbook: roadbookOfGpx(store, gpx),
   };
 }
 

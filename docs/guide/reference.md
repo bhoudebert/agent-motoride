@@ -119,6 +119,9 @@ AFTER THE RIDE
 - Review with your recorded track: notes placed on the road you rode, detours, pace, ratings to confirm
     npm run rides -- review [roadbook] [track.gpx]
     npm run rides -- notes
+- Compare a ride you recorded and uploaded with its roadbook: guessed limits that look too high, for you to confirm or reject
+    npm run rides -- recorded
+    npm run rides -- review-recorded [id] [--confirm 1,2] [--reject 3]
 - Rate a roadbook or one of its legs: 4-5 sought out, 0-1 avoided; a low roadbook asks: the roads or the loop?
     npm run rides -- rate <roadbook> <0-5> [note] [--roads|--loop]
     npm run rides -- rate-leg <roadbook> <leg> <0-5> [note]
@@ -181,7 +184,7 @@ UNDER THE HOOD
 
 ## Claude Code and Codex (MCP server)
 
-40 tools, 17 prompts. Each tool shows its MCP hints: a client can let read-only tools run without asking.
+42 tools, 17 prompts. Each tool shows its MCP hints: a client can let read-only tools run without asking.
 
 ### Tools
 
@@ -575,6 +578,23 @@ _read-only · local only_
 The rider's roadbooks (saved loops and trips), newest first, 20 per page: number, name, distance, time, how many rides and the next planned date, rating. The last line says the page and how to get the next one: call again with that page when the rider asks for more. The number is what the rider calls "ride 7".
 
 - `page` (integer, optional): Page to show, 20 lines each (default 1)
+
+#### `listRecordedRides`
+
+_read-only · local only_
+
+The rides the rider recorded with the MotoRide app and uploaded to this server (not planned rides: listRides and listRoadbooks are those), latest first: id, name, date, distance, points, the roadbook it followed. Use it for 'my last ride', 'the ride I recorded', 'the track I uploaded'.
+
+No input.
+
+#### `reviewRecordedRide`
+
+_writes · not destructive · idempotent · local only_
+
+Compares a recorded, uploaded ride (latest by default) with the roadbook it followed and lists the speed limits the roadbook only guessed that look too high, because the rider held a steady lower speed there (a speed never raises a limit, and posted or sign limits are never questioned). Show the list exactly as returned and ask the rider which to confirm or reject; never decide for them. Then call again with decisions, all of the rider's answers in one call (the numbers change once some are kept): a confirmed limit replaces the guess on that road in every roadbook from its next refresh; a rejected one is not proposed again.
+
+- `ride` (string, optional): Recorded ride id, or a part of its id or name; default the latest
+- `decisions` (object[], optional): The rider's answers, after a first call without decisions
 
 #### `listRides`
 

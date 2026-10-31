@@ -1,6 +1,7 @@
 import type { SignLimit, SignLookup } from "./signs.ts";
 import { BUILT_UP_SHARE, builtUpShare, type BuiltUpLookup, type InBuiltUp } from "./builtUp.ts";
 import { decodePolyline, encodePolyline, type LatLon } from "./geometry.ts";
+import type { CorrectedLimit } from "./limitProposals.ts";
 import { haversineKm } from "./tools/geo.ts";
 import { effectiveLimit, traceLeg, type TraceAttributesResponse, type TraceEdge } from "./tools/trip.ts";
 
@@ -25,7 +26,7 @@ export interface RoadbookFile {
     kmh: number;
     posted: boolean;
     road?: string;
-    source?: "inferred" | "sign";
+    source?: "inferred" | "sign" | "ride";
     /** The limit OpenStreetMap posts, where a sign says lower and the lower one is used. */
     osm?: number;
   }>;
@@ -180,6 +181,7 @@ export async function buildRoadbookFile(
   trace: Trace = traceLeg,
   builtUp?: BuiltUpLookup,
   signs?: SignLookup,
+  corrected?: CorrectedLimit,
 ): Promise<{
   file: RoadbookFile;
   limitsError: string | null;
@@ -266,7 +268,12 @@ export async function buildRoadbookFile(
           defaultKmh > 50 &&
           inBuiltUp !== null &&
           builtUpShare(points, from, to, inBuiltUp) >= BUILT_UP_SHARE;
-        const kmh = signKmh ?? (inferred ? 50 : defaultKmh);
+        // A limit the rider confirmed from a ride (ADR 0055) replaces a guess, never a posted limit or a sign, and only to lower it.
+        const guessKmh = inferred ? 50 : defaultKmh;
+        const learned =
+          !posted && signKmh === null && !edge.roundabout && corrected ? corrected(points, from, to) : null;
+        const rideKmh = learned !== null && learned < guessKmh ? learned : null;
+        const kmh = signKmh ?? rideKmh ?? guessKmh;
         const road = roadLabel(edge.names);
         if (seen !== null && posted && seen !== defaultKmh) {
           const at = points[from]!;
@@ -280,9 +287,15 @@ export async function buildRoadbookFile(
           from: base + from,
           to: base + to,
           kmh,
-          posted: posted || signKmh !== null,
+          posted: posted || signKmh !== null || rideKmh !== null,
           ...(road ? { road } : {}),
-          ...(signKmh !== null ? { source: "sign" as const } : inferred ? { source: "inferred" as const } : {}),
+          ...(signKmh !== null
+            ? { source: "sign" as const }
+            : rideKmh !== null
+              ? { source: "ride" as const }
+              : inferred
+                ? { source: "inferred" as const }
+                : {}),
           ...(lowered !== null ? { osm: defaultKmh } : {}),
         };
         // Edges of one road under one limit are one stretch.

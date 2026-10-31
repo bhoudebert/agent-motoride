@@ -1,4 +1,5 @@
 import { overpassBuiltUp } from "./builtUp.ts";
+import { correctedLimits } from "./limitProposals.ts";
 import { configuredSigns } from "./signs.ts";
 import { exportDir, inRoot } from "./requestContext.ts";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -222,8 +223,14 @@ function roadbookInput(ride: SavedRide, gpx: GpxInput) {
 }
 
 /** The roadbook file of a saved ride, from the GPX input already built for it (one tracing, shared by export and share). */
-export function savedRideRoadbook(ride: SavedRide, gpx: GpxInput) {
-  return buildRoadbookFile(roadbookInput(ride, gpx), undefined, overpassBuiltUp, configuredSigns());
+export function savedRideRoadbook(ride: SavedRide, gpx: GpxInput, store?: Store) {
+  return buildRoadbookFile(
+    roadbookInput(ride, gpx),
+    undefined,
+    overpassBuiltUp,
+    configuredSigns(),
+    store ? correctedLimits(store.listLimitCorrections()) : undefined,
+  );
 }
 
 /**
@@ -283,7 +290,7 @@ export async function exportSavedRide(
     signsError,
     signLowered,
     signHigher,
-  } = await savedRideRoadbook(ride, gpx);
+  } = await savedRideRoadbook(ride, gpx, store);
   const roadbookFile = roadbookFilePath(path);
   writeFileSync(roadbookFile, JSON.stringify(roadbook));
   return {

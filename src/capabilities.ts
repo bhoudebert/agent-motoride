@@ -162,6 +162,13 @@ export const CAPABILITIES: Capability[] = [
   },
   {
     moment: "After the ride",
+    what: "Compare a ride you recorded and uploaded with its roadbook: guessed limits that look too high, for you to confirm or reject",
+    say: "list my recorded rides; check my last recorded ride against the limits",
+    terminal: ["npm run rides -- recorded", "npm run rides -- review-recorded [id] [--confirm 1,2] [--reject 3]"],
+    tools: ["listRecordedRides", "reviewRecordedRide"],
+  },
+  {
+    moment: "After the ride",
     what: "Rate a roadbook or one of its legs: 4-5 sought out, 0-1 avoided; a low roadbook asks: the roads or the loop?",
     say: "rate roadbook 7 five, superb; leg 2: never again, gravel",
     terminal: [

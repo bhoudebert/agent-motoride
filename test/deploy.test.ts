@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { chmodSync, mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -65,50 +65,117 @@ test("the compose files hand VALHALLA_URL to the server and offer an own Valhall
     assert.ok(block.includes("image:") && !block.includes("ports:"), `${file}: the service publishes nothing`);
   }
   assert.ok(read("deploy/.env.example").includes("VALHALLA_URL"));
+  for (const file of ["deploy/docker-compose.yml", "deploy/docker-compose.single.yml"]) {
+    const compose = read(file);
+    assert.ok(
+      /valhalla2:\n\s+image: ghcr\.io\/valhalla\/valhalla-scripted/.test(compose),
+      `${file} has the second instance`,
+    );
+    assert.ok(compose.includes('profiles: ["valhalla2"]'), `${file}: the second instance is on request too`);
+    assert.ok(compose.includes("valhalla2-data:/custom_files"), `${file}: the second instance has its own volume`);
+  }
 });
 
-/** A `docker` that only writes down what it was asked, and the rebuild flag it was asked with. */
+/**
+ * A `docker` that only writes down what it was asked. FAKE_EXISTS lists the created instances, FAKE_BUILT_<name> the
+ * map date an instance reports; an instance that has been brought up (rebuilt) reports a newer date from then on.
+ */
 function fakeDocker(): { path: string; log: string } {
   const dir = mkdtempSync(join(tmpdir(), "update-map-"));
   const log = join(dir, "calls.log");
   writeFileSync(
     join(dir, "docker"),
-    `#!/bin/sh\necho "$* [rebuild=\${VALHALLA_REBUILD:-}]" >> "${log}"\ncase "$*" in *"ps --status running"*) echo abc123;; esac\nexit 0\n`,
+    `#!/bin/sh
+echo "$* [rebuild=\${VALHALLA_REBUILD:-}]" >> "${log}"
+svc=""; prev=""; last=""
+for a in "$@"; do
+  case "$prev" in exec) [ "$a" = "-T" ] || svc="$a";; -T) svc="$a";; esac
+  last="$a"; prev="$a"
+done
+case "$*" in
+  *" ps -a -q "*) for s in $FAKE_EXISTS; do [ "$s" = "$last" ] && echo "id-$s"; done; exit 0;;
+  *" ps --status running -q "*) echo running; exit 0;;
+  *" up "*) touch "${dir}/up_$last"; exit 0;;
+  *" exec -T "*)
+    case "$*" in *"/status"*)
+      if [ -e "${dir}/up_$svc" ]; then echo '{"tileset_last_modified":4000000000}'; exit 0; fi
+      case "$svc" in valhalla) b="$FAKE_BUILT_valhalla";; valhalla2) b="$FAKE_BUILT_valhalla2";; esac
+      if [ -n "$b" ]; then echo '{"tileset_last_modified":'"$b"'}'; exit 0; fi
+      exit 1;;
+    esac
+    exit 0;;
+esac
+exit 0
+`,
   );
   chmodSync(join(dir, "docker"), 0o755);
   return { path: dir, log };
 }
 
-test("update-map.sh is a runnable script that rebuilds Valhalla from fresh extracts and then clears the rebuild flag", () => {
-  const script = new URL("../deploy/update-map.sh", import.meta.url).pathname;
+const script = new URL("../deploy/update-map.sh", import.meta.url).pathname;
+/** A call without the compose file and profile flags, which name both instances. */
+const without = (call: string) => call.replace(/^.*--profile valhalla2 /, "");
+const run = (env: Record<string, string>, args: string[] = ["--yes"], input?: string) => {
+  const { path, log } = fakeDocker();
+  const result = spawnSync(script, args, {
+    env: { ...process.env, ...env, PATH: `${path}:${process.env.PATH}` },
+    input,
+    encoding: "utf8",
+  });
+  const calls = readFileSync(log, "utf8").split("\n").filter(Boolean);
+  const changing = calls.filter((l) => /\b(pull|stop|run|up) /.test(l));
+  return { ...result, calls, changing };
+};
+
+test("update-map.sh is an executable, valid script", () => {
   assert.ok(statSync(script).mode & 0o111, "it is executable");
   execFileSync("sh", ["-n", script]);
-  const { path, log } = fakeDocker();
-  const out = execFileSync(script, ["--yes"], {
-    env: { ...process.env, PATH: `${path}:${process.env.PATH}` },
-  }).toString();
-  assert.match(out, /Done\./);
-  const calls = readFileSync(log, "utf8")
-    .split("\n")
-    .filter((l) => /\b(stop|run|up) /.test(l));
+});
+
+test("update-map.sh rebuilds only the instance with the older map, from fresh extracts, and clears the rebuild flag", () => {
+  const r = run({ FAKE_EXISTS: "valhalla valhalla2", FAKE_BUILT_valhalla: "2000", FAKE_BUILT_valhalla2: "1000" });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /Rebuilding valhalla2, the older one; the other keeps answering/);
   assert.deepEqual(
-    calls.map((l) => /(stop|run|up)\b/.exec(l)![1]),
-    ["stop", "run", "up", "up"],
+    r.changing.map((l) => /\b(pull|stop|run|up)\b/.exec(l)![1]),
+    ["pull", "stop", "run", "up", "up"],
   );
-  assert.ok(readFileSync(log, "utf8").includes("pull valhalla"), "it pulls the image first");
-  assert.match(calls[1]!, /rm -f \/custom_files\/\*\.osm\.pbf/);
-  assert.match(calls[2]!, /--force-recreate valhalla \[rebuild=True\]/);
-  assert.match(calls[3]!, /--force-recreate valhalla \[rebuild=False\]/);
-  for (const call of calls) assert.ok(call.includes("-f docker-compose.single.yml --profile valhalla"), call);
+  for (const call of r.changing) {
+    assert.ok(/valhalla2( |$)/.test(without(call)), call);
+    assert.ok(!/(^| )valhalla( |$)/.test(without(call)), `the other instance is not touched: ${call}`);
+    assert.ok(call.includes("-f docker-compose.single.yml --profile valhalla --profile valhalla2"), call);
+  }
+  assert.match(r.changing[2]!, /rm -f \/custom_files\/\*\.osm\.pbf/);
+  assert.match(r.changing[3]!, /--no-deps --force-recreate valhalla2 \[rebuild=True\]/);
+  assert.match(r.changing[4]!, /--no-deps --force-recreate valhalla2 \[rebuild=False\]/);
+});
+
+test("update-map.sh picks the first instance when it is the older one", () => {
+  const r = run({ FAKE_EXISTS: "valhalla valhalla2", FAKE_BUILT_valhalla: "1000", FAKE_BUILT_valhalla2: "2000" });
+  assert.match(r.stdout, /Rebuilding valhalla, the older one/);
+  for (const call of r.changing) assert.ok(!without(call).includes("valhalla2"), call);
+});
+
+test("update-map.sh rebuilds an instance that does not answer before one that does", () => {
+  const r = run({ FAKE_EXISTS: "valhalla valhalla2", FAKE_BUILT_valhalla: "1000" });
+  assert.match(r.stdout, /Rebuilding valhalla2, the older one/);
+});
+
+test("update-map.sh with one instance says routing is down while it builds", () => {
+  const r = run({ FAKE_EXISTS: "valhalla", FAKE_BUILT_valhalla: "1000" });
+  assert.match(r.stdout, /Rebuilding valhalla, the only one: routing is down/);
+  assert.equal(r.changing.length, 5);
 });
 
 test("update-map.sh does nothing unless the rider says yes", () => {
-  const script = new URL("../deploy/update-map.sh", import.meta.url).pathname;
-  const { path, log } = fakeDocker();
-  const out = execFileSync(script, [], {
-    env: { ...process.env, PATH: `${path}:${process.env.PATH}` },
-    input: "n\n",
-  }).toString();
-  assert.match(out, /Nothing done/);
-  assert.ok(!readFileSync(log, "utf8").match(/\b(stop|run|up) /), "no command changed anything");
+  const r = run({ FAKE_EXISTS: "valhalla valhalla2", FAKE_BUILT_valhalla: "1", FAKE_BUILT_valhalla2: "2" }, [], "n\n");
+  assert.match(r.stdout, /Nothing done/);
+  assert.deepEqual(r.changing, []);
+});
+
+test("update-map.sh stops with a message when no Valhalla container exists", () => {
+  const r = run({ FAKE_EXISTS: "" });
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /No Valhalla container exists/);
+  assert.deepEqual(r.changing, []);
 });

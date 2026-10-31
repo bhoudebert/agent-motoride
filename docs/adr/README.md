@@ -45,3 +45,4 @@ not rewritten.
 | [0046](0046-road-signs-set-limits-where-they-are-reliable.md)  | Road signs set limits where they are reliable                                    | accepted |
 | [0047](0047-an-own-valhalla-runs-the-official-image.md)        | An own Valhalla runs the official image                                          | accepted |
 | [0048](0048-several-valhalla-servers-the-newest-answers.md)    | Several Valhalla servers: the newest answers                                     | accepted |
+| [0049](0049-two-valhalla-servers-are-rebuilt-in-turn.md)       | Two Valhalla servers are rebuilt in turn                                         | accepted |

@@ -50,8 +50,31 @@ services:
     expose:
       - "8002"
 
+  # A second own Valhalla, for map updates without downtime (docs/guide/self-hosting.md): `docker compose --profile valhalla2 up -d valhalla2`
+  # builds it (hours, like the first); with VALHALLA_URL=http://valhalla:8002,http://valhalla2:8002 agentRide uses the one with the
+  # newest map, and deploy/update-map.sh rebuilds only the older one, so the other keeps answering. It needs the disk and memory twice.
+  valhalla2:
+    image: ghcr.io/valhalla/valhalla-scripted:latest
+    profiles: ["valhalla2"]
+    restart: unless-stopped
+    environment:
+      tile_urls: ${VALHALLA_TILE_URLS:-https://download.geofabrik.de/europe/france-latest.osm.pbf https://download.geofabrik.de/europe/belgium-latest.osm.pbf}
+      use_tiles_ignore_pbf: "True"
+      build_elevation: "False"
+      build_admins: "True"
+      build_time_zones: "True"
+      server_threads: ${VALHALLA_THREADS:-4}
+      # Rebuilds the tiles from the extracts already on disk: it does NOT download new ones. Do not set it by hand:
+      # run deploy/update-map.sh, which deletes the old extracts, rebuilds, and clears this flag.
+      force_rebuild: ${VALHALLA_REBUILD:-False}
+    volumes:
+      - valhalla2-data:/custom_files
+    expose:
+      - "8002"
+
 volumes:
   valhalla-data:
+  valhalla2-data:
   ride-data:
   caddy-data:
   caddy-config:

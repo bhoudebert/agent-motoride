@@ -5,7 +5,7 @@ import { DATA_DIR, tenantDbPath } from "./dataDir.ts";
 import { migrate } from "./migrations.ts";
 import { type BikeProfile, DEFAULT_PROFILE } from "./profile.ts";
 import { type RidePreferences, type RiderSettings, SETTING_KEYS } from "./preferences.ts";
-import type { LimitCorrection } from "./limitProposals.ts";
+import { correctionOnRoute, type LimitCorrection } from "./limitProposals.ts";
 import type { RecordedRide } from "./recordedRides.ts";
 import type { RideConditions } from "./conditions.ts";
 import type { StopPlan } from "./stops.ts";
@@ -1388,12 +1388,19 @@ export class Store {
     ).map((r) => ({ shape: r.shape, kmh: r.kmh }));
   }
 
-  /** Changes whenever the confirmed corrections do, "" while there are none: a roadbook file made before is then out of date. */
-  limitCorrectionsVersion(): string {
-    const row = this.#db
-      .prepare("SELECT COUNT(*) AS n, COALESCE(MAX(id), 0) AS last FROM limit_corrections WHERE kmh IS NOT NULL")
-      .get() as { n: number; last: number };
-    return row.n ? `${row.n}.${row.last}` : "";
+  /**
+   * Changes whenever the confirmed corrections that lie on a roadbook's route do, "" while none does: a roadbook file made before is
+   * then out of date, and one that does not pass there keeps its stamp. Without `routeShapes`, every confirmed correction counts.
+   */
+  limitCorrectionsVersion(routeShapes?: string[] | null): string {
+    const rows = this.#db
+      .prepare("SELECT id, shape FROM limit_corrections WHERE kmh IS NOT NULL ORDER BY id")
+      .all() as Array<{
+      id: number;
+      shape: string;
+    }>;
+    const mine = routeShapes === undefined ? rows : rows.filter((r) => correctionOnRoute(r.shape, routeShapes ?? []));
+    return mine.length ? `${mine.length}.${mine.at(-1)!.id}` : "";
   }
 
   /** Forgets what the rider set: the host's defaults apply again. */

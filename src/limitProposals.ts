@@ -255,3 +255,26 @@ export const proposalKm = (p: LimitProposal): number => {
   for (let i = 1; i < points.length; i++) km += haversineKm(points[i - 1]!, points[i]!);
   return Math.round(km * 10) / 10;
 };
+
+const KEY_SCALE = 2000; // 0.0005 degrees, about 55 m of latitude
+const keyOf = (p: LatLon, dLat = 0, dLon = 0) =>
+  `${Math.round(p.lat * KEY_SCALE) + dLat},${Math.round(p.lon * KEY_SCALE) + dLon}`;
+const lineKeys = new Map<string, Set<string>>();
+
+/**
+ * Whether a correction lies on a roadbook's route (its encoded shapes), to about 100 m. A coarse test on purpose: it only decides
+ * which roadbook files are made again after a confirmation, and a roadbook that does not pass there must keep its stamp.
+ */
+export function correctionOnRoute(correctionShape: string, routeShapes: string[]): boolean {
+  const id = routeShapes.join("|");
+  let keys = lineKeys.get(id);
+  if (!keys) {
+    keys = new Set(routeShapes.flatMap((shape) => decodePolyline(shape)).map((p) => keyOf(p)));
+    if (lineKeys.size >= 50) lineKeys.delete(lineKeys.keys().next().value!);
+    lineKeys.set(id, keys);
+  }
+  for (const p of decodePolyline(correctionShape))
+    for (let dLat = -1; dLat <= 1; dLat++)
+      for (let dLon = -1; dLon <= 1; dLon++) if (keys.has(keyOf(p, dLat, dLon))) return true;
+  return false;
+}

@@ -23,8 +23,20 @@ export interface RoadbookListing {
   state: RoadbookState;
   /** The day (UTC) of the own Valhalla map the ready file was made on; absent when the host runs none. */
   mapDay?: string;
-  /** Why the last refresh failed, when `state` is `failed`. */
+  /** Why the last refresh failed, in one short sentence a rider can read, when `state` is `failed`. */
   error?: string;
+  /** A stable name for the reason, so an app can translate it: `map_down`, `rate_limited`, `timeout` or `other`. */
+  errorCode?: "map_down" | "rate_limited" | "timeout" | "other";
+}
+
+/** What a failed refresh is told as: the reason in a few words for the rider, and a code. The detail goes to the server's log. */
+export function describeFailure(e: unknown): { code: NonNullable<RoadbookListing["errorCode"]>; error: string } {
+  const text = e instanceof Error ? e.message : String(e);
+  if (/\b429\b/.test(text)) return { code: "rate_limited", error: "The map server is busy; try again later." };
+  if (/timeout|timed out|aborted/i.test(text)) return { code: "timeout", error: "The map server took too long." };
+  if (/No Valhalla server answered|fetch failed|ECONNREFUSED|\b5\d\d\b/.test(text))
+    return { code: "map_down", error: "The map server did not answer." };
+  return { code: "other", error: "The roadbook could not be made." };
 }
 
 /** What the roadbook file is made of, short and stable: the same saved ride always gives the same content. */
@@ -58,6 +70,7 @@ interface Meta {
 interface Failure {
   at: number;
   error: string;
+  code: NonNullable<RoadbookListing["errorCode"]>;
   fingerprint: string;
   mapDay: string;
 }
@@ -172,7 +185,7 @@ export class ReadyRoadbooks {
       .catch((e: unknown) => {
         this.#failures.set(key, {
           at: this.#now(),
-          error: (e instanceof Error ? e.message : String(e)).slice(0, 200),
+          ...describeFailure(e),
           fingerprint: fingerprint(ride),
           mapDay,
         });
@@ -225,7 +238,7 @@ export class ReadyRoadbooks {
         stamp: meta?.stamp ?? rideStamp(ride, mapDay),
         state,
         ...((meta?.mapDay ?? mapDay) ? { mapDay: meta?.mapDay ?? mapDay } : {}),
-        ...(failure ? { error: failure.error } : {}),
+        ...(failure ? { error: failure.error, errorCode: failure.code } : {}),
       };
     });
     this.#prune(

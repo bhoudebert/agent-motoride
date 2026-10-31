@@ -83,8 +83,13 @@ being exported:
   - `outdated`: the ready file is older (the roadbook changed, or the host rebuilt its Valhalla map), or there is
     none yet; the old file still works;
   - `refreshing`: the server is making a new file; poll the list;
-  - `failed`: the last try failed (`error` says why); the ready file is still served; a tap tries again.
-    `mapDay` (UTC day, only on a host with its own Valhalla) is the map the ready file was made on. A reader that
+  - `failed`: the last try failed (`error` says why, in one short sentence of 80 characters or less, in English, and
+    `errorCode` names the reason so an app can translate it: `map_down`, `rate_limited`, `timeout` or `other`); the ready
+    file is still served; a tap tries again.
+    `mapDay` (UTC day, only on a host with its own Valhalla) is the map the ready file was made on. A refresh can end
+    `current` on the **same** stamp (the roadbook itself did not change, and a stamp ignores the time the file was
+    made, or the file listed before it existed already carried the stamp it got): a reader must not expect the stamp
+    to move after a refresh. A reader that
     ignores `state` sees a stamp that only changes when a new file is ready, so it never offers an update early.
 - `GET /roadbook/<id>` gives the file above, **at once**, even when it is outdated. Its `ETag` is the ready file's
   `stamp`; send it back in `If-None-Match` to get 304 when the copy you hold is the ready one. The first file of a

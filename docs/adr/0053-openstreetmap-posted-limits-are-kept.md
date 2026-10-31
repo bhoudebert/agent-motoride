@@ -27,4 +27,5 @@ the first ride is now only reported.
 ## Alternatives considered
 
 Overriding when two signs agree: fewer wrong overrides, still some, and a rule with a number nobody can check. Overriding only signs seen
-recently: the data does not say a sign was removed. Dropping signs: they still help where OpenStreetMap is silent.
+recently, or only signs photographed over more than a year: the data does not say a sign was removed, and a long roadworks zone lasts
+longer than a year, so neither proves a sign is permanent. Only what can be proven overrules a mapper: nothing here can. Dropping signs: they still help where OpenStreetMap is silent.

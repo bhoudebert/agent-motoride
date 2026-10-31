@@ -267,15 +267,23 @@ export async function exportSavedRide(
   builtUpError: string | null;
   /** Why road signs were not checked (a token is set but the service failed); null when they were or are off. */
   signsError: string | null;
-  /** Where a sign overrode OpenStreetMap's posted limit, for the rider to check or fix the map. */
-  signOverrides: string[];
+  /** Where a sign says another limit than the one OpenStreetMap posts: OpenStreetMap is kept; the rider may check the sign or fix the map. */
+  signLowered: string[];
+  signHigher: string[];
   rerouted: boolean;
   stopsAt: Array<{ label: string; index: number; total: number }>;
 }> {
   const { gpx, rerouted } = await savedRideGpx(store, ride);
   const input = { ...gpx, maxRoutePoints };
   const path = writeGpx(input, ride.id, file);
-  const { file: roadbook, limitsError, builtUpError, signsError, signOverrides } = await savedRideRoadbook(ride, gpx);
+  const {
+    file: roadbook,
+    limitsError,
+    builtUpError,
+    signsError,
+    signLowered,
+    signHigher,
+  } = await savedRideRoadbook(ride, gpx);
   const roadbookFile = roadbookFilePath(path);
   writeFileSync(roadbookFile, JSON.stringify(roadbook));
   return {
@@ -284,7 +292,8 @@ export async function exportSavedRide(
     limitsError,
     builtUpError,
     signsError,
-    signOverrides,
+    signLowered,
+    signHigher,
     rerouted,
     stopsAt: routePointIndex(input),
   };
@@ -296,9 +305,10 @@ export function describeRoadbookFile(result: {
   limitsError: string | null;
   builtUpError?: string | null;
   signsError?: string | null;
-  signOverrides?: string[];
+  signLowered?: string[];
+  signHigher?: string[];
 }): string {
-  return `Roadbook file (speed limits and cameras, for the MobileMotoRide app): ${result.roadbookFile}${result.limitsError ? `\n(${result.limitsError}; the file has no limits there.)` : ""}${result.builtUpError ? `\n(${result.builtUpError})` : ""}${result.signsError ? `\n(${result.signsError})` : ""}${result.signOverrides?.length ? `\nRoad signs override OpenStreetMap here (the file has the sign's limit):\n- ${result.signOverrides.join("\n- ")}` : ""}`;
+  return `Roadbook file (speed limits and cameras, for the MobileMotoRide app): ${result.roadbookFile}${result.limitsError ? `\n(${result.limitsError}; the file has no limits there.)` : ""}${result.builtUpError ? `\n(${result.builtUpError})` : ""}${result.signsError ? `\n(${result.signsError})` : ""}${result.signLowered?.length ? `\nA road sign says a lower limit than OpenStreetMap here and the lower one is in the file (a warning that is early is safe; check the sign, or the map):\n- ${result.signLowered.join("\n- ")}` : ""}${result.signHigher?.length ? `\nA road sign says a higher limit than OpenStreetMap here; OpenStreetMap is kept (a sign never raises a limit):\n- ${result.signHigher.join("\n- ")}` : ""}`;
 }
 
 /** "pause: X at route point 18 of 40" lines, for the rider to find the stops in an app's stage list. */

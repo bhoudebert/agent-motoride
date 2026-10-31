@@ -1,6 +1,6 @@
 # 0046. Road signs set limits where they are reliable
 
-- Status: accepted
+- Status: accepted (the override of a posted limit is superseded by 0053)
 - Date: 2026-10-31
 
 ## Context

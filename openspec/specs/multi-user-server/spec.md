@@ -58,12 +58,32 @@ The administration SHALL be able to invite a rider's phone: `admin invite <email
 
 ### Requirement: Roadbooks for the phone
 
-The server SHALL give a rider's phone its roadbooks without a file being exported or carried: `GET /roadbooks` SHALL list the rider's roadbooks (number, name, distance, riding minutes and a `stamp`), and `GET /roadbook/<number>` SHALL return that roadbook's file as `docs/roadbook-file.md` describes it. Both SHALL need a rider's token, show only that rider's library, and refuse other methods. The stamp SHALL change when the route, the stops, the cameras or the name change, and the file SHALL carry it as its `ETag`, so a phone that sends it back in `If-None-Match` gets 304 and no body. A file traces the route on a public router, so it SHALL be made once for a given roadbook and stamp and kept in memory (bounded), a rider SHALL get at most 30 files a minute, and a failure SHALL answer 502 without being kept. The proxy examples SHALL pass both paths.
+The server SHALL give a rider's phone its roadbooks without a file being exported or carried: `GET /roadbooks` SHALL list the rider's roadbooks (number, name, distance, riding minutes, a `stamp`, a `state` and, when the host runs its own Valhalla, the `mapDay` the ready file was made on), and `GET /roadbook/<number>` SHALL return that roadbook's file as `docs/roadbook-file.md` describes it. Both SHALL need a rider's token, show only that rider's library, and refuse other methods. A file is made from the saved ride and the host's own Valhalla map, kept on disk in the rider's folder with its stamp, and served at once; the `stamp` listed and carried as the file's `ETag` SHALL be that of the ready file, so a phone that sends it back in `If-None-Match` gets 304 and no body. The `state` SHALL be `current` when the ready file was made from the roadbook as it is now (route, stops, cameras, name) and on the map in use (the day of the newest `tileset_last_modified` of the host's own Valhalla servers when `VALHALLA_URL` is set, never going back to an older day, a restart included; the public server SHALL NOT be followed, and without an own server the stamp SHALL be what it was), `outdated` when it is older or there is none yet, `refreshing` while the server makes a new one, and `failed` when the last try failed (with the reason in `error`, left alone for five minutes). Listing SHALL answer at once and SHALL never wait for a file to be made. `GET /roadbook/<number>` SHALL serve the ready file even when it is outdated; only a roadbook with no file yet SHALL be made on that request. `POST /roadbook/<number>/refresh` SHALL start making a new file in the background when the roadbook is outdated (or failed) and answer 202 with the state, 200 when it is already current or refreshing, 404 for a roadbook that is not the rider's; at most 20 a minute. Refreshes SHALL run one at a time for the whole server, behind the first files, at most 200 waiting, and the server SHALL NOT look at the riders' libraries when the map changes: only a rider's list or tap starts one. A list SHALL start the refresh of an outdated roadbook that has a ride dated within the next 14 days, and no other. A ready file of a roadbook that no longer exists SHALL be deleted. A rider SHALL get at most 30 files a minute, and a failure of the first file SHALL answer 502 without being kept. The proxy examples SHALL pass the paths.
+
+#### Scenario: The map is rebuilt
+
+- **WHEN** a host with its own Valhalla rebuilds its map and a rider's phone lists the roadbooks
+- **THEN** each roadbook has `state: "outdated"` and the stamp of its ready file, nothing is made, and `GET /roadbook/7` still answers with the ready file
+
+#### Scenario: The rider taps refresh
+
+- **WHEN** the phone sends `POST /roadbook/7/refresh` for an outdated roadbook
+- **THEN** the server answers 202 `{"id": 7, "state": "refreshing"}` and makes the file in the background; when it is done the list shows `current` with a new stamp, and `GET /roadbook/7` with the old stamp in `If-None-Match` answers 200 with the new file
+
+#### Scenario: A ride is dated soon
+
+- **WHEN** a phone lists a library in which an outdated roadbook has a ride three days away, and another has none
+- **THEN** the first is `refreshing` in the answer and the second is `outdated`
+
+#### Scenario: A refresh fails
+
+- **WHEN** the refresh of a roadbook fails
+- **THEN** its state is `failed` with the reason, its ready file is still served, and the rider's next tap tries again
 
 #### Scenario: The phone checks for a newer version
 
-- **WHEN** a phone holding stamp `a1b2` for roadbook 7 asks for `/roadbook/7` with `If-None-Match: "a1b2"` and the roadbook has not changed
-- **THEN** the server answers 304 without tracing the route again
+- **WHEN** a phone holding stamp `a1b2` for roadbook 7 asks for `/roadbook/7` with `If-None-Match: "a1b2"` and `a1b2` is the stamp of the ready file
+- **THEN** the server answers 304
 
 #### Scenario: Another rider's roadbook
 

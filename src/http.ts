@@ -1,3 +1,7 @@
+import { readFileSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { DATA_DIR } from "./dataDir.ts";
+
 // Contact-style agent string: some public instances reject free-text or browser-like agents.
 const USER_AGENT = "agentMotoride/0.1 (+https://github.com/bhoudebert/agent-motoride)";
 
@@ -67,7 +71,7 @@ export async function fetchJson<T>(url: string, init: RequestInit = {}, timeoutM
 /** How long a ranking of the servers is kept, ms. */
 const RANK_TTL_MS = 5 * 60 * 1000;
 const STATUS_TIMEOUT_MS = 3000;
-const ranking = new Map<string, { at: number; order: string[] }>();
+const ranking = new Map<string, Ranked>();
 
 /** When the tiles of a Valhalla server were built (epoch seconds), or null when it does not answer or does not say. */
 async function tilesetBuilt(url: string): Promise<number | null> {
@@ -79,23 +83,65 @@ async function tilesetBuilt(url: string): Promise<number | null> {
   }
 }
 
+/** What is known of the servers' maps: the order to try them in (newest first), and the newest build date (epoch seconds). */
+type Ranked = { at: number; order: string[]; newest: number | null };
+
 /** The servers, the one with the newest map first; those that do not answer or do not say come last, in the order given. */
-async function freshestFirst(urls: string[], now = Date.now()): Promise<string[]> {
+async function rank(urls: string[], now = Date.now()): Promise<Ranked> {
   const key = urls.join(",");
   const kept = ranking.get(key);
-  if (kept && now - kept.at < RANK_TTL_MS) return kept.order;
+  if (kept && now - kept.at < RANK_TTL_MS) return kept;
   const built = await Promise.all(urls.map(tilesetBuilt));
   const order = urls
     .map((url, i) => ({ url, i, built: built[i]! }))
     .sort((a, b) => (b.built ?? -1) - (a.built ?? -1) || a.i - b.i)
     .map((s) => s.url);
-  ranking.set(key, { at: now, order });
-  return order;
+  const known = built.filter((b): b is number => b !== null);
+  const ranked = { at: now, order, newest: known.length ? Math.max(...known) : null };
+  ranking.set(key, ranked);
+  return ranked;
+}
+
+let lastMapDay = "";
+/** Where the newest map day is kept, so a restart (perhaps while the servers are down) does not lose it. */
+const MAP_DAY_FILE = resolve(DATA_DIR, "valhalla-map-day");
+
+function readMapDay(file: string): string {
+  try {
+    const day = readFileSync(file, "utf8").trim();
+    return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : "";
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * The day (UTC, "2026-10-31") the newest map of the host's own Valhalla servers was built, or "" when the host runs none
+ * (the public server is not followed: its map changes on a schedule that is not the host's). It never goes back, not even after
+ * a restart while the servers are down: the phone would be offered every roadbook again, twice. Kept five minutes with the ranking.
+ */
+export async function valhallaMapDay(file = MAP_DAY_FILE): Promise<string> {
+  if (!process.env.VALHALLA_URL?.trim()) return "";
+  if (!lastMapDay) lastMapDay = readMapDay(file);
+  const { newest } = await rank(valhallaUrls());
+  if (newest !== null) {
+    const day = new Date(newest * 1000).toISOString().slice(0, 10);
+    if (day > lastMapDay) {
+      lastMapDay = day;
+      try {
+        writeFileSync(file, `${day}\n`);
+      } catch {
+        // A folder that cannot be written only means the day is lost at a restart.
+      }
+    }
+  }
+  return lastMapDay;
 }
 
 /** Forgets what is known of the servers' freshness (tests). */
 export function resetValhallaRanking(): void {
   ranking.clear();
+  lastMapDay = "";
 }
 
 /** A failure that another server may not have: no answer, or a server that is down, busy or over its rate limit. */
@@ -111,7 +157,7 @@ function worthAnotherServer(e: unknown): boolean {
 export async function valhallaJson<T>(path: string, init: RequestInit = {}, timeoutMs = 30_000): Promise<T> {
   const urls = valhallaUrls();
   if (urls.length === 1) return fetchJson<T>(`${urls[0]}${path}`, init, timeoutMs);
-  const order = await freshestFirst(urls);
+  const { order } = await rank(urls);
   let last: unknown;
   for (const url of order) {
     try {

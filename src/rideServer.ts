@@ -22,8 +22,8 @@ import {
 } from "./feedback.ts";
 import { deleteForm, duplicateForm, scopeForm, type ElicitForm, reviewDecisions, reviewForm } from "./elicit.ts";
 import { deleteRideQuestion, deleteRoadbookQuestion, rideOnDay, rideToBrief, roadbookOf } from "./housekeeping.ts";
-import { describeRoadbookFile, exportSavedRide, writeGpx } from "./gpx.ts";
-import { pushExported } from "./remote.ts";
+import { describeRoadbookFile, exportSavedRide, exportSavedRideGpx, pushableRoadbookFile, writeGpx } from "./gpx.ts";
+import { pushFile } from "./remote.ts";
 import { currentContext } from "./requestContext.ts";
 import { rideMapPng } from "./rideMap.ts";
 import { localDay, parseRideDay, planRideFrom } from "./planRide.ts";
@@ -561,7 +561,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
           .boolean()
           .optional()
           .describe(
-            "Also send the roadbook file to the rider's own server (RIDE_REMOTE_URL, RIDE_REMOTE_TOKEN), where the MotoRide app lists it. Only when the rider asks; a saved ride only.",
+            "Send the roadbook to the rider's own server (RIDE_REMOTE_URL, RIDE_REMOTE_TOKEN), where it is added to their library and the MotoRide app lists it. Only when the rider asks; a saved ride only. Quick: writes the GPX and sends the line, waypoints and cameras; the server traces the speed limits itself, so no roadbook file is written here.",
           ),
       }),
     },
@@ -569,11 +569,15 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       if (args.rideId !== undefined) {
         const ride = store.findRide(String(args.rideId));
         if (!ride) throw new Error(`No roadbook #${args.rideId}`);
-        const exported = await exportSavedRide(store, ride, args.file);
         if (args.push && currentContext().fileRoot)
           throw new Error("This library already lives on a server: the MotoRide app lists it there, nothing to push.");
-        const pushed = args.push ? `\n${await pushExported(exported.roadbookFile)}` : "";
-        return text(`GPX written: ${exported.path}\n${describeRoadbookFile(exported)}${pushed}`);
+        if (args.push) {
+          // Only the GPX and the push: the server traces the limits itself, so nothing is traced here.
+          const gpx = await exportSavedRideGpx(store, ride, args.file);
+          return text(`GPX written: ${gpx.path}\n${await pushFile(await pushableRoadbookFile(store, ride))}`);
+        }
+        const exported = await exportSavedRide(store, ride, args.file);
+        return text(`GPX written: ${exported.path}\n${describeRoadbookFile(exported)}`);
       }
       if (args.push) throw new Error("Only a saved ride can be pushed: give its rideId.");
       const route = args.routeId ? context.routes.get(args.routeId) : undefined;

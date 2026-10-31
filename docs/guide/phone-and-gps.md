@@ -165,8 +165,13 @@ export roadbook 7 as GPX and push it to my server
 
 :::
 
-The phone lists it under your server, with the download and refresh icons. Pushing the same roadbook again replaces the
-earlier copy; if nothing changed, the phone sees no new version.
+A push is quick, a few seconds: your computer sends the route, the waypoints and the cameras and writes the GPX, and nothing
+else. It does not trace the speed limits, look up built-up land or ask for road signs: the server does that itself, on its own
+map, when the phone downloads the roadbook. (An export without `--push` still makes the full roadbook file with the limits, for
+the share page or a file you carry, and that is the slow one.)
+
+The roadbook is added to your library on the server, like one planned there, and the phone lists it with the download and refresh icons.
+Pushing the same roadbook again replaces the earlier copy; if nothing changed, the phone sees no new version.
 
 ## For the GPS
 

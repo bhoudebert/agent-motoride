@@ -25,7 +25,7 @@ function gpx(
     const time = new Date(Date.UTC(2026, 9, 31, 9, 0, i)).toISOString();
     return `<trkpt lat="${(50.45 + i * 0.0002).toFixed(6)}" lon="3.200000"><ele>42.3</ele><time>${time}</time><extensions><motoride:speed>17.4</motoride:speed></extensions></trkpt>`;
   }).join("\n");
-  return `<?xml version="1.0"?><gpx version="1.1" creator="MotoRide" xmlns="http://www.topografix.com/GPX/1/1" xmlns:motoride="https://example.org/m"><metadata><name>${name}</name><extensions><motoride:ride roadbook="x"${attrs} state="completed"/></extensions></metadata><trk><trkseg>${pts}</trkseg></trk></gpx>`;
+  return `<?xml version="1.0"?><gpx version="1.1" creator="MotoRide" xmlns="http://www.topografix.com/GPX/1/1" xmlns:motoride="https://example.org/m"><metadata><name>${name}</name><extensions><motoride:ride roadbook="x" name="Pays des Collines loop"${attrs} state="completed" climbM="412" peakLeftDeg="38" peakRightDeg="41"/></extensions></metadata><trk><trkseg>${pts}</trkseg></trk></gpx>`;
 }
 
 async function setup() {
@@ -84,7 +84,7 @@ test("an uploaded ride is kept in the library, listed, read back, and deleted on
         list.rides[0]!.startedAt,
         list.rides[0]!.roadbook,
       ],
-      [id, "Pays des Collines loop, 2026-10-31", 30, "2026-10-31T09:00:00.000Z", null],
+      [id, "Pays des Collines loop", 30, "2026-10-31T09:00:00.000Z", null],
     );
     assert.ok(list.rides[0]!.distanceKm > 0.5 && list.rides[0]!.distanceKm < 1);
 
@@ -233,5 +233,40 @@ test("a library keeps at most 200 rides; replacing one is still allowed at the l
     assert.equal(keepRide(store, "r0", gpx(undefined, 4)).status, "replaced");
   } finally {
     store.close();
+  }
+});
+
+test("the list carries what a card shows: state, climb, peak leans (when the header has them), the size, and the roadbook's name", async () => {
+  const s = await setup();
+  try {
+    await s.req("PUT", "/rides/with", s.alice.token, gpx());
+    const bare = gpx(undefined, 30, "Free ride, 2026-10-31").replace(
+      / name="Pays des Collines loop"| state="completed"| climbM="412"| peakLeftDeg="38"| peakRightDeg="41"/g,
+      "",
+    );
+    await s.req("PUT", "/rides/bare", s.alice.token, bare);
+    const { rides } = (await (await s.req("GET", "/rides", s.alice.token)).json()) as {
+      rides: Array<Record<string, unknown>>;
+    };
+    const by = Object.fromEntries(rides.map((r) => [r["id"], r]));
+    assert.deepEqual(
+      [
+        by["with"]!["name"],
+        by["with"]!["state"],
+        by["with"]!["climbM"],
+        by["with"]!["peakLeftDeg"],
+        by["with"]!["peakRightDeg"],
+      ],
+      ["Pays des Collines loop", "completed", 412, 38, 41],
+      "the roadbook's name, not the title with the date",
+    );
+    assert.equal(by["with"]!["bytes"], Buffer.byteLength(gpx()));
+    assert.equal(typeof by["with"]!["distanceKm"], "number");
+    assert.match(String(by["with"]!["uploadedAt"]), /^\d{4}-\d\d-\d\dT[\d:.]+Z$/);
+    assert.equal(by["bare"]!["name"], "Free ride, 2026-10-31", "no header name: the title");
+    for (const key of ["state", "climbM", "peakLeftDeg", "peakRightDeg"])
+      assert.ok(!(key in by["bare"]!), `${key} is left out when the header has none`);
+  } finally {
+    await s.close();
   }
 });

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { gunzipSync, gzipSync } from "node:zlib";
 import { parseGpxTrack } from "./feedback.ts";
+import { type RideHeader, rideHeader, unescapeXml } from "./rideHeader.ts";
 import type { Store } from "./store.ts";
 import { haversineKm } from "./tools/geo.ts";
 
@@ -18,8 +19,9 @@ export class RideRefused extends Error {
   }
 }
 
-export interface RecordedRide {
+export interface RecordedRide extends RideHeader {
   id: string;
+  /** The roadbook's name when the header gives it, else the title of the GPX. */
   name: string;
   startedAt: string;
   endedAt: string;
@@ -27,6 +29,8 @@ export interface RecordedRide {
   points: number;
   /** The roadbook of the library the ride followed, when its header says which and the library has it. */
   roadbook: { id: number; name: string } | null;
+  /** Size of the GPX as stored, bytes: what a download weighs. */
+  bytes: number;
   uploadedAt: string;
 }
 
@@ -54,14 +58,6 @@ export function roadbookOfGpx(store: Store, gpx: string): { id: number; name: st
   return same.length === 1 ? { id: same[0]!.id, name: same[0]!.name } : null;
 }
 
-const unescapeXml = (s: string): string =>
-  s
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&amp;/g, "&");
-
 /** What the server keeps of an uploaded GPX: its figures and the roadbook it followed. Throws RideRefused when it is not a ride. */
 export function describeRide(store: Store, id: string, gpx: string): Omit<RecordedRide, "uploadedAt"> {
   if (!RIDE_ID.test(id))
@@ -74,7 +70,9 @@ export function describeRide(store: Store, id: string, gpx: string): Omit<Record
   }
   let km = 0;
   for (let i = 1; i < points.length; i++) km += haversineKm(points[i - 1]!, points[i]!);
-  const name = unescapeXml(/<metadata>[\s\S]*?<name>([^<]*)<\/name>/.exec(gpx)?.[1] ?? "").trim() || id;
+  const header = rideHeader(gpx);
+  const title = unescapeXml(/<metadata>[\s\S]*?<name>([^<]*)<\/name>/.exec(gpx)?.[1] ?? "").trim();
+  const name = header.name ?? (title || id);
   return {
     id,
     name: name.slice(0, 200),
@@ -83,6 +81,11 @@ export function describeRide(store: Store, id: string, gpx: string): Omit<Record
     distanceKm: Math.round(km * 10) / 10,
     points: points.length,
     roadbook: roadbookOfGpx(store, gpx),
+    ...(header.state ? { state: header.state } : {}),
+    ...(header.climbM !== undefined ? { climbM: header.climbM } : {}),
+    ...(header.peakLeftDeg !== undefined ? { peakLeftDeg: header.peakLeftDeg } : {}),
+    ...(header.peakRightDeg !== undefined ? { peakRightDeg: header.peakRightDeg } : {}),
+    bytes: Buffer.byteLength(gpx),
   };
 }
 

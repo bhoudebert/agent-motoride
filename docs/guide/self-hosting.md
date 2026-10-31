@@ -133,28 +133,71 @@ must never be reachable without TLS.
 
 ## Your own routing engine (optional)
 
-By default agentRide asks the shared public Valhalla server (`valhalla1.openstreetmap.de`) for routes: free, but rate-limited, with no promise of
-service. If your server has the room, it can run its own Valhalla for the countries you ride in. Planning gets faster and the shared limit goes away.
+### What Valhalla does here, and why run your own
 
-**What it takes** (estimates, not measured: tell us what you see). For France and Belgium: about 5 GB of map downloads and 10 to 15 GB of disk; a first
-build of one to a few hours that wants 8 to 16 GB of memory while it runs; afterwards 2 to 4 GB of memory and one or two cores to serve. Run the first
-build at a quiet hour.
+[Valhalla](https://github.com/valhalla/valhalla) is the routing engine agentRide uses. It does two jobs: it routes between your points, and it
+traces the road under a finished route (road class, name, tagged speed limit, country, roundabouts). The roadbook file's limits, countries and
+roundabouts come from that trace.
+
+By default agentRide asks the shared public server (`valhalla1.openstreetmap.de`): free, but shared and rate-limited, with no promise of service.
+A long ride can hit its limit and an export then lacks limits for a leg. If your server has the room, it can run its own Valhalla for the countries
+you ride in: planning gets faster, the shared limit goes away, and you decide when the map is updated.
+
+### Where its map comes from, and why it gets old
+
+Valhalla does not read OpenStreetMap live. It is built from an **extract**, a snapshot of a whole country that [Geofabrik](https://download.geofabrik.de/)
+publishes about once a day, and the build turns it into routing tiles (hours of work). After the build the map is a snapshot: **its date is the day the
+extracts were downloaded**. A road mapped, closed or re-signed in OpenStreetMap afterwards appears only after the next rebuild, and Valhalla cannot apply
+single edits: every update is a full rebuild from fresh extracts.
+
+| Comes from the Valhalla snapshot (as old as its last update) | Read live, not affected                                            |
+| ------------------------------------------------------------ | ------------------------------------------------------------------ |
+| Routes, road classes, names                                  | Built-up land used for the 50 guess (Overpass)                     |
+| Speed limits tagged in OpenStreetMap                         | Speed cameras (Overpass)                                           |
+| The country of each stretch, roundabouts                     | Speed limit signs (Mapillary, if a token is set), weather, traffic |
+
+The public server is updated by its operators on a schedule this project does not know.
+
+**What it takes** (estimates, not measured: tell us what you see). For France and Belgium: about 6 GB of map downloads and 10 to 15 GB of disk; a first
+build of one to a few hours (2 hours 10 minutes on one VPS) that wants 8 to 16 GB of memory while it runs; afterwards 2 to 4 GB of memory and one or two
+cores to serve. Run the first build at a quiet hour.
+
+### Set it up
 
 1. Start it with the profile: `docker compose -f deploy/docker-compose.yml --env-file deploy/.env --profile valhalla up -d valhalla`. The first start
-   downloads the extracts (`VALHALLA_TILE_URLS`, France and Belgium by default, from [Geofabrik](https://download.geofabrik.de/)) and builds the
-   tiles; follow it with `docker compose logs -f valhalla`. It builds the administrative boundaries (the countries of a roadbook come from them) and no elevation.
+   downloads the extracts (`VALHALLA_TILE_URLS`, France and Belgium by default) and builds the tiles; follow it with `docker compose logs -f valhalla`.
+   It builds the administrative boundaries (the countries of a roadbook come from them) and no elevation.
 2. Once it answers, put `VALHALLA_URL=http://valhalla:8002` in `deploy/.env` and restart the server (`up -d ride`). Nothing is published: only the server reaches it.
    Check it: `docker compose exec ride node src/check.ts` (or `npm run check`) tests the route service it uses.
-3. Keep the roads current: the map is the one downloaded at the first start, and nothing refreshes it on its own. Run `deploy/update-map.sh`
-   (add `--yes` to skip the question, or `MAP_COMPOSE_FILE=docker-compose.yml` for the other compose file). It stops Valhalla, deletes the old extracts, downloads
-   today's from Geofabrik, rebuilds the tiles and restarts it. About once a month is enough: OpenStreetMap changes daily, but limits and roads change slowly.
-   Routing is down while it builds (about 2 hours for France and Belgium) and it needs about 20 GB of free disk; the server cannot route or build roadbook
-   files until Valhalla answers again. To run it at night on the first of each month: `0 3 1 * * cd /path/to/deploy && ./update-map.sh --yes >> update-map.log 2>&1` in
-   `crontab -e`. Rebuilding with `VALHALLA_REBUILD=True` alone does not download anything: it rebuilds from the old extracts.
 
 Unset `VALHALLA_URL` and it goes back to the public server. The image and its settings are the
-[gis-ops docker-valhalla](https://github.com/gis-ops/docker-valhalla) ones: read its README if a variable has changed. The phone still asks the public
-server itself; having the phone use yours through the rider's server is the next step (ADR 0043).
+[gis-ops docker-valhalla](https://github.com/gis-ops/docker-valhalla) ones (archived: it no longer changes, read its README if a variable seems different).
+The phone still asks the public server itself; having the phone use yours through the rider's server is the next step (ADR 0043).
+
+### Keep the map current
+
+Nothing refreshes it on its own: left alone, the map stays the one of the first start. Run `deploy/update-map.sh` from the `deploy` folder:
+
+```
+cd deploy
+./update-map.sh            # asks first
+./update-map.sh --yes      # does not ask (for cron)
+```
+
+It stops Valhalla, deletes the old extracts, recreates it so it downloads today's and rebuilds the tiles, waits until it answers, then recreates it once
+more without the rebuild flag and prints the extract dates. It uses `docker-compose.single.yml`; set `MAP_COMPOSE_FILE=docker-compose.yml` for the other file.
+
+- **Why the extracts are deleted.** `VALHALLA_REBUILD=True` alone only rebuilds from the files already on disk, so it spends hours rebuilding the same old map.
+  The image downloads when the extracts are missing (seen on a real server). That is why you should not set the flag by hand.
+- **How often.** About once a month. OpenStreetMap changes daily, but speed limits and roads change slowly. Weekly costs the same downtime for little gain.
+- **Downtime.** While it builds (about 2 hours for France and Belgium) the server cannot route or build roadbook files, and there is no fallback to the
+  public server. It needs about 20 GB of free disk while old and new files exist together. Pick a night.
+- **Automatic.** At 3 am on the first of each month, in `crontab -e`: `0 3 1 * * cd /path/to/deploy && ./update-map.sh --yes >> update-map.log 2>&1`.
+- **How old is my map?** `docker compose -f docker-compose.single.yml --profile valhalla exec valhalla ls -l /custom_files`: the dates of the two
+  `.osm.pbf` files are the age of the map.
+- **If the script stops half way.** It says why. If Valhalla ran out of memory, free some and run it again. If the container was left with the rebuild flag
+  on, any restart would rebuild again: run `VALHALLA_REBUILD=False docker compose -f docker-compose.single.yml --profile valhalla up -d --force-recreate valhalla`
+  once the build has finished.
 
 ## Traffic for the phone (optional)
 

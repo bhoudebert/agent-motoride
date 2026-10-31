@@ -19,7 +19,8 @@ the ride and for the local rules, including on speed-camera information.
   within 40 m; a roundabout's ring takes none. A new permanent limit that nobody has photographed yet is missed, and so is
   a removed sign that is still in the data. The export lists each place where a sign overrode OpenStreetMap, so you can
   check it or correct the map.
-- Road data comes from OpenStreetMap and can be incomplete or out of date.
+- Road data comes from OpenStreetMap and can be incomplete or out of date. Routes and tagged limits come from Valhalla's snapshot of
+  it: the public server's, or your own, which is as old as the last `deploy/update-map.sh` (see [Host it yourself](self-hosting.md)).
   Closures and roadworks are not checked.
 - A roadbook keeps the result, not the conversation: `--roadbook` starts a new
   conversation from the stored roadbook.

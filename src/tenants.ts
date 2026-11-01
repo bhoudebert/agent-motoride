@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from
 import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { assertTenantId, DATA_DIR, tenantDbPath, tenantDir } from "./dataDir.ts";
+import { type Entitlements, entitlementsSchema } from "./entitlements.ts";
 
 /** Several riders on one instance, each with a library of their own, found by token (ADR 0027, spec multi-user-server). */
 
@@ -14,6 +15,17 @@ export interface Tenant {
   status: TenantStatus;
   createdAt: string;
   lastSeenAt: string | null;
+  /** The reference of a rider made by the provisioning API (ADR 0057); absent for a rider an administrator added. */
+  ref?: string;
+  /** What a hosted rider may use; absent when none is set. */
+  entitlements?: Entitlements;
+  /** Why a hosted rider is suspended, and until when, as the program that sells the plans said; absent otherwise. */
+  suspension?: Suspension;
+}
+
+export interface Suspension {
+  reason: string;
+  until: string | null;
 }
 
 const REGISTRY = process.env.RIDE_REGISTRY ?? resolve(DATA_DIR, "registry.db");
@@ -54,14 +66,46 @@ interface Row {
   status: TenantStatus;
   created_at: string;
   last_seen_at: string | null;
+  external_ref?: string | null;
+  entitlements?: string | null;
+  suspension?: string | null;
 }
-const tenantOf = (r: Row): Tenant => ({
-  id: r.id,
-  email: r.email,
-  status: r.status,
-  createdAt: r.created_at,
-  lastSeenAt: r.last_seen_at,
-});
+const suspensionOf = (json: string | null | undefined): Suspension | undefined => {
+  if (!json) return undefined;
+  try {
+    const v = JSON.parse(json) as Partial<Suspension>;
+    return typeof v.reason === "string"
+      ? { reason: v.reason, until: typeof v.until === "string" ? v.until : null }
+      : undefined;
+  } catch {
+    return undefined;
+  }
+};
+const entitlementsOf = (json: string | null | undefined): Entitlements | undefined => {
+  if (!json) return undefined;
+  try {
+    const parsed = entitlementsSchema.safeParse(JSON.parse(json));
+    return parsed.success ? parsed.data : undefined;
+  } catch {
+    return undefined;
+  }
+};
+const tenantOf = (r: Row): Tenant => {
+  const entitlements = entitlementsOf(r.entitlements);
+  const suspension = r.status === "suspended" ? suspensionOf(r.suspension) : undefined;
+  return {
+    id: r.id,
+    email: r.email,
+    status: r.status,
+    createdAt: r.created_at,
+    lastSeenAt: r.last_seen_at,
+    ...(r.external_ref ? { ref: r.external_ref } : {}),
+    ...(entitlements ? { entitlements } : {}),
+    ...(suspension ? { suspension } : {}),
+  };
+};
+/** The address a hosted rider has: it cannot receive mail, and it is made from the reference so it is the same each time. */
+const hostedEmail = (ref: string): string => `hosted-${hash(ref).slice(0, 24)}@hosted.invalid`;
 
 export class Registry {
   readonly path: string;
@@ -131,6 +175,16 @@ export class Registry {
         used_at TEXT,
         created_at TEXT NOT NULL
       );`);
+    // Columns added for the provisioning API (ADR 0057): a registry made before has none.
+    const columns = (this.#db.prepare("PRAGMA table_info(tenants)").all() as unknown as Array<{ name: string }>).map(
+      (c) => c.name,
+    );
+    if (!columns.includes("external_ref")) this.#db.exec("ALTER TABLE tenants ADD COLUMN external_ref TEXT");
+    if (!columns.includes("entitlements")) this.#db.exec("ALTER TABLE tenants ADD COLUMN entitlements TEXT");
+    if (!columns.includes("suspension")) this.#db.exec("ALTER TABLE tenants ADD COLUMN suspension TEXT");
+    this.#db.exec(
+      "CREATE UNIQUE INDEX IF NOT EXISTS tenants_external_ref ON tenants(external_ref) WHERE external_ref IS NOT NULL",
+    );
   }
 
   close(): void {
@@ -175,6 +229,12 @@ export class Registry {
 
   /** Who a token identifies: an active tenant, or nobody. */
   verify(token: string): Tenant | null {
+    const tenant = this.verifyAny(token);
+    return tenant && tenant.status === "active" ? tenant : null;
+  }
+
+  /** Who a token identifies, suspended or not: only for what a suspended rider may still ask, which is why they are shut out. */
+  verifyAny(token: string): Tenant | null {
     if (!token.startsWith(TOKEN_PREFIX) || token.length < 20 || token.length > 100) return null;
     const h = hash(token);
     const row = this.#db
@@ -184,7 +244,7 @@ export class Registry {
       )
       .get(h) as unknown as Row | undefined;
     // The hash is looked up, never the token compared; the check below is for the status alone.
-    if (!row || row.status !== "active") return null;
+    if (!row) return null;
     const now = Date.now();
     if (now - (this.#seen.get(row.id) ?? 0) >= SEEN_EVERY_MS) {
       this.#seen.set(row.id, now);
@@ -193,10 +253,15 @@ export class Registry {
     return tenantOf(row);
   }
 
-  setStatus(idOrEmail: string, status: TenantStatus): Tenant {
+  setStatus(idOrEmail: string, status: TenantStatus, suspension?: { reason: string; until?: string | null }): Tenant {
     const tenant = this.need(idOrEmail);
-    this.#db.prepare("UPDATE tenants SET status = ? WHERE id = ?").run(status, tenant.id);
-    return { ...tenant, status };
+    const kept =
+      status === "suspended" && suspension ? { reason: suspension.reason, until: suspension.until ?? null } : null;
+    this.#db
+      .prepare("UPDATE tenants SET status = ?, suspension = ? WHERE id = ?")
+      .run(status, kept ? JSON.stringify(kept) : null, tenant.id);
+    const { suspension: _before, ...rest } = tenant;
+    return { ...rest, status, ...(kept ? { suspension: kept } : {}) };
   }
 
   /** A new token; the old one stops working at once. */
@@ -232,11 +297,29 @@ export class Registry {
     if (!(hours > 0 && hours <= 24 * 30)) throw new Error("The hours of an invitation are between 1 and 720.");
     const known = this.find(email);
     const tenant = known ?? this.add(email).tenant;
-    const now = options.now ?? Date.now();
+    const made = this.#makeInvite(tenant, hours * 3_600_000, options.pin ?? false, options.now ?? Date.now());
+    return { tenant, ...made, created: !known };
+  }
+
+  /** An invitation of a few minutes for a hosted rider's phone (no PIN: it is handed straight to the app). */
+  inviteTenant(id: string, minutes = 15, now = Date.now()): { tenant: Tenant; code: string; expiresAt: string } | null {
+    if (!(minutes >= 1 && minutes <= 60)) throw new Error("The minutes of an invitation are between 1 and 60.");
+    const tenant = this.find(id);
+    if (!tenant || tenant.status !== "active") return null;
+    const { code, expiresAt } = this.#makeInvite(tenant, minutes * 60_000, false, now);
+    return { tenant, code, expiresAt };
+  }
+
+  #makeInvite(
+    tenant: Tenant,
+    lifeMs: number,
+    withPin: boolean,
+    now: number,
+  ): { code: string; pin: string | null; expiresAt: string } {
     const code = newInviteCode();
-    const pin = options.pin ? String(randomInt(0, 1_000_000)).padStart(6, "0") : null;
+    const pin = withPin ? String(randomInt(0, 1_000_000)).padStart(6, "0") : null;
     const salt = randomBytes(16).toString("hex");
-    const expiresAt = new Date(now + hours * 3_600_000).toISOString();
+    const expiresAt = new Date(now + lifeMs).toISOString();
     this.#db
       .prepare(
         `INSERT INTO invites (id, code_hash, tenant_id, pin_salt, pin_hash, expires_at, created_at)
@@ -251,7 +334,7 @@ export class Registry {
         expiresAt,
         new Date(now).toISOString(),
       );
-    return { tenant, code, pin, expiresAt, created: !known };
+    return { code, pin, expiresAt };
   }
 
   /**
@@ -481,6 +564,40 @@ export class Registry {
     this.#db.prepare("DELETE FROM link_codes WHERE tenant_id = ?").run(tenant.id);
     this.#db.prepare("DELETE FROM oauth_codes WHERE tenant_id = ?").run(tenant.id);
     return Number(this.#db.prepare("DELETE FROM oauth_tokens WHERE tenant_id = ?").run(tenant.id).changes);
+  }
+
+  /** A rider made by the provisioning API, by reference: found when it exists (nothing changes), made when it does not. */
+  provision(ref: string): { tenant: Tenant; created: boolean } {
+    const known = this.findByRef(ref);
+    if (known) return { tenant: known, created: false };
+    const id = newId();
+    const createdAt = new Date().toISOString();
+    // The rider has no token of their own: only the phone's, made by an invitation, opens their library.
+    this.#db
+      .prepare(
+        "INSERT INTO tenants (id, email, token_hash, status, created_at, external_ref) VALUES (?, ?, ?, 'active', ?, ?)",
+      )
+      .run(id, hostedEmail(ref), hash(newToken()), createdAt, ref);
+    return {
+      tenant: { id, email: hostedEmail(ref), status: "active", createdAt, lastSeenAt: null, ref },
+      created: true,
+    };
+  }
+
+  findByRef(ref: string): Tenant | null {
+    const row = this.#db.prepare("SELECT * FROM tenants WHERE external_ref = ?").get(ref) as unknown as Row | undefined;
+    return row ? tenantOf(row) : null;
+  }
+
+  /** Replace what a rider may use; an empty set takes them all away. */
+  setEntitlements(id: string, entitlements: Entitlements): Tenant {
+    const tenant = this.need(id);
+    const empty = Object.keys(entitlements).length === 0;
+    this.#db
+      .prepare("UPDATE tenants SET entitlements = ? WHERE id = ?")
+      .run(empty ? null : JSON.stringify(entitlements), tenant.id);
+    const { entitlements: _before, ...rest } = tenant;
+    return empty ? rest : { ...rest, entitlements };
   }
 
   /** A consistent copy of the registry into `dest`. */

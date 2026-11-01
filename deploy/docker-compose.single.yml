@@ -23,6 +23,10 @@ services:
       # Sign-in for ChatGPT and Claude beside the token (optional, docs/guide/several-riders.md). 1: on. Off: nothing changes.
       RIDE_OAUTH: ${RIDE_OAUTH:-}
       RIDE_OAUTH_REDIRECTS: ${RIDE_OAUTH_REDIRECTS:-}
+      # The provisioning API of a hosted service (docs/guide/several-riders.md, ADR 0057): off unless set. Its port is never published.
+      RIDE_ADMIN_API: ${RIDE_ADMIN_API:-}
+      RIDE_ADMIN_TOKEN: ${RIDE_ADMIN_TOKEN:-}
+      RIDE_ADMIN_HOST: ${RIDE_ADMIN_HOST:-0.0.0.0}
       # Your own Valhalla (optional, the `valhalla` service below): http://valhalla:8002. Empty: the public server.
       VALHALLA_URL: ${VALHALLA_URL:-}
     volumes:

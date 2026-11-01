@@ -1,0 +1,701 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "agentRide provisioning API",
+    "version": "1.0.0",
+    "description": "ADR 0057. Served on its own private port when RIDE_ADMIN_API is on, never through a public proxy. Every call is repeatable: a webhook delivered twice changes nothing the second time. `GET /me` is served on the riders' port, with a rider's, a phone's or a chat connection's token."
+  },
+  "components": {
+    "securitySchemes": {
+      "adminToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "RIDE_ADMIN_TOKEN, at least 32 characters."
+      },
+      "riderToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "A rider's, a phone's or a connection's token."
+      }
+    },
+    "schemas": {
+      "Entitlements": {
+        "type": "object",
+        "properties": {
+          "traffic": {
+            "type": "string",
+            "enum": ["off", "open", "tomtom"]
+          },
+          "trafficPerDay": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000
+          },
+          "libraryMb": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          },
+          "requestsPerMinute": {
+            "type": "integer",
+            "minimum": 10,
+            "maximum": 6000
+          }
+        },
+        "additionalProperties": false
+      },
+      "Rider": {
+        "type": "object",
+        "properties": {
+          "ref": {
+            "type": "string",
+            "description": "The reference the caller chose for this rider."
+          },
+          "id": {
+            "type": "string",
+            "description": "The server's identifier of the rider."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "suspended"]
+          },
+          "entitlements": {
+            "type": "object",
+            "properties": {
+              "traffic": {
+                "type": "string",
+                "enum": ["off", "open", "tomtom"]
+              },
+              "trafficPerDay": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100000
+              },
+              "libraryMb": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100000
+              },
+              "requestsPerMinute": {
+                "type": "integer",
+                "minimum": 10,
+                "maximum": 6000
+              }
+            },
+            "additionalProperties": false,
+            "description": "What the rider may use; empty when the host's defaults apply."
+          },
+          "libraryBytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "lastSeenAt": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["ref", "id", "status", "entitlements", "libraryBytes", "createdAt", "lastSeenAt"],
+        "additionalProperties": false
+      },
+      "CreateBody": {
+        "type": "object",
+        "properties": {
+          "entitlements": {
+            "type": "object",
+            "properties": {
+              "traffic": {
+                "type": "string",
+                "enum": ["off", "open", "tomtom"]
+              },
+              "trafficPerDay": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100000
+              },
+              "libraryMb": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100000
+              },
+              "requestsPerMinute": {
+                "type": "integer",
+                "minimum": 10,
+                "maximum": 6000
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "InvitationBody": {
+        "type": "object",
+        "properties": {
+          "minutes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 60
+          }
+        },
+        "additionalProperties": false
+      },
+      "SuspendBody": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "description": "A word the app can translate, such as `lapsed`; `lapsed` when none is given.",
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,39}$"
+          },
+          "until": {
+            "description": "When the pause ends or the library is deleted, if the caller says.",
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Invitation": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "The one-time code the phone exchanges at /enrol."
+          },
+          "link": {
+            "type": "string",
+            "description": "mobilemotoride://server?url=…&code=…, for the app to open."
+          },
+          "expiresAt": {
+            "type": "string"
+          }
+        },
+        "required": ["code", "link", "expiresAt"],
+        "additionalProperties": false
+      },
+      "Deleted": {
+        "type": "object",
+        "properties": {
+          "ref": {
+            "type": "string"
+          },
+          "deleted": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": ["ref", "deleted"],
+        "additionalProperties": false
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "required": ["error"],
+        "additionalProperties": false
+      },
+      "Me": {
+        "type": "object",
+        "properties": {
+          "hosted": {
+            "type": "boolean",
+            "description": "Whether the rider was made by the provisioning API."
+          },
+          "suspended": {
+            "description": "Present when the rider is paused: the answer is still 200, so the app can say so instead of 'bad token'.",
+            "type": "object",
+            "properties": {
+              "reason": {
+                "type": "string"
+              },
+              "until": {
+                "type": ["string", "null"]
+              }
+            },
+            "required": ["reason", "until"],
+            "additionalProperties": false
+          },
+          "traffic": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": ["off", "open", "tomtom", "host"],
+                "description": "`host`: whatever the host configured."
+              },
+              "perDay": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The day's allowance of TomTom requests, when there is one."
+              },
+              "usedToday": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": ["mode", "perDay", "usedToday"],
+            "additionalProperties": false
+          },
+          "library": {
+            "type": "object",
+            "properties": {
+              "limitMb": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "usedBytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": ["limitMb", "usedBytes"],
+            "additionalProperties": false
+          },
+          "requestsPerMinute": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": ["hosted", "traffic", "library", "requestsPerMinute"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "paths": {
+    "/admin/v1/riders/{ref}": {
+      "parameters": [
+        {
+          "name": "ref",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]{8,128}$"
+          },
+          "description": "The reference the caller chose for the rider (URL-encoded)."
+        }
+      ],
+      "put": {
+        "summary": "Create the rider, or find it; optionally set its entitlements",
+        "security": [
+          {
+            "adminToken": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The rider existed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Rider"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "The rider was made.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Rider"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The reference or the body is not valid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The admin token is missing or wrong."
+          }
+        }
+      },
+      "get": {
+        "summary": "The rider's status, entitlements and library size",
+        "security": [
+          {
+            "adminToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The rider.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Rider"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The admin token is missing or wrong."
+          },
+          "404": {
+            "description": "No rider has this reference.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete the rider, their tokens, connections and library, for good",
+        "security": [
+          {
+            "adminToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Deleted"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The admin token is missing or wrong."
+          },
+          "404": {
+            "description": "No rider has this reference.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/v1/riders/{ref}/invitation": {
+      "parameters": [
+        {
+          "name": "ref",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]{8,128}$"
+          },
+          "description": "The reference the caller chose for the rider (URL-encoded)."
+        }
+      ],
+      "post": {
+        "summary": "A one-time invitation for the rider's phone",
+        "security": [
+          {
+            "adminToken": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitationBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The invitation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invitation"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The admin token is missing or wrong."
+          },
+          "404": {
+            "description": "No rider has this reference.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The rider is suspended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/v1/riders/{ref}/entitlements": {
+      "parameters": [
+        {
+          "name": "ref",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]{8,128}$"
+          },
+          "description": "The reference the caller chose for the rider (URL-encoded)."
+        }
+      ],
+      "put": {
+        "summary": "Replace what the rider may use",
+        "security": [
+          {
+            "adminToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Entitlements"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The rider, with the new entitlements.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Rider"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "An entitlement is unknown or out of range.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The admin token is missing or wrong."
+          },
+          "404": {
+            "description": "No rider has this reference.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/v1/riders/{ref}/suspend": {
+      "parameters": [
+        {
+          "name": "ref",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]{8,128}$"
+          },
+          "description": "The reference the caller chose for the rider (URL-encoded)."
+        }
+      ],
+      "post": {
+        "summary": "Shut the rider out; nothing is lost",
+        "security": [
+          {
+            "adminToken": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuspendBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The rider.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Rider"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body is not valid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The admin token is missing or wrong."
+          },
+          "404": {
+            "description": "No rider has this reference.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/v1/riders/{ref}/resume": {
+      "parameters": [
+        {
+          "name": "ref",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]{8,128}$"
+          },
+          "description": "The reference the caller chose for the rider (URL-encoded)."
+        }
+      ],
+      "post": {
+        "summary": "Let a suspended rider back in",
+        "security": [
+          {
+            "adminToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The rider.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Rider"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The admin token is missing or wrong."
+          },
+          "404": {
+            "description": "No rider has this reference.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me": {
+      "get": {
+        "summary": "What the rider may use, for the app (on the riders' port)",
+        "security": [
+          {
+            "riderToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "What the rider may use; `suspended` says when the rider is paused.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The token is not valid."
+          }
+        }
+      }
+    }
+  }
+}

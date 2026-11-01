@@ -22,6 +22,7 @@
     "docs:dev": "vitepress dev docs/guide",
     "docs:build": "vitepress build docs/guide",
     "docs:reference": "node scripts/reference.ts",
+    "docs:contract": "node scripts/contract.ts",
     "codex:register": "node scripts/codex-register.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

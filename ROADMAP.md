@@ -30,8 +30,10 @@ Done: a registry of riders with a library each, `npm run admin`, and the MCP too
   accidents) beside the flow, and TomTom's newer traffic endpoints when the current one is retired.
 - **A shared cache of road and weather lookups** across riders (the container image, the compose file, the NixOS module
   and the self-hosting guide are done).
-- **Quotas and accounts** if the instance is offered as a service: limits per rider, billing, terms and deletion of an
-  account.
+- **A server to rent, bought from the app** (ADR 0057): a private sidecar verifies the stores' purchases and creates riders
+  through a provisioning API of this server; per-rider entitlements (traffic, quotas) and `GET /me`; deletion of an account.
+  Steps: the provisioning API and entitlements here, the sidecar in its own repository, the app's "Get a server" flow, the
+  stores' setup and review, then a TomTom plan.
 
 ## Areas chosen from data
 

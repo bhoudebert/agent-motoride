@@ -482,6 +482,7 @@ export function createHttpServer(options: ServeOptions): {
     const ent = tenant.entitlements ?? {};
     const answer: z.infer<typeof meSchema> = {
       hosted: tenant.ref !== undefined,
+      riderRef: `rr-${tenant.id.replaceAll("-", "").slice(0, 16)}`,
       ...(tenant.status === "suspended"
         ? { suspended: { reason: tenant.suspension?.reason ?? "lapsed", until: tenant.suspension?.until ?? null } }
         : {}),

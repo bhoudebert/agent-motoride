@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.13.0](https://github.com/bhoudebert/agent-motoride/compare/v1.12.0...v1.13.0) (2026-11-01)
+
+
+### Features
+
+* **rides:** propose lower limits from a recorded ride, for the rider to confirm ([#158](https://github.com/bhoudebert/agent-motoride/issues/158)) ([6d401b0](https://github.com/bhoudebert/agent-motoride/commit/6d401b01f923de54b1d777b01d75bb37bfee82c0))
+* **server:** add a provisioning API and per-rider entitlements for a hosted server ([#175](https://github.com/bhoudebert/agent-motoride/issues/175)) ([66c057c](https://github.com/bhoudebert/agent-motoride/commit/66c057cc92e6425463c3a918351f540edbd1dd84))
+* **server:** count enrolled phones, end them from the API, read the admin secret from a file ([#176](https://github.com/bhoudebert/agent-motoride/issues/176)) ([39e67da](https://github.com/bhoudebert/agent-motoride/commit/39e67da7ef8572ce4cf4e7caacb41b722e36cb35))
+* **server:** let ChatGPT and Claude sign in with OAuth and a one-time code ([#170](https://github.com/bhoudebert/agent-motoride/issues/170)) ([c4d5b48](https://github.com/bhoudebert/agent-motoride/commit/c4d5b4896dc77ae8a5a09a995f24ab07d5876314))
+* **server:** list a ride's state, climb, leans and size, and its roadbook's name ([#163](https://github.com/bhoudebert/agent-motoride/issues/163)) ([2998666](https://github.com/bhoudebert/agent-motoride/commit/29986660c588a515ca9019b5bf51ff0afbb6368b))
+
+
+### Bug Fixes
+
+* **rides:** say what refreshRide does, and that the phone's refresh renews the file ([#161](https://github.com/bhoudebert/agent-motoride/issues/161)) ([c211089](https://github.com/bhoudebert/agent-motoride/commit/c211089ae3e3bf135fce132f086f98ed57e02cc9))
+* **server:** a correction makes out of date only the roadbooks that pass there ([#160](https://github.com/bhoudebert/agent-motoride/issues/160)) ([e211ebb](https://github.com/bhoudebert/agent-motoride/commit/e211ebb2b2c3e11791e056fe7af9fdeb62ebfa7c))
+* **server:** a pushed roadbook keeps its waypoints as coordinates, a loop lists its start once ([#162](https://github.com/bhoudebert/agent-motoride/issues/162)) ([09ddeea](https://github.com/bhoudebert/agent-motoride/commit/09ddeea2b3b5e3a24bbf7028f0a70d57ad790c71))
+* **server:** accept the callback ChatGPT makes for each connector ([#171](https://github.com/bhoudebert/agent-motoride/issues/171)) ([804b8df](https://github.com/bhoudebert/agent-motoride/commit/804b8df91f7a53c3398c00e8e678120b811be49f))
+* **server:** close a rider's oldest session instead of refusing a new one ([#173](https://github.com/bhoudebert/agent-motoride/issues/173)) ([bd3917c](https://github.com/bhoudebert/agent-motoride/commit/bd3917c079c1e4143b433e48d6bb97378f6596f6))
+
 ## [1.12.0](https://github.com/bhoudebert/agent-motoride/compare/v1.11.0...v1.12.0) (2026-10-31)
 
 

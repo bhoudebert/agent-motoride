@@ -46,12 +46,10 @@ every existing client are unchanged; with the setting off there is no new route.
 riders and hands the app a code) only has to call the same registry; the sign-in is not specific to it.
 
 It is a new public surface that decides who may use a library, and the part to read twice: the list of redirect addresses, the
-PKCE check, the single use of codes, and the hash-only storage are each covered by a test. The addresses of ChatGPT come from
-guides, not from OpenAI's own text, and have not yet been tried on a real connection; the host can add the ones that turn out to
-be needed. The page is plain and does not name the rider; the rider's email never leaves the registry. The one risk a code cannot remove is a
-rider talked into typing it on a page someone else started (the attacker's assistant then gets the rider's library): the page says
-so, but a rider who ignores it is exposed. With 30 tries a minute in all, an attacker cannot guess a code in its ten minutes, but can
-use up the tries so a rider has to wait a minute. A rider cannot see or end a
+PKCE check, the single use of codes, and the hash-only storage are each covered by a test. ChatGPT sends each connector back to its own address (`https://chatgpt.com/connector/oauth/<callback_id>`), so a pattern on
+chatgpt.com is allowed and not a list; the first try, with a fixed list, was refused by ChatGPT's own registration. Clients that
+never got a token are forgotten when the table is full, so registering over and over can block a new connector for an hour at
+most per round, not for good. A rider cannot see or end a
 single connection from the app yet, only all of them through the administrator.
 
 ## Alternatives considered

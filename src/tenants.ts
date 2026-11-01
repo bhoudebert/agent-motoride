@@ -352,8 +352,15 @@ export class Registry {
     const known = this.#db.prepare("SELECT id FROM oauth_clients WHERE redirect_uris = ?").get(uris) as unknown as
       { id: string } | undefined;
     if (known) return known;
-    const count = this.#db.prepare("SELECT COUNT(*) AS n FROM oauth_clients").get() as unknown as { n: number };
-    if (count.n >= MAX_CLIENTS) return null;
+    const count = () =>
+      (this.#db.prepare("SELECT COUNT(*) AS n FROM oauth_clients").get() as unknown as { n: number }).n;
+    if (count() >= MAX_CLIENTS) {
+      // Full: forget the clients that never got a token and are over an hour old (a connection is made in minutes).
+      this.#db
+        .prepare("DELETE FROM oauth_clients WHERE created_at < ? AND id NOT IN (SELECT client_id FROM oauth_tokens)")
+        .run(iso(now - 3_600_000));
+      if (count() >= MAX_CLIENTS) return null;
+    }
     const id = `mrc_${randomBytes(18).toString("base64url")}`;
     this.#db
       .prepare("INSERT INTO oauth_clients (id, name, redirect_uris, created_at) VALUES (?, ?, ?, ?)")

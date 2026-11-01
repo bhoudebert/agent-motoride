@@ -170,6 +170,49 @@ test("a client registers only for the addresses of ChatGPT and Claude, or the ho
   }
 });
 
+test("ChatGPT registers with the callback it makes for each connector, and nothing else of chatgpt.com", async () => {
+  const s = await setup();
+  try {
+    const good = await s.register("https://chatgpt.com/connector/oauth/abc123_DEF-456", "ChatGPT");
+    assert.equal(good.status, 201);
+    assert.equal(good.body["client_name"], "ChatGPT");
+    assert.equal((await s.register("https://chatgpt.com/connector_platform_oauth_redirect")).status, 201);
+    for (const bad of [
+      "https://chatgpt.com/connector/oauth/",
+      "https://chatgpt.com/connector/oauth/a/b",
+      "https://chatgpt.com/connector/oauth/abc?x=1",
+      "https://chatgpt.com/other",
+      "http://chatgpt.com/connector/oauth/abc",
+      "https://chatgpt.com.evil.example/connector/oauth/abc",
+      "https://evil.example/connector/oauth/abc",
+    ])
+      assert.equal((await s.register(bad)).status, 400, bad);
+    // And the sign-in sends the rider back to that callback.
+    const callback = "https://chatgpt.com/connector/oauth/abc123_DEF-456";
+    const client = good.body["client_id"] as string;
+    const back = await s.submit(client, s.registry.linkCode(s.alice.tenant.id, 1_000_000).code, {
+      redirect_uri: callback,
+    });
+    assert.equal(back.status, 302);
+    assert.equal(
+      new URL(back.headers.get("location")!).origin + new URL(back.headers.get("location")!).pathname,
+      callback,
+    );
+  } finally {
+    await s.app.close();
+  }
+});
+
+test("clients that never got a token are forgotten, an hour later, when the table is full", () => {
+  const registry = new Registry(":memory:");
+  const at = 5_000_000;
+  for (let i = 0; i < 2000; i++)
+    assert.ok(registry.registerClient("x", [`https://chatgpt.com/connector/oauth/id${i}`], at));
+  assert.equal(registry.registerClient("x", ["https://chatgpt.com/connector/oauth/new"], at), null);
+  assert.ok(registry.registerClient("x", ["https://chatgpt.com/connector/oauth/new"], at + 3_700_000));
+  registry.close();
+});
+
 test("the sign-in page shows the form for a known client, and refuses anything unchecked", async () => {
   const s = await setup();
   try {

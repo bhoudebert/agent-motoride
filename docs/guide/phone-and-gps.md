@@ -59,6 +59,8 @@ the land around, use the Google Maps links.
 
 ## For the MobileMotoRide app
 
+The app works without a server; what a server adds is on [With or without a server](/with-or-without-a-server).
+
 Exporting a saved ride also writes a **roadbook file** next to the GPX, `<name>.motoride.json`, for the
 MobileMotoRide app: the exact line, the stops, the speed limit of
 every stretch (posted, or assumed from the country default and marked so) and the fixed cameras. The app shows the

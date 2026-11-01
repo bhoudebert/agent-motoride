@@ -6,6 +6,7 @@ import {
   deletedSchema,
   invitationBodySchema,
   invitationSchema,
+  revokedSchema,
   riderSchema,
   suspendBodySchema,
   type errorSchema,
@@ -68,6 +69,8 @@ export function createAdminServer(options: AdminOptions): { http: Server; close(
       libraryBytes: librarySize(tenant.id),
       createdAt: tenant.createdAt,
       lastSeenAt: tenant.lastSeenAt,
+      devices: registry.devices(tenant.id).count,
+      enrolledAt: registry.devices(tenant.id).since,
     });
 
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -78,7 +81,9 @@ export function createAdminServer(options: AdminOptions): { http: Server; close(
       log(`[admin] ${req.method} - - 401`);
       return fail(res, 401, "unauthorized");
     }
-    const match = /^\/admin\/v1\/riders\/([^/]+)(?:\/(invitation|entitlements|suspend|resume))?$/.exec(url.pathname);
+    const match = /^\/admin\/v1\/riders\/([^/]+)(?:\/(invitation|entitlements|suspend|resume|devices))?$/.exec(
+      url.pathname,
+    );
     const ref = ((): string => {
       try {
         return match ? decodeURIComponent(match[1]!) : "";
@@ -106,6 +111,7 @@ export function createAdminServer(options: AdminOptions): { http: Server; close(
       entitlements: ["PUT"],
       suspend: ["POST"],
       resume: ["POST"],
+      devices: ["DELETE"],
     };
     if (!allowed[action]!.includes(method)) return refuse(405, "method_not_allowed");
 
@@ -139,6 +145,8 @@ export function createAdminServer(options: AdminOptions): { http: Server; close(
       if (!parsed.ok) return refuse(400, "invalid_entitlements", parsed.error);
       return reply(200, view(registry.setEntitlements(tenant.id, parsed.value)));
     }
+    if (action === "devices")
+      return reply(200, revokedSchema.parse({ ref, revoked: registry.revokeDevices(tenant.id) }));
     if (action === "resume") return reply(200, view(registry.setStatus(tenant.id, "active")));
     if (action === "suspend") {
       const asked = suspendBodySchema.safeParse(body);

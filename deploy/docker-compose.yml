@@ -26,6 +26,7 @@ services:
       # The provisioning API of a hosted service (docs/guide/several-riders.md, ADR 0057): off unless set. Its port is never published.
       RIDE_ADMIN_API: ${RIDE_ADMIN_API:-}
       RIDE_ADMIN_TOKEN: ${RIDE_ADMIN_TOKEN:-}
+      RIDE_ADMIN_TOKEN_FILE: ${RIDE_ADMIN_TOKEN_FILE:-}
       RIDE_ADMIN_HOST: ${RIDE_ADMIN_HOST:-0.0.0.0}
       # Your own Valhalla (optional, the `valhalla` service below): http://valhalla:8002. Empty: the public server.
       VALHALLA_URL: ${VALHALLA_URL:-}

@@ -1,4 +1,5 @@
 // The MCP server over HTTP for several riders (ADR 0027): `npm run serve`. Put Caddy or another proxy in front for TLS.
+import { readFileSync } from "node:fs";
 import { Registry } from "./tenants.ts";
 import { createAdminServer, MIN_ADMIN_TOKEN } from "./adminApi.ts";
 import { createHttpServer } from "./server.ts";
@@ -34,7 +35,16 @@ const { http, sweep, close } = createHttpServer({ registry, oauth });
 // The provisioning API of a hosted service (ADR 0057): off unless asked for, on a port of its own that no public proxy passes.
 let admin: ReturnType<typeof createAdminServer> | null = null;
 if (/^(1|on|true|yes)$/i.test(process.env.RIDE_ADMIN_API ?? "")) {
-  const secret = process.env.RIDE_ADMIN_TOKEN ?? "";
+  // A secret kept as a file (a container secret) is read in preference to the environment.
+  const file = process.env.RIDE_ADMIN_TOKEN_FILE;
+  let secret = process.env.RIDE_ADMIN_TOKEN ?? "";
+  if (file) {
+    try {
+      secret = readFileSync(file, "utf8").trim();
+    } catch {
+      secret = "";
+    }
+  }
   if (secret.length < MIN_ADMIN_TOKEN || !publicUrl || !secureUrl) {
     process.stderr.write(
       `RIDE_ADMIN_API is on, but it needs RIDE_ADMIN_TOKEN of at least ${MIN_ADMIN_TOKEN} characters and RIDE_SERVER_URL as an https:// address: the provisioning API is off.\n`,

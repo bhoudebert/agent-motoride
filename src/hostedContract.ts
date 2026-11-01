@@ -15,6 +15,8 @@ export const riderSchema = z
     libraryBytes: z.number().int().min(0),
     createdAt: z.string(),
     lastSeenAt: z.string().nullable(),
+    devices: z.number().int().min(0).describe("Phones enrolled now (each redeemed invitation made one token)."),
+    enrolledAt: z.string().nullable().describe("When the first phone still enrolled was; null when none is."),
   })
   .strict();
 
@@ -39,6 +41,7 @@ export const invitationSchema = z
   })
   .strict();
 
+export const revokedSchema = z.object({ ref: z.string(), revoked: z.number().int().min(0) }).strict();
 export const deletedSchema = z.object({ ref: z.string(), deleted: z.literal(true) }).strict();
 export const errorSchema = z.object({ error: z.string(), detail: z.string().optional() }).strict();
 
@@ -107,6 +110,7 @@ export function openApiDocument(): Record<string, unknown> {
         SuspendBody: schema(suspendBodySchema),
         Invitation: schema(invitationSchema),
         Deleted: schema(deletedSchema),
+        Revoked: schema(revokedSchema),
         Error: schema(errorSchema),
         Me: schema(meSchema),
       },
@@ -173,6 +177,15 @@ export function openApiDocument(): Record<string, unknown> {
             "400": answer("The body is not valid.", "Error"),
             ...errors,
           },
+        },
+      },
+      "/admin/v1/riders/{ref}/devices": {
+        parameters: [refParam],
+        delete: {
+          summary:
+            "Stop every phone of the rider and every chat connection, and cancel unused invitations (a lost phone)",
+          security: secured,
+          responses: { "200": answer("How many phone tokens were ended.", "Revoked"), ...errors },
         },
       },
       "/admin/v1/riders/{ref}/resume": {

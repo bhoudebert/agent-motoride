@@ -195,11 +195,12 @@ test("GET /me says what the rider may use, and a change applies to the next requ
     });
     const first = (await s.me(token)).body!;
     assert.equal(first.hosted, true);
-    assert.deepEqual(first.traffic, { mode: "tomtom", perDay: 40, usedToday: 0 });
+    // This host has no TomTom provider, so the source that answers is open data, and /me says so.
+    assert.deepEqual(first.traffic, { mode: "tomtom", perDay: 40, usedToday: 0, provider: "open" });
     assert.equal(first.library.limitMb, 5);
     assert.equal(first.requestsPerMinute, 200);
     await s.call("PUT", `${s.rider()}/entitlements`, { traffic: "open" });
-    assert.deepEqual((await s.me(token)).body!.traffic, { mode: "open", perDay: null, usedToday: 0 });
+    assert.deepEqual((await s.me(token)).body!.traffic, { mode: "open", perDay: null, usedToday: 0, provider: "open" });
     // A rider an administrator added is not hosted and has the host's defaults.
     const added = s.registry.add("alice@example.org");
     const plain = (await s.me(added.token)).body!;
@@ -207,6 +208,20 @@ test("GET /me says what the rider may use, and a change applies to the next requ
     assert.equal(plain.traffic.mode, "host");
     assert.equal(plain.requestsPerMinute, 300);
     assert.equal((await s.me("mrt_nope")).status, 401);
+  } finally {
+    await s.close();
+  }
+});
+
+test("GET /me says which source answers the rider's traffic, also when the host decides", async () => {
+  const s = await setup({ provider: "tomtom-flow", key: "k", perDay: 10 });
+  try {
+    const host = await s.phone("apple:provider-host-0001");
+    assert.equal((await s.me(host.token)).body!.traffic.provider, "tomtom");
+    const open = await s.phone("apple:provider-open-0001", { traffic: "open" });
+    assert.equal((await s.me(open.token)).body!.traffic.provider, "open");
+    const off = await s.phone("apple:provider-off-00001", { traffic: "off" });
+    assert.equal((await s.me(off.token)).body!.traffic.provider, undefined);
   } finally {
     await s.close();
   }

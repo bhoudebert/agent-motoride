@@ -480,6 +480,7 @@ export function createHttpServer(options: ServeOptions): {
     if (!tenant) return json(res, 401, { error: "A rider's token is needed." }, { "WWW-Authenticate": "Bearer" });
     if (limited(tenant)) return json(res, 429, { error: "Too many requests; wait a minute." }, { "Retry-After": "60" });
     const ent = tenant.entitlements ?? {};
+    const provider = ent.traffic === "off" ? null : ent.traffic === "open" ? trafficOpen.kind : traffic.kind;
     const answer: z.infer<typeof meSchema> = {
       hosted: tenant.ref !== undefined,
       riderRef: `rr-${tenant.id.replaceAll("-", "").slice(0, 16)}`,
@@ -490,6 +491,7 @@ export function createHttpServer(options: ServeOptions): {
         mode: ent.traffic ?? "host",
         perDay: ent.traffic === "tomtom" ? (ent.trafficPerDay ?? null) : null,
         usedToday: spentToday(tenant.id),
+        ...(provider ? { provider } : {}),
       },
       library: { limitMb: ent.libraryMb ?? null, usedBytes: librarySize(tenant.id) },
       requestsPerMinute: ent.requestsPerMinute ?? perMinute,

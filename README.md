@@ -65,6 +65,11 @@ link, with the positions encrypted so that the server cannot read them ([Share a
 [Run it for several riders](https://bhoudebert.github.io/agent-motoride/guide/several-riders) and
 [Host it yourself](https://bhoudebert.github.io/agent-motoride/guide/self-hosting).
 
+**Straight from ChatGPT or Claude, phone included**: with a server of yours on the internet, connect it once as a
+connector (sign-in with a one-time code, no password) and plan, check and review rides from their web and phone apps, on the
+same library as the MotoRide app. See
+[Use it from ChatGPT or Claude](https://bhoudebert.github.io/agent-motoride/guide/chat-on-your-phone).
+
 **From your phone, with nothing to install**: a Claude Code or Codex session running on
 any machine (your computer, a Raspberry Pi, a VPS) can be driven from the Claude
 app or the ChatGPT app, with this server attached. See

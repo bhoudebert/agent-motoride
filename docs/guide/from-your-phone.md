@@ -5,6 +5,9 @@ Claude or ChatGPT app. The session keeps running on a computer of yours, with
 its library, exports and settings; the phone is the keyboard and the screen.
 Nothing of agentMotoride is put on the internet.
 
+If you have a server of your own on the internet, you do not need a session left running: connect it to ChatGPT or
+Claude once and use it from their phone apps, see [Use it from ChatGPT or Claude](/chat-on-your-phone).
+
 ::: code-group
 
 ```bash [Claude Code]

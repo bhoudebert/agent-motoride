@@ -38,6 +38,27 @@ rider plans in plain words, as in [Claude Code and Codex](/claude-code-and-codex
 alone. Their own model plans: the server holds no model and no key, so scouting is done by the client's subagents in
 Claude Code (Codex explores the areas itself).
 
+## Connect ChatGPT or Claude
+
+Beside the token, the server can let a rider sign in from **ChatGPT or Claude**, on the web (and the phone, once connected
+there). Turn it on with `RIDE_OAUTH=1` (the public address in `RIDE_SERVER_URL` must be the https one the chat assistant
+reaches; the proxy of the examples passes `/oauth/*` and `/.well-known/oauth-*`). Nothing changes while it is off, and the
+token keeps working either way.
+
+```bash
+npm run admin -- link alice@example.org    # a one-time code, valid ten minutes, works once
+```
+
+Then Alice adds `https://rides.example.org/mcp` as a connector in ChatGPT or Claude (in Settings, on the web), picks sign-in
+with OAuth, and types the code on the page the connector opens. There is no password and no account: the code is the proof.
+`npm run admin -- connections alice@example.org --revoke` ends her connections to ChatGPT and Claude; suspending or removing
+her ends them too. A connection can only use her library through the tools, not her roadbook list or uploads.
+
+ChatGPT's connectors are set up on its website, and Claude's custom connectors on claude.ai; the details are theirs and change.
+The addresses a chat assistant may be sent back to are those of Claude and ChatGPT, plus any listed in `RIDE_OAUTH_REDIRECTS`
+(a comma-separated list of exact https addresses): if a connection fails at the end of the sign-in, the host reads the address
+in the assistant's error and adds it.
+
 ## What the server protects
 
 - A **session belongs to the rider who opened it**: another token gets a plain "not found".

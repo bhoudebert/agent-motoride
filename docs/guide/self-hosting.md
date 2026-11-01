@@ -45,7 +45,7 @@ sudo nginx -t && sudo systemctl reload nginx
 curl https://rides.example.org/health
 ```
 
-`up -d ride` starts the server and not Caddy. Keep the paths of the example: `/mcp`, `/health`, `/enrol`, `/traffic`, `/roadbooks`, `/roadbook/*`, `/rides`, `/rides/*`, `/follow.js`,
+`up -d ride` starts the server and not Caddy. Keep the paths of the example: `/mcp`, `/health`, `/enrol`, `/traffic`, `/roadbooks`, `/roadbook/*`, `/rides`, `/rides/*`, `/oauth/*`, `/.well-known/oauth-*`, `/follow.js`,
 `/follow/*` and `/share/*` are exposed and everything else is 404. Keep `proxy_buffering off` and the long read timeout:
 the tools answer as a stream. `RIDE_DOMAIN` can be left as it is: only Caddy reads it.
 

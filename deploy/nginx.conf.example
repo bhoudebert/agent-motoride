@@ -9,6 +9,8 @@ server {
 
     # The tools (with a token), the health check, a phone's invitation, the phone's traffic, and the live ride relay with its page.
     location ~ ^/(mcp|health|enrol|traffic|roadbooks|rides|follow\.js)$ { proxy_pass http://127.0.0.1:8788; include /etc/nginx/ride-proxy.conf; }
+    # Sign-in of ChatGPT and Claude (only when RIDE_OAUTH=1).
+    location ~ ^/(oauth/(register|authorize|token|link-code)|\.well-known/oauth-(protected-resource|authorization-server)(/mcp)?)$ { proxy_pass http://127.0.0.1:8788; include /etc/nginx/ride-proxy.conf; }
     location ~ ^/rides/[^/]+$ { proxy_pass http://127.0.0.1:8788; include /etc/nginx/ride-proxy.conf; }
     location ~ ^/roadbook/[0-9]+$ { proxy_pass http://127.0.0.1:8788; include /etc/nginx/ride-proxy.conf; }
     location ~ ^/(follow|share)/                 { proxy_pass http://127.0.0.1:8788; include /etc/nginx/ride-proxy.conf; }

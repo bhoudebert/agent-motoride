@@ -70,7 +70,7 @@ _: {
           example = "/run/secrets/agent-motoride.env";
           description = ''
             A file of `NAME=value` lines read by the container, kept out of the Nix store. To give the phone's traffic a TomTom
-            key: `TOMTOM_API_KEY=...` and `TRAFFIC_PROVIDER=tomtom-flow` (without it the traffic comes from open data), and optionally `TRAFFIC_MAX_PER_DAY=600`.
+            key: `TOMTOM_API_KEY=...` and `TRAFFIC_PROVIDER=tomtom-flow` (without it the traffic comes from open data), and optionally `TRAFFIC_MAX_PER_DAY=600`. `RIDE_OAUTH=1` lets riders connect ChatGPT and Claude.
           '';
         };
 
@@ -106,7 +106,7 @@ _: {
           virtualHosts.${cfg.domain}.extraConfig = ''
             # Only the tools, the live ride relay and its page, and the health check are exposed;
             # the administration stays inside the container.
-            @exposed path /mcp /health /enrol /traffic /roadbooks /roadbook/* /follow.js /follow/* /share/*
+            @exposed path /mcp /health /enrol /traffic /roadbooks /roadbook/* /rides /rides/* /oauth/* /.well-known/oauth-* /follow.js /follow/* /share/*
             handle @exposed {
               reverse_proxy 127.0.0.1:${toString cfg.port}
             }

@@ -20,6 +20,9 @@ services:
       MAPILLARY_ACCESS_TOKEN: ${MAPILLARY_ACCESS_TOKEN:-}
       TRAFFIC_MAX_PER_DAY: ${TRAFFIC_MAX_PER_DAY:-600}
       TRAFFIC_PROVIDER: ${TRAFFIC_PROVIDER:-open-data}
+      # Sign-in for ChatGPT and Claude beside the token (optional, docs/guide/several-riders.md). 1: on. Off: nothing changes.
+      RIDE_OAUTH: ${RIDE_OAUTH:-}
+      RIDE_OAUTH_REDIRECTS: ${RIDE_OAUTH_REDIRECTS:-}
       # Your own Valhalla (optional, the `valhalla` service below): http://valhalla:8002. Empty: the public server.
       VALHALLA_URL: ${VALHALLA_URL:-}
     volumes:

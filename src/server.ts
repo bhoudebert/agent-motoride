@@ -15,6 +15,7 @@ import { type RequestContext, runInContext } from "./requestContext.ts";
 import { valhallaMapDay } from "./http.ts";
 import { createRideServer } from "./rideServer.ts";
 import { Store } from "./store.ts";
+import { createOAuth } from "./oauth.ts";
 import type { Registry, Tenant } from "./tenants.ts";
 
 /**
@@ -45,6 +46,8 @@ export interface ServeOptions {
   mapDay?: () => Promise<string>;
   /** How long a request for a roadbook with no file yet waits for it before answering 202, ms (20 s; tests give less). */
   firstFileWaitMs?: number;
+  /** Sign-in for ChatGPT and Claude beside the bearer token (ADR 0056): off unless given the server's public address. */
+  oauth?: { baseUrl: string; redirects?: string[] };
 }
 
 interface Session {
@@ -138,6 +141,7 @@ export function createHttpServer(options: ServeOptions): {
     mapDay: options.mapDay ?? valhallaMapDay,
     firstFileWaitMs: options.firstFileWaitMs,
   });
+  const oauth = options.oauth ? createOAuth({ registry, now, ...options.oauth }) : null;
   const sessions = new Map<string, Session>();
   const windows = new Map<string, { start: number; count: number }>();
 
@@ -447,7 +451,9 @@ export function createHttpServer(options: ServeOptions): {
         shares: live.size,
         traffic: traffic.available,
         trafficCountries: traffic.countries,
+        oauth: oauth !== null,
       });
+    if (oauth && (await oauth.handle(req, res, url))) return;
     if (url.pathname === "/traffic") return handleTraffic(req, res);
     if (url.pathname === "/roadbooks" || url.pathname.startsWith("/roadbook/"))
       return handleRoadbooks(req, res, url.pathname);
@@ -465,9 +471,16 @@ export function createHttpServer(options: ServeOptions): {
     if (url.pathname.startsWith("/share/")) return handleShare(req, res, url);
     if (url.pathname !== "/mcp") return json(res, 404, { error: "Not found" });
 
+    // The rider's token (Claude Code, Codex, the phone) or, when sign-in for chat assistants is on, a connection's token.
     const token = bearer(req);
-    const tenant = token ? registry.verify(token) : null;
-    if (!tenant) return json(res, 401, { error: "A rider's token is needed." }, { "WWW-Authenticate": "Bearer" });
+    const tenant = token ? (registry.verify(token) ?? oauth?.verify(token) ?? null) : null;
+    if (!tenant)
+      return json(
+        res,
+        401,
+        { error: "A rider's token is needed." },
+        { "WWW-Authenticate": oauth?.challenge ?? "Bearer" },
+      );
     if (limited(tenant)) return json(res, 429, { error: "Too many requests; wait a minute." }, { "Retry-After": "60" });
 
     let body: unknown;

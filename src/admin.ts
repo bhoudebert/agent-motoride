@@ -20,7 +20,10 @@ const USAGE = `Usage: npm run admin -- <command>
                                An invitation for the rider's phone: a QR code in the terminal (and in a file with
                                --out) that the app scans, a one-time code that lasts 24 hours and works once.
                                --pin adds six digits to tell the rider apart (three wrong tries burn it)
+  link <id|email>              A one-time code (ten minutes) to type when ChatGPT or Claude asks to connect (needs RIDE_OAUTH=1)
   devices <id|email> --revoke  Stop every phone of a rider (their tokens made by invitations); the other token stays
+  connections <id|email> --revoke
+                               End the rider's connections with ChatGPT and Claude; the tokens stay
   token <id|email>             A new token; the old one stops working at once
   backup [folder]              A consistent copy of the registry and every library into <folder>/<date>/
                                (default: data/backups)
@@ -132,6 +135,20 @@ export async function run(
         writeQr(file, link);
         out(`QR code saved to ${file} (anyone with it can join until it expires, unless there is a PIN).`);
       }
+      break;
+    }
+    case "link": {
+      const made = registry.linkCode(need("link <id|email>"));
+      out(
+        `Code for ${made.tenant.email}: ${made.code}\nType it on the sign-in page of ChatGPT or Claude. It works once, until ${made.expiresAt
+          .slice(0, 16)
+          .replace("T", " ")} UTC.`,
+      );
+      break;
+    }
+    case "connections": {
+      if (!flags.has("--revoke")) throw new Error("connections <id|email> --revoke");
+      out(`${registry.revokeConnections(need("connections <id|email> --revoke"))} connection(s) ended.`);
       break;
     }
     case "devices": {

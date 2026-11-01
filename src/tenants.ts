@@ -30,6 +30,21 @@ export const newInviteCode = (): string => "mri_" + randomBytes(24).toString("ba
 export const INVITE_HOURS = 24;
 export const PIN_TRIES = 3;
 const PIN = /^\d{6}$/;
+/** What a chat connection lives: an access token an hour, a refresh token 90 days (rotated at each use), a code minutes. */
+export const LINK_CODE_MINUTES = 10;
+const AUTH_CODE_MINUTES = 5;
+const ACCESS_SECONDS = 3600;
+const REFRESH_DAYS = 90;
+const MAX_CLIENTS = 2000;
+/** Letters and digits that are not mistaken for each other when read from a screen and typed: 8 of 30 is 39 bits. */
+const LINK_ALPHABET = "ABCDEFGHJKMNPQRSTVWXYZ23456789";
+const linkCodeOf = (): string => {
+  let code = "";
+  for (let i = 0; i < 8; i++) code += LINK_ALPHABET[randomInt(0, LINK_ALPHABET.length)];
+  return code;
+};
+const cleanLinkCode = (code: string): string => code.toUpperCase().replace(/[^A-Z0-9]/g, "");
+const iso = (ms: number): string => new Date(ms).toISOString();
 const pinHash = (pin: string, salt: string) => scryptSync(pin, salt, 32).toString("hex");
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -70,6 +85,39 @@ export class Registry {
       CREATE TABLE IF NOT EXISTS device_tokens (
         token_hash TEXT PRIMARY KEY,
         tenant_id TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+      -- Chat connections (ADR 0056): the clients ChatGPT and Claude register, the one-time codes a rider reads in the app,
+      -- the authorization codes and the tokens of a connection. Only hashes are kept.
+      CREATE TABLE IF NOT EXISTS oauth_clients (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        redirect_uris TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS link_codes (
+        code_hash TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        used_at TEXT,
+        created_at TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS oauth_codes (
+        code_hash TEXT PRIMARY KEY,
+        client_id TEXT NOT NULL,
+        tenant_id TEXT NOT NULL,
+        redirect_uri TEXT NOT NULL,
+        challenge TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        used_at TEXT
+      );
+      CREATE TABLE IF NOT EXISTS oauth_tokens (
+        access_hash TEXT PRIMARY KEY,
+        refresh_hash TEXT NOT NULL UNIQUE,
+        tenant_id TEXT NOT NULL,
+        client_id TEXT NOT NULL,
+        access_expires_at TEXT NOT NULL,
+        refresh_expires_at TEXT NOT NULL,
         created_at TEXT NOT NULL
       );
       CREATE TABLE IF NOT EXISTS invites (
@@ -156,6 +204,8 @@ export class Registry {
     const tenant = this.need(idOrEmail);
     const token = newToken();
     this.#db.prepare("UPDATE tenants SET token_hash = ? WHERE id = ?").run(hash(token), tenant.id);
+    // A leaked token could have made a connection: a new token ends those too.
+    this.revokeConnections(tenant.id);
     return { tenant, token };
   }
 
@@ -165,6 +215,8 @@ export class Registry {
     this.#db.prepare("DELETE FROM tenants WHERE id = ?").run(tenant.id);
     this.#db.prepare("DELETE FROM device_tokens WHERE tenant_id = ?").run(tenant.id);
     this.#db.prepare("DELETE FROM invites WHERE tenant_id = ?").run(tenant.id);
+    for (const table of ["link_codes", "oauth_codes", "oauth_tokens"])
+      this.#db.prepare(`DELETE FROM ${table} WHERE tenant_id = ?`).run(tenant.id);
     return tenant;
   }
 
@@ -252,7 +304,176 @@ export class Registry {
   revokeDevices(idOrEmail: string): number {
     const tenant = this.need(idOrEmail);
     this.#db.prepare("DELETE FROM invites WHERE tenant_id = ? AND used_at IS NULL").run(tenant.id);
+    // A lost phone could have made a connection: stopping the phones ends those too.
+    this.revokeConnections(tenant.id);
     return Number(this.#db.prepare("DELETE FROM device_tokens WHERE tenant_id = ?").run(tenant.id).changes);
+  }
+
+  /**
+   * A one-time code for a chat connection (ADR 0056): the rider reads it in the app (or the administrator prints it) and types
+   * it on the sign-in page of ChatGPT or Claude. It lives ten minutes and works once; a rider holds at most five.
+   */
+  linkCode(idOrEmail: string, now = Date.now()): { tenant: Tenant; code: string; expiresAt: string } {
+    const tenant = this.need(idOrEmail);
+    this.#db.prepare("DELETE FROM link_codes WHERE expires_at <= ? OR used_at IS NOT NULL").run(iso(now));
+    this.#db
+      .prepare(
+        `DELETE FROM link_codes WHERE tenant_id = ?1 AND code_hash NOT IN
+         (SELECT code_hash FROM link_codes WHERE tenant_id = ?1 ORDER BY created_at DESC LIMIT 4)`,
+      )
+      .run(tenant.id);
+    const raw = linkCodeOf();
+    const expiresAt = iso(now + LINK_CODE_MINUTES * 60_000);
+    this.#db
+      .prepare("INSERT INTO link_codes (code_hash, tenant_id, expires_at, created_at) VALUES (?, ?, ?, ?)")
+      .run(hash(raw), tenant.id, expiresAt, iso(now));
+    return { tenant, code: `${raw.slice(0, 4)}-${raw.slice(4)}`, expiresAt };
+  }
+
+  /** Whose code this is, once: an unknown, expired or used code, and a suspended rider, are nobody. */
+  redeemLinkCode(code: string, now = Date.now()): Tenant | null {
+    const clean = cleanLinkCode(code);
+    if (clean.length !== 8) return null;
+    const row = this.#db.prepare("SELECT * FROM link_codes WHERE code_hash = ?").get(hash(clean)) as unknown as
+      { tenant_id: string; expires_at: string; used_at: string | null } | undefined;
+    if (!row || row.used_at || Date.parse(row.expires_at) <= now) return null;
+    const tenant = this.find(row.tenant_id);
+    if (!tenant || tenant.status !== "active") return null;
+    this.#db.prepare("UPDATE link_codes SET used_at = ? WHERE code_hash = ?").run(iso(now), hash(clean));
+    return tenant;
+  }
+
+  /**
+   * A client that registered itself (RFC 7591): the same set of addresses gives the same client, whatever it calls itself, so
+   * registering again and again cannot fill the table. `name` is what the sign-in page shows. Null when there are too many.
+   */
+  registerClient(name: string, redirectUris: string[], now = Date.now()): { id: string } | null {
+    const uris = JSON.stringify([...redirectUris].sort());
+    const known = this.#db.prepare("SELECT id FROM oauth_clients WHERE redirect_uris = ?").get(uris) as unknown as
+      { id: string } | undefined;
+    if (known) return known;
+    const count = this.#db.prepare("SELECT COUNT(*) AS n FROM oauth_clients").get() as unknown as { n: number };
+    if (count.n >= MAX_CLIENTS) return null;
+    const id = `mrc_${randomBytes(18).toString("base64url")}`;
+    this.#db
+      .prepare("INSERT INTO oauth_clients (id, name, redirect_uris, created_at) VALUES (?, ?, ?, ?)")
+      .run(id, name, uris, iso(now));
+    return { id };
+  }
+
+  client(id: string): { id: string; name: string; redirectUris: string[] } | null {
+    const row = this.#db.prepare("SELECT * FROM oauth_clients WHERE id = ?").get(id) as unknown as
+      { id: string; name: string; redirect_uris: string } | undefined;
+    return row ? { id: row.id, name: row.name, redirectUris: JSON.parse(row.redirect_uris) as string[] } : null;
+  }
+
+  /** The code that the client exchanges for tokens, bound to its PKCE challenge and its address. */
+  issueAuthCode(clientId: string, tenantId: string, redirectUri: string, challenge: string, now = Date.now()): string {
+    this.#db.prepare("DELETE FROM oauth_codes WHERE expires_at <= ?").run(iso(now));
+    const code = `mrx_${randomBytes(24).toString("base64url")}`;
+    this.#db
+      .prepare(
+        `INSERT INTO oauth_codes (code_hash, client_id, tenant_id, redirect_uri, challenge, expires_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+      .run(hash(code), clientId, tenantId, redirectUri, challenge, iso(now + AUTH_CODE_MINUTES * 60_000));
+    return code;
+  }
+
+  #issueTokens(tenantId: string, clientId: string, now: number) {
+    const access = `mro_${randomBytes(32).toString("base64url")}`;
+    const refresh = `mrr_${randomBytes(32).toString("base64url")}`;
+    this.#db.prepare("DELETE FROM oauth_tokens WHERE refresh_expires_at <= ?").run(iso(now));
+    this.#db
+      .prepare(
+        `INSERT INTO oauth_tokens (access_hash, refresh_hash, tenant_id, client_id, access_expires_at, refresh_expires_at, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        hash(access),
+        hash(refresh),
+        tenantId,
+        clientId,
+        iso(now + ACCESS_SECONDS * 1000),
+        iso(now + REFRESH_DAYS * 86_400_000),
+        iso(now),
+      );
+    return { access, refresh, expiresIn: ACCESS_SECONDS };
+  }
+
+  /**
+   * Tokens for an authorization code, once, when the client, the address and the PKCE verifier are those it was made for.
+   * A code used twice is a stolen one: the tokens it made are ended too.
+   */
+  exchangeAuthCode(
+    code: string,
+    clientId: string,
+    redirectUri: string,
+    verifier: string,
+    now = Date.now(),
+  ): { access: string; refresh: string; expiresIn: number } | null {
+    if (!code.startsWith("mrx_") || code.length > 100) return null;
+    const row = this.#db.prepare("SELECT * FROM oauth_codes WHERE code_hash = ?").get(hash(code)) as unknown as
+      | {
+          client_id: string;
+          tenant_id: string;
+          redirect_uri: string;
+          challenge: string;
+          expires_at: string;
+          used_at: string | null;
+        }
+      | undefined;
+    if (!row || Date.parse(row.expires_at) <= now) return null;
+    if (row.used_at) {
+      this.#db
+        .prepare("DELETE FROM oauth_tokens WHERE tenant_id = ? AND client_id = ? AND created_at >= ?")
+        .run(row.tenant_id, row.client_id, row.used_at);
+      return null;
+    }
+    if (row.client_id !== clientId || row.redirect_uri !== redirectUri) return null;
+    if (!/^[A-Za-z0-9\-._~]{43,128}$/.test(verifier)) return null;
+    const expected = Buffer.from(row.challenge);
+    const given = Buffer.from(createHash("sha256").update(verifier).digest("base64url"));
+    if (expected.length !== given.length || !timingSafeEqual(expected, given)) return null;
+    const tenant = this.find(row.tenant_id);
+    if (!tenant || tenant.status !== "active") return null;
+    this.#db.prepare("UPDATE oauth_codes SET used_at = ? WHERE code_hash = ?").run(iso(now), hash(code));
+    return this.#issueTokens(tenant.id, clientId, now);
+  }
+
+  /** New tokens for a refresh token; the old pair stops working (rotation). */
+  refreshTokens(
+    refresh: string,
+    clientId: string,
+    now = Date.now(),
+  ): { access: string; refresh: string; expiresIn: number } | null {
+    if (!refresh.startsWith("mrr_") || refresh.length > 100) return null;
+    const row = this.#db.prepare("SELECT * FROM oauth_tokens WHERE refresh_hash = ?").get(hash(refresh)) as unknown as
+      { tenant_id: string; client_id: string; refresh_expires_at: string } | undefined;
+    if (!row || row.client_id !== clientId || Date.parse(row.refresh_expires_at) <= now) return null;
+    const tenant = this.find(row.tenant_id);
+    if (!tenant || tenant.status !== "active") return null;
+    this.#db.prepare("DELETE FROM oauth_tokens WHERE refresh_hash = ?").run(hash(refresh));
+    return this.#issueTokens(tenant.id, clientId, now);
+  }
+
+  /** Who a chat connection's access token identifies: an active rider, or nobody. */
+  verifyOauth(token: string, now = Date.now()): Tenant | null {
+    if (!token.startsWith("mro_") || token.length < 20 || token.length > 100) return null;
+    const row = this.#db
+      .prepare("SELECT tenant_id, access_expires_at FROM oauth_tokens WHERE access_hash = ?")
+      .get(hash(token)) as unknown as { tenant_id: string; access_expires_at: string } | undefined;
+    if (!row || Date.parse(row.access_expires_at) <= now) return null;
+    const tenant = this.find(row.tenant_id);
+    return tenant && tenant.status === "active" ? tenant : null;
+  }
+
+  /** The chat connections of a rider (ChatGPT, Claude): ended at once. */
+  revokeConnections(idOrEmail: string): number {
+    const tenant = this.need(idOrEmail);
+    this.#db.prepare("DELETE FROM link_codes WHERE tenant_id = ?").run(tenant.id);
+    this.#db.prepare("DELETE FROM oauth_codes WHERE tenant_id = ?").run(tenant.id);
+    return Number(this.#db.prepare("DELETE FROM oauth_tokens WHERE tenant_id = ?").run(tenant.id).changes);
   }
 
   /** A consistent copy of the registry into `dest`. */

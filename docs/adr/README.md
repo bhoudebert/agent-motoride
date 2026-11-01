@@ -52,3 +52,4 @@ not rewritten.
 | [0054](0054-a-recorded-ride-is-uploaded-to-the-riders-library.md)       | A recorded ride is uploaded to the rider's library                               | accepted |
 | [0055](0055-limits-learned-from-rides-are-proposals-that-only-lower.md) | Limits learned from rides are proposals, and they only lower                     | accepted |
 | [0051](0051-a-riders-settings-are-kept-in-their-library.md)             | A rider's settings are kept in their library                                     | accepted |
+| [0056](0056-chat-assistants-sign-in-with-oauth-and-a-one-time-code.md)  | Chat assistants sign in with OAuth and a one-time code, beside the token         | accepted |

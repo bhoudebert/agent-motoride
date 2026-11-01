@@ -40,6 +40,8 @@ export interface OAuthOptions {
   /** More addresses a client may be sent back to. */
   redirects?: string[];
   now?: () => number;
+  /** Where the line for each sign-in request goes: method, path and status, never a value (stderr by default). */
+  log?: (line: string) => void;
 }
 
 export interface OAuth {
@@ -135,7 +137,7 @@ button.quiet{background:transparent}
 }
 
 export function createOAuth(options: OAuthOptions): OAuth {
-  const { registry, now = Date.now } = options;
+  const { registry, now = Date.now, log = (line: string) => process.stderr.write(`${line}\n`) } = options;
   const base = options.baseUrl.replace(/\/+$/, "");
   const extra = options.redirects ?? [];
   const windows = new Map<string, { start: number; count: number }>();
@@ -315,6 +317,8 @@ ${error ? `<p class="error">${escape(error)}</p>` : ""}
     verify: (secret) => registry.verifyOauth(secret, now()),
     async handle(req, res, url) {
       const path = url.pathname;
+      if (path.startsWith("/oauth/") || path.startsWith("/.well-known/oauth-"))
+        res.on("finish", () => log(`[oauth] ${req.method} ${path} ${res.statusCode}`));
       if (path === "/.well-known/oauth-protected-resource" || path === "/.well-known/oauth-protected-resource/mcp") {
         send(res, 200, protectedResource, { "Cache-Control": "public, max-age=300" });
         return true;

@@ -19,6 +19,8 @@ installFakeServices();
 const CLAUDE = "https://claude.ai/api/mcp/auth_callback";
 const VERIFIER = "v".repeat(60);
 
+const lines: string[] = [];
+
 async function setup(oauth: boolean | { redirects: string[] } = true) {
   const registry = new Registry(":memory:");
   const alice = registry.add("alice@example.org");
@@ -26,7 +28,13 @@ async function setup(oauth: boolean | { redirects: string[] } = true) {
   const app = createHttpServer({
     registry,
     now: () => clock,
-    oauth: oauth ? { baseUrl: "https://rides.example.org", ...(oauth === true ? {} : oauth) } : undefined,
+    oauth: oauth
+      ? {
+          baseUrl: "https://rides.example.org",
+          log: (line: string) => lines.push(line),
+          ...(oauth === true ? {} : oauth),
+        }
+      : undefined,
   });
   await new Promise<void>((resolve) => app.http.listen(0, "127.0.0.1", resolve));
   const url = `http://127.0.0.1:${(app.http.address() as AddressInfo).port}`;
@@ -400,6 +408,24 @@ test("a new token for the rider, or stopping their phones, ends their chat conne
     assert.notEqual(await mcpStatus(s.url, second.body["access_token"]!), 401);
     s.registry.revokeDevices(s.alice.tenant.id);
     assert.equal(await mcpStatus(s.url, second.body["access_token"]!), 401, "after the phones are stopped");
+  } finally {
+    await s.app.close();
+  }
+});
+
+test("each sign-in request is logged by method, path and status, and never with a value", async () => {
+  lines.length = 0;
+  const s = await setup();
+  try {
+    const { body } = await s.connectChat();
+    await fetch(`${s.url}/health`);
+    assert.ok(lines.includes("[oauth] POST /oauth/register 201"), lines.join("\n"));
+    assert.ok(lines.includes("[oauth] POST /oauth/authorize 302"));
+    assert.ok(lines.includes("[oauth] POST /oauth/token 200"));
+    assert.ok(!lines.some((l) => l.includes("/health")));
+    const all = lines.join("\n");
+    for (const secret of [body["access_token"]!, body["refresh_token"]!, VERIFIER, "mrx_"])
+      assert.ok(!all.includes(secret), "a value in the log");
   } finally {
     await s.app.close();
   }

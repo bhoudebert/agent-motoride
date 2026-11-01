@@ -47,7 +47,7 @@ export interface ServeOptions {
   /** How long a request for a roadbook with no file yet waits for it before answering 202, ms (20 s; tests give less). */
   firstFileWaitMs?: number;
   /** Sign-in for ChatGPT and Claude beside the bearer token (ADR 0056): off unless given the server's public address. */
-  oauth?: { baseUrl: string; redirects?: string[] };
+  oauth?: { baseUrl: string; redirects?: string[]; log?: (line: string) => void };
 }
 
 interface Session {

@@ -12,10 +12,15 @@ import type { Registry, Tenant } from "./tenants.ts";
 export const DEFAULT_REDIRECTS = [
   // Claude (claude.ai, Desktop, mobile): https://claude.com/docs/connectors/building/authentication.md
   "https://claude.ai/api/mcp/auth_callback",
-  // ChatGPT: from community and third-party guides, not from OpenAI's own text: to be checked against a real connection.
+  // ChatGPT, the fixed address it still uses for connectors published earlier: https://developers.openai.com/apps-sdk/build/auth
   "https://chatgpt.com/connector_platform_oauth_redirect",
-  "https://platform.openai.com/apps-manage/oauth",
 ];
+
+/**
+ * ChatGPT sends a connector back to https://chatgpt.com/connector/oauth/<callback_id>, an id made for each connector, so it
+ * cannot be on a list: any such address on chatgpt.com is allowed (the id is letters, digits, "-" and "_").
+ */
+const CHATGPT_CALLBACK = /^https:\/\/chatgpt\.com\/connector\/oauth\/[A-Za-z0-9_-]{1,100}$/;
 
 /** What the sign-in page calls a client: by the address it is sent back to, which is on our list, never by what it says it is. */
 export function assistantName(redirectUri: string): string {
@@ -24,6 +29,9 @@ export function assistantName(redirectUri: string): string {
   if (host === "chatgpt.com" || host === "platform.openai.com") return "ChatGPT";
   return host;
 }
+
+export const redirectAllowed = (uri: string, extra: Iterable<string> = []): boolean =>
+  DEFAULT_REDIRECTS.includes(uri) || CHATGPT_CALLBACK.test(uri) || [...extra].includes(uri);
 
 export interface OAuthOptions {
   registry: Registry;
@@ -129,7 +137,7 @@ button.quiet{background:transparent}
 export function createOAuth(options: OAuthOptions): OAuth {
   const { registry, now = Date.now } = options;
   const base = options.baseUrl.replace(/\/+$/, "");
-  const allowed = new Set([...DEFAULT_REDIRECTS, ...(options.redirects ?? [])]);
+  const extra = options.redirects ?? [];
   const windows = new Map<string, { start: number; count: number }>();
   const resource = `${base}/mcp`;
   const metadataUrl = `${base}/.well-known/oauth-protected-resource`;
@@ -170,7 +178,7 @@ export function createOAuth(options: OAuthOptions): OAuth {
     const params = await readParams(req);
     if (!params) return send(res, 400, { error: "invalid_client_metadata" });
     const uris = Array.isArray(params["redirect_uris"]) ? (params["redirect_uris"] as unknown[]) : [];
-    if (!uris.length || uris.length > 5 || !uris.every((u) => typeof u === "string" && allowed.has(u)))
+    if (!uris.length || uris.length > 5 || !uris.every((u) => typeof u === "string" && redirectAllowed(u, extra)))
       return send(res, 400, {
         error: "invalid_redirect_uri",
         error_description: "This server only sends a code back to the addresses of ChatGPT and Claude it knows.",

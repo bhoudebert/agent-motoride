@@ -1,8 +1,8 @@
 # HTTPS for the server: Caddy gets and renews the certificate for RIDE_DOMAIN by itself.
 {$RIDE_DOMAIN} {
-	# Only the tools, the live ride relay and its page, the exchange of an invitation, the traffic for the phone, and the health check are exposed;
+	# Only the tools, the live ride relay and its page, the exchange of an invitation, the traffic for the phone, the roadbooks and recorded rides of the phone, and the health check are exposed;
 	# the administration stays inside the container.
-	@exposed path /mcp /health /enrol /traffic /roadbooks /roadbook/* /follow.js /follow/* /share/*
+	@exposed path /mcp /health /enrol /traffic /roadbooks /roadbook/* /rides /rides/* /follow.js /follow/* /share/*
 	handle @exposed {
 		reverse_proxy ride:8788
 	}

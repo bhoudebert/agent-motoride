@@ -8,7 +8,8 @@ server {
     # ssl_certificate_key /etc/letsencrypt/live/rides.example.org/privkey.pem;
 
     # The tools (with a token), the health check, a phone's invitation, the phone's traffic, and the live ride relay with its page.
-    location ~ ^/(mcp|health|enrol|traffic|roadbooks|follow\.js)$ { proxy_pass http://127.0.0.1:8788; include /etc/nginx/ride-proxy.conf; }
+    location ~ ^/(mcp|health|enrol|traffic|roadbooks|rides|follow\.js)$ { proxy_pass http://127.0.0.1:8788; include /etc/nginx/ride-proxy.conf; }
+    location ~ ^/rides/[^/]+$ { proxy_pass http://127.0.0.1:8788; include /etc/nginx/ride-proxy.conf; }
     location ~ ^/roadbook/[0-9]+$ { proxy_pass http://127.0.0.1:8788; include /etc/nginx/ride-proxy.conf; }
     location ~ ^/(follow|share)/                 { proxy_pass http://127.0.0.1:8788; include /etc/nginx/ride-proxy.conf; }
     location /                                   { return 404; }

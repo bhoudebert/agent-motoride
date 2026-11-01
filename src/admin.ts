@@ -2,6 +2,7 @@
 import { createInterface } from "node:readline/promises";
 import { resolve } from "node:path";
 import { DATA_DIR } from "./dataDir.ts";
+import { inviteLink } from "./inviteLink.ts";
 import { renderSVG, renderUnicodeCompact } from "uqr";
 import { Resvg } from "@resvg/resvg-js";
 import { writeFileSync } from "node:fs";
@@ -51,10 +52,7 @@ export function connectionText(
   ].join("\n");
 }
 
-/** The link a phone opens: the app asks the rider before it uses the server. */
-export function inviteLink(base: string, code: string): string {
-  return `mobilemotoride://server?url=${encodeURIComponent(base.replace(/\/+$/, ""))}&code=${code}`;
-}
+export { inviteLink };
 
 /** The invitation as the administrator sees it: the QR code, the link, the PIN and the expiry. */
 export function inviteText(

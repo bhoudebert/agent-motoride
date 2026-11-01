@@ -66,7 +66,7 @@ Every call SHALL carry `Authorization: Bearer <RIDE_ADMIN_TOKEN>`; the secret SH
 
 ### Requirement: Suspend, resume, delete
 
-`POST /admin/v1/riders/<ref>/suspend` and `/resume` SHALL shut the rider out or let them back, keeping everything. `DELETE /admin/v1/riders/<ref>` SHALL delete the rider, their tokens, invitations, connections and library for good, and answer 200 (404 when there is none); a deleted rider SHALL be shut out at once, in an open session too. The reference SHALL be free to be used again.
+`POST /admin/v1/riders/<ref>/suspend` and `/resume` SHALL shut the rider out or let them back, keeping everything; `suspend` MAY carry a `reason` (a short lowercase word the app can translate, `lapsed` when none is given) and an `until` date, which `GET /me` gives back while the rider is suspended. `DELETE /admin/v1/riders/<ref>` SHALL delete the rider, their tokens, invitations, connections and library for good, and answer 200 (404 when there is none); a deleted rider SHALL be shut out at once, in an open session too. The reference SHALL be free to be used again.
 
 #### Scenario: Account deletion
 
@@ -75,7 +75,12 @@ Every call SHALL carry `Authorization: Bearer <RIDE_ADMIN_TOKEN>`; the secret SH
 
 ### Requirement: What the rider may use
 
-`GET /me`, with a rider's, a phone's or a connection's token, SHALL answer whether the rider is hosted, the traffic mode (`off`, `open`, `tomtom`, or `host` when none is set) with the allowance per day and the requests used today, the library limit and size in bytes, and the requests a minute, so that the app shows or hides a feature and says why. A request without a valid token SHALL be answered 401.
+`GET /me`, with a rider's, a phone's or a connection's token, SHALL answer whether the rider is hosted, the traffic mode (`off`, `open`, `tomtom`, or `host` when none is set) with the allowance per day and the requests used today, the library limit and size in bytes, and the requests a minute, so that the app shows or hides a feature and says why. A request without a valid token SHALL be answered 401, but a suspended rider's phone SHALL be answered 200 with `suspended` (the reason and `until`, or null) so that the app says the server is paused and not that the token is bad, while every other call of that rider stays refused.
+
+#### Scenario: A paused server
+
+- **WHEN** a rider whose subscription lapsed and who was suspended with the reason `lapsed` asks `GET /me` from their phone
+- **THEN** the answer is 200 with `suspended` set, and their roadbooks and rides are still refused with 401
 
 #### Scenario: The app asks
 

@@ -14,6 +14,11 @@ export interface RequestContext {
   persistent?: { get(key: string): string | undefined; set(key: string, value: string): void };
   /** Set on a server: every path a tool reads or writes stays inside this folder. */
   fileRoot?: string;
+  /**
+   * Set for a hosted rider (ADR 0057): whether the rider's plan lets the traffic tool call TomTom, counting the call against the
+   * day's allowance when it does. Absent: no limit beyond the host's.
+   */
+  trafficGate?: () => "ok" | "not_included" | "daily_limit";
 }
 
 export const defaultContext: RequestContext = {};

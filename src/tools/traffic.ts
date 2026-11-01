@@ -1,4 +1,5 @@
 import { fetchJson } from "../http.ts";
+import { currentContext } from "../requestContext.ts";
 import { resolveWaypoints } from "./trip.ts";
 
 export interface GetTrafficInput {
@@ -31,6 +32,19 @@ export async function getTraffic(input: GetTrafficInput) {
       reason: "No traffic data source configured (TOMTOM_API_KEY is not set). Do not guess traffic conditions.",
     };
   }
+
+  // A hosted rider's plan may leave traffic out, or allow so many TomTom requests a day (ADR 0057).
+  const gate = currentContext().trafficGate?.();
+  if (gate === "not_included")
+    return {
+      available: false,
+      reason: "Traffic is not included in this rider's plan. Do not guess traffic conditions.",
+    };
+  if (gate === "daily_limit")
+    return {
+      available: false,
+      reason: "Today's traffic allowance is used up; it renews at 00:00 UTC. Do not guess traffic conditions.",
+    };
 
   const points = await resolveWaypoints(input.waypoints, input.roundTrip);
   const locations = points.map((p) => `${p.lat},${p.lon}`).join(":");

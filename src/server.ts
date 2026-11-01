@@ -16,7 +16,9 @@ import { valhallaMapDay } from "./http.ts";
 import { createRideServer } from "./rideServer.ts";
 import { Store } from "./store.ts";
 import { createOAuth } from "./oauth.ts";
-import type { Registry, Tenant } from "./tenants.ts";
+import type { z } from "zod";
+import type { meSchema } from "./hostedContract.ts";
+import { librarySize, type Registry, type Tenant } from "./tenants.ts";
 
 /**
  * The MCP tools over HTTP for several riders (ADR 0027, spec multi-user-server): a rider's token in `Authorization: Bearer`
@@ -136,6 +138,8 @@ export function createHttpServer(options: ServeOptions): {
   } = options;
   const live = new LiveShares({ now, ...options.live });
   const traffic = new TrafficFlow({ now, ...options.traffic });
+  // A hosted rider on `open` has the open data whatever the host chose (ADR 0057).
+  const trafficOpen = new TrafficFlow({ now, provider: "open-data", perDay: 0 });
   const roadbooks = new ReadyRoadbooks({
     make: options.makeRoadbookFile,
     mapDay: options.mapDay ?? valhallaMapDay,
@@ -152,7 +156,22 @@ export function createHttpServer(options: ServeOptions): {
       windows.set(tenant.id, { start: t, count: 1 });
       return false;
     }
-    return ++w.count > perMinute;
+    return ++w.count > (tenant.entitlements?.requestsPerMinute ?? perMinute);
+  };
+
+  /** TomTom requests a hosted rider has used on a UTC day: a point of the phone's traffic, a call of the tool. */
+  const spent = new Map<string, { day: string; count: number }>();
+  const spentToday = (id: string): number => {
+    const day = new Date(now()).toISOString().slice(0, 10);
+    const s = spent.get(id);
+    return s && s.day === day ? s.count : 0;
+  };
+  const spend = (id: string, n: number): void => {
+    spent.set(id, { day: new Date(now()).toISOString().slice(0, 10), count: spentToday(id) + n });
+  };
+  const libraryFull = (tenant: Tenant, incoming: number): boolean => {
+    const cap = tenant.entitlements?.libraryMb;
+    return cap !== undefined && librarySize(tenant.id) + incoming > cap * 1_048_576;
   };
 
   const drop = async (id: string) => {
@@ -226,7 +245,10 @@ export function createHttpServer(options: ServeOptions): {
     const tenant = token ? registry.verify(token) : null;
     if (!tenant) return json(res, 401, { error: "A rider's token is needed." }, { "WWW-Authenticate": "Bearer" });
     if (limited(tenant)) return json(res, 429, { error: "Too many requests; wait a minute." }, { "Retry-After": "60" });
-    if (!traffic.available) return json(res, 503, { error: "This server has no traffic source." });
+    const mode = tenant.entitlements?.traffic;
+    if (mode === "off") return json(res, 403, { error: "traffic_not_included" });
+    const flow = mode === "open" ? trafficOpen : traffic;
+    if (!flow.available) return json(res, 503, { error: "This server has no traffic source." });
     // A rider asks at most six times a minute: the phone asks every few minutes.
     const t = now();
     const w = windows.get(`traffic:${tenant.id}`);
@@ -256,7 +278,14 @@ export function createHttpServer(options: ServeOptions): {
           Math.abs(p[1]) <= 180,
       );
     if (!valid) return json(res, 400, { error: `One to ${MAX_POINTS} points [lat, lon] are needed.` });
-    const answer = await traffic.flow(raw as Array<[number, number]>);
+    // A hosted rider on `tomtom` has an allowance of requests a day: a point is one.
+    const allowance = mode === "tomtom" ? tenant.entitlements?.trafficPerDay : undefined;
+    if (allowance !== undefined) {
+      if (spentToday(tenant.id) + (raw as unknown[]).length > allowance)
+        return json(res, 429, { error: "daily_limit" }, { "Retry-After": "3600" });
+      spend(tenant.id, (raw as unknown[]).length);
+    }
+    const answer = await flow.flow(raw as Array<[number, number]>);
     return json(res, 200, { at: t, ...answer });
   }
 
@@ -297,6 +326,7 @@ export function createHttpServer(options: ServeOptions): {
         } catch (e) {
           return e instanceof TooBig ? json(res, 413, { error: "Too large." }) : json(res, 400, { error: "Not JSON." });
         }
+        if (libraryFull(tenant, 0)) return json(res, 413, { error: "library_full" });
         try {
           const kept = importRoadbookFile(store, body);
           const stamp = (await roadbooks.list(tenant.id, store)).find((r) => r.id === kept.id)?.stamp ?? "";
@@ -383,6 +413,7 @@ export function createHttpServer(options: ServeOptions): {
           return json(res, 429, { error: "Too many requests; wait a minute." }, { "Retry-After": "30" });
         try {
           const raw = await readRaw(req, MAX_RIDE_BYTES);
+          if (libraryFull(tenant, raw.length)) return json(res, 413, { error: "library_full" });
           const encoding = req.headers["content-encoding"];
           const gpx = unzipUpload(raw, Array.isArray(encoding) ? encoding[0] : encoding).toString("utf8");
           const kept = keepRide(store, id, gpx);
@@ -440,6 +471,31 @@ export function createHttpServer(options: ServeOptions): {
     return json(res, 404, { error: "invalid" });
   }
 
+  /** What the rider may use, for the app to show or hide a feature and say why (ADR 0057, spec hosted-provisioning). */
+  function handleMe(req: IncomingMessage, res: ServerResponse): void {
+    if (req.method !== "GET") return json(res, 405, { error: "Method not allowed." }, { Allow: "GET" });
+    const token = bearer(req);
+    // A paused rider still gets an answer, saying so: the app shows "your server is paused", not "bad token".
+    const tenant = token ? (registry.verifyAny(token) ?? oauth?.verify(token) ?? null) : null;
+    if (!tenant) return json(res, 401, { error: "A rider's token is needed." }, { "WWW-Authenticate": "Bearer" });
+    if (limited(tenant)) return json(res, 429, { error: "Too many requests; wait a minute." }, { "Retry-After": "60" });
+    const ent = tenant.entitlements ?? {};
+    const answer: z.infer<typeof meSchema> = {
+      hosted: tenant.ref !== undefined,
+      ...(tenant.status === "suspended"
+        ? { suspended: { reason: tenant.suspension?.reason ?? "lapsed", until: tenant.suspension?.until ?? null } }
+        : {}),
+      traffic: {
+        mode: ent.traffic ?? "host",
+        perDay: ent.traffic === "tomtom" ? (ent.trafficPerDay ?? null) : null,
+        usedToday: spentToday(tenant.id),
+      },
+      library: { limitMb: ent.libraryMb ?? null, usedBytes: librarySize(tenant.id) },
+      requestsPerMinute: ent.requestsPerMinute ?? perMinute,
+    };
+    return json(res, 200, answer);
+  }
+
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const url = new URL(req.url ?? "/", "http://x");
     if (url.pathname === "/enrol") return handleEnrol(req, res);
@@ -454,6 +510,7 @@ export function createHttpServer(options: ServeOptions): {
         oauth: oauth !== null,
       });
     if (oauth && (await oauth.handle(req, res, url))) return;
+    if (url.pathname === "/me") return handleMe(req, res);
     if (url.pathname === "/traffic") return handleTraffic(req, res);
     if (url.pathname === "/roadbooks" || url.pathname.startsWith("/roadbook/"))
       return handleRoadbooks(req, res, url.pathname);
@@ -509,7 +566,20 @@ export function createHttpServer(options: ServeOptions): {
       if (sessions.size >= total && mine.length < perRider)
         return json(res, 429, { error: "Too many open sessions." }, { "Retry-After": "60" });
       if (mine.length >= perRider) await drop(mine.sort((a, b) => a[1].lastUsed - b[1].lastUsed)[0]![0]);
-      const context: RequestContext = { fileRoot: tenantDir(tenant.id) };
+      const context: RequestContext = {
+        fileRoot: tenantDir(tenant.id),
+        // The plan is read at each call: a change made while the session is open applies at once.
+        trafficGate: () => {
+          const ent = registry.find(tenant.id)?.entitlements;
+          if (ent?.traffic === undefined) return "ok";
+          if (ent.traffic !== "tomtom") return "not_included";
+          if (ent.trafficPerDay !== undefined) {
+            if (spentToday(tenant.id) >= ent.trafficPerDay) return "daily_limit";
+            spend(tenant.id, 1);
+          }
+          return "ok";
+        },
+      };
       const store = new Store(tenantDbPath(tenant.id));
       const opened: Session = {
         tenant,

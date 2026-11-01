@@ -59,6 +59,19 @@ The addresses a chat assistant may be sent back to are those of Claude and ChatG
 (a comma-separated list of exact https addresses): if a connection fails at the end of the sign-in, the host reads the address
 in the assistant's error and adds it.
 
+## Run it as a hosted service
+
+A program of yours can create, limit and delete riders without you at a terminal: the provisioning API (ADR 0057), meant for a
+service that sells hosted servers and checks payments. It is **off** unless you set `RIDE_ADMIN_API=1` and `RIDE_ADMIN_TOKEN` (at
+least 32 random characters; `openssl rand -hex 32`). It listens on its own port (`RIDE_ADMIN_PORT`, 8789) that no proxy of the
+examples passes: reach it only from a private network, such as the Docker network that the calling program shares, and never
+publish the port. The calls and their answers are described in `docs/hosted-provisioning.openapi.json`; `GET /me` tells the
+phone what a rider may use (traffic, library size, requests a minute) and whether they are paused.
+
+Each hosted rider has **entitlements** that the calling program sets: `traffic` (`off`, `open` data only, or `tomtom` with your
+key, up to `trafficPerDay` requests), `libraryMb`, `requestsPerMinute`. They cover the phone's traffic and the `getTraffic` tool,
+so a rider cannot spend your TomTom quota by asking their assistant. A rider with none has what the server is set to give.
+
 ## What the server protects
 
 - A **session belongs to the rider who opened it**: another token gets a plain "not found".

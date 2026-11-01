@@ -35,6 +35,10 @@ services:
     # Not published to the host: only Caddy reaches it.
     ports:
       - "8788:8788"
+    # A hosted service (ADR 0057) calls the provisioning API from its own container. Share an internal-only network with it
+    # and with nothing else, and never publish port 8789:
+    #   docker network create --internal ride-admin
+    # networks: [default, ride-admin]
 
   # Your own routing engine (optional, docs/guide/self-hosting.md): `docker compose --profile valhalla up -d`, then set
   # VALHALLA_URL=http://valhalla:8002. The first start downloads the map extracts and builds the tiles (hours, a lot of memory);
@@ -86,3 +90,7 @@ volumes:
   ride-data:
   caddy-data:
   caddy-config:
+
+# networks:
+#   ride-admin:
+#     external: true

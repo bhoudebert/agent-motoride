@@ -51,7 +51,10 @@ export default defineConfig({
       },
       {
         text: "Ride day",
-        items: [{ text: "On the phone and the GPS", link: "/phone-and-gps" }],
+        items: [
+          { text: "On the phone and the GPS", link: "/phone-and-gps" },
+          { text: "With or without a server", link: "/with-or-without-a-server" },
+        ],
       },
       {
         text: "Back home",

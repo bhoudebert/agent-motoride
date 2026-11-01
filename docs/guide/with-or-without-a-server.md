@@ -36,6 +36,30 @@ them, with the places in them. Your own server is the way to keep that to a mach
 
 Deleting a ride from the phone never deletes it from the server, and "Remove from your server" never touches the phone's copy.
 
+## What it looks like
+
+Screens of the Android app with made-up rides and a made-up server.
+
+![The Server screen: what this server brings, the address and a masked token, Test and Remove](/app/server.png)
+
+_The Server screen. It lists what the registered server brings, here live sharing and traffic. With no server it says what a server adds and that the app works fully without one._
+
+![My rides with three rides: on your server and sent, only on this phone, only on your server](/app/my-rides.png)
+
+_My rides with a server: the three marks, "On your server, sent …", "Only on this phone" and "Only on your server", and the upload, download and remove-from-server icons. Without a server only the rides on the phone are listed, with no marks and no upload icon._
+
+![The roadbook list with roadbooks on your server: map out of date, under refresh, not made yet, and one downloaded](/app/roadbooks.png)
+
+_The roadbook list with a server: a roadbook whose map is out of date, one under refresh, one not made yet and one downloaded to the phone. Without a server only the downloaded roadbooks are listed._
+
+![The ride screen in demo mode: next instruction, direction chevrons, speed limit and the corner ahead](/app/ride.png)
+
+_The ride screen (here in demo mode, so the speed shown is not real): navigation, limits and corner warnings need no server._
+
+![The menu: Roadbooks, Go to a place, My rides, Safety, Server, Import a roadbook, Voice, Language, Theme](/app/menu.png)
+
+_The menu, with Server between Safety and Import a roadbook._
+
 ## What is not there yet
 
 - **Settings are not synced.** Each phone keeps its own; accounts and sync are on the [roadmap](https://github.com/bhoudebert/agent-motoride/blob/main/ROADMAP.md).

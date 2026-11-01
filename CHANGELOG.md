@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.14.0](https://github.com/bhoudebert/agent-motoride/compare/v1.13.0...v1.14.0) (2026-11-01)
+
+
+### Features
+
+* **server:** give GET /me a stable opaque rider reference ([#179](https://github.com/bhoudebert/agent-motoride/issues/179)) ([365ef77](https://github.com/bhoudebert/agent-motoride/commit/365ef77eb99e3bd29f97a973918c0bfab11080b0))
+* **server:** say in GET /me which traffic source answers the rider ([#181](https://github.com/bhoudebert/agent-motoride/issues/181)) ([b9ded1b](https://github.com/bhoudebert/agent-motoride/commit/b9ded1bbf01a34769d76549b9e677d2f4a8dbb0d))
+
 ## [1.13.0](https://github.com/bhoudebert/agent-motoride/compare/v1.12.0...v1.13.0) (2026-11-01)
 
 

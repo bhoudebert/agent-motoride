@@ -200,7 +200,7 @@ test("GET /me says what the rider may use, and a change applies to the next requ
     assert.equal(first.library.limitMb, 5);
     assert.equal(first.requestsPerMinute, 200);
     await s.call("PUT", `${s.rider()}/entitlements`, { traffic: "open" });
-    assert.deepEqual((await s.me(token)).body!.traffic, { mode: "open", perDay: null, usedToday: 0 });
+    assert.deepEqual((await s.me(token)).body!.traffic, { mode: "open", perDay: null, usedToday: 0, provider: "open" });
     // A rider an administrator added is not hosted and has the host's defaults.
     const added = s.registry.add("alice@example.org");
     const plain = (await s.me(added.token)).body!;

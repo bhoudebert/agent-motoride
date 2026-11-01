@@ -29,7 +29,7 @@ export interface ServeOptions {
   idleMs?: number;
   /** Requests per rider per minute (default 300). */
   perMinute?: number;
-  /** Open sessions per rider and in all (defaults 5 and 200). */
+  /** Open sessions per rider and in all (defaults 20 and 200). A rider at the limit closes the one unused longest to open another. */
   perRider?: number;
   total?: number;
   /** Bytes a request body may have (default 1 MiB). */
@@ -128,7 +128,7 @@ export function createHttpServer(options: ServeOptions): {
     registry,
     idleMs = 30 * 60_000,
     perMinute = 300,
-    perRider = 5,
+    perRider = 20,
     total = 200,
     maxBody = 1024 * 1024,
     version = "0.1.0",
@@ -503,9 +503,12 @@ export function createHttpServer(options: ServeOptions): {
     if (!session) {
       if (req.method !== "POST" || !isInitializeRequest(body))
         return json(res, 400, { error: "No session: initialise first." });
-      const mine = [...sessions.values()].filter((s) => s.tenant.id === tenant.id).length;
-      if (sessions.size >= total || mine >= perRider)
+      // A chat assistant opens a session for each conversation and reconnection and never closes it: at the limit the rider's
+      // own session unused longest is closed (its client opens another by itself), so a new connection is not refused.
+      const mine = [...sessions].filter(([, s]) => s.tenant.id === tenant.id);
+      if (sessions.size >= total && mine.length < perRider)
         return json(res, 429, { error: "Too many open sessions." }, { "Retry-After": "60" });
+      if (mine.length >= perRider) await drop(mine.sort((a, b) => a[1].lastUsed - b[1].lastUsed)[0]![0]);
       const context: RequestContext = { fileRoot: tenantDir(tenant.id) };
       const store = new Store(tenantDbPath(tenant.id));
       const opened: Session = {

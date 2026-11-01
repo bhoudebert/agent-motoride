@@ -25,6 +25,9 @@ features:
   - title: On the phone and the GPS
     details: Google Maps links that stay on your roads, a whole-ride overview, a QR page on your Wi-Fi, GPX for Liberty Rider or Garmin.
     link: /phone-and-gps
+  - title: With or without a server
+    details: The app rides, navigates and records on its own. A server adds your roadbooks, ride uploads, live sharing and traffic.
+    link: /with-or-without-a-server
   - title: What to watch
     details: Fixed speed cameras, crosswind, low sun in your eyes, cobbles and gravel, with where and when.
     link: /what-to-watch

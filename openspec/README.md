@@ -35,23 +35,24 @@ last one.
 
 ## Capabilities
 
-| Capability        | Covers                                                                                                    |
-| ----------------- | --------------------------------------------------------------------------------------------------------- |
-| ride-planning     | The planner: request, constraints, scouts, structured answer, follow-ups, practical trips                 |
-| route-analysis    | Routing, speed-limit profile, riding-time estimate, open road and 70 km/h readings                        |
-| place-resolution  | Geocoding of towns and addresses, reverse geocoding of coordinates                                        |
-| weather-daylight  | Forecasts along a route, sunrise and sunset, traffic check                                                |
-| saved-rides       | Library: roadbooks and rides, save, plan a ride from a roadbook, lists, ratings, duplicates, refresh      |
-| stop-planning     | Bike profile, fuel and pause planning, stop locations                                                     |
-| route-exports     | Navigation links, GPX, Markdown, QR and phone share page                                                  |
-| external-lookups  | Robustness and caching of public map services                                                             |
-| mcp-server        | Tools and slash commands for Claude Code and other MCP clients                                            |
-| observability     | Runs, usage, cost, trace replay, benchmarking                                                             |
-| evaluation        | Eval cases, code graders, recorded sessions replayed for free, injection resistance                       |
-| route-import      | GPX and KML files turned into routed rides, fidelity to the file, saved like any ride                     |
-| road-memory       | What past sessions learnt (rides, ratings, scout verdicts, winding roads), recalled by place and by words |
-| cli               | Start menu, refine prompt, commands, library management                                                   |
-| ride-feedback     | Notes during the ride, review with a recorded track, road ratings                                         |
-| traffic           | The phone's traffic ahead: open government data by default, TomTom as an alternative, through the server  |
-| live-sharing      | A ride followed live by others: encrypted relay written by the phone, read by a web page                  |
-| multi-user-server | One instance for several riders, one library each, found by token; enrolment of the phone                 |
+| Capability          | Covers                                                                                                    |
+| ------------------- | --------------------------------------------------------------------------------------------------------- |
+| ride-planning       | The planner: request, constraints, scouts, structured answer, follow-ups, practical trips                 |
+| route-analysis      | Routing, speed-limit profile, riding-time estimate, open road and 70 km/h readings                        |
+| place-resolution    | Geocoding of towns and addresses, reverse geocoding of coordinates                                        |
+| weather-daylight    | Forecasts along a route, sunrise and sunset, traffic check                                                |
+| saved-rides         | Library: roadbooks and rides, save, plan a ride from a roadbook, lists, ratings, duplicates, refresh      |
+| stop-planning       | Bike profile, fuel and pause planning, stop locations                                                     |
+| route-exports       | Navigation links, GPX, Markdown, QR and phone share page                                                  |
+| external-lookups    | Robustness and caching of public map services                                                             |
+| mcp-server          | Tools and slash commands for Claude Code and other MCP clients                                            |
+| observability       | Runs, usage, cost, trace replay, benchmarking                                                             |
+| evaluation          | Eval cases, code graders, recorded sessions replayed for free, injection resistance                       |
+| route-import        | GPX and KML files turned into routed rides, fidelity to the file, saved like any ride                     |
+| road-memory         | What past sessions learnt (rides, ratings, scout verdicts, winding roads), recalled by place and by words |
+| cli                 | Start menu, refine prompt, commands, library management                                                   |
+| ride-feedback       | Notes during the ride, review with a recorded track, road ratings                                         |
+| traffic             | The phone's traffic ahead: open government data by default, TomTom as an alternative, through the server  |
+| live-sharing        | A ride followed live by others: encrypted relay written by the phone, read by a web page                  |
+| multi-user-server   | One instance for several riders, one library each, found by token; enrolment of the phone                 |
+| hosted-provisioning | A sidecar creates, limits and deletes riders through a private API; what a rider may use (`GET /me`)      |

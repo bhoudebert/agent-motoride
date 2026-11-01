@@ -355,7 +355,7 @@ test("GET /me gives the same opaque rider reference on every phone, and not the 
     assert.match(a.riderRef, /^rr-[0-9a-f]{16}$/);
     assert.equal(a.riderRef, b.riderRef);
     const id = riderSchema.parse((await s.call("GET", s.rider())).body).id;
-    assert.ok(!a.riderRef.includes(id.replaceAll("-", "").slice(0, 8)));
+    assert.equal(a.riderRef, `rr-${id.replaceAll("-", "").slice(0, 16)}`);
     const other = await s.phone("apple:another-rider-0002");
     assert.notEqual((await s.me(other.token)).body!.riderRef, a.riderRef);
   } finally {

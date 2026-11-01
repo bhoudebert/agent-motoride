@@ -31,6 +31,9 @@ features:
   - title: What to watch
     details: Fixed speed cameras, crosswind, low sun in your eyes, cobbles and gravel, with where and when.
     link: /what-to-watch
+  - title: Chat from your phone
+    details: Connect your server to ChatGPT or Claude once, then plan and review rides from their phone apps. No computer left on.
+    link: /chat-on-your-phone
   - title: From your phone
     details: Drive it from the Claude or ChatGPT app, the session running at home. Notes at a stop are a few words.
     link: /from-your-phone

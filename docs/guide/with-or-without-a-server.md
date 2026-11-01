@@ -24,15 +24,16 @@ them, with the places in them. Your own server is the way to keep that to a mach
 
 ## What a server adds
 
-| Feature                      | Without a server                                       | With a registered server                                                                                                                  |
-| ---------------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Roadbooks made on the server | Not listed; import files by hand                       | Listed as "On your server", downloaded, updated when outdated ("preparing" while the server makes the file)                               |
-| Refresh of a roadbook        | Import the file again                                  | The server rebuilds the file with its map, then the phone updates                                                                         |
-| Rides kept off the phone     | Only the phone has them                                | Upload at the end of a ride or from My Rides; the list shows "Only on this phone", "On your server, sent `<date>`", "Only on your server" |
-| Learning from a ride         | None                                                   | A recorded ride you upload can lead to lower speed limits that you confirm in your assistant ([Limits](/limits))                          |
-| Live sharing                 | The choice is not shown                                | "Share this ride live" before Start; the crash alert then reaches the people following                                                    |
-| Traffic ahead                | No chip, no request                                    | The chip appears when the server reports that traffic is on (open government data in France by default)                                   |
-| Server screen                | Says what a server adds and links to the hosting guide | Shows what this server brings, a Test button, joining with an invitation, link or QR                                                      |
+| Feature                         | Without a server                                                              | With a registered server                                                                                                                  |
+| ------------------------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Roadbooks made on the server    | Not listed; import files by hand                                              | Listed as "On your server", downloaded, updated when outdated ("preparing" while the server makes the file)                               |
+| Refresh of a roadbook           | Import the file again                                                         | The server rebuilds the file with its map, then the phone updates                                                                         |
+| Rides kept off the phone        | Only the phone has them                                                       | Upload at the end of a ride or from My Rides; the list shows "Only on this phone", "On your server, sent `<date>`", "Only on your server" |
+| Learning from a ride            | None                                                                          | A recorded ride you upload can lead to lower speed limits that you confirm in your assistant ([Limits](/limits))                          |
+| Planning from ChatGPT or Claude | Not available: needs a computer session ([From your phone](/from-your-phone)) | Connect the server once, then plan from the phone apps ([ChatGPT or Claude](/chat-on-your-phone))                                         |
+| Live sharing                    | The choice is not shown                                                       | "Share this ride live" before Start; the crash alert then reaches the people following                                                    |
+| Traffic ahead                   | No chip, no request                                                           | The chip appears when the server reports that traffic is on (open government data in France by default)                                   |
+| Server screen                   | Says what a server adds and links to the hosting guide                        | Shows what this server brings, a Test button, joining with an invitation, link or QR                                                      |
 
 Deleting a ride from the phone never deletes it from the server, and "Remove from your server" never touches the phone's copy.
 

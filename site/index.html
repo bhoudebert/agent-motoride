@@ -170,6 +170,14 @@
   .ways h3 { font-family: var(--serif); font-weight: 400; font-size: 32px; margin: 0 0 10px; }
   .ways p { margin: 0 0 16px; color: var(--ink-2); }
   .ways code { font-family: var(--mono); font-size: 13px; background: var(--paper-2); padding: 3px 7px; }
+  .chat { margin-top: 28px; display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 0; border: 1.5px solid var(--ink); background: var(--signal); }
+  .chat > div { padding: 30px 28px; }
+  .chat h3 { font-family: var(--serif); font-weight: 400; font-size: 32px; margin: 0 0 10px; }
+  .chat .tag { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--rust); display: block; margin-bottom: 8px; }
+  .chat p { margin: 0 0 12px; }
+  .chat ol { margin: 0; padding-left: 20px; display: grid; gap: 10px; }
+  .chat code { font-family: var(--mono); font-size: 13px; background: var(--paper); padding: 3px 7px; }
+  .chat .steps-box { background: var(--paper); border-left: 1.5px solid var(--ink); }
   .ways .hi { background: var(--moss); color: var(--paper); }
   .ways .hi p { color: #c9d4c8; }
   .ways .hi code { background: var(--moss-2); color: var(--paper); }
@@ -214,7 +222,7 @@
     .hero { grid-template-columns: 1fr; padding: 56px 0 72px; }
     .note { transform: none; }
     .head { grid-template-columns: 1fr; gap: 6px; }
-    .steps, .ways, dl, footer, .rb-foot, .stages { grid-template-columns: 1fr; }
+    .steps, .ways, .chat, dl, footer, .rb-foot, .stages { grid-template-columns: 1fr; }
     .stage + .stage { border-left: 0; border-top: 1.5px solid var(--ink); }
     .steps div + div, .ways div + div, .rb-foot div + div { border-left: 0; padding-left: 0; }
     .steps div + div { border-top: 1px solid var(--rule); padding-top: 24px; margin-top: 24px; }
@@ -384,7 +392,7 @@
         <li><b>The whole ride on one map</b>The loop, the towns, your stops and every fixed camera with its limit, as a picture.</li>
         <li><b>On the phone</b>Google Maps links that stay on the chosen roads, a whole-ride overview, a page on your Wi-Fi with a QR code.</li>
         <li><b>For the GPS</b>A GPX file for Liberty Rider, Kurviger, Garmin or TomTom, stops included.</li>
-        <li><b>Away from the computer</b>Drive it from the Claude or ChatGPT app with remote control.</li>
+        <li><b>Away from the computer</b>Connect your server to ChatGPT or Claude and plan from their phone apps, or drive a session at home with remote control.</li>
       </ul>
     </div>
     <div class="stage">
@@ -519,6 +527,23 @@
       <h3>From your phone</h3>
       <p>Leave a Claude Code or Codex session running on a computer or a VPS and drive it from the Claude or ChatGPT app.</p>
       <code>claude remote-control</code>
+    </div>
+  </div>
+  <div class="chat">
+    <div>
+      <span class="tag">NEW · DIRECTLY FROM YOUR PHONE</span>
+      <h3>Plan from ChatGPT or Claude, with no computer on</h3>
+      <p>Connect a server of yours to ChatGPT or Claude once, and talk to your library from their web and phone apps: plan a loop, ask for the briefing, rate a road at a stop. The roadbooks you save are the ones the MotoRide app downloads for the ride.</p>
+      <p>Sign-in is a one-time code, with no password and no account. Your assistant is the model: the server holds no key of yours.</p>
+      <p><a href="guide/chat-on-your-phone">Read how to connect it</a></p>
+    </div>
+    <div class="steps-box">
+      <ol>
+        <li>Switch sign-in on at your server: <code>RIDE_OAUTH=1</code></li>
+        <li>Make a code: <code>npm run admin -- link you@example.org</code></li>
+        <li>In ChatGPT or Claude, add the connector <code>https://your-server/mcp</code></li>
+        <li>Type the code on the page it opens. Ask for your roadbooks.</li>
+      </ol>
     </div>
   </div>
 </section>

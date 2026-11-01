@@ -11,7 +11,7 @@ Let a service that handles purchases run riders on this server without a human, 
 
 ### Requirement: Off unless asked for
 
-The provisioning API SHALL exist only when `RIDE_ADMIN_API` is on and `RIDE_ADMIN_TOKEN` holds a secret of at least 32 characters. It SHALL be served on a port of its own (`RIDE_ADMIN_PORT`, default 8789) on `RIDE_ADMIN_HOST` (default 127.0.0.1), never on the port riders use, and the proxies of the deployment examples SHALL NOT pass it. With it off, the server SHALL open no new port and add no route. With it on and a secret that is missing or too short, the server SHALL refuse to start the API and say why.
+The provisioning API SHALL exist only when `RIDE_ADMIN_API` is on and `RIDE_ADMIN_TOKEN` (or the file named by `RIDE_ADMIN_TOKEN_FILE`, which takes precedence) holds a secret of at least 32 characters. It SHALL be served on a port of its own (`RIDE_ADMIN_PORT`, default 8789) on `RIDE_ADMIN_HOST` (default 127.0.0.1; 0.0.0.0 inside a container, on a network that only the calling program shares), never on the port riders use, and the proxies of the deployment examples SHALL NOT pass it. With it off, the server SHALL open no new port and add no route. With it on and a secret that is missing or too short, the server SHALL refuse to start the API and say why.
 
 #### Scenario: A self-hosted server
 
@@ -34,7 +34,7 @@ Every call SHALL carry `Authorization: Bearer <RIDE_ADMIN_TOKEN>`; the secret SH
 
 ### Requirement: Riders by reference
 
-`PUT /admin/v1/riders/<ref>` SHALL create the rider known by `<ref>` (8 to 128 of letters, digits, `.`, `_`, `:`, `-`, chosen by the caller and opaque here) and answer 201, or answer 200 with the rider when it exists; repeating a call SHALL change nothing more. No email SHALL be needed or kept: the rider SHALL have a placeholder address that cannot receive mail and no token of their own. A body with `entitlements` SHALL set them. `GET /admin/v1/riders/<ref>` SHALL answer the reference, the identifier, the status (`active` or `suspended`), the entitlements, the size of the library in bytes, and when the rider was created and last seen, or 404.
+`PUT /admin/v1/riders/<ref>` SHALL create the rider known by `<ref>` (8 to 128 of letters, digits, `.`, `_`, `:`, `-`, chosen by the caller and opaque here) and answer 201, or answer 200 with the rider when it exists; repeating a call SHALL change nothing more. No email SHALL be needed or kept: the rider SHALL have a placeholder address that cannot receive mail and no token of their own. A body with `entitlements` SHALL set them. `GET /admin/v1/riders/<ref>` SHALL answer the reference, the identifier, the status (`active` or `suspended`), the entitlements, the size of the library in bytes, when the rider was created and last seen (any authenticated request counts: the rider's token, a phone's, or a chat connection's; recorded at most once a minute), how many phones are enrolled now and when the first of them was (`devices`, `enrolledAt`; a rider may have several phones, each invitation redeemed makes one), or 404.
 
 #### Scenario: A webhook delivered twice
 
@@ -63,6 +63,15 @@ Every call SHALL carry `Authorization: Bearer <RIDE_ADMIN_TOKEN>`; the secret SH
 
 - **WHEN** a rider with `traffic: tomtom` and `trafficPerDay: 20` has used 20 requests today
 - **THEN** the next request is answered 429 `daily_limit` and TomTom is not called, and the allowance is full again at 00:00 UTC
+
+### Requirement: Lost phone
+
+`DELETE /admin/v1/riders/<ref>/devices` SHALL end every phone token of the rider, every chat connection and every unused invitation, as `admin devices --revoke` does, and answer how many phone tokens were ended; the rider and the library SHALL stay, and a new invitation enrols a phone again.
+
+#### Scenario: A phone is lost
+
+- **WHEN** the caller revokes the devices of a rider who has two phones, then asks for an invitation
+- **THEN** both phones are answered 401, `devices` is 0, and a phone that redeems the new code works
 
 ### Requirement: Suspend, resume, delete
 

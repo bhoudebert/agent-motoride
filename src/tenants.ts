@@ -245,12 +245,16 @@ export class Registry {
       .get(h) as unknown as Row | undefined;
     // The hash is looked up, never the token compared; the check below is for the status alone.
     if (!row) return null;
-    const now = Date.now();
-    if (now - (this.#seen.get(row.id) ?? 0) >= SEEN_EVERY_MS) {
-      this.#seen.set(row.id, now);
-      this.#db.prepare("UPDATE tenants SET last_seen_at = ? WHERE id = ?").run(new Date(now).toISOString(), row.id);
-    }
+    this.#touch(row.id);
     return tenantOf(row);
+  }
+
+  /** Records that the rider was served, at most once a minute. Any authenticated request counts: token, phone or chat. */
+  #touch(id: string): void {
+    const now = Date.now();
+    if (now - (this.#seen.get(id) ?? 0) < SEEN_EVERY_MS) return;
+    this.#seen.set(id, now);
+    this.#db.prepare("UPDATE tenants SET last_seen_at = ? WHERE id = ?").run(new Date(now).toISOString(), id);
   }
 
   setStatus(idOrEmail: string, status: TenantStatus, suspension?: { reason: string; until?: string | null }): Tenant {
@@ -381,6 +385,14 @@ export class Registry {
       .prepare("INSERT INTO device_tokens (token_hash, tenant_id, created_at) VALUES (?, ?, ?)")
       .run(hash(token), tenant.id, new Date(now).toISOString());
     return { ok: true, tenant, token };
+  }
+
+  /** How many phone tokens a rider has now, and when the first was made (null when none). */
+  devices(tenantId: string): { count: number; since: string | null } {
+    const row = this.#db
+      .prepare("SELECT COUNT(*) AS n, MIN(created_at) AS since FROM device_tokens WHERE tenant_id = ?")
+      .get(tenantId) as { n: number; since: string | null };
+    return { count: Number(row.n), since: row.since };
   }
 
   /** Forget the phones' tokens of a rider (their other devices stop working); the invitations that are not used go too. */
@@ -555,7 +567,9 @@ export class Registry {
       .get(hash(token)) as unknown as { tenant_id: string; access_expires_at: string } | undefined;
     if (!row || Date.parse(row.access_expires_at) <= now) return null;
     const tenant = this.find(row.tenant_id);
-    return tenant && tenant.status === "active" ? tenant : null;
+    if (!tenant || tenant.status !== "active") return null;
+    this.#touch(tenant.id);
+    return this.find(tenant.id);
   }
 
   /** The chat connections of a rider (ChatGPT, Claude): ended at once. */

@@ -269,6 +269,8 @@ test("a rider connects with a one-time code and the chat assistant uses /mcp wit
     );
     assert.ok((await client.listTools()).tools.some((t) => t.name === "listRoadbooks"));
     await client.close();
+    // A chat connection counts as the rider being seen, so a rider who only uses a chat assistant is not idle.
+    assert.ok(s.registry.find(s.alice.tenant.id)?.lastSeenAt, "the connection's use is recorded");
     // The rider's own token still works beside it.
     assert.notEqual(await mcpStatus(s.url, s.alice.token), 401);
   } finally {

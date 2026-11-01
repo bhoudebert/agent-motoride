@@ -95,9 +95,29 @@
           },
           "lastSeenAt": {
             "type": ["string", "null"]
+          },
+          "devices": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Phones enrolled now (each redeemed invitation made one token)."
+          },
+          "enrolledAt": {
+            "description": "When the first phone still enrolled was; null when none is.",
+            "type": ["string", "null"]
           }
         },
-        "required": ["ref", "id", "status", "entitlements", "libraryBytes", "createdAt", "lastSeenAt"],
+        "required": [
+          "ref",
+          "id",
+          "status",
+          "entitlements",
+          "libraryBytes",
+          "createdAt",
+          "lastSeenAt",
+          "devices",
+          "enrolledAt"
+        ],
         "additionalProperties": false
       },
       "CreateBody": {
@@ -189,6 +209,21 @@
           }
         },
         "required": ["ref", "deleted"],
+        "additionalProperties": false
+      },
+      "Revoked": {
+        "type": "object",
+        "properties": {
+          "ref": {
+            "type": "string"
+          },
+          "revoked": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": ["ref", "revoked"],
         "additionalProperties": false
       },
       "Error": {
@@ -605,6 +640,53 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The admin token is missing or wrong."
+          },
+          "404": {
+            "description": "No rider has this reference.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/v1/riders/{ref}/devices": {
+      "parameters": [
+        {
+          "name": "ref",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]{8,128}$"
+          },
+          "description": "The reference the caller chose for the rider (URL-encoded)."
+        }
+      ],
+      "delete": {
+        "summary": "Stop every phone of the rider and every chat connection, and cancel unused invitations (a lost phone)",
+        "security": [
+          {
+            "adminToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "How many phone tokens were ended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Revoked"
                 }
               }
             }

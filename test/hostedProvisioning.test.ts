@@ -316,6 +316,35 @@ test("a library has a size limit for uploads and a rate of its own", async () =>
   }
 });
 
+test("a rider may have several phones, and a lost phone is cut off without touching the rider", async () => {
+  const s = await setup();
+  try {
+    const first = await s.phone();
+    assert.equal(riderSchema.parse((await s.call("GET", s.rider())).body).devices, 1);
+    const second = await s.phone();
+    const seen = riderSchema.parse((await s.call("GET", s.rider())).body);
+    assert.equal(seen.devices, 2);
+    assert.ok(seen.enrolledAt);
+    assert.equal((await s.me(first.token)).status, 200);
+    assert.equal((await s.me(second.token)).status, 200);
+
+    const cut = await s.call("DELETE", `${s.rider()}/devices`);
+    assert.deepEqual(cut.body, { ref: REF, revoked: 2 });
+    assert.equal((await s.me(first.token)).status, 401);
+    assert.equal((await s.me(second.token)).status, 401);
+    const after = riderSchema.parse((await s.call("GET", s.rider())).body);
+    assert.equal(after.devices, 0);
+    assert.equal(after.enrolledAt, null);
+    assert.equal(after.status, "active");
+
+    const third = await s.phone();
+    assert.equal((await s.me(third.token)).status, 200);
+    assert.equal((await s.call("DELETE", `${s.rider("apple:unknown-0001")}/devices`)).status, 404);
+  } finally {
+    await s.close();
+  }
+});
+
 test("deleting a rider removes the library and the phone's access, and frees the reference", async () => {
   const s = await setup();
   try {

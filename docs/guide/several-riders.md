@@ -52,7 +52,7 @@ npm run admin -- link alice@example.org    # a one-time code, valid ten minutes,
 Then Alice adds `https://rides.example.org/mcp` as a connector in ChatGPT or Claude (in Settings, on the web), picks sign-in
 with OAuth, and types the code on the page the connector opens. There is no password and no account: the code is the proof.
 `npm run admin -- connections alice@example.org --revoke` ends her connections to ChatGPT and Claude; suspending or removing
-her ends them too. A connection can only use her library through the tools, not her roadbook list or uploads.
+her ends them too, and so does a new token (`token`) or `devices --revoke`. A connection can only use her library through the tools, not her roadbook list or uploads.
 
 ChatGPT's connectors are set up on its website, and Claude's custom connectors on claude.ai; the details are theirs and change.
 The addresses a chat assistant may be sent back to are those of Claude and ChatGPT, plus any listed in `RIDE_OAUTH_REDIRECTS`

@@ -17,6 +17,14 @@ export const DEFAULT_REDIRECTS = [
   "https://platform.openai.com/apps-manage/oauth",
 ];
 
+/** What the sign-in page calls a client: by the address it is sent back to, which is on our list, never by what it says it is. */
+export function assistantName(redirectUri: string): string {
+  const host = new URL(redirectUri).hostname;
+  if (host === "claude.ai" || host === "claude.com") return "Claude";
+  if (host === "chatgpt.com" || host === "platform.openai.com") return "ChatGPT";
+  return host;
+}
+
 export interface OAuthOptions {
   registry: Registry;
   /** The public address of this server, https://rides.example.org: the issuer, and where the metadata says things are. */
@@ -203,6 +211,7 @@ export function createOAuth(options: OAuthOptions): OAuth {
   const form = (a: Ask, error = "") => `
 <h1>Connect ${escape(a.clientName)}</h1>
 <p>${escape(a.clientName)} asks to use your ride library: plan rides, read and change your roadbooks, notes and ratings.</p>
+<p><strong>Continue only if you started this yourself</strong>, just now, from ${escape(a.clientName)}. If someone sent you this page, or asked you for the code, close it: a code gives them your library.</p>
 ${error ? `<p class="error">${escape(error)}</p>` : ""}
 <form method="post" action="/oauth/authorize" autocomplete="off">
   <input type="hidden" name="client_id" value="${escape(a.clientId)}">

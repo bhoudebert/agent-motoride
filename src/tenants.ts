@@ -40,7 +40,7 @@ const MAX_CLIENTS = 2000;
 const LINK_ALPHABET = "ABCDEFGHJKMNPQRSTVWXYZ23456789";
 const linkCodeOf = (): string => {
   let code = "";
-  for (const byte of randomBytes(8)) code += LINK_ALPHABET[byte % LINK_ALPHABET.length];
+  for (let i = 0; i < 8; i++) code += LINK_ALPHABET[randomInt(0, LINK_ALPHABET.length)];
   return code;
 };
 const cleanLinkCode = (code: string): string => code.toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -204,6 +204,8 @@ export class Registry {
     const tenant = this.need(idOrEmail);
     const token = newToken();
     this.#db.prepare("UPDATE tenants SET token_hash = ? WHERE id = ?").run(hash(token), tenant.id);
+    // A leaked token could have made a connection: a new token ends those too.
+    this.revokeConnections(tenant.id);
     return { tenant, token };
   }
 
@@ -302,6 +304,8 @@ export class Registry {
   revokeDevices(idOrEmail: string): number {
     const tenant = this.need(idOrEmail);
     this.#db.prepare("DELETE FROM invites WHERE tenant_id = ? AND used_at IS NULL").run(tenant.id);
+    // A lost phone could have made a connection: stopping the phones ends those too.
+    this.revokeConnections(tenant.id);
     return Number(this.#db.prepare("DELETE FROM device_tokens WHERE tenant_id = ?").run(tenant.id).changes);
   }
 
@@ -339,12 +343,14 @@ export class Registry {
     return tenant;
   }
 
-  /** A client that registered itself (RFC 7591): the same name and addresses give the same id. Null when there are too many. */
+  /**
+   * A client that registered itself (RFC 7591): the same set of addresses gives the same client, whatever it calls itself, so
+   * registering again and again cannot fill the table. `name` is what the sign-in page shows. Null when there are too many.
+   */
   registerClient(name: string, redirectUris: string[], now = Date.now()): { id: string } | null {
-    const uris = JSON.stringify(redirectUris);
-    const known = this.#db
-      .prepare("SELECT id FROM oauth_clients WHERE name = ? AND redirect_uris = ?")
-      .get(name, uris) as unknown as { id: string } | undefined;
+    const uris = JSON.stringify([...redirectUris].sort());
+    const known = this.#db.prepare("SELECT id FROM oauth_clients WHERE redirect_uris = ?").get(uris) as unknown as
+      { id: string } | undefined;
     if (known) return known;
     const count = this.#db.prepare("SELECT COUNT(*) AS n FROM oauth_clients").get() as unknown as { n: number };
     if (count.n >= MAX_CLIENTS) return null;

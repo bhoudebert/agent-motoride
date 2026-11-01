@@ -20,7 +20,10 @@ authorization server for `/mcp`, and the token keeps working as it does:
 - **Discovery and registration.** `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server`, and
   `POST /oauth/register` (RFC 7591), where a client registers itself. A client may only ask to be sent back to addresses on a
   list: those of Claude, those of ChatGPT, and any the host adds (`RIDE_OAUTH_REDIRECTS`); anything else is refused, so nobody
-  can have a code sent elsewhere. Clients are public (no secret); PKCE with S256 is required.
+  can have a code sent elsewhere. Clients are public (no secret); PKCE with S256 is required. Anyone may register, so what a
+  client calls itself is neither kept nor shown: the page names it by the address it sends the rider back to ("Claude",
+  "ChatGPT"), tells the rider to continue only if they started the connection themselves, and one set of addresses is one
+  client however often it registers.
 - **Sign-in with a one-time code.** `/oauth/authorize` shows a page that asks for a code, which the rider gets from the app
   (`POST /oauth/link-code`, with their token) or the administrator (`npm run admin -- link`). The code is 8 characters of an
   alphabet without look-alikes, lives ten minutes, works once, and only its hash is kept; the page allows 30 tries a minute in all.
@@ -30,7 +33,8 @@ authorization server for `/mcp`, and the token keeps working as it does:
   tokens it made. All are kept as hashes in the registry.
 - **What a connection token opens.** Only `/mcp`, as the rider. Not `/rides`, `/roadbooks`, `/traffic` or the share relay: those stay
   for the rider's token and the phone's. A connection ends when the rider is suspended or removed, with
-  `admin connections <rider> --revoke`, or when its tokens expire.
+  `admin connections <rider> --revoke`, when the rider's token is changed (`admin token`) or their phones are stopped
+  (`admin devices --revoke`), since a leaked token or a lost phone could have made one, or when its tokens expire.
 - **A 401 on `/mcp` points at the discovery page** (`WWW-Authenticate: Bearer resource_metadata=…`) only when this is on; clients
   that send a token ignore it.
 
@@ -44,7 +48,10 @@ riders and hands the app a code) only has to call the same registry; the sign-in
 It is a new public surface that decides who may use a library, and the part to read twice: the list of redirect addresses, the
 PKCE check, the single use of codes, and the hash-only storage are each covered by a test. The addresses of ChatGPT come from
 guides, not from OpenAI's own text, and have not yet been tried on a real connection; the host can add the ones that turn out to
-be needed. The page is plain and does not name the rider; the rider's email never leaves the registry. A rider cannot see or end a
+be needed. The page is plain and does not name the rider; the rider's email never leaves the registry. The one risk a code cannot remove is a
+rider talked into typing it on a page someone else started (the attacker's assistant then gets the rider's library): the page says
+so, but a rider who ignores it is exposed. With 30 tries a minute in all, an attacker cannot guess a code in its ten minutes, but can
+use up the tries so a rider has to wait a minute. A rider cannot see or end a
 single connection from the app yet, only all of them through the administrator.
 
 ## Alternatives considered

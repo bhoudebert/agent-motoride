@@ -12,8 +12,13 @@ const publicUrl = process.env.RIDE_SERVER_URL;
 const oauthOn = /^(1|on|true|yes)$/i.test(process.env.RIDE_OAUTH ?? "");
 if (oauthOn && !publicUrl)
   process.stderr.write("RIDE_OAUTH is on but RIDE_SERVER_URL is not set: sign-in for chat assistants is off.\n");
+const secureUrl = publicUrl !== undefined && /^https:\/\/|^http:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(publicUrl);
+if (oauthOn && publicUrl && !secureUrl)
+  process.stderr.write(
+    "RIDE_OAUTH needs RIDE_SERVER_URL to be an https:// address: sign-in for chat assistants is off.\n",
+  );
 const oauth =
-  oauthOn && publicUrl
+  oauthOn && publicUrl && secureUrl
     ? {
         baseUrl: publicUrl,
         redirects: (process.env.RIDE_OAUTH_REDIRECTS ?? "")

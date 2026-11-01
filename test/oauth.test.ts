@@ -157,6 +157,10 @@ test("a client registers only for the addresses of ChatGPT and Claude, or the ho
       claude.body["client_id"],
       "the same request gives the same client",
     );
+    // What a client calls itself changes nothing: the table cannot be filled with names.
+    for (let i = 0; i < 5; i++)
+      assert.equal((await s.register(CLAUDE, `Name ${i}`)).body["client_id"], claude.body["client_id"]);
+    assert.equal(claude.body["client_name"], "Claude");
     assert.equal((await s.register("https://assistant.example.org/callback")).status, 201);
     const evil = await s.register("https://evil.example.com/steal");
     assert.equal(evil.status, 400);
@@ -187,12 +191,12 @@ test("the sign-in page shows the form for a known client, and refuses anything u
       assert.equal(r.status, 400, query.toString());
       assert.equal(r.headers.get("location"), null);
     }
-    // A name with markup is shown as text.
-    const odd = (await s.register(CLAUDE, `<script>alert(1)</script>`)).body["client_id"] as string;
-    assert.doesNotMatch(
-      await (await fetch(`${s.url}/oauth/authorize?${s.authorizeQuery(odd)}`)).text(),
-      /<script>alert/,
-    );
+    // A client that calls itself something else is still shown by where it sends the rider back, with a warning.
+    const bank = (await s.register(CLAUDE, "Your Bank <b>")).body["client_id"] as string;
+    const page = await (await fetch(`${s.url}/oauth/authorize?${s.authorizeQuery(bank)}`)).text();
+    assert.doesNotMatch(page, /Your Bank/);
+    assert.match(page, /Connect Claude/);
+    assert.match(page, /Continue only if you started this yourself/);
   } finally {
     await s.app.close();
   }
@@ -337,6 +341,22 @@ test("a connection token opens /mcp only, and stops when the rider is suspended,
     const again = await s.connectChat();
     s.registry.remove(s.alice.tenant.id);
     assert.equal(await mcpStatus(s.url, again.body["access_token"]!), 401);
+  } finally {
+    await s.app.close();
+  }
+});
+
+test("a new token for the rider, or stopping their phones, ends their chat connections too", async () => {
+  const s = await setup();
+  try {
+    const first = await s.connectChat();
+    assert.notEqual(await mcpStatus(s.url, first.body["access_token"]!), 401);
+    s.registry.rekey(s.alice.tenant.id);
+    assert.equal(await mcpStatus(s.url, first.body["access_token"]!), 401, "after a new token");
+    const second = await s.connectChat();
+    assert.notEqual(await mcpStatus(s.url, second.body["access_token"]!), 401);
+    s.registry.revokeDevices(s.alice.tenant.id);
+    assert.equal(await mcpStatus(s.url, second.body["access_token"]!), 401, "after the phones are stopped");
   } finally {
     await s.app.close();
   }

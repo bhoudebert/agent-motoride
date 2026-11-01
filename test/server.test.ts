@@ -254,8 +254,13 @@ test("a rider has a limited number of sessions and requests, and idle sessions a
   try {
     const one = await s.connect(s.alice.token);
     const two = await s.connect(s.alice.token);
-    await assert.rejects(s.connect(s.alice.token), /429|Too many|Streamable/i);
+    // A third session is not refused: the one unused longest is closed to make room for it.
+    const oldest = [...s.app.sessions.keys()][0]!;
+    s.tick(61_000); // a new minute for the request limit, which this test also sets low
+    const three = await s.connect(s.alice.token);
     assert.equal(s.app.sessions.size, 2);
+    assert.ok(!s.app.sessions.has(oldest), "the oldest session was closed");
+    await three.close().catch(() => {});
     // Bob is not held back by Alice's sessions.
     const bobs = await s.connect(s.bob.token);
     assert.equal(s.app.sessions.size, 3);

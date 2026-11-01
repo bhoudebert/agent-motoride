@@ -66,7 +66,7 @@ in the assistant's error and adds it.
 - **Files stay in the rider's own folder** (`data/tenants/<id>/`): an export lands in its `exports/`, and a path that
   goes elsewhere (`..`, `/tmp/…`, `~/…`) is refused. Files cannot be uploaded yet, so importing a route file or
   reviewing a track from a phone needs that next step.
-- At most 5 open sessions a rider and 200 in all, idle sessions closed after 30 minutes, 300 requests a minute a rider,
+- At most 20 open sessions a rider (a new one closes the one unused longest) and 200 in all, idle sessions closed after 30 minutes, 300 requests a minute a rider,
   bodies up to 1 MiB.
 
 ## What you set up

@@ -274,7 +274,7 @@ sends the server seven points of the road ahead, so the server learns roughly wh
 | `curl localhost:8788/health` fails | Port 8788 is published to the host only with the nginx override (`docker-compose.nginx.yml`); with Caddy it is reached only by Caddy |
 | `curl …/health` fails              | `docker compose … ps`; the logs with `docker compose … logs ride caddy`; the domain's `A` record; ports 80 and 443 open              |
 | A rider gets 401                   | The token is wrong or was replaced (`token` makes a new one and ends the old one), or the rider is suspended (`list`)                |
-| A rider gets 429                   | More than 300 requests a minute or 5 open sessions: wait a minute, close a client                                                    |
+| A rider gets 429                   | More than 300 requests a minute, or 200 open sessions in all: wait a minute, close a client                                          |
 | Certificate errors                 | Caddy needs the domain to point at this machine and port 80 open to get the certificate                                              |
 | A rider forgot the token           | There is no recovery: `token` makes a new one                                                                                        |
 

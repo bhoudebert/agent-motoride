@@ -71,9 +71,9 @@ npm run rides -- export 7    # 7-<name>.gpx and 7-<name>.motoride.json in export
 
 The format is described in `docs/roadbook-file.md`.
 
-## In the MotoRide app: gauges (coming soon)
+## In the MotoRide app: gauges
 
-The MotoRide app, coming soon on Android and iOS, shows a few readings at the left of the map during a ride, each with
+The MotoRide app (test builds on Android and iOS) shows a few readings at the left of the map during a ride, each with
 its own switch in a **Gauges** card:
 
 - **Compass**, **altitude and climb**, and **slope** over the last 150 m, from the GPS.
@@ -85,9 +85,9 @@ The lean is worked out from the turning rate and the GPS speed, because a phone 
 a steady corner (the bike leans exactly along the force it feels). It is indicative: expect a few degrees of error, more in
 quick changes of direction, and nothing under 18 km/h. Lean and braking are off until the phone is calibrated.
 
-## In the MotoRide app: on the road (coming soon)
+## In the MotoRide app: on the road
 
-Beyond the gauges, the app will help during a ride, each with its own switch where it matters:
+Beyond the gauges, the app helps during a ride, each with its own switch where it matters:
 
 - **Fuel stops.** The fuel stations along the roadbook (from OpenStreetMap) are on the map with the distance to the next one,
   and the app says so once when the stretch after a station is longer than 60 % of your tank range, which you set on the card.

@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -482,6 +482,7 @@ export function createHttpServer(options: ServeOptions): {
     const ent = tenant.entitlements ?? {};
     const answer: z.infer<typeof meSchema> = {
       hosted: tenant.ref !== undefined,
+      riderRef: `rr-${createHash("sha256").update(`rider:${tenant.id}`).digest("hex").slice(0, 16)}`,
       ...(tenant.status === "suspended"
         ? { suspended: { reason: tenant.suspension?.reason ?? "lapsed", until: tenant.suspension?.until ?? null } }
         : {}),

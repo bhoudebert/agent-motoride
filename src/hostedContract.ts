@@ -48,6 +48,12 @@ export const errorSchema = z.object({ error: z.string(), detail: z.string().opti
 export const meSchema = z
   .object({
     hosted: z.boolean().describe("Whether the rider was made by the provisioning API."),
+    riderRef: z
+      .string()
+      .regex(/^rr-[0-9a-f]{16}$/)
+      .describe(
+        "A stable opaque reference to the rider, the same on every phone of the rider; not the internal identifier.",
+      ),
     suspended: z
       .object({ reason: z.string(), until: z.string().nullable() })
       .strict()

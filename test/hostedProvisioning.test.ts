@@ -345,6 +345,24 @@ test("a rider may have several phones, and a lost phone is cut off without touch
   }
 });
 
+test("GET /me gives the same opaque rider reference on every phone, and not the identifier", async () => {
+  const s = await setup();
+  try {
+    const first = await s.phone();
+    const second = await s.phone();
+    const a = (await s.me(first.token)).body!;
+    const b = (await s.me(second.token)).body!;
+    assert.match(a.riderRef, /^rr-[0-9a-f]{16}$/);
+    assert.equal(a.riderRef, b.riderRef);
+    const id = riderSchema.parse((await s.call("GET", s.rider())).body).id;
+    assert.ok(!a.riderRef.includes(id.replaceAll("-", "").slice(0, 8)));
+    const other = await s.phone("apple:another-rider-0002");
+    assert.notEqual((await s.me(other.token)).body!.riderRef, a.riderRef);
+  } finally {
+    await s.close();
+  }
+});
+
 test("deleting a rider removes the library and the phone's access, and frees the reference", async () => {
   const s = await setup();
   try {

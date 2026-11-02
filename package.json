@@ -73,6 +73,7 @@
   },
   "author": "Benjamin Houdebert",
   "overrides": {
-    "vite": "^6.4.3"
+    "vite": "^6.4.3",
+    "minimatch": "^11.0.1"
   }
 }

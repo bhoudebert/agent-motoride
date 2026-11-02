@@ -62,10 +62,10 @@ in the assistant's error and adds it.
 ## Run it as a hosted service
 
 A program of yours can create, limit and delete riders without you at a terminal: the provisioning API (ADR 0057), meant for a
-service that sells hosted servers and checks payments. It is **off** unless you set `RIDE_ADMIN_API=1` and `RIDE_ADMIN_TOKEN` (at
+service that sells hosted servers and checks payments. It is **off** unless you set both `RIDE_ADMIN_API=1` and `RIDE_ADMIN_TOKEN` (at
 least 32 random characters; `openssl rand -hex 32`), or `RIDE_ADMIN_TOKEN_FILE`, the path of a file that holds it (a container secret). It listens on its own port (`RIDE_ADMIN_PORT`, 8789) that no proxy of the
 examples passes: reach it only from a private network, such as the Docker network that the calling program shares, and never
-publish the port. In a container it listens on `0.0.0.0` (`RIDE_ADMIN_HOST`) because `127.0.0.1` cannot be reached from another container, so the network must be internal. The calls and their answers are described in `docs/hosted-provisioning.openapi.json`; `GET /me` tells the
+publish the port. In a container it listens on `0.0.0.0` (`RIDE_ADMIN_HOST`) because `127.0.0.1` cannot be reached from another container, so the network must be internal. With the lines in `.env` (next to the compose file), recreate the container (`up -d --force-recreate ride`) and read its log: `provisioning API listening` means it is on; if not, the line says what is missing (an empty token, a token shorter than 32 characters, an address that is not https). The calls and their answers are described in `docs/hosted-provisioning.openapi.json`; `GET /me` tells the
 phone what a rider may use (traffic, library size, requests a minute) and whether they are paused.
 
 Each hosted rider has **entitlements** that the calling program sets: `traffic` (`off`, `open` data only, or `tomtom` with your

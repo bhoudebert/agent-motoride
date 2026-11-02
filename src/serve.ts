@@ -46,9 +46,17 @@ if (/^(1|on|true|yes)$/i.test(process.env.RIDE_ADMIN_API ?? "")) {
     }
   }
   if (secret.length < MIN_ADMIN_TOKEN || !publicUrl || !secureUrl) {
-    process.stderr.write(
-      `RIDE_ADMIN_API is on, but it needs RIDE_ADMIN_TOKEN of at least ${MIN_ADMIN_TOKEN} characters and RIDE_SERVER_URL as an https:// address: the provisioning API is off.\n`,
-    );
+    const missing = [
+      secret.length === 0
+        ? file
+          ? `the secret file ${file} is empty or cannot be read`
+          : "RIDE_ADMIN_TOKEN is empty or not set (make one with `openssl rand -hex 32`)"
+        : secret.length < MIN_ADMIN_TOKEN
+          ? `the secret has ${secret.length} characters, ${MIN_ADMIN_TOKEN} are needed`
+          : "",
+      !publicUrl || !secureUrl ? "RIDE_SERVER_URL is not set to an https:// address" : "",
+    ].filter(Boolean);
+    process.stderr.write(`RIDE_ADMIN_API is on, but the provisioning API is off: ${missing.join("; ")}.\n`);
   } else {
     admin = createAdminServer({ registry, token: secret, baseUrl: publicUrl });
     const adminHost = process.env.RIDE_ADMIN_HOST ?? "127.0.0.1";

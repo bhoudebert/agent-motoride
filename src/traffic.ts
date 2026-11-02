@@ -150,6 +150,12 @@ export class TrafficFlow {
     return this.#provider !== null;
   }
 
+  /** Which kind of source answers: open government data, TomTom, or null when this server has none. */
+  get kind(): "open" | "tomtom" | null {
+    const name = this.#provider?.name;
+    return name === "open-data" ? "open" : name === "tomtom-flow" ? "tomtom" : null;
+  }
+
   /** The countries the provider knows, empty when it is not by country (TomTom covers every road it measures). */
   get countries(): readonly string[] {
     return this.#provider?.countries ?? [];

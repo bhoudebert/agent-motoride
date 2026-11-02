@@ -48,6 +48,12 @@ export const errorSchema = z.object({ error: z.string(), detail: z.string().opti
 export const meSchema = z
   .object({
     hosted: z.boolean().describe("Whether the rider was made by the provisioning API."),
+    riderRef: z
+      .string()
+      .regex(/^rr-[0-9a-f]{16}$/)
+      .describe(
+        "A stable opaque reference to the rider, the same on every phone of the rider; a short prefix of the internal identifier, not the whole of it.",
+      ),
     suspended: z
       .object({ reason: z.string(), until: z.string().nullable() })
       .strict()
@@ -60,6 +66,12 @@ export const meSchema = z
         mode: z.enum(["off", "open", "tomtom", "host"]).describe("`host`: whatever the host configured."),
         perDay: z.number().int().nullable().describe("The day's allowance of TomTom requests, when there is one."),
         usedToday: z.number().int().min(0),
+        provider: z
+          .enum(["open", "tomtom"])
+          .optional()
+          .describe(
+            "The source that answers this rider's traffic, also when `mode` is `host`; absent when there is none.",
+          ),
       })
       .strict(),
     library: z.object({ limitMb: z.number().int().nullable(), usedBytes: z.number().int().min(0) }).strict(),

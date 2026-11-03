@@ -14,6 +14,11 @@ export class BadAnswer extends Error {}
 export interface OllamaOptions {
   host?: string;
   model: string;
+  /**
+   * Let a thinking model think (default off). Reasoning spends the context window before the constrained answer
+   * starts: a thinking model then returns nothing, slowly.
+   */
+  think?: boolean;
   /** Context window asked of the server; Ollama's default (2 to 4 thousand tokens) would cut the prompt. */
   numCtx?: number;
   timeoutMs?: number;
@@ -35,6 +40,7 @@ export function ollama(options: OllamaOptions): Provider {
           body: JSON.stringify({
             model: options.model,
             stream: false,
+            think: options.think ?? false,
             format: schema,
             options: { temperature: 0, num_ctx: options.numCtx ?? 16384 },
             messages: [

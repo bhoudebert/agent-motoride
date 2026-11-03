@@ -49,6 +49,7 @@ test("spec review CLI: the Ollama adapter asks for JSON that follows the schema,
     const request = server.requests[0];
     assert.equal(request.model, "qwen3:8b");
     assert.equal(request.stream, false);
+    assert.equal(request.think, false, "a thinking model is not left to reason until the window is full");
     assert.deepEqual(request.format, JSON.parse(JSON.stringify(FINDINGS_SCHEMA)));
     assert.deepEqual(request.options, { temperature: 0, num_ctx: 8192 });
     assert.deepEqual(

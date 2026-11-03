@@ -108,6 +108,7 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env,
     provider = ollama({
       model,
       host: env.OLLAMA_HOST,
+      think: env.SPEC_REVIEW_THINK === "1",
       numCtx: env.SPEC_REVIEW_NUM_CTX ? Number(env.SPEC_REVIEW_NUM_CTX) : undefined,
       timeoutMs: env.SPEC_REVIEW_TIMEOUT_MS ? Number(env.SPEC_REVIEW_TIMEOUT_MS) : undefined,
     });

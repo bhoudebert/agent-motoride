@@ -77,6 +77,8 @@ export interface Rejected {
 
 export type ReviewState =
   | { state: "not-requested" }
+  /** Requested, but no capability is touched by the change: the model was not contacted. */
+  | { state: "nothing-to-review" }
   | { state: "unavailable"; reason: string }
   | { state: "failed"; reason: string }
   | { state: "completed"; provider: string; model: string };

@@ -116,7 +116,8 @@ dropped and counted as rejected, with the reason, in the reports.
 
 ### Requirement: The state of the model review is never hidden
 
-The reports SHALL say whether the model review was not requested, unavailable (the server does not answer, or the model
+The reports SHALL say whether the model review was not requested, had nothing to review (no capability touched, so the
+model was not contacted), unavailable (the server does not answer, or the model
 is not installed), failed (an answer that is not valid JSON or does not follow the schema), or completed. An
 unavailable or failed review SHALL NOT be shown as a review that found nothing.
 

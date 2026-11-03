@@ -33,7 +33,9 @@ export async function reviewWithModel(
   const maxCapabilities = options.maxCapabilities ?? 4;
   const queue = wanted.slice(0, maxCapabilities);
   const report: ReviewReport = {
-    status: { state: "completed", provider: provider.name, model: provider.model },
+    status: queue.length
+      ? { state: "completed", provider: provider.name, model: provider.model }
+      : { state: "nothing-to-review" },
     reviewed: [],
     skipped: wanted.slice(maxCapabilities),
     findings: [],

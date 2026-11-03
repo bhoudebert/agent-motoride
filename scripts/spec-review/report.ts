@@ -4,6 +4,8 @@ export function describeState(state: ReviewState): string {
   switch (state.state) {
     case "not-requested":
       return "Not requested: only the deterministic checks ran.";
+    case "nothing-to-review":
+      return "Requested, but no capability is touched by this change: the model was not contacted.";
     case "unavailable":
       return `NOT RUN, unavailable: ${state.reason}. This is not a review that found nothing.`;
     case "failed":

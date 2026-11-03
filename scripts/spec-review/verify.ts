@@ -10,11 +10,13 @@ const WINDOW = 8;
 export function locateQuote(text: string, quote: string): number {
   const wanted = squash(quote);
   if (wanted.length < MIN_QUOTE) return 0;
-  const start = wanted.slice(0, Math.min(24, wanted.length));
   const lines = text.split("\n");
   for (let i = 0; i < lines.length; i++) {
-    if (!squash(lines[i]!).includes(start)) continue;
-    if (squash(lines.slice(i, i + WINDOW).join("\n")).includes(wanted)) return i + 1;
+    const own = squash(lines[i]!);
+    if (!own) continue;
+    // The quote starts on this line when it is found in the window and begins before the line ends.
+    const at = squash(lines.slice(i, i + WINDOW).join("\n")).indexOf(wanted);
+    if (at >= 0 && at <= own.length) return i + 1;
   }
   return 0;
 }

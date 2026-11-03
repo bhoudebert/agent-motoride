@@ -77,6 +77,10 @@ Codex can run it before opening a pull request; the Markdown report is made to b
 - **Measuring a model**: `npm run spec:eval -- <model>` runs the labelled scenarios in `evals/spec-review/` against a
   real Ollama and prints true positives, false positives and missed findings. There are few scenarios: it says whether a
   model and the prompt are usable at all, not that the specs are consistent.
+  A first run, on 3 November 2026 with `llama3.1` (8 billion parameters): it reported both labelled contradictions
+  (recall 2 of 2) and 10 findings on changes that had none (precision 17%), with real quotes in each. It rated every one
+  `low` or `medium` severity, so the hook would have blocked nothing, right or wrong. At that quality the model is
+  advice for the author. Try a larger model before trusting it with more, and read what it says.
 
 ## 4. Code and tests, in every mode
 

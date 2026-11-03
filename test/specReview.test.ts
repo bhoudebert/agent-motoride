@@ -284,6 +284,10 @@ test("spec review: evidence is checked — requirement, files shown, quotes, lin
   assert.equal(finding.spec.line, 11);
   assert.equal(finding.code.line, 1);
 
+  // The name is kept as the spec writes it, whatever prefix or case the model used.
+  const named = await review(contradiction.head, { provider: answer({ requirement: "Requirement: rain WARNING" }) });
+  assert.equal(named.review.findings[0]?.requirement, "Rain warning");
+
   // The same finding twice is one finding. A record the spec cites is a valid reference.
   const twice = await review(contradiction.head, { provider: scripted({ findings: [good, good] }) });
   assert.equal(twice.review.findings.length, 1);

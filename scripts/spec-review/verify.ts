@@ -44,7 +44,8 @@ export function verifyFindings(
   const requirements = parseRequirements(source.readHead(specPath(shown.capability)) ?? "");
   const seen = new Set<string>();
 
-  for (const f of findings) {
+  for (const found of findings) {
+    let f = found;
     const reject = (reason: string) => rejected.push({ requirement: f.requirement, reason });
 
     const adr = /^(?:ADR\s*)?(\d{4})$/i.exec(f.requirement.trim())?.[1];
@@ -53,12 +54,16 @@ export function verifyFindings(
         reject(`ADR ${adr} was not part of the context`);
         continue;
       }
+      f = { ...f, requirement: `ADR ${adr}` };
     } else {
       const wanted = squash(f.requirement.replace(/^Requirement:\s*/i, "")).toLowerCase();
-      if (!requirements.some((r) => squash(r.name).toLowerCase() === wanted)) {
+      const named = requirements.find((r) => squash(r.name).toLowerCase() === wanted);
+      if (!named) {
         reject(`no requirement named "${f.requirement}" in ${specPath(shown.capability)}`);
         continue;
       }
+      // The name as the spec writes it, whatever the model made of it.
+      f = { ...f, requirement: named.name };
     }
 
     const allowedSpecs = [

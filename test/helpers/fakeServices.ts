@@ -181,8 +181,10 @@ const usage = {
   cache_read_input_tokens: 500,
   cache_creation_input_tokens: 300,
 };
+let answers = 0;
+/** Each answer has its own id, as the API's: a thread names the answer it continues. */
 export const message = (content: unknown[], stop_reason: string, model = "claude-sonnet-5-5") => ({
-  id: "msg_fake",
+  id: `msg_fake${++answers}`,
   type: "message",
   role: "assistant",
   model,

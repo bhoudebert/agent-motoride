@@ -7,6 +7,8 @@ import { gunzipSync, gzipSync } from "node:zlib";
 
 export interface Exchange {
   key: string;
+  /** Another key that finds this exchange: the one it had before it was keyed as a step of a thread. */
+  alias?: string;
   /** "model" for the Claude API, "tool" for everything else. */
   kind: "model" | "tool";
   url: string;
@@ -73,18 +75,29 @@ export function assertNoSecrets(cassette: Cassette, env: NodeJS.ProcessEnv = pro
 }
 
 /**
- * Model requests are keyed by conversation and turn: the first user message
- * (the planner's request, or a scout's brief) and the number of messages so far.
- * That identifies the same step across runs even when a prompt or a tool's
- * output changed, which a replay should survive and report, not fail on.
+ * Model requests are keyed by conversation and turn, so that a replay survives a changed prompt or tool
+ * output and reports it as drift instead of failing. Two shapes of request exist:
+ * - a conversation sent whole (the first call, or a call made with `messages.create`): the first user
+ *   message (the planner's request, or a scout's brief) and the number of messages so far;
+ * - a step of a server-side thread (the tool runner of the SDK sends only the new messages and names the
+ *   previous answer): that answer's id, which a replay gets back from the cassette.
  * Tool requests are keyed by method, URL and body.
  */
 export function exchangeKey(url: URL, method: string, body: string): { key: string; requestHash?: string } {
   if (!isModel(url)) return { key: `${method} ${redactUrl(url)} ${sha(body)}` };
-  const request = JSON.parse(body) as { messages: Array<{ content: unknown }> };
+  const request = JSON.parse(body) as {
+    messages: Array<{ content: unknown }>;
+    thread?: { type?: string; previous_message_id?: string };
+  };
+  if (request.thread?.type === "continue" && request.thread.previous_message_id) {
+    return { key: threadKey(request.thread.previous_message_id), requestHash: sha(body) };
+  }
   const first = JSON.stringify(request.messages[0]?.content ?? "");
   return { key: `model ${sha(first)} #${request.messages.length}`, requestHash: sha(body) };
 }
+
+/** The key of the step that continues the thread after the answer `previousId`. */
+export const threadKey = (previousId: string): string => `model after ${previousId}`;
 
 const bodyText = (init: RequestInit | undefined) =>
   init?.body === undefined || init.body === null ? "" : String(init.body as string | URLSearchParams);
@@ -176,6 +189,7 @@ export function replay(
 ): Replayer {
   const real = globalThis.fetch;
   const byKey = new Map(cassette.exchanges.map((e) => [e.key, e]));
+  for (const e of cassette.exchanges) if (e.alias) byKey.set(e.alias, e);
   const state: Replayer = {
     misses: [],
     drift: [],
@@ -189,7 +203,7 @@ export function replay(
     const { key, requestHash } = exchangeKey(url, init?.method ?? "GET", sent);
     const hit = byKey.get(key);
     if (hit) {
-      state.used.add(key);
+      state.used.add(hit.key);
       if (hit.status === 0) throw new TypeError(`fetch failed (recorded: ${hit.body})`);
       if (requestHash && hit.requestHash && requestHash !== hit.requestHash) state.drift.push(key);
       return new Response(hit.body, { status: hit.status, headers: { "content-type": "application/json" } });

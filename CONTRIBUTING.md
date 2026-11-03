@@ -48,8 +48,10 @@ The path every feature follows, from idea to release, is described in
 2. Behaviour change: update the spec first, `openspec/specs/<capability>/spec.md`
    (requirements with scenarios). New capability: new folder plus a line in
    `openspec/README.md`. CI validates the specs
-   (`openspec validate --all`) and asks for a spec or docs change with any
-   change under `src/`; a refactor takes the `no-spec` label instead.
+   (`openspec validate --all`) and asks for a change to the spec of what a change
+   under `src/` touches (the docs do not count); a refactor takes the `no-spec`
+   label, or a `No-Spec: <reason>` line in a commit. `npm run spec:review`
+   runs the same check locally, and a pre-push hook runs it on every push.
 3. Architectural choice (new dependency, data store, mode, model default,
    cross-cutting rule): add a record in `docs/adr/` from `template.md`.
 4. Code with tests. Deterministic parts get unit tests under `test/`; the

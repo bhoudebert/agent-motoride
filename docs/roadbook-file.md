@@ -48,7 +48,7 @@ available for other apps; the app reads a GPX too, but without limits or cameras
   camera faces, degrees clockwise from north (0 to 359), when OpenStreetMap gives it as degrees or a compass point;
   the camera then watches traffic travelling the opposite way. `direction` is `both` or null: OpenStreetMap's
   `forward` and `backward` are relative to the way, not to the line, so they are not exported. Optional. The app shows them as danger zones, never as camera
-  positions (`openspec/specs/danger-zones`).
+  positions (the `danger-zones` spec of the app).
 - `junctions`: the roundabouts of the line, in order. `at` and `to` are indexes into `line` of the points where the rider
   enters and leaves the ring. `exits` are the roads that can be driven out of the ring, as bearings in degrees relative to
   the way the rider enters (0 straight ahead, 90 to the right, -90 to the left), from -180 to 180; `take` is the index in

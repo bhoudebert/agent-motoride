@@ -23,6 +23,9 @@
     "docs:build": "vitepress build docs/guide",
     "docs:reference": "node scripts/reference.ts",
     "docs:contract": "node scripts/contract.ts",
+    "spec:review": "node --env-file-if-exists=.env scripts/spec-review.ts",
+    "spec:hook": "node --env-file-if-exists=.env scripts/spec-review.ts --hook",
+    "spec:eval": "node --env-file-if-exists=.env evals/spec-review.ts",
     "codex:register": "node scripts/codex-register.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -30,7 +33,7 @@
     "format:check": "prettier --check .",
     "quality": "npm run typecheck && npm run lint && npm run format:check && npm run test:coverage",
     "prepare": "simple-git-hooks",
-    "test:coverage": "node --test --experimental-test-coverage --test-coverage-exclude='test/**' --test-coverage-exclude='scripts/**' --test-coverage-exclude='evals/run.ts' --test-coverage-lines=80 --test-coverage-functions=80 --test-coverage-branches=65 'test/**/*.test.ts'"
+    "test:coverage": "node --test --experimental-test-coverage --test-coverage-exclude='test/**' --test-coverage-exclude='scripts/**' --test-coverage-exclude='evals/run.ts' --test-coverage-exclude='evals/spec-review.ts' --test-coverage-lines=80 --test-coverage-functions=80 --test-coverage-branches=65 'test/**/*.test.ts'"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",
@@ -57,7 +60,8 @@
   },
   "simple-git-hooks": {
     "pre-commit": "npx lint-staged",
-    "commit-msg": "npx commitlint --edit $1"
+    "commit-msg": "npx commitlint --edit $1",
+    "pre-push": "npm run --silent spec:hook"
   },
   "lint-staged": {
     "*.ts": [

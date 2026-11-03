@@ -1,8 +1,9 @@
 name: Specs
 
-# Specs are the contract (docs/EVOLVING.md, ADR 0044): every spec and open
+# Specs are the contract (docs/EVOLVING.md, ADR 0044, ADR 0058): every spec and open
 # proposal must parse with a scenario per requirement, and a pull request that changes code must
-# also change a spec or the docs, unless labelled `no-spec`.
+# also change the spec of what it touches (a change to the docs does not count), unless it is
+# justified as having no behaviour change: the `no-spec` label.
 on:
   push:
     branches: [main]
@@ -27,6 +28,7 @@ jobs:
       - run: nix shell --inputs-from . nixpkgs#openspec -c openspec validate --all --no-interactive
 
   spec-with-code:
+    # The name stays: it is a required check on main (ADR 0044).
     name: Spec or docs with code
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -34,24 +36,16 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - name: A change under src/ comes with openspec/ or docs/, or the no-spec label
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      # Deterministic checks only: no model, no secret, nothing to install (the script uses Node alone).
+      # `openspec validate` is the job above. Findings are annotations on the files, and the job summary.
+      - name: Review the change against the specs
         env:
-          BASE: ${{ github.event.pull_request.base.sha }}
-          HEAD: ${{ github.event.pull_request.head.sha }}
-          NO_SPEC: ${{ contains(github.event.pull_request.labels.*.name, 'no-spec') }}
-        run: |
-          changed=$(git diff --name-only "$BASE...$HEAD")
-          if ! grep -q '^src/' <<<"$changed"; then
-            echo "No change under src/: nothing to check."
-            exit 0
-          fi
-          if grep -qE '^(openspec|docs)/' <<<"$changed"; then
-            echo "Code changes come with a spec or docs change."
-            exit 0
-          fi
-          if [ "$NO_SPEC" = "true" ]; then
-            echo "Code changes without spec or docs, accepted by the no-spec label."
-            exit 0
-          fi
-          echo "::error::This pull request changes src/ but no file under openspec/ or docs/. Update the spec (behaviour change) or the docs, or add the no-spec label for a change with no behaviour or usage change (refactor, internal fix)."
-          exit 1
+          SPEC_REVIEW_NO_SPEC: ${{ contains(github.event.pull_request.labels.*.name, 'no-spec') && 'label no-spec' || '' }}
+        run: >
+          node scripts/spec-review.ts
+          --base "${{ github.event.pull_request.base.sha }}"
+          --head "${{ github.event.pull_request.head.sha }}"
+          --skip-openspec --format github

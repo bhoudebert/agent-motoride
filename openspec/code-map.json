@@ -1,0 +1,145 @@
+{
+  "$comment": "Which code and tests belong to which capability. Read by `npm run spec:review` (ADR 0058) to find the requirements a change concerns. A file missing here is a warning, not a failure.",
+  "capabilities": {
+    "ride-planning": {
+      "code": [
+        "src/agent.ts",
+        "src/planRide.ts",
+        "src/scouts.ts",
+        "src/session.ts",
+        "src/schema.ts",
+        "src/model.ts",
+        "src/elicit.ts",
+        "src/preferences.ts",
+        "src/checks.ts",
+        "src/tools/index.ts",
+        "src/tools/trip.ts"
+      ],
+      "tests": [
+        "test/planner.test.ts",
+        "test/planRide.test.ts",
+        "test/answer.test.ts",
+        "test/checks.test.ts",
+        "test/elicit.test.ts",
+        "test/settings.test.ts",
+        "test/riderSettings.test.ts"
+      ]
+    },
+    "route-analysis": {
+      "code": ["src/geometry.ts", "src/signs.ts", "src/builtUp.ts", "src/tools/along.ts"],
+      "tests": [
+        "test/geometry.test.ts",
+        "test/signs.test.ts",
+        "test/builtUp.test.ts",
+        "test/along.test.ts",
+        "test/straights.test.ts",
+        "test/fastExpressway.test.ts",
+        "test/valhalla-*.test.ts"
+      ]
+    },
+    "place-resolution": { "code": ["src/tools/geo.ts", "src/start.ts"], "tests": ["test/geo.test.ts"] },
+    "weather-daylight": {
+      "code": ["src/tools/weather.ts", "src/conditions.ts", "src/briefing.ts"],
+      "tests": ["test/weather.test.ts", "test/conditions.test.ts", "test/rideDay.test.ts"]
+    },
+    "saved-rides": {
+      "code": [
+        "src/library.ts",
+        "src/store.ts",
+        "src/migrations.ts",
+        "src/rides.ts",
+        "src/housekeeping.ts",
+        "src/rideHeader.ts"
+      ],
+      "tests": [
+        "test/store.test.ts",
+        "test/migrations.test.ts",
+        "test/roadbooks.test.ts",
+        "test/ratings.test.ts",
+        "test/rateStretch.test.ts",
+        "test/housekeeping.test.ts",
+        "test/pushRoadbook.test.ts"
+      ]
+    },
+    "stop-planning": {
+      "code": ["src/stops.ts", "src/profile.ts", "src/hours.ts"],
+      "tests": ["test/stops.test.ts", "test/hours.test.ts"]
+    },
+    "route-exports": {
+      "code": [
+        "src/gpx.ts",
+        "src/markdown.ts",
+        "src/maps.ts",
+        "src/share.ts",
+        "src/rideMap.ts",
+        "src/roadbookFile.ts",
+        "src/roadbookDownload.ts"
+      ],
+      "tests": [
+        "test/exports.test.ts",
+        "test/maps.test.ts",
+        "test/rideMap.test.ts",
+        "test/roadbookFile.test.ts",
+        "test/roadbookDownload.test.ts"
+      ]
+    },
+    "external-lookups": { "code": ["src/http.ts", "src/tools/roads.ts"], "tests": ["test/versions.test.ts"] },
+    "mcp-server": {
+      "code": ["src/mcp.ts", "src/capabilities.ts"],
+      "tests": ["test/mcp.test.ts", "test/capabilities.test.ts"]
+    },
+    "observability": {
+      "code": ["src/trace.ts", "src/usage.ts", "src/otel.ts"],
+      "tests": ["test/otel.test.ts"]
+    },
+    "evaluation": { "code": ["evals/**"], "tests": ["test/evals.test.ts"] },
+    "route-import": {
+      "code": ["src/routeImport.ts", "src/importRoadbook.ts", "src/images.ts"],
+      "tests": ["test/routeImport.test.ts", "test/images.test.ts"]
+    },
+    "road-memory": {
+      "code": ["src/memory.ts", "src/limitProposals.ts"],
+      "tests": ["test/memory.test.ts", "test/limitProposals.test.ts"]
+    },
+    "cli": { "code": ["src/index.ts", "src/check.ts"], "tests": [] },
+    "ride-feedback": {
+      "code": ["src/feedback.ts", "src/recordedReview.ts", "src/recordedRides.ts"],
+      "tests": ["test/feedback.test.ts", "test/recordedRides.test.ts"]
+    },
+    "traffic": {
+      "code": ["src/traffic.ts", "src/traffic-open.ts", "src/tools/traffic.ts"],
+      "tests": ["test/traffic.test.ts", "test/traffic-open.test.ts"]
+    },
+    "live-sharing": { "code": ["src/live.ts"], "tests": ["test/live.test.ts", "test/follow.test.ts"] },
+    "multi-user-server": {
+      "code": [
+        "src/tenants.ts",
+        "src/server.ts",
+        "src/serve.ts",
+        "src/rideServer.ts",
+        "src/oauth.ts",
+        "src/admin.ts",
+        "src/inviteLink.ts",
+        "src/dataDir.ts",
+        "src/requestContext.ts",
+        "src/remote.ts"
+      ],
+      "tests": [
+        "test/tenants.test.ts",
+        "test/server.test.ts",
+        "test/oauth.test.ts",
+        "test/invite.test.ts",
+        "test/requestContext.test.ts",
+        "test/deploy.test.ts"
+      ]
+    },
+    "hosted-provisioning": {
+      "code": ["src/adminApi.ts", "src/hostedContract.ts", "src/entitlements.ts"],
+      "tests": ["test/hostedProvisioning.test.ts"]
+    },
+    "spec-review": {
+      "code": ["scripts/spec-review.ts", "scripts/spec-review/**", "evals/spec-review/**", "evals/spec-review.ts"],
+      "tests": ["test/specReview*.test.ts"]
+    }
+  }
+}

@@ -143,6 +143,43 @@ test("evals: credentials in URLs never reach a cassette", async () => {
   assert.match(exchangeKey(new URL("https://evilanthropic.com/x"), "GET", "").key, /^GET https:\/\/evilanthropic/);
 });
 
+test("evals: a service that never answered is recorded and fails the same way on replay", async () => {
+  const { record, replay } = await import("../evals/cassette.ts");
+  const url = "https://overpass-api.de/api/interpreter";
+  const previous = globalThis.fetch;
+  globalThis.fetch = (async () => {
+    throw new TypeError("fetch failed");
+  }) as typeof fetch;
+  const tape = record();
+  try {
+    await assert.rejects(fetch(url, { method: "POST", body: "data=x" }), /fetch failed/);
+  } finally {
+    tape.restore();
+    globalThis.fetch = previous;
+  }
+  assert.equal(tape.exchanges.length, 1);
+  assert.equal(tape.exchanges[0]!.status, 0);
+
+  const cassette = {
+    caseId: "down",
+    recordedAt: "",
+    now: "",
+    model: "",
+    effort: "",
+    costUsd: 0,
+    scores: {},
+    exchanges: tape.exchanges,
+  };
+  const played = replay(cassette);
+  try {
+    await assert.rejects(fetch(url, { method: "POST", body: "data=x" }), /fetch failed \(recorded/);
+  } finally {
+    played.restore();
+    globalThis.fetch = previous;
+  }
+  assert.deepEqual(played.misses, []);
+});
+
 test("evals: every case is well formed and every grader has a tier", () => {
   assert.equal(new Set(CASES.map((c) => c.id)).size, CASES.length);
   assert.ok(

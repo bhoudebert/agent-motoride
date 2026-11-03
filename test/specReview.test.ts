@@ -4,7 +4,7 @@ import { gitSource, parseNameStatus } from "../scripts/spec-review/git.ts";
 import { globToRegExp } from "../scripts/spec-review/glob.ts";
 import { BadAnswer, Unavailable, type Provider } from "../scripts/spec-review/provider.ts";
 import { githubAnnotations, renderMarkdown } from "../scripts/spec-review/report.ts";
-import { runReview } from "../scripts/spec-review/run.ts";
+import { runAuditReport, runReview } from "../scripts/spec-review/run.ts";
 import { parseFindings } from "../scripts/spec-review/schema.ts";
 import { buildContext, SYSTEM_PROMPT, testTitles } from "../scripts/spec-review/context.ts";
 import { locateQuote, verifyFindings } from "../scripts/spec-review/verify.ts";
@@ -475,4 +475,40 @@ test("spec review: every scenario is a labelled change of the same small project
     "invented-citation",
   ])
     assert.ok(ids.includes(id), id);
+});
+
+test("spec review: the audit checks the whole tree, with no change and no model", async () => {
+  const repo = buildRepo(
+    {
+      ...BASE,
+      "docs/guide/old.md": "# Old\n\nSee ADR 0999 and openspec/specs/ghost/spec.md.\n",
+      "src/orphan.ts": "export const a = 1;\n",
+      "openspec/specs/stop-planning/spec.md": BASE["openspec/specs/weather-daylight/spec.md"]!,
+    },
+    { "docs/guide/weather.md": "# Weather\n\nChanged.\n" },
+  );
+  try {
+    const source = gitSource(repo.dir, repo.base, repo.head);
+    // Nothing the change touched is wrong, yet the audit finds what was left behind.
+    assert.deepEqual(errors(await runReview(source, { openspec: false })), []);
+    const report = runAuditReport(source, { openspec: false });
+    assert.equal(report.base, "(audit)");
+    assert.deepEqual(report.changed, []);
+    assert.deepEqual(
+      report.findings.filter((f) => f.rule === "broken-reference").map((f) => [f.file, f.line]),
+      [
+        ["docs/guide/old.md", 3],
+        ["docs/guide/old.md", 3],
+      ],
+    );
+    assert.deepEqual(report.unmapped, ["src/orphan.ts"]);
+    const messages = report.findings.filter((f) => f.rule === "code-map").map((f) => f.message);
+    assert.ok(messages.some((m) => m.includes('"stop-planning" is in no entry')));
+    // No "code without a spec change": there is no change.
+    assert.ok(!report.findings.some((f) => f.rule === "code-without-spec"));
+    assert.equal(report.blockers.length, 2);
+    assert.equal(report.review.status.state, "not-requested");
+  } finally {
+    repo.cleanup();
+  }
 });

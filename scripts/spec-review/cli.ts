@@ -4,7 +4,7 @@ import { parseArgs } from "node:util";
 import { gitSource, refExists } from "./git.ts";
 import { ollama, type Provider } from "./provider.ts";
 import { describeState, githubAnnotations, renderMarkdown } from "./report.ts";
-import { runReview } from "./run.ts";
+import { runAuditReport, runReview } from "./run.ts";
 import type { NoSpec, Report } from "./types.ts";
 
 export const USAGE = `Usage: npm run spec:review -- [options]
@@ -16,9 +16,11 @@ export const USAGE = `Usage: npm run spec:review -- [options]
   --no-spec <reason>    the change has no behaviour change, so no spec change is needed
   --out <folder>        where report.json and report.md go (default .spec-review)
   --format <text|github>  github also prints workflow annotations and fills the job summary
+  --ignore-commit-lines a "No-Spec:" line in a commit is not a justification (the pull-request check: only the label counts)
   --skip-openspec       do not run openspec validate (another job does)
   --require-review      a model review that did not complete also fails the command
   --max-capabilities <n>  capabilities asked about, one model call each (default 4)
+  --audit               check the whole tree at --head with no base, to clean up what earlier changes left (no model)
   --hook                the pre-push hook: the model runs when SPEC_REVIEW_MODEL is set; a review that cannot run never blocks
   --repo <folder>       the repository (default the current folder)
 
@@ -33,7 +35,15 @@ const stdio: Io = { out: (t) => console.log(t), err: (t) => console.error(t) };
 
 /** A short text for a terminal or a hook. */
 export function summaryText(report: Report): string {
-  const lines = [`spec review ${report.base}...${report.head}: ${report.changed.length} file(s) changed`];
+  const lines = [
+    report.base === "(audit)"
+      ? `spec review, audit of ${report.head}`
+      : `spec review ${report.base}...${report.head}: ${report.changed.length} file(s) changed`,
+  ];
+  if (report.base !== "(audit)" && report.changed.length === 0)
+    lines.push(
+      "  nothing to compare: no file differs between the two refs. The review reads commits: commit your work on a branch, or give an older --base (or --audit for the whole repository).",
+    );
   for (const f of report.findings.filter((x) => x.level !== "info")) {
     lines.push(
       `  ${f.level === "error" ? "error  " : "warning"} ${f.rule}${f.file ? ` ${f.file}${f.line ? `:${f.line}` : ""}` : ""}: ${f.message.split("\n")[0]}`,
@@ -69,9 +79,11 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env,
         out: { type: "string" },
         format: { type: "string" },
         "skip-openspec": { type: "boolean" },
+        "ignore-commit-lines": { type: "boolean" },
         "require-review": { type: "boolean" },
         "max-capabilities": { type: "string" },
         hook: { type: "boolean" },
+        audit: { type: "boolean" },
         repo: { type: "string" },
         help: { type: "boolean", short: "h" },
       },
@@ -125,19 +137,30 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env,
 
   let report: Report;
   try {
-    if (!refExists(repo, base)) throw new Error(`the base "${base}" is not a Git ref here (git fetch, or --base)`);
-    if (!refExists(repo, head)) throw new Error(`the head "${head}" is not a Git ref here`);
-    const source = gitSource(repo, base, head);
-    if (hook && source.changed.length === 0) return 0;
-    report = await runReview(source, {
-      noSpec,
-      provider,
-      openspec: values["skip-openspec"] ? false : undefined,
-      requireReview: values["require-review"],
-      maxCapabilities: values["max-capabilities"] ? Number(values["max-capabilities"]) : undefined,
-      cwd: repo,
-      onProgress: (m) => io.err(m),
-    });
+    if (values.audit && provider) {
+      io.err("--audit does not call a model yet: leave out --provider.");
+      return 2;
+    }
+    if (values.audit) {
+      if (!refExists(repo, head)) throw new Error(`the head "${head}" is not a Git ref here`);
+      const source = gitSource(repo, head, head);
+      report = runAuditReport(source, { openspec: values["skip-openspec"] ? false : undefined, cwd: repo });
+    } else {
+      if (!refExists(repo, base)) throw new Error(`the base "${base}" is not a Git ref here (git fetch, or --base)`);
+      if (!refExists(repo, head)) throw new Error(`the head "${head}" is not a Git ref here`);
+      const source = gitSource(repo, base, head);
+      if (hook && source.changed.length === 0) return 0;
+      report = await runReview(source, {
+        noSpec,
+        commitLines: !values["ignore-commit-lines"],
+        provider,
+        openspec: values["skip-openspec"] ? false : undefined,
+        requireReview: values["require-review"],
+        maxCapabilities: values["max-capabilities"] ? Number(values["max-capabilities"]) : undefined,
+        cwd: repo,
+        onProgress: (m) => io.err(m),
+      });
+    }
   } catch (e) {
     io.err(`spec review could not run: ${(e as Error).message}`);
     return technical;

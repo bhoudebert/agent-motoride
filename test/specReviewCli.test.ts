@@ -262,6 +262,24 @@ test("spec review CLI: a model that is not there does not hide the deterministic
   }
 });
 
+test("spec review CLI: --audit checks the tree at the head, and refuses a model", async () => {
+  const repo = buildRepo(BASE, head("guide-only").head);
+  try {
+    const run = capture();
+    assert.equal(await main(["--repo", repo.dir, "--audit", "--skip-openspec"], {}, run.io), 0);
+    assert.match(run.out.join("\n"), /spec review, audit of HEAD/);
+    assert.match(run.out.join("\n"), /nothing blocks/);
+    const refused = capture();
+    assert.equal(
+      await main(["--repo", repo.dir, "--audit", "--provider", "ollama", "--model", "m"], {}, refused.io),
+      2,
+    );
+    assert.match(refused.err.join("\n"), /--audit does not call a model/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test("spec review CLI: usage errors and technical errors exit 2", async () => {
   const bad = (argv: string[], env = {}) => main(argv, env, capture().io);
   assert.equal(await bad(["--nope"]), 2);
@@ -359,4 +377,5 @@ test("spec review CLI: the summary is short and says what ran", () => {
   assert.match(text, /NOT RUN, unavailable: down/);
   assert.match(text, /1 model finding\(s\) dropped/);
   assert.match(text, /nothing blocks/);
+  assert.match(text, /nothing to compare: no file differs.*commit your work on a branch/);
 });

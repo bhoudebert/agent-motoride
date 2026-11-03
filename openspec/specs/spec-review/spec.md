@@ -50,6 +50,14 @@ behaviour change. A change under `docs/` SHALL NOT count as a spec change. The j
 on the pull request, a `No-Spec: <reason>` line in a commit message of the change, or the `--no-spec <reason>` option,
 and the report SHALL show it.
 
+A spec edit that changes only whitespace or blank lines SHALL NOT count as a spec change. In the pull-request check only the
+label SHALL count as the justification, because a commit line is written by whoever writes the commit; a commit line SHALL
+count in the local review and the hook, and the option `--ignore-commit-lines` SHALL turn that off.
+
+When a change is justified as having no behaviour change, the report SHALL warn, per source file it covers, when the change
+adds test cases (a refactor leaves the tests as they are) or changes numbers or strings in the code (a threshold, a message).
+These are warnings: a bug fix with a regression test is a legitimate case.
+
 #### Scenario: Behaviour changed, spec untouched
 
 - **WHEN** a change edits `src/tools/weather.ts` and no spec or proposal
@@ -65,10 +73,43 @@ and the report SHALL show it.
 - **WHEN** a change edits `src/tools/weather.ts` and ticks a task of an open proposal whose delta spec is for `weather-daylight`
 - **THEN** there is no error
 
+#### Scenario: A spec touched only for show
+
+- **WHEN** a change edits `src/tools/weather.ts` and a spec of its capability by adding a trailing space
+- **THEN** the error stays
+
+#### Scenario: A commit line in the pull-request check
+
+- **WHEN** the check runs with `--ignore-commit-lines` and the only justification is a `No-Spec:` line in a commit
+- **THEN** the error stays; the label would have cleared it
+
+#### Scenario: A refactor that adds a test and changes a number
+
+- **WHEN** a change justified as `No-Spec` adds a test case and changes `40` to `60` in a source file
+- **THEN** the report has a warning for the file naming the new test and the changed number, and no error
+
 #### Scenario: A refactor
 
 - **WHEN** a change edits `src/tools/weather.ts` and a commit says `No-Spec: rename an internal helper`
 - **THEN** there is no error, and the report shows the reason
+
+### Requirement: Audit the repository as it is
+
+`npm run spec:review -- --audit` SHALL check the whole tree at `--head` (default `HEAD`) with no base, to clean up what
+earlier changes left. It SHALL run the validation of the specs, the reference checks on every document under `openspec/`
+and `docs/` and not only the files a change touches, and the code map checks: a source file in no entry, a pattern that
+matches no file, a capability that has no spec, a spec that no entry covers. It SHALL NOT report code without a spec
+change, which is a property of a change. It SHALL NOT call a model, and SHALL refuse `--provider` with `--audit`.
+
+#### Scenario: A stale reference nobody touched
+
+- **WHEN** a document that no recent change touches cites a record that does not exist, and the audit runs
+- **THEN** the report has an error at that line
+
+#### Scenario: A source file the map does not know
+
+- **WHEN** a file under `src/` is in no entry of the code map
+- **THEN** the audit reports it as unmapped, a warning
 
 ### Requirement: Specs and references are valid
 
@@ -95,6 +136,9 @@ by `OLLAMA_HOST` (default `http://127.0.0.1:11434`), with the model named by `--
 for findings as JSON that follows a schema. The context SHALL be bounded and organised by capability, never the whole
 repository. The text sent SHALL be marked as data, never as instructions. The provider is local: no API key, no paid
 service.
+
+When the change is justified as having no behaviour change, the question to the model SHALL carry that claim and the
+reason, and ask whether the diff changes behaviour.
 
 #### Scenario: A threshold changed
 

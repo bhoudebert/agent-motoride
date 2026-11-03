@@ -39,8 +39,15 @@ of that feature, not in one of its own. `openspec/README.md` explains both.
 CI checks it (ADR 0044, ADR 0058): the specs and any open proposal must pass `openspec validate --all`
 (run it in the dev shell, `nix develop`), and a pull request that changes `src/` must also change the spec of what it
 touches: `openspec/specs/<capability>/spec.md`, or a file of an open proposal for that capability. **A change to the
-docs does not count as a spec change.** A change with no behaviour change (a refactor, an internal fix) says so: the
-`no-spec` label on the pull request, or a `No-Spec: <reason>` line in one of its commits.
+docs does not count as a spec change, nor does an edit of a spec that only moves whitespace.** A change with no behaviour
+change (a refactor, an internal fix) says so: the `no-spec` label on the pull request, which a person puts and which is
+the only justification the pull-request check reads, or a `No-Spec: <reason>` line in one of its commits, which the local
+review and the hook accept (whoever writes a commit can write that line, so it is not trusted in CI). The reason is
+printed in the job summary. A change that claims no behaviour change gets a warning when it adds a test case or changes a
+number or a string in the code, and a local model is asked whether the claim is true.
+
+Deciding: would a rider or the operator notice? Did a test need a new case? Then the behaviour changed and the spec
+changes with it. `no-spec` is for renames, moves, formatting and fixes with no visible effect; when unsure, update the spec.
 
 ### Checking a change against the specs
 
@@ -74,6 +81,10 @@ Codex can run it before opening a pull request; the Markdown report is made to b
   and a fresh clone has no hook until `npm install`. The pull-request check cannot be skipped.
 - **In CI** only the deterministic checks run, on the standard runner, as annotations on the files and a job summary. A
   model run in CI is left out for now: it needs a model downloaded on every run and nothing in it may block.
+- **Cleaning up an existing repository**: `npm run spec:review -- --audit` checks the whole tree instead of a change: cited
+  records and spec paths in every document, files in no entry of the code map, patterns that match nothing, specs the map
+  does not cover. No base, no model, and no "code without a spec change" (that is a property of a change). Run it once to
+  clean up, then rarely.
 - **Measuring a model**: `npm run spec:eval -- <model>` runs the labelled scenarios in `evals/spec-review/` against a
   real Ollama and prints true positives, false positives and missed findings. There are few scenarios: it says whether a
   model and the prompt are usable at all, not that the specs are consistent.

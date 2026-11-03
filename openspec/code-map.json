@@ -37,7 +37,10 @@
         "test/valhalla-*.test.ts"
       ]
     },
-    "place-resolution": { "code": ["src/tools/geo.ts", "src/start.ts"], "tests": ["test/geo.test.ts"] },
+    "place-resolution": {
+      "code": ["src/tools/geo.ts", "src/start.ts"],
+      "tests": ["test/geo.test.ts"]
+    },
     "weather-daylight": {
       "code": ["src/tools/weather.ts", "src/conditions.ts", "src/briefing.ts"],
       "tests": ["test/weather.test.ts", "test/conditions.test.ts", "test/rideDay.test.ts"]
@@ -83,7 +86,10 @@
         "test/roadbookDownload.test.ts"
       ]
     },
-    "external-lookups": { "code": ["src/http.ts", "src/tools/roads.ts"], "tests": ["test/versions.test.ts"] },
+    "external-lookups": {
+      "code": ["src/http.ts", "src/tools/roads.ts"],
+      "tests": ["test/versions.test.ts"]
+    },
     "mcp-server": {
       "code": ["src/mcp.ts", "src/capabilities.ts"],
       "tests": ["test/mcp.test.ts", "test/capabilities.test.ts"]
@@ -92,7 +98,10 @@
       "code": ["src/trace.ts", "src/usage.ts", "src/otel.ts"],
       "tests": ["test/otel.test.ts"]
     },
-    "evaluation": { "code": ["evals/**"], "tests": ["test/evals.test.ts"] },
+    "evaluation": {
+      "code": ["evals/**"],
+      "tests": ["test/evals.test.ts"]
+    },
     "route-import": {
       "code": ["src/routeImport.ts", "src/importRoadbook.ts", "src/images.ts"],
       "tests": ["test/routeImport.test.ts", "test/images.test.ts"]
@@ -101,7 +110,10 @@
       "code": ["src/memory.ts", "src/limitProposals.ts"],
       "tests": ["test/memory.test.ts", "test/limitProposals.test.ts"]
     },
-    "cli": { "code": ["src/index.ts", "src/check.ts"], "tests": [] },
+    "cli": {
+      "code": ["src/index.ts", "src/check.ts"],
+      "tests": []
+    },
     "ride-feedback": {
       "code": ["src/feedback.ts", "src/recordedReview.ts", "src/recordedRides.ts"],
       "tests": ["test/feedback.test.ts", "test/recordedRides.test.ts"]
@@ -110,7 +122,10 @@
       "code": ["src/traffic.ts", "src/traffic-open.ts", "src/tools/traffic.ts"],
       "tests": ["test/traffic.test.ts", "test/traffic-open.test.ts"]
     },
-    "live-sharing": { "code": ["src/live.ts"], "tests": ["test/live.test.ts", "test/follow.test.ts"] },
+    "live-sharing": {
+      "code": ["src/live.ts"],
+      "tests": ["test/live.test.ts", "test/follow.test.ts"]
+    },
     "multi-user-server": {
       "code": [
         "src/tenants.ts",
@@ -134,7 +149,14 @@
       ]
     },
     "hosted-provisioning": {
-      "code": ["src/adminApi.ts", "src/hostedContract.ts", "src/entitlements.ts"],
+      "code": [
+        "src/adminApi.ts",
+        "src/hostedContract.ts",
+        "src/entitlements.ts",
+        "src/serve.ts",
+        "src/server.ts",
+        "src/traffic.ts"
+      ],
       "tests": ["test/hostedProvisioning.test.ts"]
     },
     "spec-review": {

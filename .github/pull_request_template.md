@@ -7,7 +7,7 @@
 
 ## Decision and spec
 
-<!-- ADR added or "none needed" (docs/adr/). Spec requirement added or changed (openspec/specs/...), or "no behaviour change". -->
+<!-- ADR added or "none needed" (docs/adr/). Spec requirement added or changed (openspec/specs/...), or "no behaviour change" with the reason (then add the `no-spec` label: a reviewer reads that reason). -->
 
 ## Verified
 

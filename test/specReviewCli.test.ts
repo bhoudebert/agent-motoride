@@ -6,7 +6,7 @@ import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import { test } from "node:test";
 import { main, summaryText } from "../scripts/spec-review/cli.ts";
-import { BadAnswer, ollama, Unavailable } from "../scripts/spec-review/provider.ts";
+import { BadAnswer, ollama, openai, Unavailable } from "../scripts/spec-review/provider.ts";
 import { FINDINGS_SCHEMA } from "../scripts/spec-review/schema.ts";
 import { buildRepo } from "../evals/spec-review/repo.ts";
 import { BASE, SCENARIOS } from "../evals/spec-review/scenarios.ts";
@@ -378,4 +378,137 @@ test("spec review CLI: the summary is short and says what ran", () => {
   assert.match(text, /1 model finding\(s\) dropped/);
   assert.match(text, /nothing blocks/);
   assert.match(text, /nothing to compare: no file differs.*commit your work on a branch/);
+});
+
+/** An OpenAI-compatible server (LiteLLM) on a free port. */
+async function fakeOpenAi(reply: (body: any, headers: Record<string, unknown>) => { status?: number; body: unknown }) {
+  const requests: { url: string; headers: Record<string, unknown>; body: any }[] = [];
+  const server: Server = createServer((req, res) => {
+    let raw = "";
+    req.on("data", (c) => (raw += c));
+    req.on("end", () => {
+      const body = raw ? JSON.parse(raw) : {};
+      requests.push({ url: req.url ?? "", headers: req.headers, body });
+      const answer = reply(body, req.headers);
+      res.writeHead(answer.status ?? 200, { "content-type": "application/json" });
+      res.end(typeof answer.body === "string" ? answer.body : JSON.stringify(answer.body));
+    });
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const host = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  return { host, requests, close: () => new Promise((resolve) => server.close(resolve)) };
+}
+
+const completion = (answer: unknown) => ({
+  body: { choices: [{ message: { role: "assistant", content: JSON.stringify(answer) } }] },
+});
+
+test("spec review CLI: the OpenAI adapter asks /chat/completions for a JSON schema, with the key and the extra fields", async () => {
+  const server = await fakeOpenAi(() => completion({ findings: [] }));
+  try {
+    const provider = openai({
+      baseUrl: `${server.host}/v1/`,
+      model: "gemma4-12b",
+      apiKey: "sk-test",
+      extraBody: { reasoning_effort: "none" },
+    });
+    const answer = await provider.complete({ system: "S", user: "U", schema: FINDINGS_SCHEMA });
+    assert.deepEqual(JSON.parse(answer), { findings: [] });
+    const sent = server.requests[0];
+    assert.ok(sent);
+    const { url, headers, body } = sent;
+    assert.equal(url, "/v1/chat/completions");
+    assert.equal(headers.authorization, "Bearer sk-test");
+    assert.equal(body.model, "gemma4-12b");
+    assert.equal(body.temperature, 0);
+    assert.equal(body.reasoning_effort, "none");
+    assert.equal(body.response_format.type, "json_schema");
+    assert.deepEqual(body.response_format.json_schema.schema, JSON.parse(JSON.stringify(FINDINGS_SCHEMA)));
+    assert.deepEqual(
+      body.messages.map((m: any) => [m.role, m.content]),
+      [
+        ["system", "S"],
+        ["user", "U"],
+      ],
+    );
+    const bare = await fakeOpenAi(() => completion({ findings: [] }));
+    try {
+      await openai({ baseUrl: bare.host, model: "m" }).complete({ system: "", user: "", schema: {} });
+      assert.equal(bare.requests[0]?.headers.authorization, undefined, "no key, no bearer token");
+    } finally {
+      await bare.close();
+    }
+  } finally {
+    await server.close();
+  }
+});
+
+test("spec review CLI: the OpenAI adapter tells a refused key, an unknown model and an unusable answer apart", async () => {
+  const denied = await fakeOpenAi(() => ({ status: 401, body: { error: "bad key" } }));
+  const unknown = await fakeOpenAi(() => ({ status: 400, body: { error: "Invalid model name" } }));
+  const busy = await fakeOpenAi(() => ({ status: 503, body: {} }));
+  const broken = await fakeOpenAi(() => ({ body: "<html>" }));
+  const empty = await fakeOpenAi(() => ({ body: { choices: [] } }));
+  try {
+    const ask = (baseUrl: string) =>
+      openai({ baseUrl, model: "m", apiKey: "sk-secret" }).complete({ system: "", user: "", schema: {} });
+    await assert.rejects(
+      ask(denied.host),
+      (e) =>
+        e instanceof Unavailable &&
+        /SPEC_REVIEW_API_KEY/.test((e as Error).message) &&
+        !/sk-secret/.test((e as Error).message),
+    );
+    await assert.rejects(
+      ask(unknown.host),
+      (e) => e instanceof Unavailable && /"m".*API root/.test((e as Error).message),
+    );
+    await assert.rejects(ask(busy.host), (e) => e instanceof Unavailable && /503/.test((e as Error).message));
+    await assert.rejects(ask(broken.host), BadAnswer);
+    await assert.rejects(ask(empty.host), BadAnswer);
+    await assert.rejects(
+      ask("http://127.0.0.1:1"),
+      (e) => e instanceof Unavailable && /not reachable/.test((e as Error).message),
+    );
+  } finally {
+    await Promise.all([denied.close(), unknown.close(), busy.close(), broken.close(), empty.close()]);
+  }
+});
+
+test("spec review CLI: --provider openai (or SPEC_REVIEW_PROVIDER for the hook) needs a model and a base URL, and reviews through the server", async () => {
+  const scenario = SCENARIOS[1];
+  assert.ok(scenario);
+  const repo = buildRepo(BASE, scenario.head, scenario.messages);
+  const server = await fakeOpenAi(() => completion({ findings: [] }));
+  try {
+    const run = (argv: string[], env: Record<string, string>) => {
+      const out: string[] = [];
+      const err: string[] = [];
+      return main(["--repo", repo.dir, "--base", repo.base, "--head", repo.head, ...argv], env, {
+        out: (t) => out.push(t),
+        err: (t) => err.push(t),
+      }).then((code) => ({ code, text: [...out, ...err].join("\n") }));
+    };
+    const flags = ["--provider", "openai", "--model", "m", "--skip-openspec"];
+    const noUrl = await run(flags, {});
+    assert.equal(noUrl.code, 2);
+    assert.match(noUrl.text, /SPEC_REVIEW_BASE_URL/);
+    const noModel = await run(["--provider", "openai"], { SPEC_REVIEW_BASE_URL: server.host });
+    assert.equal(noModel.code, 2);
+    const badExtra = await run(flags, { SPEC_REVIEW_BASE_URL: server.host, SPEC_REVIEW_EXTRA_BODY: "[1]" });
+    assert.equal(badExtra.code, 2);
+    assert.match(badExtra.text, /EXTRA_BODY/);
+    const ok = await run(flags, { SPEC_REVIEW_BASE_URL: server.host, SPEC_REVIEW_API_KEY: "sk-secret" });
+    assert.ok(server.requests.length > 0, "the model was asked through the server");
+    assert.doesNotMatch(ok.text, /sk-secret/);
+    const before = server.requests.length;
+    await run(["--hook", "--skip-openspec"], {
+      SPEC_REVIEW_MODEL: "m",
+      SPEC_REVIEW_PROVIDER: "openai",
+      SPEC_REVIEW_BASE_URL: server.host,
+    });
+    assert.ok(server.requests.length > before, "the hook follows SPEC_REVIEW_PROVIDER");
+  } finally {
+    await server.close();
+  }
 });

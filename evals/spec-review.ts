@@ -1,18 +1,35 @@
 import { gitSource } from "../scripts/spec-review/git.ts";
-import { ollama } from "../scripts/spec-review/provider.ts";
+import { ollama, openai, type Provider } from "../scripts/spec-review/provider.ts";
 import { runReview } from "../scripts/spec-review/run.ts";
 import { buildRepo } from "./spec-review/repo.ts";
 import { scoreScenario, total, type Score } from "./spec-review/score.ts";
 import { BASE, SCENARIOS } from "./spec-review/scenarios.ts";
 
-// `npm run spec:eval -- <model>`: the labelled scenarios against a real local model (Ollama). It prints what the
+// `npm run spec:eval -- <model>`: the labelled scenarios against a real model (Ollama, or an OpenAI-compatible server such
+// as LiteLLM when SPEC_REVIEW_PROVIDER=openai and SPEC_REVIEW_BASE_URL are set). It prints what the
 // model found, wrongly flagged and missed; no number here says a model keeps the specs consistent.
 const model = process.argv[2] ?? process.env.SPEC_REVIEW_MODEL;
 if (!model) {
-  console.error("Usage: npm run spec:eval -- <ollama model>   (or set SPEC_REVIEW_MODEL)");
+  console.error("Usage: npm run spec:eval -- <model>   (or set SPEC_REVIEW_MODEL)");
   process.exit(2);
 }
-const provider = ollama({ model, host: process.env.OLLAMA_HOST });
+const env = process.env;
+let provider: Provider;
+if (env.SPEC_REVIEW_PROVIDER === "openai") {
+  if (!env.SPEC_REVIEW_BASE_URL) {
+    console.error("SPEC_REVIEW_PROVIDER=openai needs SPEC_REVIEW_BASE_URL (e.g. http://localhost:4000/v1).");
+    process.exit(2);
+  }
+  provider = openai({
+    model,
+    baseUrl: env.SPEC_REVIEW_BASE_URL,
+    apiKey: env.SPEC_REVIEW_API_KEY,
+    extraBody: env.SPEC_REVIEW_EXTRA_BODY ? JSON.parse(env.SPEC_REVIEW_EXTRA_BODY) : undefined,
+    timeoutMs: env.SPEC_REVIEW_TIMEOUT_MS ? Number(env.SPEC_REVIEW_TIMEOUT_MS) : undefined,
+  });
+} else {
+  provider = ollama({ model, host: env.OLLAMA_HOST });
+}
 
 const scores: Score[] = [];
 let wrongBlocks = 0;

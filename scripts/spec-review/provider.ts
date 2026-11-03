@@ -1,4 +1,4 @@
-/** A model that answers a prompt with JSON that follows a schema. Only a local one exists (Ollama). */
+/** A model that answers a prompt with JSON that follows a schema: Ollama's own API, or any OpenAI-compatible server. */
 export interface Provider {
   name: string;
   model: string;
@@ -70,6 +70,76 @@ export function ollama(options: OllamaOptions): Provider {
       }
       const content = body.message?.content;
       if (typeof content !== "string") throw new BadAnswer("Ollama's answer has no message");
+      return content;
+    },
+  };
+}
+
+export interface OpenAiOptions {
+  /** The API root, `/v1` included (LiteLLM: `http://localhost:4000/v1`); `/chat/completions` is added. */
+  baseUrl: string;
+  model: string;
+  /** Sent as a bearer token when the server asks for one (a LiteLLM key). Never printed. */
+  apiKey?: string;
+  /** Fields merged into the request body, for what a gateway needs and this adapter does not know (a thinking switch). */
+  extraBody?: Record<string, unknown>;
+  timeoutMs?: number;
+  fetch?: typeof fetch;
+}
+
+/** Any server that speaks `POST /chat/completions` with a JSON-schema response format: LiteLLM, vLLM, Ollama's /v1... */
+export function openai(options: OpenAiOptions): Provider {
+  const base = options.baseUrl.replace(/\/+$/, "");
+  const call = options.fetch ?? fetch;
+  return {
+    name: "openai",
+    model: options.model,
+    async complete({ system, user, schema }) {
+      let response: Response;
+      try {
+        response = await call(`${base}/chat/completions`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            ...(options.apiKey ? { authorization: `Bearer ${options.apiKey}` } : {}),
+          },
+          body: JSON.stringify({
+            temperature: 0,
+            ...options.extraBody,
+            model: options.model,
+            stream: false,
+            response_format: { type: "json_schema", json_schema: { name: "findings", strict: true, schema } },
+            messages: [
+              { role: "system", content: system },
+              { role: "user", content: user },
+            ],
+          }),
+          signal: AbortSignal.timeout(options.timeoutMs ?? 300_000),
+        });
+      } catch (e) {
+        const cause = (e as { cause?: { code?: string } }).cause?.code;
+        const timeout = (e as Error).name === "TimeoutError";
+        throw new Unavailable(
+          timeout
+            ? `The server at ${base} did not answer in time`
+            : `The server at ${base} is not reachable${cause ? ` (${cause})` : ""}`,
+        );
+      }
+      if (response.status === 401 || response.status === 403)
+        throw new Unavailable(`The server at ${base} refused the key (${response.status}): check SPEC_REVIEW_API_KEY`);
+      if (response.status === 404 || response.status === 400)
+        throw new Unavailable(
+          `The server at ${base} answered ${response.status}: is "${options.model}" a model it serves, and is the base URL the API root (…/v1)?`,
+        );
+      if (!response.ok) throw new Unavailable(`The server at ${base} answered ${response.status}`);
+      let body: { choices?: { message?: { content?: unknown } }[] };
+      try {
+        body = (await response.json()) as typeof body;
+      } catch {
+        throw new BadAnswer("The answer is not JSON");
+      }
+      const content = body.choices?.[0]?.message?.content;
+      if (typeof content !== "string") throw new BadAnswer("The answer has no message");
       return content;
     },
   };

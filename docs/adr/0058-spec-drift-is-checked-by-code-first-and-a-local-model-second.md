@@ -16,7 +16,7 @@ check that needs a paid API or a secret cannot run on pull requests from forks.
 - **Deterministic checks decide.** `npm run spec:review` validates the specs, requires a spec change (or a proposal's, or a
   stated reason) with a change to `src/`, and checks that cited records and spec paths exist. A change to `docs/` is no
   longer accepted as proof. Pull requests run these checks, on a standard runner, with no model and no secret.
-- **A local model advises.** With `--provider ollama` the command asks a model on the developer's machine for contradictions
+- **A local model advises.** With `--provider ollama` (or `openai`, for LiteLLM and other OpenAI-compatible servers) the command asks a model on the developer's machine for contradictions
   between a requirement, a record and the diff. Every finding must cite a spec file and a code file with quotes the program
   finds in the files; the others are dropped. Nothing is ever written to the specs or the code.
 - **The hook blocks on evidence only.** `pre-push` blocks on a deterministic error or a verified high-severity finding of

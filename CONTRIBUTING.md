@@ -41,31 +41,84 @@ npm scripts, and `nix flake check` lints the Nix files. Each file in
 
 ## Workflow
 
-The path every feature follows, from idea to release, is described in
-`docs/EVOLVING.md`. In short:
+The path every feature follows, from the need to the release. `docs/EVOLVING.md` explains each step; this page is the map.
+
+```mermaid
+flowchart TD
+  need["A need: a bug, an idea, a rider's request"] --> adr{"An architectural choice?<br/>a dependency, a data store, a mode,<br/>a rule that cuts across features"}
+  adr -- yes --> adrdoc["Decision record: docs/adr/NNNN-...<br/>from template.md, with the alternatives that lost"]
+  adr -- no --> beh
+  adrdoc --> beh{"Does the behaviour change?<br/>a number, a message, a rule,<br/>an answer, a setting"}
+  beh -- yes --> spec["Spec first: openspec/specs/CAPABILITY/spec.md<br/>a requirement and a scenario"]
+  beh -- "no: a rename, a move,<br/>a fix with no visible effect" --> nospec["No spec change, and say why:<br/>No-Spec: reason in a commit,<br/>label no-spec on the pull request"]
+  spec --> code
+  nospec --> code["Code and tests in test/<br/>never the real model API"]
+  code --> docs["Docs: guide, README, ROADMAP;<br/>npm run docs:reference"]
+  docs --> commit["git commit<br/>hooks: lint-staged, commitlint"]
+  commit --> quality["npm run quality<br/>npm run spec:review"]
+  quality --> push["git push<br/>pre-push hook: the spec review"]
+  push --> pr["Pull request: the template,<br/>a title in Conventional Commit form"]
+  pr --> ci{"Required checks on main"}
+  ci -- red --> code
+  ci -- green --> review["Maintainer review:<br/>reads the no-spec reason, if any"]
+  review --> merge["Squash merge"]
+  merge --> release["release-please opens a release pull request:<br/>the version, the changelog, the tag"]
+```
+
+### What do I do for my change?
+
+| Your change                                                                | Do                                                                                                          |
+| -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| New behaviour, or a changed number, message, rule, answer or setting       | Edit the spec of the capability: a requirement and a scenario. Same pull request, committed first.          |
+| A new capability                                                           | A new folder under `openspec/specs/`, a line in `openspec/README.md`, an entry in `openspec/code-map.json`. |
+| A new source file                                                          | Add it to `openspec/code-map.json`, so a change to it is tied to its spec (the review warns if not).        |
+| An architectural choice                                                    | A decision record in `docs/adr/`.                                                                           |
+| A feature over several pull requests, or a design to agree before any code | A proposal in `openspec/changes/`: `openspec/README.md`.                                                    |
+| A rename, a move, formatting, a fix with no visible effect                 | No spec change. A `No-Spec: <reason>` line in a commit, and the `no-spec` label on the pull request.        |
+| The guide, the README or the roadmap only (no change under `src/`)         | Nothing more to do.                                                                                         |
+
+Two things that are **not** a spec change: a change to the docs, and a spec edit that only moves whitespace. And do not
+reach for `no-spec` when a test needed a new case or a number or a message changed: the review warns about it, and the
+reviewer reads your reason. When unsure, update the spec.
+
+### What is checked, where, and can it be skipped
+
+| When         | What runs                                                                                               | Skippable?                                                                             |
+| ------------ | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `git commit` | pre-commit: ESLint and Prettier on the staged files. commit-msg: Conventional Commits.                  | `--no-verify`                                                                          |
+| `git push`   | pre-push: `npm run spec:review` (see below).                                                            | `--no-verify`, `SKIP_SPEC_REVIEW=1`, or no `npm install` yet (no hook)                 |
+| Pull request | CI: typecheck, lint, format, tests, `openspec validate`, the PR title, and the spec review of the diff. | **No.** Four are required checks on `main`; only an administrator can merge past them. |
+| Merge        | Nothing else: GitHub merges when the required checks are green. A person reads the pull request.        | Administrators                                                                         |
+
+The hook and the CI job run the same deterministic review: the specs validate, a change under `src/` comes with a change to
+the spec of what it touches (or a stated reason), and the records and spec paths a change cites exist. In CI the
+justification is the **label**, set by a person; a commit line counts only locally. The verdict is the CI job's status,
+green or red. Warnings are shown on the files and in the job summary and never turn it red.
+
+### The local model is optional
+
+`SPEC_REVIEW_MODEL=gemma4:12b` in your `.env` (with [Ollama](https://ollama.com) running) adds a review by a local model to
+the hook: it looks for a requirement the code contradicts, and for a "no behaviour change" that is not true. It is free,
+runs on your machine, and never edits anything. **Without it nothing is refused**: the hook says
+`model review: Not requested` (or `NOT RUN, unavailable` when Ollama is configured but not answering) and the push goes
+through if the deterministic checks pass. Details: `docs/EVOLVING.md`.
+
+Reviewers can run the same on someone else's pull request, a fork's included:
+`gh pr checkout 123`, then `npm run spec:review -- --base origin/main --provider ollama --model gemma4:12b`.
+To clean up a repository rather than check a change: `npm run spec:review -- --audit`.
+
+### In steps
 
 1. Branch from `main`: `feat/...`, `fix/...`, `docs/...`, `chore/...`.
-2. Behaviour change: update the spec first, `openspec/specs/<capability>/spec.md`
-   (requirements with scenarios). New capability: new folder plus a line in
-   `openspec/README.md`. CI validates the specs
-   (`openspec validate --all`) and asks for a change to the spec of what a change
-   under `src/` touches (the docs do not count); a refactor takes the `no-spec`
-   label (the pull-request check reads only the label), or a `No-Spec: <reason>`
-   line in a commit (the local hook reads that too). `npm run spec:review`
-   runs the same check locally, and a pre-push hook runs it on every push.
-3. Architectural choice (new dependency, data store, mode, model default,
-   cross-cutting rule): add a record in `docs/adr/` from `template.md`.
-4. Code with tests. Deterministic parts get unit tests under `test/`; the
-   planner loop is tested against the fake services in `test/helpers/`. Never
-   let a test reach the real model API.
-5. `npm run quality` (typecheck, lint, format check, tests with coverage thresholds) must pass. The pre-commit hook
-   formats and lints staged files; the commit-msg hook enforces Conventional
-   Commits.
-6. Open a pull request with the template filled in: what was verified, what
-   was not. The **PR title follows the commit convention too**: squash merges
-   turn it into the commit on `main`, which release automation reads. CI runs
-   typecheck, lint, format check, tests, commitlint and the title check. The
-   maintainer reviews and merges.
+2. Decide as the chart shows: a decision record, a spec, or a reason for none.
+3. Code with tests. Deterministic parts get unit tests under `test/`; the planner loop is tested against the fake services
+   in `test/helpers/`. Never let a test reach the real model API.
+4. `npm run quality` must pass (typecheck, lint, format check, tests with coverage thresholds).
+5. Commit with Conventional Commits, one concern per commit, in the order of the chart (decision record, spec, code,
+   tests, docs).
+6. Open a pull request with the template filled in: the spec touched, what was verified, what was not. The **PR title
+   follows the commit convention too**: a squash merge turns it into the commit on `main`, which release automation
+   reads. If the change has no behaviour change, add the `no-spec` label and give the reason in the description.
 
 ## Commits
 

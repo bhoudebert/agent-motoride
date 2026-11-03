@@ -74,6 +74,10 @@ Codex can run it before opening a pull request; the Markdown report is made to b
   and a fresh clone has no hook until `npm install`. The pull-request check cannot be skipped.
 - **In CI** only the deterministic checks run, on the standard runner, as annotations on the files and a job summary. A
   model run in CI is left out for now: it needs a model downloaded on every run and nothing in it may block.
+- **Cleaning up an existing repository**: `npm run spec:review -- --audit` checks the whole tree instead of a change: cited
+  records and spec paths in every document, files in no entry of the code map, patterns that match nothing, specs the map
+  does not cover. No base, no model, and no "code without a spec change" (that is a property of a change). Run it once to
+  clean up, then rarely.
 - **Measuring a model**: `npm run spec:eval -- <model>` runs the labelled scenarios in `evals/spec-review/` against a
   real Ollama and prints true positives, false positives and missed findings. There are few scenarios: it says whether a
   model and the prompt are usable at all, not that the specs are consistent.

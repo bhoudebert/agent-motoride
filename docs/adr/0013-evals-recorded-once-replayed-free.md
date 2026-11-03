@@ -26,7 +26,8 @@ Every HTTP exchange of a session is recorded once, live, into a cassette
 Replays serve every exchange from the cassette: no network, no cost, in CI on
 every push. A replay fails on a broken rule, on a grader that passed when
 recorded and fails now, or on a request the cassette cannot answer. Model
-steps are keyed by conversation and turn, so a prompt or tool-output change
+steps are keyed by conversation and turn (a step of a server-side thread, which the SDK's tool runner sends with only the
+new messages, by the id of the answer it follows), so a prompt or tool-output change
 replays and is reported as drift instead of failing. Missing tool answers can
 be fetched live for free (`--update-tools`); a missing model answer never
 reaches the API.

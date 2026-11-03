@@ -180,6 +180,29 @@ test("evals: a service that never answered is recorded and fails the same way on
   assert.deepEqual(played.misses, []);
 });
 
+test("evals: a step of a server-side thread is keyed by the answer it follows", async () => {
+  const { exchangeKey, threadKey } = await import("../evals/cassette.ts");
+  const url = new URL("https://api.anthropic.com/v1/messages");
+  const first = exchangeKey(
+    url,
+    "POST",
+    JSON.stringify({ messages: [{ content: "plan" }], thread: { type: "create" } }),
+  );
+  assert.match(first.key, /^model [0-9a-f]{16} #1$/);
+  const next = exchangeKey(
+    url,
+    "POST",
+    JSON.stringify({ messages: [{ content: [] }], thread: { type: "continue", previous_message_id: "msg_1" } }),
+  );
+  assert.equal(next.key, threadKey("msg_1"));
+  // The same new message after another answer is another step.
+  const other = JSON.stringify({
+    messages: [{ content: [] }],
+    thread: { type: "continue", previous_message_id: "msg_2" },
+  });
+  assert.notEqual(exchangeKey(url, "POST", other).key, next.key);
+});
+
 test("evals: every case is well formed and every grader has a tier", () => {
   assert.equal(new Set(CASES.map((c) => c.id)).size, CASES.length);
   assert.ok(

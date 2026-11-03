@@ -10,6 +10,7 @@ export interface Exchange {
   /** "model" for the Claude API, "tool" for everything else. */
   kind: "model" | "tool";
   url: string;
+  /** The HTTP status, or 0 when the request failed before any answer (timeout, connection reset): replay throws the same way. */
   status: number;
   body: string;
   /** Model calls only: hash of the full request, to report prompt or tool-output drift on replay. */
@@ -110,7 +111,24 @@ export function record(transform?: (url: URL, body: string) => string): Recorder
     const url = new URL(input instanceof Request ? input.url : String(input));
     const method = init?.method ?? "GET";
     const sent = bodyText(init);
-    const response = await real(input, init);
+    let response: Response;
+    try {
+      response = await real(input, init);
+    } catch (e) {
+      // A service that never answered is part of the session: keep it, so a replay fails the same way
+      // instead of reporting a request "not in the cassette" that a refresh would then answer.
+      if (!isModel(url)) {
+        const { key } = exchangeKey(url, method, sent);
+        byKey.set(key, {
+          key,
+          kind: "tool",
+          url: redactUrl(url),
+          status: 0,
+          body: e instanceof Error ? e.name : "Error",
+        });
+      }
+      throw e;
+    }
     let body = await response.text();
     if (!isModel(url) && response.ok && transform) body = transform(url, body);
     const { key, requestHash } = exchangeKey(url, method, sent);
@@ -172,6 +190,7 @@ export function replay(
     const hit = byKey.get(key);
     if (hit) {
       state.used.add(key);
+      if (hit.status === 0) throw new TypeError(`fetch failed (recorded: ${hit.body})`);
       if (requestHash && hit.requestHash && requestHash !== hit.requestHash) state.drift.push(key);
       return new Response(hit.body, { status: hit.status, headers: { "content-type": "application/json" } });
     }

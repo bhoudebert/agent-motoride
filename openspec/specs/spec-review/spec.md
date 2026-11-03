@@ -133,9 +133,14 @@ spec or a proposal that does not exist.
 With `--provider ollama`, the command SHALL send each touched capability's requirements and scenarios, the decision
 records they cite, the diff of the changed files and the titles of the tests that cover them to the Ollama server named
 by `OLLAMA_HOST` (default `http://127.0.0.1:11434`), with the model named by `--model` or `SPEC_REVIEW_MODEL`, and ask
-for findings as JSON that follows a schema. The context SHALL be bounded and organised by capability, never the whole
-repository. The text sent SHALL be marked as data, never as instructions. The provider is local: no API key, no paid
-service.
+for findings as JSON that follows a schema. With `--provider openai` (or `SPEC_REVIEW_PROVIDER=openai` for the hook and
+the evals), the command SHALL instead send the same question to `POST {SPEC_REVIEW_BASE_URL}/chat/completions` of an
+OpenAI-compatible server (LiteLLM, vLLM, Ollama's `/v1`), with a `json_schema` response format, a bearer token from
+`SPEC_REVIEW_API_KEY` when set, temperature 0, and the fields of the JSON object `SPEC_REVIEW_EXTRA_BODY` merged into
+the request. The key SHALL NOT appear in any output or report. Everything after the answer (verification, states,
+blocking) SHALL be the same whichever provider answered. The context SHALL be bounded and organised by capability, never the whole
+repository. The text sent SHALL be marked as data, never as instructions. No provider is required: a local Ollama needs no key and no
+paid service, and the OpenAI-compatible one is for a server the user runs or chooses.
 
 When the change is justified as having no behaviour change, the question to the model SHALL carry that claim and the
 reason, and ask whether the diff changes behaviour.
@@ -169,6 +174,11 @@ unavailable or failed review SHALL NOT be shown as a review that found nothing.
 
 - **WHEN** the review is requested and the connection is refused
 - **THEN** the deterministic findings are still reported, the review is marked unavailable, and the exit code depends on the deterministic findings only
+
+#### Scenario: An OpenAI-compatible server refuses the key or does not serve the model
+
+- **WHEN** the review is requested with `--provider openai` and the server answers 401, 403, 400 or 404
+- **THEN** the review is marked unavailable with a reason that names the key setting or the model and the base URL, and the key is not printed
 
 #### Scenario: The answer is not JSON
 

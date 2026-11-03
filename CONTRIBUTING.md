@@ -101,7 +101,8 @@ green or red. Warnings are shown on the files and in the job summary and never t
 the hook: it looks for a requirement the code contradicts, and for a "no behaviour change" that is not true. It is free,
 runs on your machine, and never edits anything. **Without it nothing is refused**: the hook says
 `model review: Not requested` (or `NOT RUN, unavailable` when Ollama is configured but not answering) and the push goes
-through if the deterministic checks pass. Details: `docs/EVOLVING.md`.
+through if the deterministic checks pass. A model behind LiteLLM or another OpenAI-compatible server works too
+(`SPEC_REVIEW_PROVIDER=openai`, `SPEC_REVIEW_BASE_URL`, `SPEC_REVIEW_API_KEY`; see `.env.example`). Details: `docs/EVOLVING.md`.
 
 To show on your pull request that the model ran, push, then `npm run spec:review -- --provider ollama --publish`: it
 posts a status on the commit (green or red, with the model's name) and one comment with the report, and only when the

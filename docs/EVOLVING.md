@@ -65,7 +65,8 @@ Codex can run it before opening a pull request; the Markdown report is made to b
   spec without writing it as a path of this one). `openspec/code-map.json` maps code and test files to capabilities, so a diff can be
   tied to its requirements: a file missing from it is a warning, and the check then accepts any spec change. Keep the
   map up to date when a file is added; the review warns about patterns that match nothing.
-- **A local model** (optional, [Ollama](https://ollama.com), no key and no cost) reads, per touched capability, its
+- **A model** (optional: a local [Ollama](https://ollama.com), no key and no cost, or any OpenAI-compatible server such as
+  LiteLLM with `SPEC_REVIEW_PROVIDER=openai`, `SPEC_REVIEW_BASE_URL` and `SPEC_REVIEW_API_KEY`) reads, per touched capability, its
   requirements, the records it cites, the diff and the titles of its tests, and looks for a contradiction, a changed
   threshold the spec does not say, a requirement the change made stale, a conflict with a record, a missing test.
   Every finding must quote the spec and the code; **the program looks for each quote in the file and drops the finding

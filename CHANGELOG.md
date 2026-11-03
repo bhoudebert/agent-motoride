@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.14.0](https://github.com/bhoudebert/agent-motoride/compare/v1.13.0...v1.14.0) (2026-11-03)
+
+
+### Features
+
+* **server:** give GET /me a stable opaque rider reference ([#179](https://github.com/bhoudebert/agent-motoride/issues/179)) ([365ef77](https://github.com/bhoudebert/agent-motoride/commit/365ef77eb99e3bd29f97a973918c0bfab11080b0))
+* **server:** say in GET /me which traffic source answers the rider ([#181](https://github.com/bhoudebert/agent-motoride/issues/181)) ([b9ded1b](https://github.com/bhoudebert/agent-motoride/commit/b9ded1bbf01a34769d76549b9e677d2f4a8dbb0d))
+* **spec-review:** ask an OpenAI-compatible server such as LiteLLM ([#189](https://github.com/bhoudebert/agent-motoride/issues/189)) ([c7fccd6](https://github.com/bhoudebert/agent-motoride/commit/c7fccd66b5fcf85d3c3e6dadb3d55fe7904a548b))
+* **spec-review:** audit the whole repository, fix the map, distrust weak justifications ([#186](https://github.com/bhoudebert/agent-motoride/issues/186)) ([7a79001](https://github.com/bhoudebert/agent-motoride/commit/7a790013f480e9cba202413bb031b3a129ed7675))
+* **spec-review:** check a change against the specs, with an optional local model ([#185](https://github.com/bhoudebert/agent-motoride/issues/185)) ([976d419](https://github.com/bhoudebert/agent-motoride/commit/976d419b6d01d772cdf3060fae6591afca65e612))
+* **spec-review:** show a completed model review on the pull request ([#188](https://github.com/bhoudebert/agent-motoride/issues/188)) ([a27ed87](https://github.com/bhoudebert/agent-motoride/commit/a27ed872ce6368d76db4c73bac81b913db407fc9))
+
+
+### Bug Fixes
+
+* **spec-review:** cap the answer of an OpenAI-compatible server ([#190](https://github.com/bhoudebert/agent-motoride/issues/190)) ([a6042cc](https://github.com/bhoudebert/agent-motoride/commit/a6042cc2338c465b33902eb1cdb27960d4e3fefd))
+
 ## [1.13.0](https://github.com/bhoudebert/agent-motoride/compare/v1.12.0...v1.13.0) (2026-11-01)
 
 

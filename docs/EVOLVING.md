@@ -84,6 +84,15 @@ Codex can run it before opening a pull request; the Markdown report is made to b
   person. A hook cannot set or clear a label for the pull request (it may not exist yet, and whoever pushes would set it),
   and CI cannot label a pull request from a fork. A check that an agent cannot forge would have to come from an external
   app with its own identity (ADR 0059, proposed, not built).
+
+- **Showing on the pull request that the model ran**: after pushing, `npm run spec:review -- --provider ollama --publish`
+  runs the review and posts, for the commit, a status `spec-review/local-model` (green: no blocking finding; red: a verified
+  one; the model and the counts in its text) and one comment of the pull request with the report, which a later run
+  updates (`--pr <number>` names the pull request; `gh` must be logged in). It posts **only when the review completed**:
+  a commit with no such status is a commit the model has not reviewed, which is the point. It is a status of one commit, so
+  a new push leaves the new commit without it until the review runs again, unlike a label that would stay. It is not a
+  required check and the hook never posts. Anyone with write access can post the same status: it shows that a review
+  ran, not that it is right (ADR 0059 for a check that cannot be forged).
 - **In CI** only the deterministic checks run, on the standard runner, as annotations on the files and a job summary. A
   model run in CI is left out for now: it needs a model downloaded on every run and nothing in it may block.
 - **Cleaning up an existing repository**: `npm run spec:review -- --audit` checks the whole tree instead of a change: cited

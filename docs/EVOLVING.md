@@ -36,11 +36,47 @@ that spans several pull requests or whose design is agreed before any code. It
 is archived into `specs/` (`openspec archive <id>`) in the last pull request
 of that feature, not in one of its own. `openspec/README.md` explains both.
 
-CI checks it (ADR 0044): the specs and any open proposal must pass `openspec validate --all`
-(run it in the dev shell, `nix develop`), and a pull request that changes
-`src/` must also change something under `openspec/` or `docs/`. A change with
-no behaviour or usage change (a refactor, an internal fix) takes the `no-spec`
-label instead.
+CI checks it (ADR 0044, ADR 0058): the specs and any open proposal must pass `openspec validate --all`
+(run it in the dev shell, `nix develop`), and a pull request that changes `src/` must also change the spec of what it
+touches: `openspec/specs/<capability>/spec.md`, or a file of an open proposal for that capability. **A change to the
+docs does not count as a spec change.** A change with no behaviour change (a refactor, an internal fix) says so: the
+`no-spec` label on the pull request, or a `No-Spec: <reason>` line in one of its commits.
+
+### Checking a change against the specs
+
+```bash
+npm run spec:review -- --base origin/main --head HEAD                      # deterministic checks, no model
+npm run spec:review -- --base origin/main --head HEAD --provider ollama --model qwen3:8b   # and a local model
+```
+
+It writes `.spec-review/report.json` and `report.md` (Git ignores them) and changes nothing else. A person, Claude Code or
+Codex can run it before opening a pull request; the Markdown report is made to be read.
+
+- **Deterministic checks** (the ones that decide, and the ones CI runs, with no model and no secret): the specs validate;
+  `src/` changed with a spec change for its capability, an open proposal's, or a stated reason; cited records
+  (`ADR 0044`) and spec paths (`openspec/specs/<name>`) exist in the documents the change touches (name another repository's
+  spec without writing it as a path of this one). `openspec/code-map.json` maps code and test files to capabilities, so a diff can be
+  tied to its requirements: a file missing from it is a warning, and the check then accepts any spec change. Keep the
+  map up to date when a file is added; the review warns about patterns that match nothing.
+- **A local model** (optional, [Ollama](https://ollama.com), no key and no cost) reads, per touched capability, its
+  requirements, the records it cites, the diff and the titles of its tests, and looks for a contradiction, a changed
+  threshold the spec does not say, a requirement the change made stale, a conflict with a record, a missing test.
+  Every finding must quote the spec and the code; **the program looks for each quote in the file and drops the finding
+  when it is not there**. What is read is data, never instructions. The model never edits anything.
+  The report always says whether the model review ran: not requested, nothing to review, unavailable (Ollama not
+  running, model not pulled), failed (an answer that is not valid JSON), or completed. Unavailable is not "found nothing".
+- **What blocks**: a deterministic error; a verified finding of severity `high` and confidence `medium` or `high`. Every
+  other finding is advice. A local model is wrong sometimes, in both directions: a finding is a lead for the author.
+- **The `pre-push` hook** (installed with `npm install`, or `npx simple-git-hooks`) runs the deterministic checks on every
+  push, and the model when `SPEC_REVIEW_MODEL` is set (in `.env`; see `.env.example`) and Ollama answers. It blocks the push
+  on a blocking finding. If the review cannot run it says so and lets the push go: only the checks of the pull
+  request are the rule. A hook is a convenience on one machine: `git push --no-verify` or `SKIP_SPEC_REVIEW=1` skip it,
+  and a fresh clone has no hook until `npm install`. The pull-request check cannot be skipped.
+- **In CI** only the deterministic checks run, on the standard runner, as annotations on the files and a job summary. A
+  model run in CI is left out for now: it needs a model downloaded on every run and nothing in it may block.
+- **Measuring a model**: `npm run spec:eval -- <model>` runs the labelled scenarios in `evals/spec-review/` against a
+  real Ollama and prints true positives, false positives and missed findings. There are few scenarios: it says whether a
+  model and the prompt are usable at all, not that the specs are consistent.
 
 ## 4. Code and tests, in every mode
 

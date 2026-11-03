@@ -46,7 +46,7 @@ docs does not count as a spec change.** A change with no behaviour change (a ref
 
 ```bash
 npm run spec:review -- --base origin/main --head HEAD                      # deterministic checks, no model
-npm run spec:review -- --base origin/main --head HEAD --provider ollama --model qwen3:8b   # and a local model
+npm run spec:review -- --base origin/main --head HEAD --provider ollama --model gemma4:12b   # and a local model
 ```
 
 It writes `.spec-review/report.json` and `report.md` (Git ignores them) and changes nothing else. A person, Claude Code or
@@ -77,10 +77,13 @@ Codex can run it before opening a pull request; the Markdown report is made to b
 - **Measuring a model**: `npm run spec:eval -- <model>` runs the labelled scenarios in `evals/spec-review/` against a
   real Ollama and prints true positives, false positives and missed findings. There are few scenarios: it says whether a
   model and the prompt are usable at all, not that the specs are consistent.
-  A first run, on 3 November 2026 with `llama3.1` (8 billion parameters): it reported both labelled contradictions
-  (recall 2 of 2) and 10 findings on changes that had none (precision 17%), with real quotes in each. It rated every one
-  `low` or `medium` severity, so the hook would have blocked nothing, right or wrong. At that quality the model is
-  advice for the author. Try a larger model before trusting it with more, and read what it says.
+  A first measure, on 3 November 2026, one run of the 7 scenarios each: `gemma4:12b` and `gemma4:26b` found both labelled
+  contradictions, with no wrong finding (precision and recall 100%), and the hook would have blocked exactly those two
+  changes; the 12b is the one to use, it answers in a few seconds. `llama3.1` (8B) found both too, with 11 wrong findings
+  (precision 15%), all rated `low` or `medium`, so the hook would have blocked nothing: advice at that quality. Seven
+  scenarios cannot tell a good model from a lucky one; read what a model says. The settings are in `.env.example`: a thinking
+  model such as Gemma 4 is asked not to think (`think: false`), because the reasoning fills the context window before the
+  constrained answer starts and the answer comes back empty (`SPEC_REVIEW_THINK=1` to change that).
 
 ## 4. Code and tests, in every mode
 

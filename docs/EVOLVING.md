@@ -79,6 +79,11 @@ Codex can run it before opening a pull request; the Markdown report is made to b
   on a blocking finding. If the review cannot run it says so and lets the push go: only the checks of the pull
   request are the rule. A hook is a convenience on one machine: `git push --no-verify` or `SKIP_SPEC_REVIEW=1` skip it,
   and a fresh clone has no hook until `npm install`. The pull-request check cannot be skipped.
+- **The verdict is the status of the CI job**, green or red. Warnings are annotations on the files and lines of the job
+  summary, and never turn it red. No label carries a verdict: the one label, `no-spec`, is the author's claim, set by a
+  person. A hook cannot set or clear a label for the pull request (it may not exist yet, and whoever pushes would set it),
+  and CI cannot label a pull request from a fork. A check that an agent cannot forge would have to come from an external
+  app with its own identity (ADR 0059, proposed, not built).
 - **In CI** only the deterministic checks run, on the standard runner, as annotations on the files and a job summary. A
   model run in CI is left out for now: it needs a model downloaded on every run and nothing in it may block.
 - **Cleaning up an existing repository**: `npm run spec:review -- --audit` checks the whole tree instead of a change: cited

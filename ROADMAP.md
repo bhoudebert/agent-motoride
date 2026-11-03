@@ -93,6 +93,11 @@ Done: a registry of riders with a library each, `npm run admin`, and the MCP too
 
 ## Agent quality
 
+- **A spec reviewer as an external GitHub App** (ADR 0059, proposed): a service with its own identity runs the spec review with a
+  model on a host of the project and posts a check that branch protection requires from that App, so the claim of "no
+  behaviour change" is checked by something an agent cannot impersonate, on fork pull requests too. Not built: it needs an
+  App, a webhook service and a model host. Worth building when the `no-spec` label is misused, or outside pull requests
+  need the model and the maintainers cannot run it.
 - **Constraint checker loop**: done (code checks every itinerary, one retry;
   README "Checked by code before you see it"). Next: check "dry" against the
   forecast along the loop, and the return before sunset.

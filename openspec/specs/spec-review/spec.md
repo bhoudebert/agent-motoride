@@ -193,6 +193,33 @@ The pull-request check SHALL run the deterministic checks only, with no model an
 - **WHEN** `SPEC_REVIEW_MODEL` is set and Ollama does not answer
 - **THEN** the push goes ahead if the deterministic checks pass, and the output says the review did not run
 
+### Requirement: A completed model review can be shown on the pull request
+
+With `--publish`, after a model review that completed, the command SHALL post a commit status for the reviewed commit
+(context `spec-review/local-model`) and create or update one comment of the pull request, found by a marker, with the
+Markdown report. The status SHALL be `failure` when a verified finding blocks and `success` otherwise, and say the model
+and the number of blocking and advice findings. Nothing SHALL be posted when the review did not complete or had nothing to
+review, so that a commit with no status is a commit the model has not reviewed. The commit SHALL be on the remote already;
+otherwise the command SHALL say to push first. The status is informational: it is not a required check, a failure to
+publish SHALL NOT change what blocks, and the hook SHALL NOT publish. Text of the model that begins a mention SHALL be
+defused so that the comment notifies nobody. Anyone with write access can post the same status: it shows that a review
+ran, it does not prove it.
+
+#### Scenario: A clean review
+
+- **WHEN** `npm run spec:review -- --provider ollama --model gemma4:12b --publish` completes with no verified finding on a pushed commit
+- **THEN** the commit has a `success` status naming the model, and the pull request has one comment with the report
+
+#### Scenario: A second run on a new commit
+
+- **WHEN** the command runs again after another push
+- **THEN** the same comment is updated, the new commit gets its own status, and the older commit keeps its own
+
+#### Scenario: The model did not run
+
+- **WHEN** Ollama is not answering and `--publish` is given
+- **THEN** nothing is posted, and the output says why
+
 ### Requirement: The review changes nothing
 
 The command and the hook SHALL NOT write to a spec, a decision record, the code or the tests. They SHALL write only the

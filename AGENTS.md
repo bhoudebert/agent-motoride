@@ -30,8 +30,17 @@ The full path every feature follows, from idea to release, is in
    see `openspec/README.md`). CI fails a
    PR that changes `src/` without touching the spec of what it changes (the
    docs do not count; a change to `openspec/code-map.json` does not either);
-   the `no-spec` label, or a `No-Spec: <reason>` line in a commit, is only for
-   refactors and internal fixes. A significant
+   the `no-spec` label (the pull-request check reads only that), or a
+   `No-Spec: <reason>` line in a commit (the local hook reads that too), is only
+   for changes with no behaviour change. **Deciding, for an agent:** would a
+   rider or the operator notice (a number, a message, a rule, an answer, a
+   setting)? Did a test need a new case or a new expected value? If either, the
+   behaviour changed: update the requirement, do not use `no-spec`. `no-spec` is
+   for renames, moves, formatting and fixes with no visible effect; give a
+   real reason, and when unsure update the spec. The review warns when a
+   `no-spec` change adds a test or changes a number or a string, and asks a
+   local model whether the claim holds: a false claim is read in review. A
+   whitespace-only edit of a spec does not count as a spec change. A significant
    architectural choice gets a decision record in `docs/adr/` (read the
    existing ones before changing something they cover).
 4. **Tests with the code.** Deterministic logic gets unit tests in `test/`;

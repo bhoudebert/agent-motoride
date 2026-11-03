@@ -50,7 +50,8 @@ The path every feature follows, from idea to release, is described in
    `openspec/README.md`. CI validates the specs
    (`openspec validate --all`) and asks for a change to the spec of what a change
    under `src/` touches (the docs do not count); a refactor takes the `no-spec`
-   label, or a `No-Spec: <reason>` line in a commit. `npm run spec:review`
+   label (the pull-request check reads only the label), or a `No-Spec: <reason>`
+   line in a commit (the local hook reads that too). `npm run spec:review`
    runs the same check locally, and a pre-push hook runs it on every push.
 3. Architectural choice (new dependency, data store, mode, model default,
    cross-cutting rule): add a record in `docs/adr/` from `template.md`.

@@ -76,10 +76,12 @@ const rainQuote = {
 export const SCENARIOS: Scenario[] = [
   {
     id: "conforming",
-    description: "The code and the spec change together, and agree.",
+    description: "The code, the spec and the record change together, and agree.",
     head: {
       "src/tools/weather.ts": WEATHER.replace("= 50;", "= 45;"),
       "openspec/specs/weather-daylight/spec.md": RAIN_SPEC.replace("above 50 km/h", "above 45 km/h"),
+      "docs/adr/0001-wind-limit.md":
+        "# 0001. The wind limit\n\n- Status: accepted\n\n## Decision\n\nWarn above 45 km/h.\n",
     },
     expect: { errors: [], contradictions: [] },
     scripted: { findings: [] },

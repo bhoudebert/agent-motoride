@@ -15,6 +15,8 @@ if (!model) {
 const provider = ollama({ model, host: process.env.OLLAMA_HOST });
 
 const scores: Score[] = [];
+let wrongBlocks = 0;
+let rightBlocks = 0;
 for (const scenario of SCENARIOS) {
   const repo = buildRepo(BASE, scenario.head, scenario.messages);
   try {
@@ -22,8 +24,12 @@ for (const scenario of SCENARIOS) {
     const state = report.review.status.state;
     const score = scoreScenario(scenario, report);
     scores.push(score);
+    // The hook blocks on a verified high finding of medium or high confidence: wrong when nothing was labelled.
+    const blocks = report.blockers.filter((b) => b.startsWith("model:")).length;
+    if (scenario.expect.contradictions.length) rightBlocks += blocks ? 1 : 0;
+    else wrongBlocks += blocks ? 1 : 0;
     console.log(
-      `${scenario.id.padEnd(26)} review ${state.padEnd(11)} tp ${score.truePositives}  fp ${score.falsePositives}  missed ${score.missed}  rejected ${report.review.rejected.length}  deterministic ${score.deterministicOk ? "ok" : "WRONG"}`,
+      `${scenario.id.padEnd(26)} review ${state.padEnd(11)} tp ${score.truePositives}  fp ${score.falsePositives}  missed ${score.missed}  rejected ${report.review.rejected.length}  would block ${blocks}  deterministic ${score.deterministicOk ? "ok" : "WRONG"}`,
     );
   } finally {
     repo.cleanup();
@@ -33,5 +39,8 @@ const t = total(scores);
 const pct = (v: number | null) => (v === null ? "n/a" : `${Math.round(v * 100)}%`);
 console.log(
   `\n${model}: true positives ${t.truePositives}, false positives ${t.falsePositives}, missed ${t.missed}; precision ${pct(t.precision)}, recall ${pct(t.recall)}`,
+);
+console.log(
+  `The hook would block ${rightBlocks} of ${SCENARIOS.filter((s) => s.expect.contradictions.length).length} changes with a labelled contradiction, and ${wrongBlocks} of ${SCENARIOS.filter((s) => !s.expect.contradictions.length).length} changes with none.`,
 );
 console.log("Few scenarios: read it as a smoke test of the model and the prompt, not as a guarantee.");

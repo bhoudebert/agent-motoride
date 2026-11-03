@@ -79,7 +79,7 @@ spec or a proposal that does not exist.
 
 #### Scenario: A record that does not exist
 
-- **WHEN** a changed spec cites `ADR 0999` and no such record exists
+- **WHEN** a changed spec cites a record by a number that has no file in `docs/adr/`
 - **THEN** the report has an error at that line
 
 #### Scenario: openspec is not installed

@@ -83,6 +83,11 @@ export interface OpenAiOptions {
   apiKey?: string;
   /** Fields merged into the request body, for what a gateway needs and this adapter does not know (a thinking switch). */
   extraBody?: Record<string, unknown>;
+  /**
+   * Longest answer asked of the server (default 4096). A list of findings is short: without a cap a model that loops
+   * generates until the context window is full, minutes later, and the server may go on after the client gave up.
+   */
+  maxTokens?: number;
   timeoutMs?: number;
   fetch?: typeof fetch;
 }
@@ -105,6 +110,7 @@ export function openai(options: OpenAiOptions): Provider {
           },
           body: JSON.stringify({
             temperature: 0,
+            max_tokens: options.maxTokens ?? 4096,
             ...options.extraBody,
             model: options.model,
             stream: false,
@@ -132,13 +138,18 @@ export function openai(options: OpenAiOptions): Provider {
           `The server at ${base} answered ${response.status}: is "${options.model}" a model it serves, and is the base URL the API root (…/v1)?`,
         );
       if (!response.ok) throw new Unavailable(`The server at ${base} answered ${response.status}`);
-      let body: { choices?: { message?: { content?: unknown } }[] };
+      let body: { choices?: { message?: { content?: unknown }; finish_reason?: unknown }[] };
       try {
         body = (await response.json()) as typeof body;
       } catch {
         throw new BadAnswer("The answer is not JSON");
       }
-      const content = body.choices?.[0]?.message?.content;
+      const choice = body.choices?.[0];
+      if (choice?.finish_reason === "length")
+        throw new BadAnswer(
+          `The answer was cut off at ${options.maxTokens ?? 4096} tokens (a model that does not stop; thinking on?): SPEC_REVIEW_MAX_TOKENS, SPEC_REVIEW_EXTRA_BODY`,
+        );
+      const content = choice?.message?.content;
       if (typeof content !== "string") throw new BadAnswer("The answer has no message");
       return content;
     },

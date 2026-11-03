@@ -25,6 +25,7 @@ if (env.SPEC_REVIEW_PROVIDER === "openai") {
     baseUrl: env.SPEC_REVIEW_BASE_URL,
     apiKey: env.SPEC_REVIEW_API_KEY,
     extraBody: env.SPEC_REVIEW_EXTRA_BODY ? JSON.parse(env.SPEC_REVIEW_EXTRA_BODY) : undefined,
+    maxTokens: env.SPEC_REVIEW_MAX_TOKENS ? Number(env.SPEC_REVIEW_MAX_TOKENS) : undefined,
     timeoutMs: env.SPEC_REVIEW_TIMEOUT_MS ? Number(env.SPEC_REVIEW_TIMEOUT_MS) : undefined,
   });
 } else {

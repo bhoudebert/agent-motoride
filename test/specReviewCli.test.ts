@@ -421,6 +421,7 @@ test("spec review CLI: the OpenAI adapter asks /chat/completions for a JSON sche
     assert.equal(headers.authorization, "Bearer sk-test");
     assert.equal(body.model, "gemma4-12b");
     assert.equal(body.temperature, 0);
+    assert.equal(body.max_tokens, 4096, "an answer is capped by default");
     assert.equal(body.reasoning_effort, "none");
     assert.equal(body.response_format.type, "json_schema");
     assert.deepEqual(body.response_format.json_schema.schema, JSON.parse(JSON.stringify(FINDINGS_SCHEMA)));
@@ -449,6 +450,9 @@ test("spec review CLI: the OpenAI adapter tells a refused key, an unknown model 
   const busy = await fakeOpenAi(() => ({ status: 503, body: {} }));
   const broken = await fakeOpenAi(() => ({ body: "<html>" }));
   const empty = await fakeOpenAi(() => ({ body: { choices: [] } }));
+  const endless = await fakeOpenAi(() => ({
+    body: { choices: [{ finish_reason: "length", message: { content: '{"findings": [' } }] },
+  }));
   try {
     const ask = (baseUrl: string) =>
       openai({ baseUrl, model: "m", apiKey: "sk-secret" }).complete({ system: "", user: "", schema: {} });
@@ -467,11 +471,20 @@ test("spec review CLI: the OpenAI adapter tells a refused key, an unknown model 
     await assert.rejects(ask(broken.host), BadAnswer);
     await assert.rejects(ask(empty.host), BadAnswer);
     await assert.rejects(
+      ask(endless.host),
+      (e) => e instanceof BadAnswer && /cut off at 4096 tokens/.test((e as Error).message),
+    );
+    const small = await openai({ baseUrl: endless.host, model: "m", maxTokens: 300 })
+      .complete({ system: "", user: "", schema: {} })
+      .catch((e) => e);
+    assert.match((small as Error).message, /cut off at 300 tokens/);
+    assert.equal(endless.requests.at(-1)?.body.max_tokens, 300);
+    await assert.rejects(
       ask("http://127.0.0.1:1"),
       (e) => e instanceof Unavailable && /not reachable/.test((e as Error).message),
     );
   } finally {
-    await Promise.all([denied.close(), unknown.close(), busy.close(), broken.close(), empty.close()]);
+    await Promise.all([denied.close(), unknown.close(), busy.close(), broken.close(), empty.close(), endless.close()]);
   }
 });
 

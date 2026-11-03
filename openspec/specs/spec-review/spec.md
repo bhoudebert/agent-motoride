@@ -136,7 +136,7 @@ by `OLLAMA_HOST` (default `http://127.0.0.1:11434`), with the model named by `--
 for findings as JSON that follows a schema. With `--provider openai` (or `SPEC_REVIEW_PROVIDER=openai` for the hook and
 the evals), the command SHALL instead send the same question to `POST {SPEC_REVIEW_BASE_URL}/chat/completions` of an
 OpenAI-compatible server (LiteLLM, vLLM, Ollama's `/v1`), with a `json_schema` response format, a bearer token from
-`SPEC_REVIEW_API_KEY` when set, temperature 0, and the fields of the JSON object `SPEC_REVIEW_EXTRA_BODY` merged into
+`SPEC_REVIEW_API_KEY` when set, temperature 0, an answer limit of `SPEC_REVIEW_MAX_TOKENS` tokens (default 4096), and the fields of the JSON object `SPEC_REVIEW_EXTRA_BODY` merged into
 the request. The key SHALL NOT appear in any output or report. Everything after the answer (verification, states,
 blocking) SHALL be the same whichever provider answered. The context SHALL be bounded and organised by capability, never the whole
 repository. The text sent SHALL be marked as data, never as instructions. No provider is required: a local Ollama needs no key and no
@@ -179,6 +179,11 @@ unavailable or failed review SHALL NOT be shown as a review that found nothing.
 
 - **WHEN** the review is requested with `--provider openai` and the server answers 401, 403, 400 or 404
 - **THEN** the review is marked unavailable with a reason that names the key setting or the model and the base URL, and the key is not printed
+
+#### Scenario: The model does not stop
+
+- **WHEN** an OpenAI-compatible server stops the answer because it reached the token limit
+- **THEN** the review is marked failed with a reason that says the answer was cut off, and no finding comes from it
 
 #### Scenario: The answer is not JSON
 

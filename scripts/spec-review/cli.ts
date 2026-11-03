@@ -156,6 +156,7 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env,
         baseUrl: env.SPEC_REVIEW_BASE_URL,
         apiKey: env.SPEC_REVIEW_API_KEY,
         extraBody,
+        maxTokens: env.SPEC_REVIEW_MAX_TOKENS ? Number(env.SPEC_REVIEW_MAX_TOKENS) : undefined,
         timeoutMs,
       });
     }

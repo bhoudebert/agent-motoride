@@ -13,7 +13,8 @@ export interface Score {
 /** Compares what a review reported with what the scenario is labelled to contain. */
 export function scoreScenario(scenario: Scenario, report: Report): Score {
   const errors = [...new Set(report.findings.filter((f) => f.level === "error").map((f) => f.rule))].sort();
-  const reported = new Set(report.review.findings.map((f) => f.requirement));
+  const allowed = new Set(scenario.expect.allowed);
+  const reported = new Set(report.review.findings.map((f) => f.requirement).filter((r) => !allowed.has(r)));
   const expected = new Set(scenario.expect.contradictions);
   const truePositives = [...reported].filter((r) => expected.has(r)).length;
   return {

@@ -464,6 +464,21 @@ test("spec review: true positives, false positives and missed findings are count
   assert.equal(total([]).precision, null);
 });
 
+test("spec review: a true extra finding the scenario allows is neither a hit nor a false alarm", async () => {
+  const scenario = SCENARIOS.find((s) => s.id === "guide-with-code")!;
+  const main = (scenario.scripted as any).findings[0];
+  const extra = { ...main, kind: "adr-conflict", requirement: "ADR 0001" };
+  const withExtra = await review(scenario.head, { provider: scripted({ findings: [main, extra] }) });
+  const without = await review(scenario.head, { provider: scripted({ findings: [main] }) });
+  const stranger = structuredClone(withExtra);
+  stranger.review.findings = stranger.review.findings.map((f) =>
+    f.requirement === "ADR 0001" ? { ...f, requirement: "Something else" } : f,
+  );
+  assert.deepEqual(scoreScenario(scenario, withExtra), scoreScenario(scenario, without));
+  assert.equal(scoreScenario(scenario, withExtra).falsePositives, 0);
+  assert.equal(scoreScenario(scenario, stranger).falsePositives, 1, "only what is labelled allowed is forgiven");
+});
+
 test("spec review: every scenario is a labelled change of the same small project", () => {
   const ids = SCENARIOS.map((s: Scenario) => s.id);
   assert.equal(new Set(ids).size, ids.length);

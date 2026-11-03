@@ -1,6 +1,6 @@
 # 0044. Check the specs in CI and require a spec or docs change with code
 
-- Status: accepted
+- Status: accepted; amended by 0058 (a change to the docs no longer counts as a spec change)
 - Date: 2026-10-30
 
 ## Context

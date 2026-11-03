@@ -56,3 +56,4 @@ last one.
 | live-sharing        | A ride followed live by others: encrypted relay written by the phone, read by a web page                  |
 | multi-user-server   | One instance for several riders, one library each, found by token; enrolment of the phone                 |
 | hosted-provisioning | A sidecar creates, limits and deletes riders through a private API; what a rider may use (`GET /me`)      |
+| spec-review         | Drift between specs, decision records, code and tests: deterministic checks, optional local model review  |

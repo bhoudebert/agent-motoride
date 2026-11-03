@@ -4,6 +4,7 @@ import { gitSource, parseNameStatus } from "../scripts/spec-review/git.ts";
 import { globToRegExp } from "../scripts/spec-review/glob.ts";
 import { BadAnswer, Unavailable, type Provider } from "../scripts/spec-review/provider.ts";
 import { githubAnnotations, renderMarkdown } from "../scripts/spec-review/report.ts";
+import { literalsOf } from "../scripts/spec-review/checks.ts";
 import { runAuditReport, runReview } from "../scripts/spec-review/run.ts";
 import { parseFindings } from "../scripts/spec-review/schema.ts";
 import { buildContext, SYSTEM_PROMPT, testTitles } from "../scripts/spec-review/context.ts";
@@ -152,7 +153,7 @@ test("spec review: a file the map does not know is a warning, and any spec chang
 
   const withSpec = await review({
     "src/newThing.ts": "export const a = 1;\n",
-    "openspec/specs/weather-daylight/spec.md": `${BASE["openspec/specs/weather-daylight/spec.md"]}\n`,
+    "openspec/specs/weather-daylight/spec.md": `${BASE["openspec/specs/weather-daylight/spec.md"]}\nA new sentence.\n`,
   });
   assert.deepEqual(errors(withSpec), []);
 });
@@ -511,4 +512,127 @@ test("spec review: the audit checks the whole tree, with no change and no model"
   } finally {
     repo.cleanup();
   }
+});
+
+test("spec review: a spec edit that is only whitespace is no spec change", async () => {
+  const spec = BASE["openspec/specs/weather-daylight/spec.md"]!;
+  const report = await review({
+    "src/tools/weather.ts": WEATHER.replace("= 50;", "= 70;"),
+    "openspec/specs/weather-daylight/spec.md": `${spec.replace("Tell the rider", "Tell  the rider ")}\n\n`,
+  });
+  const finding = report.findings.find((f) => f.rule === "code-without-spec")!;
+  assert.equal(finding.level, "error");
+  assert.match(finding.message, /edited in whitespace only/);
+  assert.ok(
+    report.touched.find((t) => t.capability === "weather-daylight")?.reasons.some((r) => r.includes("whitespace only")),
+  );
+});
+
+test("spec review: in the pull-request check only the label justifies, a commit line does not", async () => {
+  const repo = buildRepo(BASE, { "src/tools/weather.ts": WEATHER.replaceAll("warnsOfRain", "isRainy") }, [
+    "refactor: rename\n\nNo-Spec: internal rename",
+  ]);
+  try {
+    const source = gitSource(repo.dir, repo.base, repo.head);
+    const local = await runReview(source, { openspec: false });
+    assert.deepEqual(errors(local), []);
+    const ci = await runReview(source, { openspec: false, commitLines: false });
+    assert.deepEqual(errors(ci), ["code-without-spec"]);
+    assert.equal(ci.noSpec, null);
+    const label = await runReview(source, {
+      openspec: false,
+      commitLines: false,
+      noSpec: { reason: "label no-spec", source: "label" },
+    });
+    assert.deepEqual(errors(label), []);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test("spec review: a no-spec change that adds a test or changes a number is warned about", async () => {
+  const clean = await review(
+    { "src/tools/weather.ts": WEATHER.replaceAll("warnsOfRain", "isRainy") },
+    { noSpec: { reason: "rename", source: "label" } },
+  );
+  assert.deepEqual(
+    clean.findings.filter((f) => f.rule === "no-spec-suspect"),
+    [],
+    "a rename changes no number and adds no test",
+  );
+
+  const changed = await review(
+    {
+      "src/tools/weather.ts": WEATHER.replace("= 40;", "= 60;"),
+      "test/weather.test.ts": `${BASE["test/weather.test.ts"]}test("warns above 60 percent of rain", () => {});\n`,
+    },
+    { noSpec: { reason: "tidy", source: "label" } },
+  );
+  const suspect = changed.findings.filter((f) => f.rule === "no-spec-suspect");
+  assert.equal(suspect.length, 1);
+  assert.equal(suspect[0]!.level, "warning");
+  assert.match(suspect[0]!.message, /adds test case\(s\): "warns above 60 percent of rain"/);
+  assert.match(suspect[0]!.message, /changes numbers or strings: 40 became 60/);
+  assert.deepEqual(errors(changed), [], "a warning, not an error");
+  assert.deepEqual(changed.blockers, []);
+
+  // A change that has a spec needs no justification and is not second-guessed.
+  const specced = await review({
+    "src/tools/weather.ts": WEATHER.replace("= 40;", "= 60;"),
+    "openspec/specs/weather-daylight/spec.md": BASE["openspec/specs/weather-daylight/spec.md"]!.replace(
+      "40 percent",
+      "60 percent",
+    ),
+  });
+  assert.deepEqual(
+    specced.findings.filter((f) => f.rule === "no-spec-suspect"),
+    [],
+  );
+});
+
+test("spec review: comments, imports and moved lines are not changed literals", () => {
+  const diff = [
+    "--- a/x.ts",
+    "+++ b/x.ts",
+    "@@ -1,3 +1,3 @@",
+    '-import { a } from "./old.ts";',
+    '+import { a } from "./new.ts";',
+    "-// threshold 40",
+    "+// threshold 60",
+    '-const A = "x"; const n = 5;',
+    '+const A = "x"; const n = 5;',
+  ].join("\n");
+  assert.deepEqual(literalsOf(diff, "-"), ["5", '"x"']);
+  assert.deepEqual(literalsOf(diff, "+"), ["5", '"x"']);
+});
+
+test("spec review: the model is asked whether a change that claims no behaviour change is true", async () => {
+  const asked: string[] = [];
+  const provider: Provider = {
+    name: "scripted",
+    model: "fake",
+    complete: async ({ user }) => {
+      asked.push(user);
+      return JSON.stringify({ findings: [] });
+    },
+  };
+  await review(
+    { "src/tools/weather.ts": WEATHER.replaceAll("warnsOfRain", "isRainy") },
+    { provider, noSpec: { reason: "internal rename", source: "label" } },
+  );
+  assert.match(asked[0]!, /The author states that this change has no behaviour change \(reason: internal rename\)/);
+  assert.match(asked[0]!, /unspecified-change/);
+
+  asked.length = 0;
+  await review(
+    {
+      "src/tools/weather.ts": WEATHER.replace("= 50;", "= 70;"),
+      "openspec/specs/weather-daylight/spec.md": BASE["openspec/specs/weather-daylight/spec.md"]!.replace(
+        "above 50 km/h",
+        "above 70 km/h",
+      ),
+    },
+    { provider },
+  );
+  assert.ok(!asked[0]!.includes("The author states"), "no claim, no question about one");
 });

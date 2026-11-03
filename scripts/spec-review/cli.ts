@@ -4,7 +4,7 @@ import { parseArgs } from "node:util";
 import { gitSource, refExists } from "./git.ts";
 import { ollama, type Provider } from "./provider.ts";
 import { describeState, githubAnnotations, renderMarkdown } from "./report.ts";
-import { runReview } from "./run.ts";
+import { runAuditReport, runReview } from "./run.ts";
 import type { NoSpec, Report } from "./types.ts";
 
 export const USAGE = `Usage: npm run spec:review -- [options]
@@ -19,6 +19,7 @@ export const USAGE = `Usage: npm run spec:review -- [options]
   --skip-openspec       do not run openspec validate (another job does)
   --require-review      a model review that did not complete also fails the command
   --max-capabilities <n>  capabilities asked about, one model call each (default 4)
+  --audit               check the whole tree at --head with no base, to clean up what earlier changes left (no model)
   --hook                the pre-push hook: the model runs when SPEC_REVIEW_MODEL is set; a review that cannot run never blocks
   --repo <folder>       the repository (default the current folder)
 
@@ -72,6 +73,7 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env,
         "require-review": { type: "boolean" },
         "max-capabilities": { type: "string" },
         hook: { type: "boolean" },
+        audit: { type: "boolean" },
         repo: { type: "string" },
         help: { type: "boolean", short: "h" },
       },
@@ -125,19 +127,29 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env,
 
   let report: Report;
   try {
-    if (!refExists(repo, base)) throw new Error(`the base "${base}" is not a Git ref here (git fetch, or --base)`);
-    if (!refExists(repo, head)) throw new Error(`the head "${head}" is not a Git ref here`);
-    const source = gitSource(repo, base, head);
-    if (hook && source.changed.length === 0) return 0;
-    report = await runReview(source, {
-      noSpec,
-      provider,
-      openspec: values["skip-openspec"] ? false : undefined,
-      requireReview: values["require-review"],
-      maxCapabilities: values["max-capabilities"] ? Number(values["max-capabilities"]) : undefined,
-      cwd: repo,
-      onProgress: (m) => io.err(m),
-    });
+    if (values.audit && provider) {
+      io.err("--audit does not call a model yet: leave out --provider.");
+      return 2;
+    }
+    if (values.audit) {
+      if (!refExists(repo, head)) throw new Error(`the head "${head}" is not a Git ref here`);
+      const source = gitSource(repo, head, head);
+      report = runAuditReport(source, { openspec: values["skip-openspec"] ? false : undefined, cwd: repo });
+    } else {
+      if (!refExists(repo, base)) throw new Error(`the base "${base}" is not a Git ref here (git fetch, or --base)`);
+      if (!refExists(repo, head)) throw new Error(`the head "${head}" is not a Git ref here`);
+      const source = gitSource(repo, base, head);
+      if (hook && source.changed.length === 0) return 0;
+      report = await runReview(source, {
+        noSpec,
+        provider,
+        openspec: values["skip-openspec"] ? false : undefined,
+        requireReview: values["require-review"],
+        maxCapabilities: values["max-capabilities"] ? Number(values["max-capabilities"]) : undefined,
+        cwd: repo,
+        onProgress: (m) => io.err(m),
+      });
+    }
   } catch (e) {
     io.err(`spec review could not run: ${(e as Error).message}`);
     return technical;

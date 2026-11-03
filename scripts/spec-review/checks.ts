@@ -112,7 +112,12 @@ export function runChecks(source: Source, option?: NoSpec): CheckResult {
   }
 
   findings.push(...codeMapFindings(source, map, known));
-  findings.push(...referenceFindings(source));
+  findings.push(
+    ...referenceFindings(
+      source,
+      source.changed.filter((f) => f.status !== "deleted").map((f) => f.path),
+    ),
+  );
 
   return {
     findings,
@@ -156,12 +161,11 @@ const referencing = (path: string) =>
   !path.startsWith("docs/guide/.vitepress/") &&
   !path.startsWith("openspec/changes/archive/");
 
-/** In the documents a change touches: records and spec paths that do not exist. */
-function referenceFindings(source: Source): Finding[] {
+/** In some documents: records and spec paths that do not exist. */
+function referenceFindings(source: Source, paths: string[]): Finding[] {
   const findings: Finding[] = [];
   const has = (prefix: string) => source.tree.some((p) => p.startsWith(prefix));
-  for (const file of source.changed) {
-    if (file.status === "deleted" || !referencing(file.path)) continue;
+  for (const file of paths.filter(referencing).map((path) => ({ path }))) {
     const text = source.readHead(file.path);
     if (text === undefined) continue;
     const reported = new Set<string>();
@@ -192,5 +196,37 @@ function referenceFindings(source: Source): Finding[] {
       }
     });
   }
+  return findings;
+}
+
+/**
+ * The checks that do not need a change: every document, and the code map against the tree. For cleaning up what earlier
+ * changes left; "code without a spec change" is a property of a change, so it is not here.
+ */
+export function runAudit(source: Source): Finding[] {
+  const findings: Finding[] = [];
+  const { map, error } = readCodeMap(source);
+  if (error) findings.push({ rule: "code-map", level: "warning", message: `${error}.`, file: CODE_MAP_PATH });
+  const known = capabilitiesOfTree(source.tree);
+  findings.push(...codeMapFindings(source, map, known));
+  for (const capability of known) {
+    if (!map[capability])
+      findings.push({
+        rule: "code-map",
+        level: "warning",
+        message: `The spec "${capability}" is in no entry of ${CODE_MAP_PATH}: a change to its code cannot be tied to it.`,
+        file: specPath(capability),
+      });
+  }
+  for (const path of source.tree.filter((p) => p.startsWith("src/") && p.endsWith(".ts"))) {
+    if (capabilitiesOf(map, path, "code").length === 0)
+      findings.push({
+        rule: "unmapped-file",
+        level: "warning",
+        message: `${path} is in no entry of ${CODE_MAP_PATH}.`,
+        file: path,
+      });
+  }
+  findings.push(...referenceFindings(source, source.tree));
   return findings;
 }

@@ -70,6 +70,24 @@ and the report SHALL show it.
 - **WHEN** a change edits `src/tools/weather.ts` and a commit says `No-Spec: rename an internal helper`
 - **THEN** there is no error, and the report shows the reason
 
+### Requirement: Audit the repository as it is
+
+`npm run spec:review -- --audit` SHALL check the whole tree at `--head` (default `HEAD`) with no base, to clean up what
+earlier changes left. It SHALL run the validation of the specs, the reference checks on every document under `openspec/`
+and `docs/` and not only the files a change touches, and the code map checks: a source file in no entry, a pattern that
+matches no file, a capability that has no spec, a spec that no entry covers. It SHALL NOT report code without a spec
+change, which is a property of a change. It SHALL NOT call a model, and SHALL refuse `--provider` with `--audit`.
+
+#### Scenario: A stale reference nobody touched
+
+- **WHEN** a document that no recent change touches cites a record that does not exist, and the audit runs
+- **THEN** the report has an error at that line
+
+#### Scenario: A source file the map does not know
+
+- **WHEN** a file under `src/` is in no entry of the code map
+- **THEN** the audit reports it as unmapped, a warning
+
 ### Requirement: Specs and references are valid
 
 The check SHALL run `openspec validate --all --no-interactive` when the tool is installed, and report its failure as an

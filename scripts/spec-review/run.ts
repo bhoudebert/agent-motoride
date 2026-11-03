@@ -13,11 +13,13 @@ export interface RunOptions extends ReviewOptions {
   /** A review that did not complete also blocks. */
   requireReview?: boolean;
   cwd?: string;
+  /** A `No-Spec:` line of a commit counts as the justification (false in the pull-request check: only the label does). */
+  commitLines?: boolean;
 }
 
 /** The whole review of a change: the deterministic checks, then the model's, if one is given. */
 export async function runReview(source: Source, options: RunOptions = {}): Promise<Report> {
-  const checks = runChecks(source, options.noSpec);
+  const checks = runChecks(source, options.noSpec, { commitLines: options.commitLines });
   const findings = [...checks.findings];
   const skippedChecks: string[] = [];
 
@@ -35,7 +37,7 @@ export async function runReview(source: Source, options: RunOptions = {}): Promi
   }
 
   const review = options.provider
-    ? await reviewWithModel(source, checks.touched, checks.map, options.provider, options)
+    ? await reviewWithModel(source, checks.touched, checks.map, options.provider, { ...options, claim: checks.noSpec })
     : notRequested();
 
   const blockers = [

@@ -83,6 +83,11 @@ export function gitSource(repo: string, base: string, head: string): Source {
     tree,
     readHead: (path) => show(head, path),
     readBase: (path) => show(mergeBase, path),
-    diff: (path, context) => git(repo, ["diff", `-U${context}`, range, "--", path], true),
+    diff: (path, context, ignoreSpace) =>
+      git(
+        repo,
+        ["diff", `-U${context}`, ...(ignoreSpace ? ["-w", "--ignore-blank-lines"] : []), range, "--", path],
+        true,
+      ),
   };
 }

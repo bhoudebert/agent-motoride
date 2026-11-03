@@ -16,6 +16,7 @@ export const USAGE = `Usage: npm run spec:review -- [options]
   --no-spec <reason>    the change has no behaviour change, so no spec change is needed
   --out <folder>        where report.json and report.md go (default .spec-review)
   --format <text|github>  github also prints workflow annotations and fills the job summary
+  --ignore-commit-lines a "No-Spec:" line in a commit is not a justification (the pull-request check: only the label counts)
   --skip-openspec       do not run openspec validate (another job does)
   --require-review      a model review that did not complete also fails the command
   --max-capabilities <n>  capabilities asked about, one model call each (default 4)
@@ -78,6 +79,7 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env,
         out: { type: "string" },
         format: { type: "string" },
         "skip-openspec": { type: "boolean" },
+        "ignore-commit-lines": { type: "boolean" },
         "require-review": { type: "boolean" },
         "max-capabilities": { type: "string" },
         hook: { type: "boolean" },
@@ -150,6 +152,7 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env,
       if (hook && source.changed.length === 0) return 0;
       report = await runReview(source, {
         noSpec,
+        commitLines: !values["ignore-commit-lines"],
         provider,
         openspec: values["skip-openspec"] ? false : undefined,
         requireReview: values["require-review"],

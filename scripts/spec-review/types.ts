@@ -20,8 +20,8 @@ export interface Source {
   readHead(path: string): string | undefined;
   /** A file at the base, or undefined. */
   readBase(path: string): string | undefined;
-  /** The diff of one file with some context, or "". */
-  diff(path: string, context: number): string;
+  /** The diff of one file with some context (whitespace and blank lines ignored on request), or "". */
+  diff(path: string, context: number, ignoreSpace?: boolean): string;
 }
 
 export type Level = "error" | "warning" | "info";

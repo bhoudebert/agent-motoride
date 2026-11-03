@@ -2,7 +2,7 @@ import { buildContext, DEFAULT_BUDGET, SYSTEM_PROMPT, userPrompt } from "./conte
 import { BadAnswer, Unavailable, type Provider } from "./provider.ts";
 import { parseFindings, FINDINGS_SCHEMA } from "./schema.ts";
 import { capabilitiesOfTree, type CodeMap } from "./specs.ts";
-import type { ModelFinding, Rejected, ReviewReport, Source, Touched } from "./types.ts";
+import type { ModelFinding, NoSpec, Rejected, ReviewReport, Source, Touched } from "./types.ts";
 import { verifyFindings } from "./verify.ts";
 
 export const notRequested = (): ReviewReport => ({
@@ -18,6 +18,8 @@ export interface ReviewOptions {
   /** How many capabilities are asked about: each is a model call. */
   maxCapabilities?: number;
   onProgress?: (message: string) => void;
+  /** The change is justified as having no behaviour change: the model is asked whether that is true. */
+  claim?: NoSpec | null;
 }
 
 /** Asks the provider about each touched capability, one call each, and keeps only the findings that check out. */
@@ -50,7 +52,7 @@ export async function reviewWithModel(
     try {
       const answer = await provider.complete({
         system: SYSTEM_PROMPT,
-        user: userPrompt(capability, source.base, source.head, text),
+        user: userPrompt(capability, source.base, source.head, text, options.claim),
         schema: FINDINGS_SCHEMA,
       });
       const parsed = parseFindings(answer);

@@ -48,4 +48,4 @@ jobs:
           node scripts/spec-review.ts
           --base "${{ github.event.pull_request.base.sha }}"
           --head "${{ github.event.pull_request.head.sha }}"
-          --skip-openspec --format github
+          --skip-openspec --ignore-commit-lines --format github

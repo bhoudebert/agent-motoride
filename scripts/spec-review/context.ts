@@ -1,6 +1,6 @@
 import { globToRegExp } from "./glob.ts";
 import { adrFile, capabilitiesOf, citedRecords, specPath, type CodeMap } from "./specs.ts";
-import type { Source } from "./types.ts";
+import type { NoSpec, Source } from "./types.ts";
 import type { Shown } from "./verify.ts";
 
 export const DEFAULT_BUDGET = 24_000;
@@ -89,5 +89,9 @@ Rules:
 7. "action" is what you suggest: fix-code, revise-spec, or decide (a person must choose).
 8. When there is nothing to report, answer {"findings": []}. Answer with JSON that follows the schema, and nothing else.`;
 
-export const userPrompt = (capability: string, base: string, head: string, context: string) =>
-  `Capability: ${capability}\nChange: ${base}...${head}\n\n${context}\n\nReport the findings, or an empty list.`;
+export const userPrompt = (capability: string, base: string, head: string, context: string, claim?: NoSpec | null) =>
+  `Capability: ${capability}\nChange: ${base}...${head}\n\n${context}\n\n${
+    claim
+      ? `The author states that this change has no behaviour change (reason: ${claim.reason}). Say whether the diff changes behaviour; if it does, report it as kind "unspecified-change" against the requirement it touches.\n\n`
+      : ""
+  }Report the findings, or an empty list.`;

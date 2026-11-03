@@ -80,6 +80,7 @@ npm run smoke        # live tools, no model
 npm run mcp:smoke    # MCP server over stdio, no model
 npm run spec:review -- --base origin/main --head HEAD   # check your change against the specs (add --provider ollama --model <m> for a local model)
 npm run spec:review -- --audit   # check the whole repository for stale references and a stale code map, no model
+npm run spec:review -- --provider ollama --publish   # after pushing: show the local model's review on the pull request (a status and a comment)
 npm run docs:reference  # regenerate the guide's reference after changing commands, tools or settings
 openspec validate --all    # specs and open proposals parse, a scenario per requirement (nix develop provides it)
 npm run rides -- runs | trace <id>   # what a planning session did

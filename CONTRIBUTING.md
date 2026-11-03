@@ -103,6 +103,11 @@ runs on your machine, and never edits anything. **Without it nothing is refused*
 `model review: Not requested` (or `NOT RUN, unavailable` when Ollama is configured but not answering) and the push goes
 through if the deterministic checks pass. Details: `docs/EVOLVING.md`.
 
+To show on your pull request that the model ran, push, then `npm run spec:review -- --provider ollama --publish`: it
+posts a status on the commit (green or red, with the model's name) and one comment with the report, and only when the
+review completed. A commit without that status is a commit the model has not reviewed. It is informational, not a
+required check.
+
 Reviewers can run the same on someone else's pull request, a fork's included:
 `gh pr checkout 123`, then `npm run spec:review -- --base origin/main --provider ollama --model gemma4:12b`.
 To clean up a repository rather than check a change: `npm run spec:review -- --audit`.

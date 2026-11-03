@@ -1,7 +1,9 @@
+import { execFileSync } from "node:child_process";
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { gitSource, refExists } from "./git.ts";
+import { ghIn, publish, PublishError } from "./publish.ts";
 import { ollama, type Provider } from "./provider.ts";
 import { describeState, githubAnnotations, renderMarkdown } from "./report.ts";
 import { runAuditReport, runReview } from "./run.ts";
@@ -21,6 +23,8 @@ export const USAGE = `Usage: npm run spec:review -- [options]
   --require-review      a model review that did not complete also fails the command
   --max-capabilities <n>  capabilities asked about, one model call each (default 4)
   --audit               check the whole tree at --head with no base, to clean up what earlier changes left (no model)
+  --publish             after a completed model review, show it on GitHub: a status on the commit and a comment on the pull request
+  --pr <number>         the pull request for --publish (default: the one of the current branch)
   --hook                the pre-push hook: the model runs when SPEC_REVIEW_MODEL is set; a review that cannot run never blocks
   --repo <folder>       the repository (default the current folder)
 
@@ -84,6 +88,8 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env,
         "max-capabilities": { type: "string" },
         hook: { type: "boolean" },
         audit: { type: "boolean" },
+        publish: { type: "boolean" },
+        pr: { type: "string" },
         repo: { type: "string" },
         help: { type: "boolean", short: "h" },
       },
@@ -126,6 +132,12 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env,
     });
   } else if (providerName !== "none") {
     io.err(`Unknown provider "${providerName}": ollama or none.`);
+    return 2;
+  }
+
+  if (values.publish && hook) io.err("--publish is ignored by the hook: a push never posts to GitHub.");
+  if (values.publish && !hook && (!provider || values.audit)) {
+    io.err("--publish shows a model review: it needs --provider ollama, and not --audit.");
     return 2;
   }
 
@@ -180,6 +192,23 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env,
     for (const line of githubAnnotations(report)) io.out(line);
     if (env.GITHUB_STEP_SUMMARY) appendFileSync(env.GITHUB_STEP_SUMMARY, `${renderMarkdown(report)}\n`);
   }
+  let publishFailed = false;
+  if (values.publish && !hook) {
+    try {
+      const sha = execFileSync("git", ["rev-parse", head], { cwd: repo, encoding: "utf8" }).trim();
+      const result = publish(report, { sha, pr: values.pr ? Number(values.pr) : undefined, gh: ghIn(repo) });
+      io.out(
+        result.published
+          ? `published on ${result.sha.slice(0, 7)}: status ${result.state} (${result.description}); ${
+              result.pr === null ? "no pull request found for a comment" : `comment ${result.comment} on #${result.pr}`
+            }`
+          : `not published: ${result.reason}`,
+      );
+    } catch (e) {
+      publishFailed = true;
+      io.err(`could not publish: ${e instanceof PublishError ? e.message : (e as Error).message}`);
+    }
+  }
   if (report.blockers.length) {
     if (hook)
       io.err(
@@ -187,5 +216,5 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env,
       );
     return 1;
   }
-  return 0;
+  return publishFailed ? 2 : 0;
 }

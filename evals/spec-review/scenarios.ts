@@ -62,6 +62,8 @@ export interface Scenario {
     errors: string[];
     /** Requirements a good model reports as contradicted, exactly. */
     contradictions: string[];
+    /** Other findings that are true, and that a good model may or may not add: neither a hit nor a false alarm. */
+    allowed?: string[];
   };
   /** What a scripted model answers in the tests. A real model is asked the same question. */
   scripted: unknown;
@@ -109,7 +111,8 @@ export const SCENARIOS: Scenario[] = [
       "src/tools/weather.ts": WEATHER.replace("= 50;", "= 70;"),
       "docs/guide/weather.md": "# Weather\n\nThe app warns about rain and wind above 70 km/h.\n",
     },
-    expect: { errors: ["code-without-spec"], contradictions: ["Wind warning"] },
+    // The record of the limit still says 50 as well, so "ADR 0001" is a true finding a model may add.
+    expect: { errors: ["code-without-spec"], contradictions: ["Wind warning"], allowed: ["ADR 0001"] },
     scripted: {
       findings: [
         {

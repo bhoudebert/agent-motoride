@@ -34,7 +34,15 @@ const stdio: Io = { out: (t) => console.log(t), err: (t) => console.error(t) };
 
 /** A short text for a terminal or a hook. */
 export function summaryText(report: Report): string {
-  const lines = [`spec review ${report.base}...${report.head}: ${report.changed.length} file(s) changed`];
+  const lines = [
+    report.base === "(audit)"
+      ? `spec review, audit of ${report.head}`
+      : `spec review ${report.base}...${report.head}: ${report.changed.length} file(s) changed`,
+  ];
+  if (report.base !== "(audit)" && report.changed.length === 0)
+    lines.push(
+      "  nothing to compare: no file differs between the two refs. The review reads commits: commit your work on a branch, or give an older --base (or --audit for the whole repository).",
+    );
   for (const f of report.findings.filter((x) => x.level !== "info")) {
     lines.push(
       `  ${f.level === "error" ? "error  " : "warning"} ${f.rule}${f.file ? ` ${f.file}${f.line ? `:${f.line}` : ""}` : ""}: ${f.message.split("\n")[0]}`,

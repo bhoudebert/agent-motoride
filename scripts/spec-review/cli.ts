@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { gitSource, refExists } from "./git.ts";
 import { ghIn, publish, PublishError } from "./publish.ts";
-import { ollama, type Provider } from "./provider.ts";
+import { ollama, openai, type Provider } from "./provider.ts";
 import { describeState, githubAnnotations, renderMarkdown } from "./report.ts";
 import { runAuditReport, runReview } from "./run.ts";
 import type { NoSpec, Report } from "./types.ts";
@@ -13,8 +13,9 @@ export const USAGE = `Usage: npm run spec:review -- [options]
 
   --base <ref>          what the change is compared with (default origin/main, or SPEC_REVIEW_BASE)
   --head <ref>          the change (default HEAD)
-  --provider <name>     "ollama" asks a local model; "none" runs the deterministic checks only (default none)
-  --model <name>        the Ollama model (or SPEC_REVIEW_MODEL); the server is OLLAMA_HOST
+  --provider <name>     "ollama" (OLLAMA_HOST) or "openai" (SPEC_REVIEW_BASE_URL: LiteLLM, vLLM...) asks a model; "none" runs the
+                        deterministic checks only (default none; the hook: SPEC_REVIEW_PROVIDER, else ollama when a model is set)
+  --model <name>        the model (or SPEC_REVIEW_MODEL); for "openai" the name the server serves
   --no-spec <reason>    the change has no behaviour change, so no spec change is needed
   --out <folder>        where report.json and report.md go (default .spec-review)
   --format <text|github>  github also prints workflow annotations and fills the job summary
@@ -115,29 +116,57 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv = process.env,
   const base =
     values.base ?? env.SPEC_REVIEW_BASE ?? ["origin/main", "main"].find((r) => refExists(repo, r)) ?? "origin/main";
 
-  const providerName = values.provider ?? (hook ? (env.SPEC_REVIEW_MODEL ? "ollama" : "none") : "none");
+  const providerName =
+    values.provider ?? (hook ? (env.SPEC_REVIEW_MODEL ? (env.SPEC_REVIEW_PROVIDER ?? "ollama") : "none") : "none");
   let provider: Provider | null = null;
-  if (providerName === "ollama") {
+  if (providerName === "ollama" || providerName === "openai") {
     const model = values.model ?? env.SPEC_REVIEW_MODEL;
     if (!model) {
-      io.err("The ollama provider needs a model: --model <name> or SPEC_REVIEW_MODEL.");
+      io.err(`The ${providerName} provider needs a model: --model <name> or SPEC_REVIEW_MODEL.`);
       return 2;
     }
-    provider = ollama({
-      model,
-      host: env.OLLAMA_HOST,
-      think: env.SPEC_REVIEW_THINK === "1",
-      numCtx: env.SPEC_REVIEW_NUM_CTX ? Number(env.SPEC_REVIEW_NUM_CTX) : undefined,
-      timeoutMs: env.SPEC_REVIEW_TIMEOUT_MS ? Number(env.SPEC_REVIEW_TIMEOUT_MS) : undefined,
-    });
+    const timeoutMs = env.SPEC_REVIEW_TIMEOUT_MS ? Number(env.SPEC_REVIEW_TIMEOUT_MS) : undefined;
+    if (providerName === "ollama") {
+      provider = ollama({
+        model,
+        host: env.OLLAMA_HOST,
+        think: env.SPEC_REVIEW_THINK === "1",
+        numCtx: env.SPEC_REVIEW_NUM_CTX ? Number(env.SPEC_REVIEW_NUM_CTX) : undefined,
+        timeoutMs,
+      });
+    } else {
+      if (!env.SPEC_REVIEW_BASE_URL) {
+        io.err(
+          "The openai provider needs the API root of the server: SPEC_REVIEW_BASE_URL (e.g. http://localhost:4000/v1).",
+        );
+        return 2;
+      }
+      let extraBody: Record<string, unknown> | undefined;
+      if (env.SPEC_REVIEW_EXTRA_BODY) {
+        try {
+          extraBody = JSON.parse(env.SPEC_REVIEW_EXTRA_BODY) as Record<string, unknown>;
+          if (!extraBody || typeof extraBody !== "object" || Array.isArray(extraBody)) throw new Error("not an object");
+        } catch {
+          io.err("SPEC_REVIEW_EXTRA_BODY must be a JSON object.");
+          return 2;
+        }
+      }
+      provider = openai({
+        model,
+        baseUrl: env.SPEC_REVIEW_BASE_URL,
+        apiKey: env.SPEC_REVIEW_API_KEY,
+        extraBody,
+        timeoutMs,
+      });
+    }
   } else if (providerName !== "none") {
-    io.err(`Unknown provider "${providerName}": ollama or none.`);
+    io.err(`Unknown provider "${providerName}": ollama, openai or none.`);
     return 2;
   }
 
   if (values.publish && hook) io.err("--publish is ignored by the hook: a push never posts to GitHub.");
   if (values.publish && !hook && (!provider || values.audit)) {
-    io.err("--publish shows a model review: it needs --provider ollama, and not --audit.");
+    io.err("--publish shows a model review: it needs --provider ollama or openai, and not --audit.");
     return 2;
   }
 

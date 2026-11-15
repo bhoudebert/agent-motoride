@@ -6,3 +6,6 @@ CHANGELOG.md
 site
 docs/guide/.vitepress/dist
 docs/guide/.vitepress/cache
+
+# Shelf's own files for each piece of work
+.shelf/

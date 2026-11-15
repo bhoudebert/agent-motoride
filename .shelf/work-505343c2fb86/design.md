@@ -22,6 +22,10 @@ Documentation, one config example and one spec scenario. No change in `src/`: th
 - No test under `test/` asserts the old "Claude Code or Codex" strings; only `scripts/reference.ts` holds them (already in scope, then `npm run docs:reference`).
 - The red CI jobs were cancelled by a newer run on the same pull request (the specs job had passed 20 of 20 before the cancel), not a failure of this work. A re-run settles it.
 
+## Round 3
+
+The only red job ("Spec or docs with code") was cancelled by a newer run on the same ref, not failed; the design is unchanged. The spec scenario is in `openspec/specs/mcp-server/spec.md` (same WHEN/THEN shape as its neighbours). `openspec` is not declared in the repository's tools here (`openspec: command not found`), so `openspec validate --all` was not run locally; CI's Specs validate job does it.
+
 ## Errors and edge cases
 
 Placeholder path left in place: the guide says to replace it, as for Codex. Old links keep working because the file name is unchanged.

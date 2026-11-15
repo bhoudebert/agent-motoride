@@ -1,6 +1,6 @@
 # Spec: OpenCode alongside Claude Code and Codex
 
-Round 2: (1) Prettier was run on `request.md`, the only file that failed the format check (the Specs job was cancelled by a newer run, not a failure). (2) Requirement 3 now covers every guide page that names the clients, not three files.
+Round 3: no change to the requirements. The review found none blocking; the red "Specs validate" job was cancelled by a newer run on the same pull request (the log ends with "The operation was canceled" after the spec checks passed), not a failure of this spec.
 
 ## Goal
 

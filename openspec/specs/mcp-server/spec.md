@@ -95,7 +95,7 @@ The server SHALL work with any MCP client over stdio. The rider SHALL get the sa
 
 #### Scenario: OpenCode
 
-- **WHEN** OpenCode starts in the project directory, where the project ships an `opencode.json` declaring the `ride` server as a local MCP server (`node --env-file-if-exists=.env src/mcp.ts`), and the rider asks for a ride in plain words
+- **WHEN** OpenCode starts in the project directory, where the project ships an `opencode.json`, and the rider asks for a ride in plain words
 - **THEN** the model receives the server instructions, fetches the guidance with `planningGuide`, and plans with the tools, with no change to the server
 
 #### Scenario: Claude Code
@@ -107,6 +107,25 @@ The server SHALL work with any MCP client over stdio. The rider SHALL get the sa
 
 - **WHEN** the rider types "plan me a ride this Saturday, under 250 km" without a slash command
 - **THEN** the model calls `planningGuide` first and plans with the full guidance, as with `/mcp__ride__plan-ride`
+
+### Requirement: OpenCode project file
+
+The repository SHALL ship an `opencode.json` at its root declaring one local MCP server `ride`: `mcp.ride.type` `"local"`, `command` the array `["node", "--env-file-if-exists=.env", "src/mcp.ts"]`, `enabled` `true`, so OpenCode started in the project directory finds the tools without a registration step, as `.mcp.json` does for Claude Code. The file SHALL hold no key, token or other secret. A test SHALL check that the file parses, that these three values hold, and that the file named in `command` exists.
+
+#### Scenario: Project directory
+
+- **WHEN** `opencode.json` is parsed
+- **THEN** `mcp.ride.type` is `local`, `command` is that array, `enabled` is true, `src/mcp.ts` exists, and no string in the file looks like a key or a token
+
+#### Scenario: No `.env`
+
+- **WHEN** OpenCode starts the server and `.env` does not exist
+- **THEN** the server still starts (`--env-file-if-exists`)
+
+#### Scenario: Another directory
+
+- **WHEN** OpenCode is started outside the clone, or in a subdirectory of it, and no user-level entry was added
+- **THEN** the project file is not relied on: the guide says to add the entry to the user config with absolute paths, as `claude mcp add --scope user` does for Claude Code, and says the project file works from the clone's root
 
 ### Requirement: Client scouting when API scouts are off
 

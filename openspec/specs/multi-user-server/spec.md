@@ -40,7 +40,13 @@ A command `npm run admin` (and `nix run .#admin`) SHALL add a tenant by email an
 #### Scenario: Connection text names OpenCode
 
 - **WHEN** the administrator adds a tenant
-- **THEN** the printed text holds, beside the Claude Code and Codex lines, an OpenCode `opencode.json` entry of type `remote` with the server's `/mcp` address and the header `Authorization: Bearer {env:RIDE_TOKEN}`, and the token itself appears once, as before
+- **THEN** the printed text keeps the Claude Code and Codex lines unchanged, and adds an OpenCode `opencode.json` entry of type `remote` with the server's `/mcp` address and the header `Authorization: Bearer {env:RIDE_TOKEN}`; the OpenCode block holds no literal token, and the text tells the rider to `export RIDE_TOKEN=<token>` first (the Codex line already says so)
+- **AND** WHEN `RIDE_SERVER_URL` is unset, THEN the address is `https://YOUR-SERVER/mcp`, as for the others
+
+#### Scenario: Static token with sign-in on
+
+- **WHEN** `RIDE_OAUTH` is on and a client sends a valid rider token in `Authorization: Bearer` on `/mcp`
+- **THEN** the request is accepted exactly as when sign-in is off
 
 #### Scenario: Remove
 

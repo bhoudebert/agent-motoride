@@ -1,5 +1,7 @@
 # Spec: OpenCode alongside Claude Code and Codex
 
+Changed in round 2: generated reference and `.env.example` comments are left alone (out of scope, no regeneration); the README several-riders paragraph stays Claude Code and Codex only.
+
 Changed in round 1: OpenCode facts are now a gate before any text is written; the scope of "places that name the clients" is listed by file; remote and phone mentions stay as they are; the page keeps its file name and URL; no change to any openspec spec.
 
 ## Goal
@@ -17,8 +19,8 @@ What the repository shows: OpenCode appears nowhere. The server is a plain MCP s
    - (c) not confirmed: no approval advice is given.
 3. **Guide.** The page `docs/guide/claude-code-and-codex.md` SHALL keep its file name and URL. Its title, the VitePress menu entry, and its text SHALL change to name OpenCode ("Claude Code, Codex and OpenCode"), and its connect code group SHALL gain an OpenCode tab with the confirmed steps. The command SHALL be the one the other tabs use (`node --env-file-if-exists=<.env> <src/mcp.ts>`, absolute paths).
 4. **Example file.** When requirement 1(a) is confirmed, the repository SHALL ship an example OpenCode config at `opencode/opencode.example.json` (a folder of its own, as `codex/` is), with `.dockerignore` listing the folder as `codex` is. Its header comment, if the format allows comments, says where to put it.
-5. **Where clients are named.** The following SHALL name OpenCode wherever they list Claude Code and Codex as the clients that use the tools: `README.md` (overview, comparison table, "MCP mode" line, guide link text); `docs/guide/*.md` (except the remote and phone cases of requirement 6); `site/index.html` (the "Claude Code or Codex" box, the map, the plan and notes captions); `.github/ISSUE_TEMPLATE/bug_report.md` (the Mode line); `docs/how-it-works.svg`; `docs/ENGINEERING.md` (the MCP-mode sentence and the `npm run mcp` row); `.env.example` comments. The README and `NOTICE.md` trademark lists SHALL name OpenCode.
-6. **Remote and phone stay as they are.** Text about a remote HTTPS connection or the phone (README "From your phone", `site/index.html` "From your phone" box, `docs/guide/chat-on-your-phone.md`, `from-your-phone.md`, `phone-and-gps.md`, `several-riders.md`, `self-hosting.md`) SHALL keep naming Claude Code and Codex only. The `multi-user-server` purpose line is therefore not touched.
+5. **Where clients are named.** The following SHALL name OpenCode wherever they list Claude Code and Codex as the clients that use the tools: `README.md` (overview, comparison table, "MCP mode" line, guide link text); `docs/guide/*.md`, except the generated `reference.md` and the remote and phone cases of requirement 6; `site/index.html` (the "Claude Code or Codex" box, the map, the plan and notes captions); `.github/ISSUE_TEMPLATE/bug_report.md` (the Mode line); `docs/how-it-works.svg`; `docs/ENGINEERING.md` (the MCP-mode sentence and the `npm run mcp` row). The README and `NOTICE.md` trademark lists SHALL name OpenCode.
+6. **Remote and phone stay as they are.** Text about a remote HTTPS connection or the phone (README "From your phone" and "For several riders" paragraphs, `site/index.html` "From your phone" box, `docs/guide/chat-on-your-phone.md`, `from-your-phone.md`, `phone-and-gps.md`, `several-riders.md`, `self-hosting.md`) SHALL keep naming Claude Code and Codex only. The `multi-user-server` purpose line is therefore not touched.
 7. **No Claude-only claim for OpenCode.** Pages SHALL NOT say OpenCode has the `/mcp__ride__…` slash commands, `@ride:` attachments, forms, or Claude subagents as scouts; they say plain words work, unless confirmed in OpenCode's documentation.
 8. **No behaviour change.** No file in `src/`, `scripts/` or `test/` and no file under `openspec/` SHALL change. Existing tests pass unchanged.
 
@@ -42,7 +44,7 @@ What the repository shows: OpenCode appears nowhere. The server is a plain MCP s
 
 ### 5: names
 
-- **WHEN** `grep -ri codex` is run over the repository **THEN** every remaining hit is in the exceptions: Codex-specific content (`codex/`, `scripts/codex-register.ts`, `codex:register`, `~/.codex/config.toml`), requirement 6 files, `src/` strings, `docs/adr/`, `ROADMAP.md`, `CHANGELOG.md`, `CONTRIBUTING.md` and `commitlint.config.js` (history, scopes, product names), `AGENTS.md`/`CLAUDE.md` (they address coding agents, not riders), and `openspec/` requirement text
+- **WHEN** `grep -ri codex` is run over the repository **THEN** every remaining hit is in the exceptions: Codex-specific content (`codex/`, `scripts/codex-register.ts`, `codex:register`, `~/.codex/config.toml`), requirement 6 files, `docs/guide/reference.md`, `scripts/reference.ts`, `.env.example`, `src/` strings, `docs/adr/`, `ROADMAP.md`, `CHANGELOG.md`, `CONTRIBUTING.md` and `commitlint.config.js` (history, scopes, product names), `AGENTS.md`/`CLAUDE.md` (they address coding agents, not riders), and `openspec/` requirement text
 
 ### 7: Claude-only claims
 
@@ -50,7 +52,8 @@ What the repository shows: OpenCode appears nowhere. The server is a plain MCP s
 
 ## Out of scope
 
-- `src/` strings that list the clients (`capabilities.ts`, `admin.ts`, `rideServer.ts` comments, the generated reference): changing them changes what a rider sees from the app and would need a spec change. Left for a later request.
+- `.env.example` comments and the generated `docs/guide/reference.md` (built by `scripts/reference.ts`, which also holds the heading "Claude Code and Codex (MCP server)", and which reads the `.env.example` comments): editing them would force a regeneration and a change under `scripts/`. They keep naming Claude Code and Codex.
+- `src/` strings that list the clients (`capabilities.ts`, `admin.ts`, `rideServer.ts` comments): changing them changes what a rider sees from the app and would need a spec change. Left for a later request.
 - An `npm run opencode:register` script.
 - Remote or phone use of OpenCode, and the `multi-user-server` purpose line.
 - Historical records: ADRs, CHANGELOG, ROADMAP.

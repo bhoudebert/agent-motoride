@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Let one agentRide instance serve several riders, each with a library of their own, reached by the MCP tools over HTTPS from Claude Code or Codex, while a rider who runs it alone sees no change (ADR 0027).
+Let one agentRide instance serve several riders, each with a library of their own, reached by the MCP tools over HTTPS from Claude Code, Codex or OpenCode, while a rider who runs it alone sees no change (ADR 0027).
 
 ## Requirements
 
@@ -35,7 +35,12 @@ Each tenant SHALL have its own SQLite library at `data/tenants/<id>/agentmotorid
 
 ### Requirement: Administration
 
-A command `npm run admin` (and `nix run .#admin`) SHALL add a tenant by email and print its token and how to connect, list tenants (identifier, email, status, size of the library, last seen), remove a tenant (the library is kept aside, and deleted only with `--purge` and `--yes`), suspend and resume a tenant, give a new token, and back up the registry and every library to a dated folder using a consistent copy. Adding an email that is already registered, or removing a tenant that does not exist, SHALL fail with a message.
+A command `npm run admin` (and `nix run .#admin`) SHALL add a tenant by email and print its token and how to connect (a command or setting for each of Claude Code, Codex and OpenCode), list tenants (identifier, email, status, size of the library, last seen), remove a tenant (the library is kept aside, and deleted only with `--purge` and `--yes`), suspend and resume a tenant, give a new token, and back up the registry and every library to a dated folder using a consistent copy. Adding an email that is already registered, or removing a tenant that does not exist, SHALL fail with a message.
+
+#### Scenario: Connection text names OpenCode
+
+- **WHEN** the administrator adds a tenant
+- **THEN** the printed text holds, beside the Claude Code and Codex lines, an OpenCode `opencode.json` entry of type `remote` with the server's `/mcp` address and the header `Authorization: Bearer {env:RIDE_TOKEN}`, and the token itself appears once, as before
 
 #### Scenario: Remove
 

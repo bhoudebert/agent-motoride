@@ -103,6 +103,11 @@ The server SHALL work with any MCP client over stdio. The rider SHALL get the sa
 - **WHEN** the rider types "plan me a ride this Saturday, under 250 km" without a slash command
 - **THEN** the model calls `planningGuide` first and plans with the full guidance, as with `/mcp__ride__plan-ride`
 
+#### Scenario: OpenCode
+
+- **WHEN** the server is added to OpenCode as a local MCP server (`opencode mcp add`) running `node ... src/mcp.ts`, and the rider asks for a ride in plain words
+- **THEN** the model receives the server instructions, which ask it to call `planningGuide` before planning, as in any MCP client
+
 ### Requirement: Client scouting when API scouts are off
 
 When scouts cannot run (`RIDE_SCOUTS=0` or no API credentials), the server instructions and the planning guidance SHALL say so and SHALL give the client a scout brief: start one subagent per area, in parallel, when the client can, each following the scout method (road memory first, then roads, route, weather) and reporting a route id; otherwise explore the areas itself. `scoutAreas` called anyway SHALL answer with the same guidance. When scouts can run, the guidance SHALL be unchanged. The terminal planner's instructions SHALL NOT change. Each subagent SHALL end by calling `reportScout` with its area, whether it found a loop, the routeId of its best loop if any, and a one-sentence verdict. The server SHALL take the figures (distance, open-road and 50-zone shares) and the place of the report from that routed loop, never from the text, or from the area's location when no loop was routed, and SHALL trace it as a scout's report, so the road memory learns it like an API scout's.

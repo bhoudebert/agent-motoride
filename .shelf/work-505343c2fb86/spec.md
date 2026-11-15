@@ -1,6 +1,6 @@
 # Spec: OpenCode alongside Claude Code and Codex
 
-Round 1: no requirement changed. The review found the spec buildable. The red CI is two jobs cancelled by a newer run on the same pull request ("Canceling since a higher priority waiting request"), not a failure, and the spec holds no code for them to check. A new CI run is needed.
+Round 2: (1) Prettier was run on `request.md`, the only file that failed the format check (the Specs job was cancelled by a newer run, not a failure). (2) Requirement 3 now covers every guide page that names the clients, not three files.
 
 ## Goal
 
@@ -17,7 +17,7 @@ A rider who uses OpenCode must find, in the guide, the README and the website, t
 
 1. The repository SHALL ship an OpenCode config example (`opencode/opencode.example.json`, next to `codex/config.example.toml`) that registers the `ride` server over stdio with absolute-path placeholders, `RIDE_SCOUTS` set to `0`, and the same `node --env-file-if-exists=<root>/.env <root>/src/mcp.ts` command as the Codex registration.
 2. The guide page on connecting a client SHALL cover OpenCode with its own "Connect" tab, an approval note if OpenCode asks before tool calls, and the plain-words examples, and SHALL state which Claude Code-only features OpenCode lacks. The page title, its sidebar entry and its links SHALL name all three clients.
-3. The README, the guide index and the website (`site/index.html`) SHALL name OpenCode wherever they name "Claude Code or Codex" as the MCP-mode clients (the "ways to use it" cards, the feature captions, the comparison table, the supported-clients line).
+3. The README, the website (`site/index.html`) and every page under `docs/guide/` SHALL name OpenCode wherever they name "Claude Code or Codex" (or "Claude Code and Codex") as the MCP-mode clients (the "ways to use it" cards, the feature captions, the comparison table, the supported-clients line, the guide index). About fifteen guide pages say it today; none is left out. Mentions that are about Claude-only features (phone, slash commands) are not widened.
 4. The "From your phone" card and text SHALL NOT claim OpenCode: it stays Claude or ChatGPT app only.
 5. The `mcp-server` spec SHALL gain a scenario for OpenCode under "Client portability".
 6. The generated guide reference (`npm run docs:reference`) SHALL be regenerated if its wording changes, and `npm run quality` and `openspec validate --all` SHALL pass.
@@ -26,7 +26,7 @@ A rider who uses OpenCode must find, in the guide, the README and the website, t
 
 - **Req 1, WHEN** a rider copies the example into `opencode.json`, replaces the path placeholder and starts OpenCode, **THEN** the `ride` tools are listed and a plain-words ride request reaches `planningGuide` first. Edge: **WHEN** the path is left as the placeholder, **THEN** the doc says to replace it (no silent default).
 - **Req 2, WHEN** a rider opens the connect page, **THEN** a Claude Code, a Codex and an OpenCode tab are shown. Edge: **WHEN** an old link to the page's previous address is followed, **THEN** it still resolves (keep the file name, or redirect) and no internal link breaks.
-- **Req 3, WHEN** the site and README are searched for "Claude Code or Codex", **THEN** every occurrence that describes MCP-mode clients also names OpenCode.
+- **Req 3, WHEN** the site, README and guide pages are searched for "Claude Code or Codex", **THEN** every occurrence that describes MCP-mode clients also names OpenCode.
 - **Req 4, WHEN** a rider reads the phone section, **THEN** it still lists only the Claude and ChatGPT apps.
 - **Req 5, WHEN** `openspec validate --all` runs, **THEN** the new scenario parses under its requirement.
 

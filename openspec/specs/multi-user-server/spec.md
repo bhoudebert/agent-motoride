@@ -39,9 +39,10 @@ A command `npm run admin` (and `nix run .#admin`) SHALL add a tenant by email an
 
 #### Scenario: Connection text names OpenCode
 
-- **WHEN** the administrator adds a tenant
-- **THEN** the printed text keeps the Claude Code and Codex lines unchanged, and adds an OpenCode `opencode.json` entry of type `remote` with the server's `/mcp` address and the header `Authorization: Bearer {env:RIDE_TOKEN}`; the OpenCode block holds no literal token, and the text tells the rider to `export RIDE_TOKEN=<token>` first (the Codex line already says so)
-- **AND** WHEN `RIDE_SERVER_URL` is unset, THEN the address is `https://YOUR-SERVER/mcp`, as for the others
+- **WHEN** the administrator adds a tenant with token `T`
+- **THEN** the printed text keeps the Claude Code line and the Codex line as before, and adds an OpenCode `opencode.json` entry `mcp.ride` of type `remote` with the server's `/mcp` address and the header `Authorization: Bearer {env:RIDE_TOKEN}`
+- **AND** `T` appears in exactly three places: the "Token (shown once…)" line, the Claude Code line and the Codex comment `export RIDE_TOKEN=T`; the OpenCode block holds none, and it is placed after the Codex block with a comment that the rider exports `RIDE_TOKEN` as the Codex comment says
+- **AND** WHEN `RIDE_SERVER_URL` is unset and no address is given, THEN the address is `https://YOUR-SERVER/mcp`, as for the others; WHEN the address ends in `/`, THEN there is no double slash
 
 #### Scenario: Static token with sign-in on
 

@@ -122,10 +122,29 @@ The repository SHALL ship an `opencode.json` at its root declaring one local MCP
 - **WHEN** OpenCode starts the server and `.env` does not exist
 - **THEN** the server still starts (`--env-file-if-exists`)
 
+### Requirement: Supported clients are named alike
+
+Wherever the README, the website (`site/index.html`), the rider's guide (`docs/guide/*.md` and its configuration), `docs/ENGINEERING.md`, `.env.example`, `.github/ISSUE_TEMPLATE/bug_report.md`, `docs/how-it-works.svg`, the generator of the reference (`scripts/reference.ts`) and the comments of `src/admin.ts`, `src/oauth.ts`, `src/tenants.ts`, `src/capabilities.ts` and `src/server.ts` list the MCP clients, the list SHALL name Claude Code, Codex and OpenCode: a sentence, table row or heading of these files that names both Claude (Code) and Codex SHALL name OpenCode too. A sentence about Codex alone (its `~/.codex/config.toml`, `codex:register`) is not a list. The guide SHALL have an OpenCode tab in its connect block with the project file, the user entry with absolute paths, the hosted entry, and "say it in plain words"; it SHALL say that `src/mcp.ts` and `.env` resolve from the directory OpenCode is started in, so OpenCode is started at the clone's root or the user entry is used; and it SHALL claim nothing about OpenCode slash commands or parallel subagents. A test SHALL read the listed files and fail on a sentence that names Claude and Codex but not OpenCode. Not covered, on purpose: `CHANGELOG.md` (generated), `docs/adr/*` (immutable), `ROADMAP.md`, `CONTRIBUTING.md`, `AGENTS.md`, `NOTICE.md` (legal trademark list, which names OpenCode separately), `docs/EVOLVING.md` and the comments of `src/rideServer.ts` and `scripts/mcp-smoke.ts` (they name Codex as the example of a client without slash commands, which stays true), `.github/ISSUE_TEMPLATE/{country_rules,eval_case,feature_request}.md` (no client list), `codex/config.example.toml` and `scripts/codex-register.ts` (Codex-only files).
+
+#### Scenario: A client list
+
+- **WHEN** a listed file says "Claude Code or Codex" (or "Claude, Codex", or a tab "Claude Code / Codex")
+- **THEN** the same sentence, row or heading also says OpenCode, and the test passes
+
+#### Scenario: A forgotten client
+
+- **WHEN** a listed file has a sentence naming Claude Code and Codex but not OpenCode
+- **THEN** the test fails and names the file and the line
+
+#### Scenario: Codex alone
+
+- **WHEN** a sentence names only Codex (`~/.codex/config.toml`) or only Claude Code (`/mcp__ride__help`)
+- **THEN** the test does not flag it
+
 #### Scenario: Another directory
 
-- **WHEN** OpenCode is started outside the clone, or in a subdirectory of it, and no user-level entry was added
-- **THEN** the project file is not relied on: the guide says to add the entry to the user config with absolute paths, as `claude mcp add --scope user` does for Claude Code, and says the project file works from the clone's root
+- **WHEN** a visitor reads the OpenCode tab of the guide
+- **THEN** it says the project file works when OpenCode is started at the clone's root, and that elsewhere the user entry with absolute paths is used
 
 ### Requirement: Client scouting when API scouts are off
 

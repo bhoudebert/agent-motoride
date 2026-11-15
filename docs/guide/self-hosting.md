@@ -11,7 +11,7 @@ server is, and why it is shaped this way, is in [Run it for several riders](/sev
   can get its certificate. Without a domain, keep it on your own network and use the address of the machine.
 - About 200 MB of memory and a little disk: a library is a few megabytes.
 
-No model and no API key are needed: each rider's own Claude Code or Codex does the planning.
+No model and no API key are needed: each rider's own Claude Code, Codex or OpenCode does the planning.
 
 ## With Docker
 

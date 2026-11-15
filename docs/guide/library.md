@@ -57,7 +57,7 @@ more
 :::
 
 Each list shows 20 lines and ends with "Page 1 of 3 (45 rides)" and how to see
-the next page; in Claude Code or Codex, say "more" or "page 2".
+the next page; in Claude Code, Codex or OpenCode, say "more" or "page 2".
 
 ## Ride a roadbook again
 
@@ -197,7 +197,7 @@ are changing that very roadbook).
 - **No duplicates, enforced.** Every candidate is compared with your saved
   rides by the share of its 500 m grid cells they already cover. At 70% or more
   it is a duplicate: the planner must look elsewhere, and a save is refused
-  (`/save --force`, or saying yes when Claude Code or Codex asks, keeps a
+  (`/save --force`, or saying yes when Claude Code, Codex or OpenCode asks, keeps a
   deliberate copy). The planner offers instead to ride that roadbook again on
   your day. From 40% it is mentioned as similar. The same roads in the opposite
   direction count as the same ride.

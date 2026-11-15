@@ -225,4 +225,16 @@ test("the admin commands add, list, suspend, resume, rekey and remove, and say w
     ),
     /https:\/\/h\/mcp/,
   );
+  const tenant = { id: "x", email: "e@x.org", status: "active" as const, createdAt: "", lastSeenAt: null };
+  const shown = connectionText(tenant, "mrt_t", "https://h/");
+  assert.match(shown, /OpenCode \(opencode\.json/);
+  assert.match(shown, /"url": "https:\/\/h\/mcp".*Bearer mrt_t/);
+  assert.equal(shown.split("mrt_t").length - 1, 4, "the token appears in each entry and the line that shows it once");
+  const saved = process.env.RIDE_SERVER_URL;
+  delete process.env.RIDE_SERVER_URL;
+  try {
+    assert.match(connectionText(tenant, "mrt_t"), /"url": "https:\/\/YOUR-SERVER\/mcp"/);
+  } finally {
+    if (saved !== undefined) process.env.RIDE_SERVER_URL = saved;
+  }
 });

@@ -4,7 +4,7 @@ import type { Registry, Tenant } from "./tenants.ts";
 
 /**
  * Sign-in for chat clients (ADR 0056): ChatGPT and Claude connect to `/mcp` with OAuth 2.1 (authorization code with PKCE, clients
- * that register themselves), beside the bearer token of Claude Code and Codex. The rider proves who they are with a one-time code
+ * that register themselves), beside the bearer token of Claude Code, Codex and OpenCode. The rider proves who they are with a one-time code
  * read in the app (or printed by `npm run admin -- link`), never a password; the tokens that result only open `/mcp`.
  */
 

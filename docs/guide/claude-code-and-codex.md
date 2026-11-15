@@ -1,6 +1,6 @@
-# Claude Code and Codex
+# Claude Code, Codex and OpenCode
 
-In this mode the model of your Claude Code or Codex plan does the thinking,
+In this mode the model of your Claude Code, Codex or OpenCode session does the thinking,
 and agentMotoride is its toolbox: roads, routing, weather, traffic, your
 library and the exports. No API key is needed for that part; scouts use one if
 it is set.
@@ -17,11 +17,32 @@ claude              # the project ships a .mcp.json: approve the "ride" server w
 claude mcp add --scope user ride -- node --env-file-if-exists=/abs/path/agent-motoride/.env /abs/path/agent-motoride/src/mcp.ts
 ```
 
-```bash [Codex]
+````bash [Codex]
 npm run codex:register    # once per machine; then start codex anywhere
-```
+```bash [OpenCode]
+cd agent-motoride
+opencode            # the project ships an opencode.json: the "ride" server starts with it
+````
 
 :::
+
+OpenCode started in another folder needs the server in your user config,
+`~/.config/opencode/opencode.json`, with absolute paths:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "ride": {
+      "type": "local",
+      "command": ["node", "--env-file-if-exists=/abs/path/agent-motoride/.env", "/abs/path/agent-motoride/src/mcp.ts"],
+      "enabled": true
+    }
+  }
+}
+```
+
+OpenCode's own `permission` setting decides which tool calls ask first.
 
 For Codex, add one line by hand under `[mcp_servers.ride]` in
 `~/.codex/config.toml`, or Codex asks before every tool call (a plan makes
@@ -33,7 +54,7 @@ default_tools_approval_mode = "approve"   # or "writes": lookups free, saving st
 
 ## Talk to it
 
-Plain words are enough, in both:
+Plain words are enough, in all three:
 
 ```text
 plan me a ride this Saturday, no rain, under 250 km, winding roads
@@ -50,13 +71,13 @@ tools".
 
 ## Find everything it can do
 
-Ask **"what can you do?"**, in Claude Code or Codex: the server answers with
+Ask **"what can you do?"**, in Claude Code, Codex or OpenCode: the server answers with
 every feature, grouped by moment (plan, ride day, on the road, after the ride,
 library, settings), each with what to say. In Claude Code, `/mcp__ride__help`
 shows the same list, and slash commands are shortcuts for the most frequent
 ones (`/mcp__ride__plan-ride`, `/mcp__ride__plan-from`, `/mcp__ride__today`,
-`/mcp__ride__rate-stretch` and others). Codex has no slash commands for MCP
-servers: plain words do everything.
+`/mcp__ride__rate-stretch` and others). Codex and OpenCode are not documented here with slash commands or `@`
+attachments: plain words do everything.
 
 The same list, with the terminal command and the shortcut for each:
 [Everything you can do](/everything).
@@ -71,7 +92,7 @@ A new leisure ride explores two to four areas before picking one.
 | `RIDE_SCOUTS=0`, or no key           | Claude Code's own subagents, one per area, in parallel, same scout brief | Your plan   |
 
 Each subagent leaves its verdict in the road memory, like the app's scouts, so
-the next plan in the region skips areas found poor. Without subagents (Codex
+the next plan in the region skips areas found poor. Without subagents (Codex and OpenCode
 may not run them the same way), the model explores
 the areas itself, one after the other: slower, a narrower search. Either way
 the rider rules are checked in code on every route. Restart the client after
@@ -94,7 +115,7 @@ Every tool, prompt and resource, with its inputs: see the
   `RIDE_MODEL`.
 - **One session per server process**: routed trips and settings last until the
   client restarts the server; roadbooks, rides, the cache and traces are on disk.
-- **After updating agentMotoride**, quit and relaunch Claude Code or Codex: it keeps the
+- **After updating agentMotoride**, quit and relaunch Claude Code, Codex or OpenCode: it keeps the
   old server process otherwise.
 - Every session is logged: `npm run rides -- runs` shows an `mcp-client` run,
   `npm run rides -- trace <id>` replays it.

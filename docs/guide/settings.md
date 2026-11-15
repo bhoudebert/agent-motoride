@@ -68,7 +68,7 @@ npm run ride -- --max-fast-pct 40 "a quick loop to the Ardennes and back"
 # or RIDE_MAX_FAST_PCT=40 in .env; at the refine> prompt: /fast 40
 ```
 
-```text [Claude Code / Codex]
+```text [Claude Code / Codex / OpenCode]
 allow up to 40% of fast expressways for this ride
 ```
 
@@ -99,7 +99,7 @@ npm run ride -- --max-straight-pct 10 "a loop in the Avesnois, Saturday"
 # or RIDE_MAX_STRAIGHT_PCT=10 in .env; at the refine> prompt: /straights 10
 ```
 
-```text [Claude Code / Codex]
+```text [Claude Code / Codex / OpenCode]
 fewer long straight roads, at most 10% of the ride
 ```
 
@@ -122,7 +122,7 @@ npm run ride -- --allow-motorways "get me to Rue de la Loi, Brussels, by 9:00 Mo
 # at the refine> prompt: /motorways on, /motorways off
 ```
 
-```text [Claude Code / Codex]
+```text [Claude Code / Codex / OpenCode]
 allow motorways
 get me to Rue de la Loi, Brussels, by 9:00 Monday
 ```
@@ -144,7 +144,7 @@ saved commute stays a motorway trip.
 
 Slow zones cannot be avoided completely: every ride leaves a town and crosses
 villages. These are targets the planner works toward, moving waypoints around
-the longest slow stretches, not pass or fail limits. In Claude Code or Codex: "aim for
+the longest slow stretches, not pass or fail limits. In Claude Code, Codex or OpenCode: "aim for
 10% in 50 zones".
 
 Speed limits come from OpenStreetMap. A stretch with no limit tagged counts as
@@ -155,7 +155,7 @@ in Germany.
 ## Repeats
 
 New plans never repeat a roadbook you have (70% or more of the same roads). To allow
-it for a session: `--allow-repeat`, or "repeats are fine" in Claude Code or Codex.
+it for a session: `--allow-repeat`, or "repeats are fine" in Claude Code, Codex or OpenCode.
 
 ## The model and its cost (terminal)
 

@@ -33,10 +33,10 @@ The rider adds the server once, with the lines `add` printed:
 claude mcp add --transport http ride https://rides.example.org/mcp --header "Authorization: Bearer mrt_…"
 ```
 
-Codex reads the same address from `~/.codex/config.toml`, with the token in an environment variable. From then on the
+Codex reads the same address from `~/.codex/config.toml`, with the token in an environment variable; OpenCode takes the `"ride"` remote entry (`type`, `url`, `headers`) in its `mcp` config. From then on the
 rider plans in plain words, as in [Claude Code, Codex and OpenCode](/claude-code-and-codex), and the library they build is theirs
 alone. Their own model plans: the server holds no model and no key, so scouting is done by the client's subagents in
-Claude Code (Codex explores the areas itself).
+Claude Code (Codex and OpenCode explore the areas themselves).
 
 ## Connect ChatGPT or Claude
 

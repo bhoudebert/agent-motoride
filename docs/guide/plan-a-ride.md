@@ -15,7 +15,7 @@ npm run ride -- --from "Grenoble" "this Saturday, no rain, under 250 km, winding
 # or the start menu: npm run ride, then 1
 ```
 
-```text [Claude Code / Codex]
+```text [Claude Code / Codex / OpenCode]
 plan me a ride this Saturday, no rain, under 250 km, winding roads
 
 (shortcut: /mcp__ride__plan-ride this Saturday, no rain, ...)
@@ -72,7 +72,7 @@ refine> skip the D 1075, too much traffic
 refine> /save Vercors loop
 ```
 
-```text [Claude Code / Codex]
+```text [Claude Code / Codex / OpenCode]
 too long, keep it under 180 km
 leave at 10:00 and add a lunch stop around Die
 save it as "Vercors loop"

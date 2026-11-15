@@ -77,7 +77,7 @@ What ride do you want?
 > this Saturday, no rain, under 250 km, winding roads
 ```
 
-```text [Claude Code / Codex]
+```text [Claude Code / Codex / OpenCode]
 plan me a ride this Saturday, no rain, under 250 km, winding roads
 ```
 

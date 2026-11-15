@@ -56,7 +56,7 @@ docker compose -f deploy/docker-compose.yml exec ride node src/admin.ts add alic
 docker compose -f deploy/docker-compose.yml exec ride node src/admin.ts list
 ```
 
-`add` prints the token once and the line for Claude Code and for Codex. Send it to the rider; it is the only copy. For the
+`add` prints the token once and the line for Claude Code, Codex and OpenCode. Send it to the rider; it is the only copy. For the
 MotoRide app on a phone, make an invitation instead of sending a token: `exec ride node src/admin.ts invite alice@example.org
 --pin` prints a QR code to scan ([Run it for several riders](/several-riders)). The
 other commands (`suspend`, `resume`, `token`, `remove`, `backup`) are in [Run it for several riders](/several-riders).

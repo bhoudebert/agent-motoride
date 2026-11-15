@@ -8,7 +8,7 @@ are enforced in code, whatever the model is told.
 
 Your start and end point is a town, a street or an address, or `"lat,lon"`. Tell
 it once, "my home is Lille" (or `rideSettings` with `home`): it is saved in your
-library and every later session starts from it, in Claude Code, Codex, the terminal
+library and every later session starts from it, in Claude Code, Codex, OpenCode, the terminal
 and on a server where each rider has their own library. `RIDE_HOME` in `.env` is only
 the default for someone who has not saved one. Override it per plan with `--from` in the
 terminal or "from Namur" in your request.
@@ -68,7 +68,7 @@ npm run ride -- --max-fast-pct 40 "a quick loop to the Ardennes and back"
 # or RIDE_MAX_FAST_PCT=40 in .env; at the refine> prompt: /fast 40
 ```
 
-```text [Claude Code / Codex]
+```text [Claude Code / Codex / OpenCode]
 allow up to 40% of fast expressways for this ride
 ```
 
@@ -99,7 +99,7 @@ npm run ride -- --max-straight-pct 10 "a loop in the Avesnois, Saturday"
 # or RIDE_MAX_STRAIGHT_PCT=10 in .env; at the refine> prompt: /straights 10
 ```
 
-```text [Claude Code / Codex]
+```text [Claude Code / Codex / OpenCode]
 fewer long straight roads, at most 10% of the ride
 ```
 
@@ -122,7 +122,7 @@ npm run ride -- --allow-motorways "get me to Rue de la Loi, Brussels, by 9:00 Mo
 # at the refine> prompt: /motorways on, /motorways off
 ```
 
-```text [Claude Code / Codex]
+```text [Claude Code / Codex / OpenCode]
 allow motorways
 get me to Rue de la Loi, Brussels, by 9:00 Monday
 ```

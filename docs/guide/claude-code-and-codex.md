@@ -17,16 +17,19 @@ claude              # the project ships a .mcp.json: approve the "ride" server w
 claude mcp add --scope user ride -- node --env-file-if-exists=/abs/path/agent-motoride/.env /abs/path/agent-motoride/src/mcp.ts
 ```
 
-````bash [Codex]
+```bash [Codex]
 npm run codex:register    # once per machine; then start codex anywhere
+```
+
 ```bash [OpenCode]
 cd agent-motoride
-opencode            # the project ships an opencode.json: the "ride" server starts with it
-````
+opencode            # the project ships an opencode.json that declares the "ride" server
+```
 
 :::
 
-OpenCode started in another folder needs the server in your user config,
+The project's `opencode.json` uses paths relative to the project folder (not yet
+checked against a running OpenCode). OpenCode started in another folder needs the server in your user config,
 `~/.config/opencode/opencode.json`, with absolute paths:
 
 ```json

@@ -171,11 +171,11 @@ const everything = `# Everything you can do
 
 <!-- Generated from src/capabilities.ts by npm run docs:reference. Do not edit by hand. -->
 
-Every feature of agentMotoride, by moment. In Claude Code or Codex, say it in
+Every feature of agentMotoride, by moment. In Claude Code, Codex or OpenCode, say it in
 plain words (the **Say** column); in Claude Code, slash commands are
 shortcuts. In the terminal, use the commands; \`npm run rides -- help\` prints
 this list, and \`/mcp__ride__help\` (or asking "what can you do?") shows it in
-Claude Code or Codex. Every option is in the [reference](/reference).
+Claude Code, Codex or OpenCode. Every option is in the [reference](/reference).
 
 ${MOMENTS.map(
   (moment) => `## ${moment}

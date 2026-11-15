@@ -4,7 +4,7 @@ Plan, check, rate and review rides by talking to **ChatGPT** or **Claude**, on t
 library behind them. Nothing runs on your computer: the assistant reaches your agentMotoride server over the internet, and the
 roadbooks it saves are the ones the MotoRide app lists.
 
-This is the same server, the same tools and the same library as [Claude Code and Codex](/claude-code-and-codex), and the same
+This is the same server, the same tools and the same library as [Claude Code, Codex and OpenCode](/claude-code-and-codex), and the same
 roadbooks the [MotoRide app](/phone-and-gps) rides. What changes is where you talk to it.
 
 ## Three ways to talk to your library from a phone

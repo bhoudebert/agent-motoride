@@ -10,7 +10,7 @@ export interface Capability {
   moment: Moment;
   /** What it does, in a rider's words. */
   what: string;
-  /** What to say in Claude Code or Codex. */
+  /** What to say in Claude Code, Codex or OpenCode. */
   say: string;
   /** Terminal commands: `npm run rides -- …`, `npm run ride -- …`, or `/…` at the refine> prompt. */
   terminal: string[];

@@ -145,7 +145,7 @@
     <g transform="translate(430,728)">
       <rect width="330" height="90" rx="4" fill="#fbf8f1" stroke="#1c1d1a"/>
       <text x="18" y="34" font-weight="700" fill="#1c1d1a">MCP mode</text>
-      <text x="18" y="58" fill="#4a4b44">Claude Code or Codex use the</text>
+      <text x="18" y="58" fill="#4a4b44">Claude Code, Codex or OpenCode use the</text>
       <text x="18" y="78" fill="#4a4b44">same tools on your subscription</text>
     </g>
     <g transform="translate(780,728)">

@@ -29,7 +29,7 @@ the loops you designed and rated, and **rides**, a roadbook on a given day. Ride
 a loop again with "plan a ride from roadbook 7 on Saturday at 9"; a new plan
 learns from what you rated, so the next one is different and better.
 
-**How to use it, task by task, in the terminal and in Claude Code or Codex:** the
+**How to use it, task by task, in the terminal and in Claude Code, Codex or OpenCode:** the
 [rider's guide](https://bhoudebert.github.io/agent-motoride/guide/) (source in
 [`docs/guide/`](docs/guide/)).
 
@@ -46,20 +46,20 @@ the same tools exposed over the Model Context Protocol.
 The planning model can come from two places. The tools, the library, the
 exports and the data are the same in both.
 
-|                     | API mode                                            | MCP mode                                                                                |
-| ------------------- | --------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| What runs the agent | This app, through the Anthropic API                 | Claude Code or Codex CLI (any MCP client), using this app as a tool server              |
-| What you pay with   | An Anthropic API key, per token                     | Your Claude Code or Codex plan; scouts use the key if set, else Claude Code's subagents |
-| How you talk to it  | A terminal app with a menu and a `refine>` prompt   | Plain words in Claude Code or Codex; slash commands as shortcuts in Claude Code         |
-| Planning guidance   | A real system prompt, schema-validated final answer | The same instructions sent as the prompt's text; free-text answer                       |
-| Model and effort    | `RIDE_MODEL`, `RIDE_EFFORT` in `.env` (Anthropic)   | The MCP client's own model: Claude in Claude Code, OpenAI models in Codex               |
-| Best for            | Full control, benchmarks, scripted runs             | Daily use on a subscription, chatting about rides, and the phone through Remote Control |
+|                     | API mode                                            | MCP mode                                                                                          |
+| ------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| What runs the agent | This app, through the Anthropic API                 | Claude Code, Codex or OpenCode CLI (any MCP client), using this app as a tool server              |
+| What you pay with   | An Anthropic API key, per token                     | Your Claude Code, Codex or OpenCode plan; scouts use the key if set, else Claude Code's subagents |
+| How you talk to it  | A terminal app with a menu and a `refine>` prompt   | Plain words in Claude Code, Codex or OpenCode; slash commands as shortcuts in Claude Code         |
+| Planning guidance   | A real system prompt, schema-validated final answer | The same instructions sent as the prompt's text; free-text answer                                 |
+| Model and effort    | `RIDE_MODEL`, `RIDE_EFFORT` in `.env` (Anthropic)   | The MCP client's own model: Claude in Claude Code, OpenAI models in Codex                         |
+| Best for            | Full control, benchmarks, scripted runs             | Daily use on a subscription, chatting about rides, and the phone through Remote Control           |
 
 Start with the one that matches what you have: an API key, Claude Code or
 Codex.
 
 **For several riders, from one machine**: one instance can hold a library for each rider, reached with a token from
-Claude Code or Codex, with no model or key of yours involved (the rider's own model plans). `npm run admin` adds the riders (and `invite` gives a rider's phone a QR code to scan, with an optional PIN) and
+Claude Code, Codex or OpenCode, with no model or key of yours involved (the rider's own model plans). `npm run admin` adds the riders (and `invite` gives a rider's phone a QR code to scan, with an optional PIN) and
 `npm run serve` serves the tools over HTTP, and a Docker image and a NixOS module run it with HTTPS. The same server relays a ride **live** to followers who open a
 link, with the positions encrypted so that the server cannot read them ([Share a ride live](https://bhoudebert.github.io/agent-motoride/guide/live-sharing)). See
 [Run it for several riders](https://bhoudebert.github.io/agent-motoride/guide/several-riders) and
@@ -108,7 +108,7 @@ plan me a ride this Saturday, no rain, under 250 km, winding roads
 ```
 
 Details for each mode: [the terminal app](https://bhoudebert.github.io/agent-motoride/guide/terminal) and
-[Claude Code and Codex](https://bhoudebert.github.io/agent-motoride/guide/claude-code-and-codex) in the guide.
+[Claude Code, Codex and OpenCode](https://bhoudebert.github.io/agent-motoride/guide/claude-code-and-codex) in the guide.
 
 ## What you get
 
@@ -129,16 +129,16 @@ How to use every feature, one task per page, the terminal and Claude Code or
 Codex side by side: **[the rider's guide](https://bhoudebert.github.io/agent-motoride/guide/)**.
 Every feature on one page, with what to say and the command for each:
 **[Everything you can do](https://bhoudebert.github.io/agent-motoride/guide/everything)**.
-From the app itself: ask "what can you do?" in Claude Code or Codex, or run
+From the app itself: ask "what can you do?" in Claude Code, Codex or OpenCode, or run
 `npm run rides -- help`.
 
-| Before the ride                                                                         | Ride day                                                                                               | Back home                                                                              | Reference                                                                                        |
-| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| [Plan a ride](https://bhoudebert.github.io/agent-motoride/guide/plan-a-ride)            | [On the phone and the GPS](https://bhoudebert.github.io/agent-motoride/guide/phone-and-gps)            | [Notes and review](https://bhoudebert.github.io/agent-motoride/guide/notes-and-review) | [Settings and rules](https://bhoudebert.github.io/agent-motoride/guide/settings)                 |
-| [Import a route](https://bhoudebert.github.io/agent-motoride/guide/import-a-route)      | [From your phone](https://bhoudebert.github.io/agent-motoride/guide/from-your-phone)                   | [Your library](https://bhoudebert.github.io/agent-motoride/guide/library)              | [The terminal app](https://bhoudebert.github.io/agent-motoride/guide/terminal)                   |
-| [From a photo of a map](https://bhoudebert.github.io/agent-motoride/guide/from-a-photo) | [With or without a server](https://bhoudebert.github.io/agent-motoride/guide/with-or-without-a-server) |                                                                                        | [Claude Code and Codex](https://bhoudebert.github.io/agent-motoride/guide/claude-code-and-codex) |
-| [Stops and your bike](https://bhoudebert.github.io/agent-motoride/guide/stops-and-bike) |                                                                                                        |                                                                                        | [Limits and troubleshooting](https://bhoudebert.github.io/agent-motoride/guide/limits)           |
-| [What to watch](https://bhoudebert.github.io/agent-motoride/guide/what-to-watch)        |                                                                                                        |                                                                                        | [Getting started](https://bhoudebert.github.io/agent-motoride/guide/getting-started)             |
+| Before the ride                                                                         | Ride day                                                                                               | Back home                                                                              | Reference                                                                                                  |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| [Plan a ride](https://bhoudebert.github.io/agent-motoride/guide/plan-a-ride)            | [On the phone and the GPS](https://bhoudebert.github.io/agent-motoride/guide/phone-and-gps)            | [Notes and review](https://bhoudebert.github.io/agent-motoride/guide/notes-and-review) | [Settings and rules](https://bhoudebert.github.io/agent-motoride/guide/settings)                           |
+| [Import a route](https://bhoudebert.github.io/agent-motoride/guide/import-a-route)      | [From your phone](https://bhoudebert.github.io/agent-motoride/guide/from-your-phone)                   | [Your library](https://bhoudebert.github.io/agent-motoride/guide/library)              | [The terminal app](https://bhoudebert.github.io/agent-motoride/guide/terminal)                             |
+| [From a photo of a map](https://bhoudebert.github.io/agent-motoride/guide/from-a-photo) | [With or without a server](https://bhoudebert.github.io/agent-motoride/guide/with-or-without-a-server) |                                                                                        | [Claude Code, Codex and OpenCode](https://bhoudebert.github.io/agent-motoride/guide/claude-code-and-codex) |
+| [Stops and your bike](https://bhoudebert.github.io/agent-motoride/guide/stops-and-bike) |                                                                                                        |                                                                                        | [Limits and troubleshooting](https://bhoudebert.github.io/agent-motoride/guide/limits)                     |
+| [What to watch](https://bhoudebert.github.io/agent-motoride/guide/what-to-watch)        |                                                                                                        |                                                                                        | [Getting started](https://bhoudebert.github.io/agent-motoride/guide/getting-started)                       |
 
 ## How it is built
 
@@ -155,7 +155,7 @@ From the app itself: ask "what can you do?" in Claude Code or Codex, or run
   migrations, each in a transaction after a backup; roadbooks keep their
   versions, rides point to the one they used.
 - **Two modes, one toolbox**: the terminal app runs the agent on the Anthropic
-  API with a schema-validated answer; Claude Code and Codex use the same tools
+  API with a schema-validated answer; Claude Code, Codex and OpenCode use the same tools
   as an MCP server, with forms (elicitation) for the rider's decisions.
 - **Evaluated and observable**: scripted rider requests graded by code,
   recorded once and replayed free in CI, a prompt-injection case planted in map
@@ -207,7 +207,7 @@ contributors, ODbL) and Open-Meteo (CC BY 4.0); see `NOTICE.md` for the full
 list, the attribution each requires, and the usage policies of the public
 instances.
 
-Trademarks and product names mentioned here (Claude, Codex, Google Maps,
+Trademarks and product names mentioned here (Claude, Codex, OpenCode, Google Maps,
 Liberty Rider, TomTom and others) belong to their owners; this project is
 independent and not affiliated with or endorsed by any of them.
 
@@ -220,7 +220,7 @@ speed-camera information. Full text in `NOTICE.md`.
 
 | Where                                                                                           | What                                                                                  |
 | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| [The rider's guide](https://bhoudebert.github.io/agent-motoride/guide/) ([source](docs/guide/)) | How to use every feature, in the terminal and in Claude Code or Codex                 |
+| [The rider's guide](https://bhoudebert.github.io/agent-motoride/guide/) ([source](docs/guide/)) | How to use every feature, in the terminal and in Claude Code, Codex or OpenCode       |
 | [`docs/ENGINEERING.md`](docs/ENGINEERING.md)                                                    | How it works, tools, riding-time model, models and cost, evals, observability, layout |
 | [`docs/adr/`](docs/adr/)                                                                        | Architecture decision records: why the system is shaped the way it is                 |
 | [`openspec/specs/`](openspec/specs/)                                                            | What the system does, as requirements with scenarios, one file per capability         |

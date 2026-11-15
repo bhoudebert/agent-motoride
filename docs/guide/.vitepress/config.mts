@@ -35,7 +35,7 @@ export default defineConfig({
         items: [
           { text: "Getting started", link: "/getting-started" },
           { text: "Everything you can do", link: "/everything" },
-          { text: "Claude Code and Codex", link: "/claude-code-and-codex" },
+          { text: "Claude Code, Codex and OpenCode", link: "/claude-code-and-codex" },
           { text: "Chat from your phone (ChatGPT, Claude)", link: "/chat-on-your-phone" },
           { text: "From your phone", link: "/from-your-phone" },
         ],

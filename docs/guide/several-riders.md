@@ -2,7 +2,7 @@
 
 Used alone, agentMotoride is one library on your machine and nothing here applies to you. If you want to serve a few
 riders (family, a club, friends) from one machine, one instance can hold a library for each of them. They reach it from
-Claude Code or Codex through the tools, with a token of their own. Nobody's plan runs on your model or your key: the
+Claude Code, Codex or OpenCode through the tools, with a token of their own. Nobody's plan runs on your model or your key: the
 rider's own model does the planning.
 
 ## Start the server
@@ -34,7 +34,7 @@ claude mcp add --transport http ride https://rides.example.org/mcp --header "Aut
 ```
 
 Codex reads the same address from `~/.codex/config.toml`, with the token in an environment variable. From then on the
-rider plans in plain words, as in [Claude Code and Codex](/claude-code-and-codex), and the library they build is theirs
+rider plans in plain words, as in [Claude Code, Codex and OpenCode](/claude-code-and-codex), and the library they build is theirs
 alone. Their own model plans: the server holds no model and no key, so scouting is done by the client's subagents in
 Claude Code (Codex explores the areas itself).
 

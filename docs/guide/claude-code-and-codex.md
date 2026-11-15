@@ -1,6 +1,6 @@
-# Claude Code and Codex
+# Claude Code, Codex and OpenCode
 
-In this mode the model of your Claude Code or Codex plan does the thinking,
+In this mode the model of your Claude Code, Codex or OpenCode plan does the thinking,
 and agentMotoride is its toolbox: roads, routing, weather, traffic, your
 library and the exports. No API key is needed for that part; scouts use one if
 it is set.
@@ -17,6 +17,14 @@ claude              # the project ships a .mcp.json: approve the "ride" server w
 claude mcp add --scope user ride -- node --env-file-if-exists=/abs/path/agent-motoride/.env /abs/path/agent-motoride/src/mcp.ts
 ```
 
+```bash [OpenCode]
+cd agent-motoride
+opencode            # the project ships an opencode.json with the "ride" server
+
+# from anywhere: put the same entry in ~/.config/opencode/opencode.json,
+# with absolute paths: "command": ["node", "--env-file-if-exists=/abs/path/agent-motoride/.env", "/abs/path/agent-motoride/src/mcp.ts"]
+```
+
 ```bash [Codex]
 npm run codex:register    # once per machine; then start codex anywhere
 ```
@@ -30,6 +38,11 @@ twenty):
 ```toml
 default_tools_approval_mode = "approve"   # or "writes": lookups free, saving still asks
 ```
+
+OpenCode: the `opencode.json` format is taken from the OpenCode docs and was not
+run here. Check that OpenCode lists the `ride` server, and test the server itself
+with `npm run mcp:smoke`. OpenCode's approval of tool calls and slash commands for
+MCP prompts were not checked: plain words do everything.
 
 ## Talk to it
 
@@ -50,7 +63,7 @@ tools".
 
 ## Find everything it can do
 
-Ask **"what can you do?"**, in Claude Code or Codex: the server answers with
+Ask **"what can you do?"**, in Claude Code, Codex or OpenCode: the server answers with
 every feature, grouped by moment (plan, ride day, on the road, after the ride,
 library, settings), each with what to say. In Claude Code, `/mcp__ride__help`
 shows the same list, and slash commands are shortcuts for the most frequent
@@ -94,7 +107,7 @@ Every tool, prompt and resource, with its inputs: see the
   `RIDE_MODEL`.
 - **One session per server process**: routed trips and settings last until the
   client restarts the server; roadbooks, rides, the cache and traces are on disk.
-- **After updating agentMotoride**, quit and relaunch Claude Code or Codex: it keeps the
+- **After updating agentMotoride**, quit and relaunch Claude Code, Codex or OpenCode: it keeps the
   old server process otherwise.
 - Every session is logged: `npm run rides -- runs` shows an `mcp-client` run,
   `npm run rides -- trace <id>` replays it.

@@ -34,7 +34,7 @@ The address riders connect to is RIDE_SERVER_URL (for the connection text), e.g.
 const mb = (bytes: number) => (bytes ? `${(bytes / 1_048_576).toFixed(1)} MB` : "-");
 const when = (iso: string | null) => (iso ? iso.slice(0, 16).replace("T", " ") + " UTC" : "never");
 
-/** How a rider connects Claude Code or Codex, with the token that is shown once. */
+/** How a rider connects Claude Code, Codex or OpenCode, with the token that is shown once. */
 export function connectionText(
   tenant: Tenant,
   token: string,

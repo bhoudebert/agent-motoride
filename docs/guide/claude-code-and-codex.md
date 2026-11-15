@@ -22,16 +22,19 @@ npm run codex:register    # once per machine; then start codex anywhere
 ```
 
 ```text [OpenCode]
-opencode mcp add            # add --global to have it in every project
-  name:        ride
-  type:        local
-  command:     node --env-file-if-exists=/abs/path/agent-motoride/.env /abs/path/agent-motoride/src/mcp.ts
-  environment: RIDE_SCOUTS=0
+opencode mcp add          # add --global to have it in every project
 ```
 
 :::
 
-For OpenCode, replace `/abs/path` with where you cloned agentMotoride. For
+For OpenCode, run `opencode mcp add` and enter these values:
+
+- name: `ride`
+- type: local
+- command: `node --env-file-if-exists=/abs/path/agent-motoride/.env /abs/path/agent-motoride/src/mcp.ts`
+- environment: `RIDE_SCOUTS=0`
+
+Replace `/abs/path` with where you cloned agentMotoride. For
 anything else, follow the [OpenCode MCP docs](https://opencode.ai/docs/mcp-servers/).
 Slash commands for the ride prompts, subagents and tool approval were not
 checked in OpenCode; plain words need nothing client-specific.

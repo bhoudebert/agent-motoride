@@ -57,7 +57,13 @@ claude                  # in the project folder; approve the "ride" server when 
 npm run codex:register  # once per machine, then start codex anywhere
 ```
 
+```text [OpenCode]
+opencode mcp add        # then enter the values listed on the connect page
+```
+
 :::
+
+For OpenCode, the values to enter are on [the connect page](/claude-code-and-codex).
 
 ## Find your way
 

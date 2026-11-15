@@ -46,14 +46,14 @@ the same tools exposed over the Model Context Protocol.
 The planning model can come from two places. The tools, the library, the
 exports and the data are the same in both.
 
-|                     | API mode                                            | MCP mode                                                                                          |
-| ------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| What runs the agent | This app, through the Anthropic API                 | Claude Code, Codex or OpenCode (any MCP client), using this app as a tool server                  |
-| What you pay with   | An Anthropic API key, per token                     | Your Claude Code, Codex or OpenCode plan; scouts use the key if set, else Claude Code's subagents |
-| How you talk to it  | A terminal app with a menu and a `refine>` prompt   | Plain words in Claude Code, Codex or OpenCode; slash commands as shortcuts in Claude Code         |
-| Planning guidance   | A real system prompt, schema-validated final answer | The same instructions sent as the prompt's text; free-text answer                                 |
-| Model and effort    | `RIDE_MODEL`, `RIDE_EFFORT` in `.env` (Anthropic)   | The MCP client's own model: Claude in Claude Code, OpenAI models in Codex                         |
-| Best for            | Full control, benchmarks, scripted runs             | Daily use on a subscription, chatting about rides, and the phone through Remote Control           |
+|                     | API mode                                            | MCP mode                                                                                                |
+| ------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| What runs the agent | This app, through the Anthropic API                 | Claude Code, Codex or OpenCode (any MCP client), using this app as a tool server                        |
+| What you pay with   | An Anthropic API key, per token                     | Your Claude Code, Codex or OpenCode plan; scouts use the key if set, else Claude Code's subagents       |
+| How you talk to it  | A terminal app with a menu and a `refine>` prompt   | Plain words in Claude Code, Codex or OpenCode; slash commands as shortcuts in Claude Code               |
+| Planning guidance   | A real system prompt, schema-validated final answer | The same instructions sent as the prompt's text; free-text answer                                       |
+| Model and effort    | `RIDE_MODEL`, `RIDE_EFFORT` in `.env` (Anthropic)   | The MCP client's own model: Claude in Claude Code, OpenAI models in Codex, the client's own in OpenCode |
+| Best for            | Full control, benchmarks, scripted runs             | Daily use on a subscription, chatting about rides, and the phone through Remote Control                 |
 
 Start with the one that matches what you have: an API key, Claude Code,
 Codex or OpenCode.

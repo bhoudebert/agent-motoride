@@ -15,7 +15,7 @@ npm run rides -- bike range=250 reserve=40 pause=75 stint=90 lunch=yes
 # at the refine> prompt: /bike range=300
 ```
 
-```text [Claude Code / Codex]
+```text [Claude Code / Codex / OpenCode]
 my bike does 300 km on a tank
 pause every hour and a half, no lunch stop
 ```

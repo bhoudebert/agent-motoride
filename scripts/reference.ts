@@ -1,6 +1,6 @@
 // Generate the guide's reference page from what the code actually says:
 // the terminal help texts, the MCP server's tools, prompts and resources (read
-// through a real MCP client, as Claude Code or Codex see them), and .env.example.
+// through a real MCP client, as Claude Code, Codex or OpenCode see them), and .env.example.
 //   npm run docs:reference            write docs/guide/reference.md
 //   npm run docs:reference -- --check fail when the page is out of date (CI)
 import { execFileSync } from "node:child_process";
@@ -123,7 +123,7 @@ ${fence(run(["src/index.ts", "--help"]))}
 ### \`npm run rides\`
 
 ${fence(run(["src/rides.ts", "help"]))}
-## Claude Code and Codex (MCP server)
+## Claude Code, Codex and OpenCode (MCP server)
 
 ${tools.length} tools, ${prompts.length} prompts. Each tool shows its MCP hints: a client can let read-only tools run without asking.
 
@@ -171,11 +171,11 @@ const everything = `# Everything you can do
 
 <!-- Generated from src/capabilities.ts by npm run docs:reference. Do not edit by hand. -->
 
-Every feature of agentMotoride, by moment. In Claude Code or Codex, say it in
+Every feature of agentMotoride, by moment. In Claude Code, Codex or OpenCode, say it in
 plain words (the **Say** column); in Claude Code, slash commands are
 shortcuts. In the terminal, use the commands; \`npm run rides -- help\` prints
 this list, and \`/mcp__ride__help\` (or asking "what can you do?") shows it in
-Claude Code or Codex. Every option is in the [reference](/reference).
+Claude Code, Codex or OpenCode. Every option is in the [reference](/reference).
 
 ${MOMENTS.map(
   (moment) => `## ${moment}

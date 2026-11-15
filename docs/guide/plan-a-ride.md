@@ -15,7 +15,7 @@ npm run ride -- --from "Grenoble" "this Saturday, no rain, under 250 km, winding
 # or the start menu: npm run ride, then 1
 ```
 
-```text [Claude Code / Codex]
+```text [Claude Code / Codex / OpenCode]
 plan me a ride this Saturday, no rain, under 250 km, winding roads
 
 (shortcut: /mcp__ride__plan-ride this Saturday, no rain, ...)
@@ -72,7 +72,7 @@ refine> skip the D 1075, too much traffic
 refine> /save Vercors loop
 ```
 
-```text [Claude Code / Codex]
+```text [Claude Code / Codex / OpenCode]
 too long, keep it under 180 km
 leave at 10:00 and add a lunch stop around Die
 save it as "Vercors loop"
@@ -82,7 +82,7 @@ save it as "Vercors loop"
 
 Saved loops (roadbooks) can be changed later the same way: `npm run ride -- --roadbook 3
 "50 km longer"`, or "make roadbook 3 50 km longer" in
-Claude Code or Codex.
+Claude Code, Codex or OpenCode.
 
 ## Checked before you see it
 
@@ -99,7 +99,7 @@ planned: asked at 18:00 for "11:00", the planner picks another day or asks you.
 
 ::: info Motorways
 Motorways are never used unless you allow them: `--allow-motorways`,
-`/motorways on`, or "allow motorways" in Claude Code or Codex. See
+`/motorways on`, or "allow motorways" in Claude Code, Codex or OpenCode. See
 [what counts as a motorway](/settings#what-counts-as-a-motorway), and how fast
 expressways are kept small.
 :::

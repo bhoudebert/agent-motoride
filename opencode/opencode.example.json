@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "ride": {
+      "type": "local",
+      "command": ["node", "--env-file-if-exists=/abs/path/agent-motoride/.env", "/abs/path/agent-motoride/src/mcp.ts"],
+      "enabled": true,
+      "environment": { "RIDE_SCOUTS": "0" }
+    }
+  }
+}

@@ -17,7 +17,7 @@ refine> /save Vercors loop
 npm run ride -- --once --save-as "Vercors loop" "...")
 ```
 
-```text [Claude Code / Codex]
+```text [Claude Code / Codex / OpenCode]
 save it as "Vercors loop"
 ```
 
@@ -48,7 +48,7 @@ npm run rides -- rides --page 2      # 20 per page; the last line says how to se
 # at the refine> prompt: /roadbooks, /rides, /rides 2
 ```
 
-```text [Claude Code / Codex]
+```text [Claude Code / Codex / OpenCode]
 list my roadbooks
 what are my latest rides
 more
@@ -57,7 +57,7 @@ more
 :::
 
 Each list shows 20 lines and ends with "Page 1 of 3 (45 rides)" and how to see
-the next page; in Claude Code or Codex, say "more" or "page 2".
+the next page; in Claude Code, Codex or OpenCode, say "more" or "page 2".
 
 ## Ride a roadbook again
 
@@ -75,7 +75,7 @@ npm run rides -- plan 3 saturday 9:30        # the same, as a command
 #   plan a ride on Sunday at 10      or      /plan sunday 10
 ```
 
-```text [Claude Code / Codex]
+```text [Claude Code / Codex / OpenCode]
 plan a ride from roadbook 3 on Saturday at 9
 
 show roadbook 3
@@ -100,7 +100,7 @@ npm run ride -- --roadbook 3                 # open the prompt on roadbook 3, no
 npm run ride -- --roadbook 3 "50 km longer, lunch in Die"
 ```
 
-```text [Claude Code / Codex]
+```text [Claude Code / Codex / OpenCode]
 show roadbook 3
 make roadbook 3 50 km longer, lunch in Die
 ```
@@ -129,7 +129,7 @@ npm run rides -- show 3 saturday         # that ride, with the route it has
 # at the refine> prompt: /save --copy "Drôme short" saves the change as a copy instead
 ```
 
-```text [Claude Code / Codex]
+```text [Claude Code / Codex / OpenCode]
 undo that change on roadbook 3
 copy roadbook 3 as Drôme short
 keep Saturday's ride of roadbook 3 on the previous version
@@ -150,7 +150,7 @@ npm run rides -- rate-day 3 saturday 2 "freezing fog"        # the day, not the 
 npm run rides -- rate-stretch "Ere" "Hollain" 5 "lovely"      # part of a ride, without a roadbook
 ```
 
-```text [Claude Code / Codex]
+```text [Claude Code / Codex / OpenCode]
 rate roadbook 3 five, Col de Rousset was empty
 roadbook 4 was a 1, the way back was dull
 leg 2 of roadbook 3: never again, gravel
@@ -197,7 +197,7 @@ are changing that very roadbook).
 - **No duplicates, enforced.** Every candidate is compared with your saved
   rides by the share of its 500 m grid cells they already cover. At 70% or more
   it is a duplicate: the planner must look elsewhere, and a save is refused
-  (`/save --force`, or saying yes when Claude Code or Codex asks, keeps a
+  (`/save --force`, or saying yes when Claude Code, Codex or OpenCode asks, keeps a
   deliberate copy). The planner offers instead to ride that roadbook again on
   your day. From 40% it is mentioned as similar. The same roads in the opposite
   direction count as the same ride.
@@ -225,7 +225,7 @@ roads are routed directly instead of searched again.
 Automatic in every plan: the planner and its scouts consult it first.
 ```
 
-```text [Claude Code / Codex]
+```text [Claude Code / Codex / OpenCode]
 what do you know about the Condroz?
 anything about cobbles near Namur?
 ```
@@ -247,7 +247,7 @@ npm run rides -- refresh all
 npm run rides -- export-md 3          # the roadbook as a Markdown document with its map, for your notes
 ```
 
-```text [Claude Code / Codex]
+```text [Claude Code / Codex / OpenCode]
 refresh roadbook 3
 export roadbook 3 as Markdown
 ```
@@ -273,7 +273,7 @@ npm run rides -- delete roadbook 3           # the loop, its rides and notes
 npm run rides -- tidy                        # drop expired lookups, compact the file
 ```
 
-```text [Claude Code / Codex]
+```text [Claude Code / Codex / OpenCode]
 I'm not riding Saturday
 delete Saturday's ride of roadbook 3
 delete roadbook 3

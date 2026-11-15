@@ -1,6 +1,6 @@
 # What a session did
 
-Every planning session, in the terminal or in Claude Code and Codex, is logged
+Every planning session, in the terminal or in Claude Code, Codex and OpenCode, is logged
 with its cost and every step: what the model was told, each tool it called with
 its inputs and results, what the scouts did, and the final answer.
 
@@ -14,7 +14,7 @@ npm run rides -- runs --csv     # the same, for a spreadsheet
 | Column                                           | Meaning                                                                           |
 | ------------------------------------------------ | --------------------------------------------------------------------------------- |
 | `run`, `date`                                    | the session's number and start                                                    |
-| `model`, `effort`                                | the planner's model, or `mcp-client` for Claude Code and Codex                    |
+| `model`, `effort`                                | the planner's model, or `mcp-client` for Claude Code, Codex and OpenCode          |
 | `turns`, `calls`, `tools`                        | your messages, model calls (scouts included), tool calls                          |
 | `in`, `cache`, `out`                             | input tokens at full rate, tokens read from cache, output tokens                  |
 | `secs`, `cost`                                   | how long the planner worked, tool calls included; estimated cost from list prices |

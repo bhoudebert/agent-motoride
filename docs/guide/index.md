@@ -4,7 +4,7 @@ title: Guide
 hero:
   name: The rider's guide
   text: Plan it, ride it, rate it.
-  tagline: Everything agentMotoride does, one task per page, in the terminal and in Claude Code or Codex.
+  tagline: Everything agentMotoride does, one task per page, in the terminal and in Claude Code, Codex or OpenCode.
   actions:
     - theme: brand
       text: Getting started

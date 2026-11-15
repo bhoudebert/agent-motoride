@@ -14,7 +14,7 @@ npm run rides -- import ~/Downloads/club-ride.gpx            # name from the fil
 npm run rides -- import ~/Downloads/route.kml "Ardennes with Marc"
 ```
 
-```text [Claude Code / Codex]
+```text [Claude Code / Codex / OpenCode]
 import ~/Downloads/club-ride.gpx
 
 then, as with any plan: "same but skip Givet", "save it"
@@ -46,7 +46,7 @@ waypoint is added in the middle of that stretch and the route is computed
 again, up to three times.
 
 ::: tip The terminal import needs no model
-`rides import` costs nothing and works without an API key. In Claude Code or Codex the
+`rides import` costs nothing and works without an API key. In Claude Code, Codex or OpenCode the
 same import is a tool, so the planner can present it, change it and save it.
 :::
 

@@ -12,7 +12,7 @@ npm run ride -- --image ~/Pictures/loop.jpg "ride this on Sunday, leave at 10:00
 /image ~/Pictures/loop.jpg ride this on Sunday
 ```
 
-```text [Claude Code / Codex]
+```text [Claude Code / Codex / OpenCode]
 paste the picture (Ctrl+V in Claude Code), or drag the file in, then:
 ride this on Sunday, leave at 10:00
 

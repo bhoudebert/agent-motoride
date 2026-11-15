@@ -16,6 +16,12 @@ Documentation, one config example and one spec scenario. No change in `src/`: th
 - `docs/how-it-works.svg:148` is a diagram label; widen only if the text fits, otherwise leave and note it. `docs/ENGINEERING.md`, `ROADMAP.md`: add OpenCode where they list clients.
 - `multi-user-server` Purpose: left as is (HTTPS for OpenCode not claimed).
 
+## Round 2 checks (done)
+
+- `codex/` is not referenced in `package.json`, `openspec/code-map.json`, the Dockerfile or `.github`: `opencode/` needs no mirror entry.
+- No test under `test/` asserts the old "Claude Code or Codex" strings; only `scripts/reference.ts` holds them (already in scope, then `npm run docs:reference`).
+- The red CI jobs were cancelled by a newer run on the same pull request (the specs job had passed 20 of 20 before the cancel), not a failure of this work. A re-run settles it.
+
 ## Errors and edge cases
 
 Placeholder path left in place: the guide says to replace it, as for Codex. Old links keep working because the file name is unchanged.

@@ -95,8 +95,8 @@ The server SHALL work with any MCP client over stdio. The rider SHALL get the sa
 
 #### Scenario: OpenCode
 
-- **WHEN** OpenCode is started in the project folder, where `opencode.json` declares the `ride` server as a local MCP server (or the server is declared in the user's OpenCode config), and the rider asks for a ride in plain words
-- **THEN** the model receives the server instructions, fetches the guidance with `planningGuide`, and plans with the tools
+- **WHEN** OpenCode is started in the project folder, where `opencode.json` declares the `ride` server as a local MCP server with the same command as `.mcp.json`
+- **THEN** the `ride` server starts from `src/mcp.ts` and its tools are listed
 
 #### Scenario: Claude Code
 

@@ -40,7 +40,7 @@ npm run rides -- map 7 ~/ride-map.png   # or a path you choose
 # at the refine> prompt, on a saved roadbook: /map
 ```
 
-```text [Claude Code / Codex]
+```text [Claude Code / Codex / OpenCode]
 show me roadbook 7 on a map
 
 (the picture shows in the chat)
@@ -125,7 +125,7 @@ npm run rides -- qr 7       # just the QR code of the map link
 # at the refine> prompt: /share or /qr
 ```
 
-```text [Claude Code / Codex]
+```text [Claude Code / Codex / OpenCode]
 show roadbook 7
 
 (from the phone with Remote Control, the links in the answer open directly)
@@ -161,7 +161,7 @@ address and your rider token in `.env` (`RIDE_REMOTE_URL`, `RIDE_REMOTE_TOKEN`, 
 npm run rides -- export 7 --push
 ```
 
-```text [Claude Code / Codex]
+```text [Claude Code / Codex / OpenCode]
 export roadbook 7 as GPX and push it to my server
 ```
 
@@ -186,7 +186,7 @@ npm run rides -- export 7 ~/ride.gpx      # or a path you choose
 # at the refine> prompt: /gpx
 ```
 
-```text [Claude Code / Codex]
+```text [Claude Code / Codex / OpenCode]
 export roadbook 7 as GPX
 ```
 
@@ -216,7 +216,7 @@ npm run rides -- today 7               # roadbook 7's next ride
 npm run rides -- today 7 saturday      # roadbook 7's ride on Saturday
 ```
 
-```text [Claude Code / Codex]
+```text [Claude Code / Codex / OpenCode]
 briefing for roadbook 7
 briefing for Saturday's ride of roadbook 7
 

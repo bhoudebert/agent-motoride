@@ -6,7 +6,8 @@ export default defineConfig({
   base: "/agent-motoride/guide/",
   title: "agentMotoride",
   titleTemplate: ":title · agentMotoride guide",
-  description: "How to plan, ride and review motorcycle rides with agentMotoride, from the terminal or Claude Code.",
+  description:
+    "How to plan, ride and review motorcycle rides with agentMotoride, from the terminal, Claude Code, Codex or OpenCode.",
   lang: "en",
   cleanUrls: true,
   lastUpdated: true,
@@ -35,7 +36,7 @@ export default defineConfig({
         items: [
           { text: "Getting started", link: "/getting-started" },
           { text: "Everything you can do", link: "/everything" },
-          { text: "Claude Code and Codex", link: "/claude-code-and-codex" },
+          { text: "Claude Code, Codex and OpenCode", link: "/claude-code-and-codex" },
           { text: "Chat from your phone (ChatGPT, Claude)", link: "/chat-on-your-phone" },
           { text: "From your phone", link: "/from-your-phone" },
         ],

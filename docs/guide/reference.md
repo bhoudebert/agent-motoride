@@ -182,7 +182,7 @@ UNDER THE HOOD
     /quit
 ```
 
-## Claude Code and Codex (MCP server)
+## Claude Code, Codex and OpenCode (MCP server)
 
 42 tools, 17 prompts. Each tool shows its MCP hints: a client can let read-only tools run without asking.
 

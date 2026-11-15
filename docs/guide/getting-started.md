@@ -5,9 +5,9 @@ from real road, weather and traffic data, and keeps your library: roadbooks
 (the loops you keep) and rides (a roadbook on a given day). You talk to it in
 one of two ways; the tools, the library and the exports are the same.
 
-|                    | Terminal                                       | Claude Code or Codex                                                                   |
+|                    | Terminal                                       | Claude Code, Codex or OpenCode                                                         |
 | ------------------ | ---------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Who thinks         | This app, with your Anthropic API key          | The model of your Claude Code or Codex plan                                            |
+| Who thinks         | This app, with your Anthropic API key          | The model of your Claude Code, Codex or OpenCode plan                                  |
 | What you pay with  | The API key, per use (a few cents to a dollar) | Your existing plan; scouts use the API key if one is set, else Claude Code's subagents |
 | How you talk to it | A menu, then a `refine>` prompt                | Plain words: "plan me a ride on Saturday", "show roadbook 7"                           |
 | Best for           | Full control, scripts, cost per ride           | Daily use, chatting about rides, from the phone                                        |
@@ -29,7 +29,7 @@ Then edit `.env`:
 | Setting                  | What for                                                                          |
 | ------------------------ | --------------------------------------------------------------------------------- |
 | `RIDE_HOME`              | Your start and end point, e.g. `Grenoble` or a street address                     |
-| `ANTHROPIC_API_KEY`      | The terminal app. In Claude Code or Codex, only needed for scouts                 |
+| `ANTHROPIC_API_KEY`      | The terminal app. In Claude Code, Codex or OpenCode, only needed for scouts       |
 | `TOMTOM_API_KEY`         | Optional: traffic at departure (free tier at developer.tomtom.com)                |
 | `MAPILLARY_ACCESS_TOKEN` | Optional: speed limit signs for the roadbook file (free, mapillary.com/developer) |
 | `RIDE_MODEL`             | Optional: the model of the terminal app, `claude-sonnet-5-5` is a good value      |
@@ -57,13 +57,27 @@ claude                  # in the project folder; approve the "ride" server when 
 npm run codex:register  # once per machine, then start codex anywhere
 ```
 
+```json [OpenCode]
+// opencode.json, shipped in the project: run `opencode` in the project folder.
+// From another folder, put this in ~/.config/opencode/opencode.json (absolute paths):
+{
+  "mcp": {
+    "ride": {
+      "type": "local",
+      "command": ["node", "--env-file-if-exists=/abs/path/agent-motoride/.env", "/abs/path/agent-motoride/src/mcp.ts"],
+      "enabled": true
+    }
+  }
+}
+```
+
 :::
 
 ## Find your way
 
 Everything the app does, by moment, with what to say and the command for each:
 [Everything you can do](/everything). From the app itself: ask "what can you
-do?" in Claude Code or Codex, or run `npm run rides -- help` in the terminal.
+do?" in Claude Code, Codex or OpenCode, or run `npm run rides -- help` in the terminal.
 
 ## Your first ride
 
@@ -77,14 +91,14 @@ What ride do you want?
 > this Saturday, no rain, under 250 km, winding roads
 ```
 
-```text [Claude Code / Codex]
+```text [Claude Code / Codex / OpenCode]
 plan me a ride this Saturday, no rain, under 250 km, winding roads
 ```
 
 :::
 
 ::: tip Plain words are enough
-In Claude Code and Codex, say what you want as you would to a friend: the
+In Claude Code, Codex and OpenCode, say what you want as you would to a friend: the
 server tells the model to fetch the full planning guidance first. Slash
 commands such as `/mcp__ride__plan-ride` are shortcuts, nothing more; type
 `/mcp__ride__help` to list them.

@@ -34,7 +34,7 @@ claude mcp add --transport http ride https://rides.example.org/mcp --header "Aut
 ```
 
 Codex reads the same address from `~/.codex/config.toml`, with the token in an environment variable. From then on the
-rider plans in plain words, as in [Claude Code and Codex](/claude-code-and-codex), and the library they build is theirs
+rider plans in plain words, as in [Claude Code, Codex and OpenCode](/claude-code-and-codex), and the library they build is theirs
 alone. Their own model plans: the server holds no model and no key, so scouting is done by the client's subagents in
 Claude Code (Codex explores the areas itself).
 

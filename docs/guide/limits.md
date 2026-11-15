@@ -44,7 +44,7 @@ the ride and for the local rules, including on speed-camera information.
   ignores traffic.
 - The terminal app runs on the Anthropic API only (Claude models); no other
   provider is implemented there. Through MCP the planning model is the
-  client's: Claude in Claude Code, OpenAI models in Codex. Scouts always use
+  client's own model. Scouts always use
   the Anthropic API key when one is set.
 - Unit tests cover the deterministic parts and the planner loop against fake
   services; the model's actual behaviour is only checked by real runs.

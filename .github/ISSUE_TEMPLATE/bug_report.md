@@ -10,7 +10,7 @@ labels: bug
 
 ## How to reproduce
 
-- Mode: API / MCP (Claude Code, Codex) / CLI command
+- Mode: API / MCP (Claude Code, Codex, OpenCode) / CLI command
 - Command or request:
 - Run id (`npm run rides -- runs`) and trace if relevant:
 

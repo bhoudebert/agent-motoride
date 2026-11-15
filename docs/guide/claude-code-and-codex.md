@@ -1,6 +1,6 @@
-# Claude Code and Codex
+# Claude Code, Codex and OpenCode
 
-In this mode the model of your Claude Code or Codex plan does the thinking,
+In this mode the model of your Claude Code, Codex or OpenCode setup does the thinking,
 and agentMotoride is its toolbox: roads, routing, weather, traffic, your
 library and the exports. No API key is needed for that part; scouts use one if
 it is set.
@@ -21,7 +21,18 @@ claude mcp add --scope user ride -- node --env-file-if-exists=/abs/path/agent-mo
 npm run codex:register    # once per machine; then start codex anywhere
 ```
 
+```bash [OpenCode]
+# OpenCode 1.x. Copy the example to opencode.json in a project root, or merge
+# its "mcp" entry into ~/.config/opencode/opencode.json, then replace
+# /abs/path/agent-motoride with this clone's path:
+cp opencode/opencode.example.json /path/to/your/project/opencode.json
+opencode          # then ask in plain words
+```
+
 :::
+
+OpenCode's own page on [MCP servers](https://opencode.ai/docs/mcp-servers/)
+describes the format.
 
 For Codex, add one line by hand under `[mcp_servers.ride]` in
 `~/.codex/config.toml`, or Codex asks before every tool call (a plan makes
@@ -33,7 +44,7 @@ default_tools_approval_mode = "approve"   # or "writes": lookups free, saving st
 
 ## Talk to it
 
-Plain words are enough, in both:
+Plain words are enough, in all three:
 
 ```text
 plan me a ride this Saturday, no rain, under 250 km, winding roads
@@ -50,13 +61,13 @@ tools".
 
 ## Find everything it can do
 
-Ask **"what can you do?"**, in Claude Code or Codex: the server answers with
+Ask **"what can you do?"**, in Claude Code, Codex or OpenCode: the server answers with
 every feature, grouped by moment (plan, ride day, on the road, after the ride,
 library, settings), each with what to say. In Claude Code, `/mcp__ride__help`
 shows the same list, and slash commands are shortcuts for the most frequent
 ones (`/mcp__ride__plan-ride`, `/mcp__ride__plan-from`, `/mcp__ride__today`,
 `/mcp__ride__rate-stretch` and others). Codex has no slash commands for MCP
-servers: plain words do everything.
+servers, and in OpenCode plain words work: plain words do everything.
 
 The same list, with the terminal command and the shortcut for each:
 [Everything you can do](/everything).
@@ -94,7 +105,7 @@ Every tool, prompt and resource, with its inputs: see the
   `RIDE_MODEL`.
 - **One session per server process**: routed trips and settings last until the
   client restarts the server; roadbooks, rides, the cache and traces are on disk.
-- **After updating agentMotoride**, quit and relaunch Claude Code or Codex: it keeps the
+- **After updating agentMotoride**, quit and relaunch Claude Code, Codex or OpenCode: it keeps the
   old server process otherwise.
 - Every session is logged: `npm run rides -- runs` shows an `mcp-client` run,
   `npm run rides -- trace <id>` replays it.

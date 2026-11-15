@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "ride": {
+      "type": "local",
+      "command": ["node", "--env-file-if-exists=.env", "src/mcp.ts"],
+      "enabled": true
+    }
+  }
+}

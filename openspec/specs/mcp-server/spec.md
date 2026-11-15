@@ -93,6 +93,11 @@ The server SHALL work with any MCP client over stdio. The rider SHALL get the sa
 - **WHEN** the server is registered in the user's Codex config (`npm run codex:register`; Codex reads no project-level MCP file) with `default_tools_approval_mode = "approve"`, and the rider asks for a ride in plain words
 - **THEN** the model receives the server instructions, fetches the guidance with `planningGuide`, and plans with the tools without per-call confirmations
 
+#### Scenario: OpenCode
+
+- **WHEN** OpenCode starts in the project directory, which ships an `opencode.json` registering the `ride` server over stdio (or the server is registered in the user's OpenCode config with absolute paths), and the rider asks for a ride in plain words
+- **THEN** the ride tools are offered and the model plans with them, with no OpenCode-specific behaviour in the server, its tools or its instructions
+
 #### Scenario: Claude Code
 
 - **WHEN** Claude Code connects from the project directory

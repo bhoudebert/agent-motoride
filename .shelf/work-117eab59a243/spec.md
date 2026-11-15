@@ -1,68 +1,67 @@
 # Spec: OpenCode alongside Claude Code and Codex
 
+Changed in round 1: OpenCode facts are now a gate before any text is written; the scope of "places that name the clients" is listed by file; remote and phone mentions stay as they are; the page keeps its file name and URL; no change to any openspec spec.
+
 ## Goal
 
-Today the README, the guide and the website say agentMotoride works in the terminal and in "Claude Code or Codex". I want a rider who uses OpenCode to see that it works for them too, to know how to connect it, and to find OpenCode named wherever Claude Code and Codex are named.
+Today the README, the guide and the website say agentMotoride works in the terminal and in "Claude Code or Codex". I want a rider who uses OpenCode to see that it works for them too, to know how to connect it, and to find OpenCode named wherever Claude Code and Codex are named as clients. This is documentation and an example config only; the server and its tools do not change.
 
-What the repository shows today: OpenCode is not mentioned anywhere (no file, no script, no page). Claude Code is connected by the project's `.mcp.json`; Codex by `npm run codex:register` and `codex/config.example.toml`. The server itself is a plain MCP server over stdio, so the work is a connection path and the wording, not a change to the tools.
+What the repository shows: OpenCode appears nowhere. The server is a plain MCP server over stdio. Claude Code connects through the project's `.mcp.json`; Codex through `npm run codex:register` and `codex/config.example.toml`.
 
 ## Requirements
 
-1. The guide SHALL tell an OpenCode rider how to connect the `ride` MCP server (the page "Claude Code and Codex" gains an OpenCode tab, and is renamed to include OpenCode, its link and menu entry updated with it).
-2. The connection steps SHALL leave the server running with the same command as for the other clients (`node --env-file-if-exists=<.env> <src/mcp.ts>`, absolute paths when the client may start from any directory), and SHALL say how a rider avoids a confirmation on every tool call, if OpenCode has such a setting.
-3. The repository SHALL ship an example OpenCode configuration for the server, next to `codex/config.example.toml`, that a rider can copy.
-4. The README, the guide pages, and the website (`site/index.html`) SHALL name OpenCode wherever they name "Claude Code or Codex" as the clients that use the tools, including the comparison table, the "From your phone" box only where it is true for OpenCode (see open questions).
-5. The pages SHALL NOT claim for OpenCode what is only true of Claude Code (the `/mcp__ride__…` slash commands, `@ride:` attachments, forms, Claude subagents as scouts) unless that has been checked in OpenCode.
-6. The MCP server's behaviour SHALL NOT change: the same tools, prompts, resources and instructions are served to every client.
+1. **Fact gate.** Before any OpenCode text or file is written, the design SHALL confirm from OpenCode's own documentation, and record in the design with the source and version: (a) the config file name and the keys for a local stdio MCP server (command, arguments, environment); (b) whether a project-level config is read, and where a user-level one lives; (c) whether a setting avoids a confirmation on every tool call. This analyst could not check these (no network, OpenCode not installed).
+2. **If a fact is not confirmed**, the sentence that depends on it SHALL be left out of the guide, not guessed:
+   - (a) not confirmed: no example file is shipped and the guide's OpenCode tab says only that the server is a standard stdio MCP server started with the same command as for the other clients, and links to OpenCode's MCP documentation;
+   - (b) not confirmed: the guide and the example say where to copy the file only as far as confirmed;
+   - (c) not confirmed: no approval advice is given.
+3. **Guide.** The page `docs/guide/claude-code-and-codex.md` SHALL keep its file name and URL. Its title, the VitePress menu entry, and its text SHALL change to name OpenCode ("Claude Code, Codex and OpenCode"), and its connect code group SHALL gain an OpenCode tab with the confirmed steps. The command SHALL be the one the other tabs use (`node --env-file-if-exists=<.env> <src/mcp.ts>`, absolute paths).
+4. **Example file.** When requirement 1(a) is confirmed, the repository SHALL ship an example OpenCode config at `opencode/opencode.example.json` (a folder of its own, as `codex/` is), with `.dockerignore` listing the folder as `codex` is. Its header comment, if the format allows comments, says where to put it.
+5. **Where clients are named.** The following SHALL name OpenCode wherever they list Claude Code and Codex as the clients that use the tools: `README.md` (overview, comparison table, "MCP mode" line, guide link text); `docs/guide/*.md` (except the remote and phone cases of requirement 6); `site/index.html` (the "Claude Code or Codex" box, the map, the plan and notes captions); `.github/ISSUE_TEMPLATE/bug_report.md` (the Mode line); `docs/how-it-works.svg`; `docs/ENGINEERING.md` (the MCP-mode sentence and the `npm run mcp` row); `.env.example` comments. The README and `NOTICE.md` trademark lists SHALL name OpenCode.
+6. **Remote and phone stay as they are.** Text about a remote HTTPS connection or the phone (README "From your phone", `site/index.html` "From your phone" box, `docs/guide/chat-on-your-phone.md`, `from-your-phone.md`, `phone-and-gps.md`, `several-riders.md`, `self-hosting.md`) SHALL keep naming Claude Code and Codex only. The `multi-user-server` purpose line is therefore not touched.
+7. **No Claude-only claim for OpenCode.** Pages SHALL NOT say OpenCode has the `/mcp__ride__…` slash commands, `@ride:` attachments, forms, or Claude subagents as scouts; they say plain words work, unless confirmed in OpenCode's documentation.
+8. **No behaviour change.** No file in `src/`, `scripts/` or `test/` and no file under `openspec/` SHALL change. Existing tests pass unchanged.
 
 ## Scenarios
 
-### Requirement 1 and 2
+### 1 and 2: the gate
 
-- **WHEN** a rider opens the guide page on connecting clients and picks the OpenCode tab
-- **THEN** they find the config to add, with absolute paths, and the line for approval of tool calls
-- **EDGE: WHEN** they follow only the Claude Code or Codex tab **THEN** nothing there has changed in meaning
+- **WHEN** the design has confirmed a, b and c **THEN** the guide's OpenCode tab and the example file use exactly those keys and paths
+- **EDGE: WHEN** c cannot be confirmed **THEN** the tab has no approval line and the rest ships
+- **EDGE: WHEN** a cannot be confirmed **THEN** `opencode/` does not exist and the tab is the one-paragraph version
 
-### Requirement 3
+### 3: the page
 
-- **WHEN** a rider copies the example file into their OpenCode config and starts OpenCode
-- **THEN** the `ride` server is listed as connected and "show roadbook 7" reaches the tools
-- **EDGE: WHEN** `.env` does not exist **THEN** the server still starts (`--env-file-if-exists`)
+- **WHEN** a link such as `.../guide/claude-code-and-codex` (README, outside pages) is opened **THEN** it still loads, now titled with OpenCode
+- **WHEN** the guide is built **THEN** `several-riders.md`, `chat-on-your-phone.md` and the menu links resolve, with link text that may still say "Claude Code and Codex" only where requirement 6 applies
 
-### Requirement 4
+### 4: the example file
 
-- **WHEN** one searches the README, the guide and `site/index.html` for "Codex"
-- **THEN** every place that lists the clients also lists OpenCode
-- **EDGE:** mentions of Codex that are specific to it (`codex:register`, `~/.codex/config.toml`, trademark notice) stay Codex-only; the trademark list in `README.md` and `NOTICE.md` also names OpenCode
+- **WHEN** a rider copies it where the header says, and the server command is the absolute path of this clone **THEN** it is a valid file of the format OpenCode documents (checked against the documentation, not by running OpenCode)
+- **EDGE:** with no `.env` present the command still starts (`--env-file-if-exists`)
 
-### Requirement 5
+### 5: names
 
-- **WHEN** a page describes slash commands, forms or attachments
-- **THEN** it says they are for Claude Code, and says plain words work in OpenCode, unless checked otherwise
+- **WHEN** `grep -ri codex` is run over the repository **THEN** every remaining hit is in the exceptions: Codex-specific content (`codex/`, `scripts/codex-register.ts`, `codex:register`, `~/.codex/config.toml`), requirement 6 files, `src/` strings, `docs/adr/`, `ROADMAP.md`, `CHANGELOG.md`, `CONTRIBUTING.md` and `commitlint.config.js` (history, scopes, product names), `AGENTS.md`/`CLAUDE.md` (they address coding agents, not riders), and `openspec/` requirement text
 
-### Requirement 6
+### 7: Claude-only claims
 
-- **WHEN** the existing MCP end-to-end tests run
-- **THEN** they pass unchanged
+- **WHEN** a sentence describes slash commands, forms or attachments **THEN** it names Claude Code only
 
 ## Out of scope
 
-- A `npm run opencode:register` script (the Codex one exists because Codex needs a CLI command; add one only if the design finds OpenCode needs it).
-- Changes to tools, prompts, the planner, or the API/terminal mode.
-- Remote or phone use of OpenCode, unless it is verified.
-- Changing the page order or the site design beyond the wording.
+- `src/` strings that list the clients (`capabilities.ts`, `admin.ts`, `rideServer.ts` comments, the generated reference): changing them changes what a rider sees from the app and would need a spec change. Left for a later request.
+- An `npm run opencode:register` script.
+- Remote or phone use of OpenCode, and the `multi-user-server` purpose line.
+- Historical records: ADRs, CHANGELOG, ROADMAP.
+- Renaming the page file or URL, a redirect, a new ADR.
 
 ## Conflicts with existing specs
 
-- `openspec/specs/mcp-server/spec.md`, "Client portability" (any MCP client over stdio; Codex CLI, Claude Code, plain-words scenarios): this work adds a scenario "OpenCode" there. No requirement text is contradicted. It stays consistent with "the same planning in plain words in every client".
-- `openspec/specs/multi-user-server/spec.md` (purpose line: "from Claude Code or Codex"): wording only; the requirement is not changed, and OpenCode is added only if remote HTTPS use is verified.
-- `openspec/specs/mcp-server/spec.md`, "Client scouting when API scouts are off": OpenCode is not said to run subagents; the existing "otherwise explore the areas itself" covers it.
-- ADR 0004 (two modes, shared tools) and ADR 0017 (elicitation and resources, not sampling): not touched; no new mode.
-
-None other.
+None. `openspec/specs/mcp-server/spec.md` ("Client portability": any MCP client over stdio) already covers OpenCode; it is not edited and no OpenCode scenario is added, since none could be tested without OpenCode. `multi-user-server` is not touched. ADR 0004 and 0017 are not touched; ADR 0018 (guide with VitePress, clients side by side in code groups) is followed by adding a tab.
 
 ## Open questions
 
-- I could not check OpenCode's facts here (no network, not installed): its MCP config file name and keys, whether a project-level config is read, whether it has a setting to skip per-call approval, whether it runs subagents, and whether it can accept a remote connection. The design must verify them against OpenCode's own documentation before the guide states them; if one is false the matching sentence is left out. If OpenCode reads no project-level file, the example must say where to copy it, as the Codex one does.
-- Does the maintainer want a `register` script for OpenCode? It would change the design (a script, a test, the commands reference) and is left out until asked.
-- Markdown lint for this file: none was run; the repository's Prettier is switched off for this folder and no other markdown linter is installed.
+- The facts in requirement 1 (above); if any is unconfirmable the matching text is dropped (requirement 2). This cannot change the design beyond whether `opencode/` exists.
+- Should a later request add OpenCode to the `src/` strings and the phone and remote pages? Left out; no decision needed now.
+- Markdown lint: none run; Prettier is off for this folder and no other markdown linter is installed.

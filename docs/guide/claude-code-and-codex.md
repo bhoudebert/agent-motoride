@@ -67,7 +67,7 @@ library, settings), each with what to say. In Claude Code, `/mcp__ride__help`
 shows the same list, and slash commands are shortcuts for the most frequent
 ones (`/mcp__ride__plan-ride`, `/mcp__ride__plan-from`, `/mcp__ride__today`,
 `/mcp__ride__rate-stretch` and others). Codex has no slash commands for MCP
-servers, and in OpenCode plain words work: plain words do everything.
+servers: plain words do everything.
 
 The same list, with the terminal command and the shortcut for each:
 [Everything you can do](/everything).

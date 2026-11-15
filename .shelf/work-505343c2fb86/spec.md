@@ -1,5 +1,7 @@
 # Spec: OpenCode alongside Claude Code and Codex
 
+Round 1: no requirement changed. The review found the spec buildable. The red CI is two jobs cancelled by a newer run on the same pull request ("Canceling since a higher priority waiting request"), not a failure, and the spec holds no code for them to check. A new CI run is needed.
+
 ## Goal
 
 A rider who uses OpenCode must find, in the guide, the README and the website, that agentMotoride works there too: same MCP server, same plain-words planning, named next to Claude Code and Codex. Today no file in the repository mentions OpenCode (checked: no match outside the request).

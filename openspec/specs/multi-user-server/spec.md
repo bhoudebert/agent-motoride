@@ -48,6 +48,7 @@ A command `npm run admin` (and `nix run .#admin`) SHALL add a tenant by email an
 
 - **WHEN** `RIDE_OAUTH` is on and a client sends a valid rider token in `Authorization: Bearer` on `/mcp`
 - **THEN** the request is accepted exactly as when sign-in is off
+- **AND** WHEN no token is sent, THEN the answer is 401 with the `WWW-Authenticate` discovery header, and WHEN an unknown or expired token is sent, THEN the answer is 401 (both already pinned by `test/oauth.test.ts`)
 
 #### Scenario: Remove
 

@@ -24,20 +24,24 @@ agentMotoride works today in the terminal and as an MCP server for Claude Code a
 ## Scenarios
 
 ### 1. Project file
+
 - **WHEN** a rider starts OpenCode in the project directory
 - **THEN** the `ride` server is listed and "show roadbook 7" reaches the ride tools
 - **EDGE: WHEN** OpenCode is started from another directory **THEN** the guide says to use the user-level registration with absolute paths, as for Claude Code and Codex.
 
 ### 2. Guide
+
 - **WHEN** a reader opens the guide sidebar
 - **THEN** the page title and the link text name Claude Code, Codex and OpenCode, and the `/claude-code-and-codex` link target keeps working (renamed page keeps a redirect or the old path is kept).
 
 ### 3. Website
+
 - **WHEN** a visitor reads the "ways to use it" and feature sections
 - **THEN** each place that said "Claude Code or Codex" now names OpenCode too.
 - **EDGE:** the "From your phone" card still talks only of Claude and ChatGPT apps (Requirement 5).
 
 ### 4. Unchecked features
+
 - **WHEN** the guide lists slash commands, attachments or subagent scouts
 - **THEN** OpenCode is not listed as having them without a check, and the page says plain words work everywhere.
 

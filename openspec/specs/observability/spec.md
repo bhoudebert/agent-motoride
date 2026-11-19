@@ -18,13 +18,18 @@ Every session SHALL have a run row updated after each turn: model, effort, turns
 
 ### Requirement: Trace
 
-Every step SHALL be traced with its scope (planner or scout), kind, name, duration and payload: rider messages, model responses with tokens and tools called, tool calls with input and output, final answers, errors. `rides trace <run>` SHALL replay it as a timeline with a summary per tool; `--full` SHALL show payloads.
+Every step SHALL be traced with its scope (planner or scout), kind, name, duration and payload: rider messages, model responses with tokens and tools called, tool calls with input and output, final answers, errors. `rides trace <run>` SHALL replay it as a timeline with a summary per tool (a forecast's summary saying when the models disagree); `--full` SHALL show payloads.
 
 #### Scenario: Replay a run
 
 - **WHEN** the rider runs `rides trace 12`
 - **THEN** each step is shown with its time, scope and kind (rider message, model call with tokens and tools called, tool call with its result summarised, answer, error), followed by the usage and, per tool, its calls, total time and failures
 - **AND** `--full` also prints each step's payload
+
+#### Scenario: Forecast with models that disagree
+
+- **WHEN** a traced `getWeather` call returned a summary whose models disagree
+- **THEN** its line in the timeline ends with ", models disagree"
 
 ### Requirement: OpenTelemetry export
 

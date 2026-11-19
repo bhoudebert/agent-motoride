@@ -80,13 +80,18 @@ Exporting a saved ride SHALL also write a roadbook file next to the GPX, same na
 
 ### Requirement: Markdown
 
-A ride SHALL export as a Markdown document in a fixed layout: headline figures, date and start, request, navigation links, figures, road mix with 70 km/h readings, legs table, daylight, weather table, stop plan table with locations, fixed cameras (one row per spot, doubled entries marked), fuel and café stops, planning metadata, itinerary text as planned, waypoints. Available from the CLI, the prompt and MCP.
+A ride SHALL export as a Markdown document in a fixed layout: headline figures, date and start, request, navigation links, figures, road mix with 70 km/h readings, legs table, daylight, weather table (a point where the forecast models disagree marked "models disagree"), stop plan table with locations, fixed cameras (one row per spot, doubled entries marked), fuel and café stops, planning metadata, itinerary text as planned, waypoints. Available from the CLI, the prompt and MCP.
 
 #### Scenario: Two cameras at one spot
 
 - **WHEN** a saved ride with two fixed cameras at 130 at km 4 is exported as Markdown
 - **THEN** the document has the road mix, legs, daylight, weather, stop plan, fixed cameras, fuel stops and itinerary sections
 - **AND** the two cameras make one row marked "4 (x2)"
+
+#### Scenario: Forecast models disagree at the start
+
+- **WHEN** the stored forecast says the models disagree at the start
+- **THEN** the start's rain cell in the weather table ends with "models disagree", and the ride view prints the disagreement line under that point
 
 ### Requirement: Ride map
 

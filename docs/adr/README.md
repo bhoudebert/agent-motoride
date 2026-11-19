@@ -56,3 +56,4 @@ not rewritten.
 | [0057](0057-a-hosted-server-is-run-by-a-private-sidecar-beside-agentride.md) | A hosted server is run by a private sidecar beside agentRide                     | proposed |
 | [0058](0058-spec-drift-is-checked-by-code-first-and-a-local-model-second.md) | Spec drift is checked by code first and a local model second                     | accepted |
 | [0059](0059-a-spec-reviewer-could-be-an-external-app.md)                     | A spec reviewer could be an external app                                         | proposed |
+| [0060](0060-weather-is-the-cautious-reading-of-several-models.md)            | Read the weather as the cautious reading of several models                       | accepted |

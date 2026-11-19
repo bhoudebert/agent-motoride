@@ -211,7 +211,7 @@ What the app already knows around a place, from earlier sessions: saved rides wi
 
 _read-only · uses online services_
 
-Hourly weather forecast for one place on one day (up to 16 days ahead): temperature, rain probability and amount, wind, gusts, sky. Call it for the start point and for several points along a candidate route, covering the hours the rider would actually be there.
+Hourly weather forecast for one place on one day (up to 16 days ahead): temperature, rain probability and amount, wind, gusts, sky. Read from several forecast models at once: every figure is the most cautious one (most rain, strongest gust), each hour lists the rain and gust of every model, and summary.disagreement says when the models disagree; mention it to the rider. Call it for the start point and for several points along a candidate route, covering the hours the rider would actually be there.
 
 - `location` (string): Town ("Florac", "Vannes, France"), street or address ("Avenue de Bretagne, Lille"), or "lat,lon" coordinates
 - `date` (string): Day to forecast, YYYY-MM-DD

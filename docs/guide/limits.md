@@ -8,7 +8,8 @@ the ride and for the local rules, including on speed-camera information.
 
 - The public Overpass and Valhalla servers are shared, rate-limited community
   services. Fine for personal use, not for heavy or commercial traffic.
-- Forecasts change. A ride judged dry on Thursday should be rechecked on the day.
+- Forecasts change. A ride judged dry on Thursday should be rechecked on the day. The figures are the most cautious of
+  several models: when they disagree, the forecast says so, and a dry day may be called a rain risk.
 - Speed limits come from OpenStreetMap. Where a road has no limit tagged, the roadbook file for the MotoRide app
   assumes the country default, except on roads that lie mostly in built-up land (OpenStreetMap residential,
   commercial or industrial areas), which it sets to 50 and marks as inferred. Both are guesses: the app marks them

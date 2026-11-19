@@ -12,11 +12,26 @@ controls are in no map, and an unmapped camera is not shown. The itinerary
 presents them as places to watch your speed; check the local rules on camera
 information.
 
+## Rain and gusts: the most cautious forecast
+
+The forecast is read from four models at once (Météo-France AROME, DWD ICON,
+ECMWF and Open-Meteo's own blend), and every figure is the most cautious one:
+the most rain any model gives in the hour, the strongest gust, the highest rain
+probability. A day is dry only when every model is dry. The models often
+disagree: for Pont-à-Marcq one November morning, one gave no rain at 9h and
+another 2.9 mm; their gusts at 8h ranged from 11 to 38 km/h. When, in the same
+hour, one model is dry (under 0.1 mm) and another gives 1 mm or more, or two
+gusts differ by 15 km/h or more, the forecast says "Models disagree" with the
+hour, the range and the models, and the briefing lists it as a caution. A model
+that does not cover the place (AROME outside France and its borders) is left
+out, never read as dry. Expect more "rain risk" than a single app shows: it
+is a margin, not a mistake.
+
 ## Crosswind
 
 The route is sampled every 2 km with its heading and the time you pass; the
-forecast gusts and wind direction give the part blowing across your direction
-of travel. Stretches at 35 km/h or more are flagged, 50 km/h or more as
+strongest forecast gust of the models and its wind direction give the part
+blowing across your direction of travel. Stretches at 35 km/h or more are flagged, 50 km/h or more as
 strong. Needs the ride date within 16 days.
 
 ## Low sun ahead

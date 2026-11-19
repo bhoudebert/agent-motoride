@@ -89,6 +89,11 @@ export async function rideBriefing(store: Store, ride: SavedRide, today: string)
             `Rain risk at ${wet.map((p) => p.label).join(", ")}: up to ${worst.maxRainProbPct}% and ${worst.totalRainMm} mm.`,
           );
         }
+        for (const p of weather.points)
+          if (p.modelsDisagree && p.disagreement)
+            cautions.push(
+              `Forecast models disagree at ${p.label}: ${p.disagreement.replace(/^Models disagree: /, "")}`,
+            );
         const gust = Math.max(...weather.points.map((p) => p.maxGustKmh));
         if (gust >= 60) problems.push(`Gusts up to ${gust} km/h.`);
         else if (gust >= 45) cautions.push(`Gusts up to ${gust} km/h.`);

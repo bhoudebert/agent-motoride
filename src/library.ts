@@ -636,7 +636,8 @@ async function rideWeather(ride: SavedRide, shapes: string[]): Promise<RideWeath
       toHour: Math.min(23, sample.to),
     });
     const skies = [...new Set(w.hours.map((h) => h.sky))].join(", ");
-    points.push({ label: sample.label, kmAlongRoute: sample.km, ...w.summary, sky: skies });
+    const { models: _models, ...summary } = w.summary;
+    points.push({ label: sample.label, kmAlongRoute: sample.km, ...summary, sky: skies });
   }
   return {
     forecastDate: date,
@@ -658,6 +659,7 @@ export function formatWeather(weather: RideWeather | null | undefined, rideDate:
     lines.push(
       `  ${p.label.padEnd(10)} km ${String(p.kmAlongRoute).padStart(3)}  ${p.dry ? "dry" : "RAIN RISK"}, rain ${p.maxRainProbPct}% / ${p.totalRainMm} mm, ${p.minTempC}-${p.maxTempC} °C, gusts ${p.maxGustKmh} km/h, ${p.sky}`,
     );
+    if (p.modelsDisagree && p.disagreement) lines.push(`  ${"".padEnd(10)}        ${p.disagreement}`);
   }
   return lines;
 }

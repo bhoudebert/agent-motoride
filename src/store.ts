@@ -119,6 +119,10 @@ export interface RideWeather {
     maxTempC: number;
     maxGustKmh: number;
     sky: string;
+    /** The forecast models disagree on rain or gusts (ADR 0060); absent on forecasts stored before. */
+    modelsDisagree?: boolean;
+    /** One line: the hours, the ranges and the models. */
+    disagreement?: string | null;
   }>;
 }
 

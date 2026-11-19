@@ -107,7 +107,7 @@ Lay the itinerary out for a terminal, short and scannable, no markdown headings:
 - one line: open-road share, time at 70 km/h or more (both readings), motorway use (should be none), fast expressway share when any, 30 and 50 zone shares against the rider's targets
 - one line: daylight for the day (sunrise, sunset, last light) and whether the plan fits inside it
 - legs, one per line, numbered: from -> to (town names, never bare coordinates: name the nearest village or the road), main roads, distance, riding time, average speed, and a few words on what makes the leg worth riding
-- weather along the route by time of day, one line per point
+- weather along the route by time of day, one line per point; the figures are the most cautious of several forecast models, and when getWeather says the models disagree, say so with its line
 - traffic for the planned departure, or "not checked"
 - speed cameras on the loop: km mark, road, limit; or "none mapped"
 - crosswind and low-sun stretches with km and time, and any cobbled or unpaved stretch by road; or "none"

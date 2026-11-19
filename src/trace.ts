@@ -34,7 +34,7 @@ function summariseTool(name: string, payload: any): string {
     }
     case "getWeather": {
       const s = o.summary ?? {};
-      return `${o.location}: ${s.dry ? "dry" : "rain risk"}, rain prob max ${s.maxRainProbPct}%, ${s.totalRainMm} mm, ${s.minTempC}-${s.maxTempC}°C`;
+      return `${o.location}: ${s.dry ? "dry" : "rain risk"}, rain prob max ${s.maxRainProbPct}%, ${s.totalRainMm} mm, ${s.minTempC}-${s.maxTempC}°C${s.modelsDisagree ? ", models disagree" : ""}`;
     }
     case "listSavedRides":
       return `${o.count} saved ride(s) within ${o.radiusKm} km`;

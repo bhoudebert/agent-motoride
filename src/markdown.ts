@@ -157,7 +157,7 @@ export function formatRideMarkdown(ride: SavedRide, map: string | null = null): 
     );
     for (const p of w.points)
       push(
-        `| ${p.label} | ${p.kmAlongRoute} | ${p.dry ? "dry" : "risk"}, ${p.maxRainProbPct}% / ${p.totalRainMm} mm | ${p.minTempC}-${p.maxTempC} °C | ${p.maxGustKmh} km/h | ${p.sky} |`,
+        `| ${p.label} | ${p.kmAlongRoute} | ${p.dry ? "dry" : "risk"}, ${p.maxRainProbPct}% / ${p.totalRainMm} mm${p.modelsDisagree ? ", models disagree" : ""} | ${p.minTempC}-${p.maxTempC} °C | ${p.maxGustKmh} km/h | ${p.sky} |`,
       );
     push("");
   } else if (x && ride.rideDate) {

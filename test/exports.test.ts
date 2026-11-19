@@ -207,3 +207,28 @@ test("escaping: share page quotes and Markdown cells hold against hostile names"
   assert.equal(cell("D 9\\| x"), "D 9\\\\\\| x");
   assert.equal(cell("a|b"), "a\\|b");
 });
+
+test("weather: a point where the forecast models disagree is marked in the view and the Markdown", () => {
+  const store = new Store(":memory:");
+  const ride = savedRide(store);
+  const weather = ride.extras!.weather!;
+  const disagreement =
+    "Models disagree: 09h rain 0-2.9 mm (meteofrance_seamless dry, best_match 2.9 mm). Figures are the most cautious model.";
+  const wet = {
+    ...ride,
+    extras: {
+      ...ride.extras!,
+      weather: {
+        ...weather,
+        points: [{ ...weather.points[0]!, dry: false, totalRainMm: 2.9, modelsDisagree: true, disagreement }],
+      },
+    },
+  };
+  const lines = formatWeather(wet.extras.weather, "2026-10-11");
+  assert.match(lines[1]!, /start .*RAIN RISK, rain 10% \/ 2\.9 mm/);
+  assert.equal(lines[2]!.trim(), disagreement);
+  assert.ok(formatRideMarkdown(wet).includes("| start | 0 | risk, 10% / 2.9 mm, models disagree |"));
+  assert.equal(formatWeather(weather, "2026-10-11").length, 2, "no line when the models agree");
+  assert.ok(!formatRideMarkdown(ride).includes("models disagree"));
+  store.close();
+});

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { otlpEndpoint, otlpHeaders, runToOtlp, sendOtlp } from "../src/otel.ts";
 import { Store } from "../src/store.ts";
+import { formatTrace } from "../src/trace.ts";
 import { emptyUsage } from "../src/usage.ts";
 
 function session() {
@@ -127,4 +128,25 @@ test("otel: standard endpoint and header variables; a refusal is reported", asyn
   } finally {
     globalThis.fetch = previous;
   }
+});
+
+test("trace: a forecast whose models disagree says so in the timeline", () => {
+  const { run } = session();
+  const forecast = (modelsDisagree: boolean) => ({
+    id: 1,
+    at: "2026-11-19T20:00:00Z",
+    scope: "main",
+    kind: "tool",
+    name: "getWeather",
+    ms: 120,
+    payload: {
+      input: { location: "Pont-à-Marcq" },
+      output: {
+        location: "Pont-à-Marcq",
+        summary: { dry: false, maxRainProbPct: 68, totalRainMm: 2.9, minTempC: 8, maxTempC: 10, modelsDisagree },
+      },
+    },
+  });
+  assert.match(formatTrace(run, [forecast(true)]), /-> Pont-à-Marcq: rain risk, .*8-10°C, models disagree\n/);
+  assert.doesNotMatch(formatTrace(run, [forecast(false)]), /models disagree/);
 });

@@ -92,7 +92,9 @@ export const ScoutReport = z.object({
   pct30: z.number().nullable().describe("Share of distance in zones of 30 km/h or less"),
   weather: z
     .string()
-    .describe("Forecast along the loop for the riding hours, in one or two sentences, from getWeather"),
+    .describe(
+      "Forecast along the loop for the riding hours, in one or two sentences, from getWeather; say when the models disagree",
+    ),
   verdict: z
     .string()
     .describe("Why this loop is worth riding or not, and what rules the area out if nothing was found"),

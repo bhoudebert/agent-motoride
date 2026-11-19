@@ -286,7 +286,7 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
       name: "getWeather",
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       description:
-        "Hourly weather forecast for one place on one day (up to 16 days ahead): temperature, rain probability and amount, wind, gusts, sky. Call it for the start point and for several points along a candidate route, covering the hours the rider would actually be there.",
+        "Hourly weather forecast for one place on one day (up to 16 days ahead): temperature, rain probability and amount, wind, gusts, sky. Read from several forecast models at once: every figure is the most cautious one (most rain, strongest gust), each hour lists the rain and gust of every model, and summary.disagreement says when the models disagree; mention it to the rider. Call it for the start point and for several points along a candidate route, covering the hours the rider would actually be there.",
       inputSchema: z.object({
         location,
         date: z

@@ -117,13 +117,18 @@ The built-in planner's final answer SHALL be validated by the API against a sche
 
 ### Requirement: Itinerary layout
 
-The itinerary SHALL be plain text for a terminal: name and reason; departure, distance, estimated riding time, average speed, realistic total; open-road share, time at 70 km/h or more (both readings), motorway use, slow-zone shares against targets; daylight; numbered legs with town names (never bare coordinates), main roads, distance, time, average speed; weather by time of day; traffic or "not checked"; cameras; planned stops with times; navigation links; one alternative.
+The itinerary SHALL be plain text for a terminal: name and reason; departure, distance, estimated riding time, average speed, realistic total; open-road share, time at 70 km/h or more (both readings), motorway use, slow-zone shares against targets; daylight; numbered legs with town names (never bare coordinates), main roads, distance, time, average speed; weather by time of day, saying when the forecast models disagree (the figures being the most cautious of them); traffic or "not checked"; cameras; planned stops with times; navigation links; one alternative.
 
 #### Scenario: Loop presented without traffic data
 
 - **WHEN** a loop through a waypoint given as coordinates is presented and no traffic was looked up
 - **THEN** its legs are numbered and named by towns or roads ("D 531 near Villard-de-Lans"), not by the coordinates
 - **AND** the traffic line reads "not checked"
+
+#### Scenario: Forecast models disagree
+
+- **WHEN** `getWeather` says the models disagree at a point of the loop
+- **THEN** the weather line of the itinerary says so with the hour and the range, as the tool's description and the planner's instructions ask
 
 ### Requirement: Follow-ups
 

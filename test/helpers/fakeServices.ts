@@ -13,6 +13,8 @@ export interface FakeApi {
   edges?: Array<Record<string, unknown>>;
   /** Length in km of every routed leg, instead of 40, 45, 50…; cleared by setting undefined. */
   legKm?: number;
+  /** Hourly values (24 per variable) that replace the defaults of one forecast model; cleared by setting undefined. */
+  forecast?: Record<string, Record<string, (number | null)[]>>;
 }
 
 const PLACES: Record<string, { lat: number; lon: number; name: string }> = {
@@ -67,20 +69,29 @@ export function installFakeServices(): FakeApi {
     }
     if (url.host === "api.open-meteo.com") {
       const hours = Array.from({ length: 24 }, (_, h) => h);
-      return json({
-        timezone: "Europe/Paris",
-        utc_offset_seconds: 7200,
-        hourly: {
-          time: hours.map((h) => `2026-10-10T${String(h).padStart(2, "0")}:00`),
-          temperature_2m: hours.map(() => 14),
-          precipitation_probability: hours.map(() => 10),
-          precipitation: hours.map(() => 0),
-          wind_speed_10m: hours.map(() => 12),
-          wind_gusts_10m: hours.map(() => 25),
-          wind_direction_10m: hours.map(() => 270),
-          weather_code: hours.map(() => 2),
-        },
-      });
+      const base: Record<string, (number | null)[]> = {
+        temperature_2m: hours.map(() => 14),
+        precipitation_probability: hours.map(() => 10),
+        precipitation: hours.map(() => 0),
+        wind_speed_10m: hours.map(() => 12),
+        wind_gusts_10m: hours.map(() => 25),
+        wind_direction_10m: hours.map(() => 270),
+        weather_code: hours.map(() => 2),
+      };
+      const time = hours.map((h) => `2026-10-10T${String(h).padStart(2, "0")}:00`);
+      const models = url.searchParams.get("models")?.split(",");
+      if (!models) return json({ timezone: "Europe/Paris", utc_offset_seconds: 7200, hourly: { time, ...base } });
+      // Several models: every key suffixed with the model, as Open-Meteo answers; AROME gives no probability.
+      const hourly: Record<string, unknown> = { time };
+      for (const model of models) {
+        const own = {
+          ...base,
+          ...(model === "meteofrance_seamless" ? { precipitation_probability: hours.map(() => null) } : {}),
+          ...api.forecast?.[model],
+        };
+        for (const [name, values] of Object.entries(own)) hourly[`${name}_${model}`] = values;
+      }
+      return json({ timezone: "Europe/Paris", utc_offset_seconds: 7200, hourly });
     }
     if (url.host === "valhalla1.openstreetmap.de" && url.pathname === "/route") {
       const locations: Array<{ lat: number; lon: number }> = body.locations;

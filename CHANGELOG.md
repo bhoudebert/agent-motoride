@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.0](https://github.com/bhoudebert/agent-motoride/compare/v1.14.0...v1.15.0) (2026-11-20)
+
+
+### Features
+
+* **weather:** read several forecast models and keep the cautious figures ([230de97](https://github.com/bhoudebert/agent-motoride/commit/230de97f5d03484e10461c2ccf3fe840ccb4920a))
+
 ## [1.14.0](https://github.com/bhoudebert/agent-motoride/compare/v1.13.0...v1.14.0) (2026-11-03)
 
 

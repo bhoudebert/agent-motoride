@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.0](https://github.com/bhoudebert/agent-motoride/compare/v1.15.0...v1.16.0) (2026-11-21)
+
+
+### Features
+
+* **server:** answer POST /route for the phone from the host's Valhalla ([c7b061e](https://github.com/bhoudebert/agent-motoride/commit/c7b061e53a0e92b07028a598f1d3aeb075cbb8cb))
+
 ## [1.15.0](https://github.com/bhoudebert/agent-motoride/compare/v1.14.0...v1.15.0) (2026-11-20)
 
 

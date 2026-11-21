@@ -130,6 +130,7 @@
       "code": [
         "src/tenants.ts",
         "src/server.ts",
+        "src/routeRequest.ts",
         "src/serve.ts",
         "src/rideServer.ts",
         "src/oauth.ts",

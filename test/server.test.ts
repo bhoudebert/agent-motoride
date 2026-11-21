@@ -534,3 +534,107 @@ test("traffic: a rider may ask only so often, and a big body is refused", async 
     await s.app.close();
   }
 });
+
+test("route: a rider's token is needed, the request is rebuilt from known fields, and Valhalla's answer comes back", async () => {
+  const s = await setup();
+  try {
+    const post = (token: string | null, body: unknown) =>
+      fetch(`${s.url}/route`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify(body),
+      });
+    const from = { lat: 50.4, lon: 3 };
+    const to = { lat: 50.6, lon: 3.1 };
+    assert.equal((await fetch(`${s.url}/health`).then((r) => r.json())).route, true);
+    assert.equal((await post(null, { locations: [from, to] })).status, 401);
+    assert.equal((await fetch(`${s.url}/route`)).status, 405);
+    const bad: unknown[] = [
+      {},
+      { locations: [from] },
+      { locations: [from, to, from, to, from, to] },
+      { locations: [from, { lat: 91, lon: 3 }] },
+      { locations: [from, to], costing: "auto" },
+      { locations: [from, to], costing_options: { motorcycle: { exclude_polygons: [] } } },
+      { locations: [from, to], costing_options: { motorcycle: { use_highways: 2 } } },
+      { locations: [from, to], alternates: 9 },
+    ];
+    for (const body of bad) assert.equal((await post(s.alice.token, body)).status, 400, JSON.stringify(body));
+    s.tick(61_000);
+    const ok = await post(s.alice.token, {
+      locations: [{ ...from, heading: 90.4, heading_tolerance: 60 }, to],
+      costing_options: { motorcycle: { use_highways: 0 } },
+      alternates: 2,
+      directions_options: { units: "miles" },
+    });
+    assert.equal(ok.status, 200);
+    const body = await ok.json();
+    assert.ok(body.trip.legs[0].shape.length > 0);
+    assert.ok(body.trip.summary.time > 0);
+  } finally {
+    await s.app.close();
+  }
+});
+
+test("route: a rider may ask only so often, and a big body is refused", async () => {
+  const s = await setup({ perMinute: 1000 });
+  try {
+    const post = (body: string) =>
+      fetch(`${s.url}/route`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${s.alice.token}` },
+        body,
+      });
+    const one = JSON.stringify({
+      locations: [
+        { lat: 50.4, lon: 3 },
+        { lat: 50.6, lon: 3.1 },
+      ],
+    });
+    const statuses: number[] = [];
+    for (let i = 0; i < 32; i++) statuses.push((await post(one)).status);
+    assert.equal(statuses.filter((c) => c === 200).length, 30);
+    assert.deepEqual(statuses.slice(30), [429, 429]);
+    s.tick(61_000);
+    assert.equal((await post("x".repeat(5000))).status, 413);
+  } finally {
+    await s.app.close();
+  }
+});
+
+test("route: a place Valhalla cannot join is a 422, a Valhalla that is down a 502", async () => {
+  const realFetch = globalThis.fetch;
+  const s = await setup();
+  try {
+    const post = () =>
+      fetch(`${s.url}/route`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${s.alice.token}` },
+        body: JSON.stringify({
+          locations: [
+            { lat: 50.4, lon: 3 },
+            { lat: 50.6, lon: 3.1 },
+          ],
+        }),
+      });
+    const answerWith = (status: number) => {
+      const before = globalThis.fetch;
+      globalThis.fetch = (async (input: any, init: any) => {
+        const host = new URL(typeof input === "string" ? input : (input.url ?? String(input))).hostname;
+        if (host === "127.0.0.1") return before(input, init);
+        return new Response(JSON.stringify({ error_code: 442 }), { status });
+      }) as typeof fetch;
+      return () => (globalThis.fetch = before);
+    };
+    let restore = answerWith(400);
+    assert.equal((await post()).status, 422);
+    restore();
+    s.tick(61_000);
+    restore = answerWith(503);
+    assert.equal((await post()).status, 502);
+    restore();
+  } finally {
+    globalThis.fetch = realFetch;
+    await s.app.close();
+  }
+});

@@ -12,7 +12,8 @@ import { keepRide, MAX_RIDE_BYTES, RIDE_ID, rideGpx, RideRefused, unzipUpload } 
 import { type MakeRoadbookFile, ReadyRoadbooks } from "./roadbookDownload.ts";
 import { MAX_POINTS, TrafficFlow, type TrafficOptions } from "./traffic.ts";
 import { type RequestContext, runInContext } from "./requestContext.ts";
-import { valhallaMapDay } from "./http.ts";
+import { HttpError, valhallaJson, valhallaMapDay } from "./http.ts";
+import { MAX_ROUTE_BODY, parseRouteRequest } from "./routeRequest.ts";
 import { createRideServer } from "./rideServer.ts";
 import { Store } from "./store.ts";
 import { createOAuth } from "./oauth.ts";
@@ -289,6 +290,48 @@ export function createHttpServer(options: ServeOptions): {
     return json(res, 200, { at: t, ...answer });
   }
 
+  /**
+   * A motorcycle route for the phone (spec multi-user-server, "Routes for the phone"): the rider's token, a request rebuilt from a few
+   * known fields, Valhalla as the host configured it (their own, or the public one). The phone asks three at once for a Go To.
+   */
+  async function handleRoute(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    if (req.method !== "POST") return json(res, 405, { error: "Method not allowed." }, { Allow: "POST" });
+    const token = bearer(req);
+    const tenant = token ? registry.verify(token) : null;
+    if (!tenant) return json(res, 401, { error: "A rider's token is needed." }, { "WWW-Authenticate": "Bearer" });
+    if (limited(tenant)) return json(res, 429, { error: "Too many requests; wait a minute." }, { "Retry-After": "60" });
+    // A rider asks for at most 30 routes a minute: a Go To is three, the way back one every half minute.
+    const t = now();
+    const w = windows.get(`route:${tenant.id}`);
+    if (!w || t - w.start >= 60_000) windows.set(`route:${tenant.id}`, { start: t, count: 1 });
+    else if (++w.count > 30)
+      return json(res, 429, { error: "Too many requests; wait a minute." }, { "Retry-After": "30" });
+    let body: unknown;
+    try {
+      body = await readBody(req, MAX_ROUTE_BODY);
+    } catch (e) {
+      return e instanceof TooBig ? json(res, 413, { error: "Too large." }) : json(res, 400, { error: "Not JSON." });
+    }
+    const parsed = parseRouteRequest(body);
+    if (!parsed.ok) return json(res, 400, { error: parsed.error });
+    try {
+      const answer = await valhallaJson<{ trip?: unknown; alternates?: unknown }>(
+        "/route",
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(parsed.body) },
+        12_000,
+      );
+      return json(res, 200, {
+        trip: answer.trip,
+        ...(Array.isArray(answer.alternates) ? { alternates: answer.alternates } : {}),
+      });
+    } catch (e) {
+      // Valhalla finds no road between the places (a 400 of its own): the rider's request, not a fault of the server.
+      if (e instanceof HttpError && e.status >= 400 && e.status < 500 && e.status !== 429)
+        return json(res, 422, { error: "no_route" });
+      return json(res, 502, { error: "No routing server answered." });
+    }
+  }
+
   /** The rider's roadbooks for the phone: a list with version stamps, and one roadbook file (docs/roadbook-file.md). */
   async function handleRoadbooks(req: IncomingMessage, res: ServerResponse, path: string): Promise<void> {
     const pushing = req.method === "PUT" && path === "/roadbooks";
@@ -508,6 +551,7 @@ export function createHttpServer(options: ServeOptions): {
         version,
         sessions: sessions.size,
         shares: live.size,
+        route: true,
         traffic: traffic.available,
         trafficCountries: traffic.countries,
         oauth: oauth !== null,
@@ -515,6 +559,7 @@ export function createHttpServer(options: ServeOptions): {
     if (oauth && (await oauth.handle(req, res, url))) return;
     if (url.pathname === "/me") return handleMe(req, res);
     if (url.pathname === "/traffic") return handleTraffic(req, res);
+    if (url.pathname === "/route") return handleRoute(req, res);
     if (url.pathname === "/roadbooks" || url.pathname.startsWith("/roadbook/"))
       return handleRoadbooks(req, res, url.pathname);
     if (url.pathname === "/rides" || url.pathname.startsWith("/rides/")) return handleRides(req, res, url.pathname);

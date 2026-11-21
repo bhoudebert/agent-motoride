@@ -33,7 +33,7 @@ Authors).
 ## Trademarks and affiliation
 
 OpenStreetMap, Valhalla, Open-Meteo, Photon, komoot, Nominatim, TomTom,
-Anthropic, Claude, Claude Code, OpenAI, ChatGPT, Codex, Google Maps, Waze,
+Anthropic, Claude, Claude Code, OpenAI, ChatGPT, Codex, OpenCode, Google Maps, Waze,
 Liberty Rider, Kurviger, Calimoto, OsmAnd, Garmin, GitHub and Telegram are
 trademarks or trade names of their respective owners. They are mentioned to
 describe compatibility and data sources. This project is independent: it is not

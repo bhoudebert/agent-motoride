@@ -14,5 +14,6 @@ scripts
 openspec
 nix
 codex
+opencode
 *.md
 !package.json

@@ -278,8 +278,8 @@ test("planner: a tool called again and again with the same input answers from th
     assert.equal(results[0].sunset, results[1].sunset, "second identical call still looked up");
     assert.equal(results[1].repeatedCall, undefined);
     assert.equal(results[2].repeatedCall, 3);
-    assert.match(results[2].note, /do not call getDaylight with this input again/);
-    assert.equal(results[2].result.sunset, results[0].sunset);
+    assert.match(results[2].repeatNote, /do not call getDaylight with this input again/);
+    assert.equal(results[2].sunset, results[0].sunset);
   } finally {
     restore();
     store.close();

@@ -1,6 +1,6 @@
 # 0063. Own Overpass instances, one per region, with the public ones as fallback
 
-- Status: accepted
+- Status: accepted (the compose part, one instance per region following daily changes, is replaced by ADR 0064)
 - Date: 2026-11-27
 
 ## Context

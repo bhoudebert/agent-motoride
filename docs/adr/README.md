@@ -58,3 +58,4 @@ not rewritten.
 | [0059](0059-a-spec-reviewer-could-be-an-external-app.md)                     | A spec reviewer could be an external app                                         | proposed |
 | [0060](0060-weather-is-the-cautious-reading-of-several-models.md)            | Read the weather as the cautious reading of several models                       | accepted |
 | [0062](0062-tools-return-typed-results.md)                                   | Tools declare an output schema and return structured results                     | accepted |
+| [0063](0063-own-overpass-instances-with-the-public-ones-as-fallback.md)      | Own Overpass instances, one per region, with the public ones as fallback         | accepted |

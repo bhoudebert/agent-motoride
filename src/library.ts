@@ -8,7 +8,7 @@ import { startLabel, startPoint } from "./start.ts";
 import { analyseConditions, windAlong, type RideConditions } from "./conditions.ts";
 import { formatStopPlan, locateStops, planStops, type StopCandidate } from "./stops.ts";
 import type { NewRide, Page, RideDay, RideExtras, RideWeather, RoadbookSummary, SavedRide, Store } from "./store.ts";
-import { type StopKind, speedCamerasAlong, stopsAlong } from "./tools/along.ts";
+import { joinInFlight, type StopKind, speedCamerasAlong, stopsAlong } from "./tools/along.ts";
 import { haversineKm, setGeoAnchor } from "./tools/geo.ts";
 import { computeTrip, type TripComputation } from "./tools/trip.ts";
 import { getDaylight, getWeather, utcOffsetSecondsOn } from "./tools/weather.ts";
@@ -379,8 +379,13 @@ export async function stopCandidatesFor(
   const key = `stopCandidates@6|${radiusM}|${geometryKey(shapes)}`;
   type Lists = Record<string, { stops: StopCandidate[] }>;
   const hit = store.cacheGet<Lists>(key);
-  const found = hit ?? ((await stopsAlong(shapes, legs, kinds, radiusM, 40)) as unknown as Lists);
-  if (!hit) store.cacheSet(key, "findStops", found, 30 * DAY);
+  const found =
+    hit ??
+    (await joinInFlight(key, async () => {
+      const fetched = (await stopsAlong(shapes, legs, kinds, radiusM, 40)) as unknown as Lists;
+      store.cacheSet(key, "findStops", fetched, 30 * DAY);
+      return fetched;
+    }));
   return {
     fuel: found.fuel?.stops ?? [],
     cafe: found.cafe?.stops ?? [],

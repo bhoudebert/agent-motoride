@@ -57,7 +57,29 @@ interface Element {
   tags?: Record<string, string>;
 }
 
+const inFlight = new Map<string, Promise<unknown>>();
+
+/**
+ * Run `fn` once for a key at a time: a caller that asks for what is already being fetched (a retry of a call
+ * that is still running, a second tool needing the same lookup) waits for that one instead of queueing a copy.
+ */
+export function joinInFlight<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const running = inFlight.get(key) as Promise<T> | undefined;
+  if (running) return running;
+  const started = fn().finally(() => inFlight.delete(key));
+  inFlight.set(key, started);
+  return started;
+}
+
+/**
+ * How long one lookup along a route may take, queue and retries included. The client gives up on a call
+ * after 2 minutes (Claude Code moves it to the background), so the answer, or the reason there is none,
+ * must come before that.
+ */
+export const ALONG_BUDGET_MS = 75_000;
+
 async function alongRoute(points: RoutePoint[], filters: string[], radiusM: number): Promise<Element[]> {
+  const deadline = Date.now() + ALONG_BUDGET_MS;
   // Overpass measures the distance to the line between the points, so a point
   // every 600 m follows the road closely enough. The route goes in chunks of
   // about 25 km; a chunk the server cannot answer in time (dense areas) is
@@ -71,6 +93,7 @@ async function alongRoute(points: RoutePoint[], filters: string[], radiusM: numb
     try {
       const elements = await overpass<Element & { id?: number }>(`[out:json][timeout:30];(${union});out center tags;`, {
         quick: depth < 3,
+        deadline,
       });
       for (const e of elements) seen.set(`${e.type}/${e.id}`, e);
       process.stderr.write(
@@ -80,7 +103,7 @@ async function alongRoute(points: RoutePoint[], filters: string[], radiusM: numb
       process.stderr.write(
         `\x1b[2m     map chunk km ${chunk[0]!.km.toFixed(0)}-${chunk.at(-1)!.km.toFixed(0)}: failed after ${Date.now() - started} ms${chunk.length >= 8 && depth < 3 ? ", splitting" : ""}\x1b[0m\n`,
       );
-      if (chunk.length < 8 || depth >= 3) throw error;
+      if (chunk.length < 8 || depth >= 3 || Date.now() >= deadline) throw error;
       const half = Math.ceil(chunk.length / 2);
       await query(chunk.slice(0, half + 1), depth + 1);
       await query(chunk.slice(half), depth + 1);

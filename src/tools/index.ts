@@ -8,7 +8,7 @@ import { analyseConditions, windAlong } from "../conditions.ts";
 import { Memory, recall } from "../memory.ts";
 import { importRoute, readRouteFile } from "../routeImport.ts";
 import { locateStops, planStops } from "../stops.ts";
-import { type StopKind, speedCamerasAlong, stopsAlong } from "./along.ts";
+import { joinInFlight, type StopKind, speedCamerasAlong, stopsAlong } from "./along.ts";
 import { fmtCoords, haversineKm, resolvePoint } from "./geo.ts";
 import { searchRoads } from "./roads.ts";
 import {
@@ -215,9 +215,11 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
       process.stderr.write("\x1b[2m     (from cache)\x1b[0m\n");
       return hit;
     }
-    const output = await fn();
-    store.cacheSet(key, tool, output, TTL[tool]);
-    return output;
+    return joinInFlight(key, async () => {
+      const output = await fn();
+      store.cacheSet(key, tool, output, TTL[tool]);
+      return output;
+    });
   }
 
   const tools: ToolDefinition[] = [

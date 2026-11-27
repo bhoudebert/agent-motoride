@@ -60,6 +60,26 @@ export async function reviewRecordedRide(store: Store, which?: string): Promise<
   return { ride, roadbook, proposals: proposeLowerLimits(file, ridePoints(gpx), store.listLimitCorrections()) };
 }
 
+/** The review as the tool returns it in structuredContent: the facts a client reads, without the road geometry kept for confirming. */
+export function recordedReviewFacts(status: "review" | "applied", review: RecordedReview, results: string[]) {
+  return {
+    status,
+    ride: { id: review.ride.id, name: review.ride.name, distanceKm: review.ride.distanceKm },
+    roadbook: review.roadbook,
+    proposals: review.proposals.map((p) => ({
+      n: p.n,
+      road: p.road ?? null,
+      at: p.at,
+      guess: p.guess,
+      median: p.median,
+      p85: p.p85,
+      seconds: p.seconds,
+      proposed: p.proposed,
+    })),
+    results,
+  };
+}
+
 /** What the rider reads. */
 export function formatRecordedReview(review: RecordedReview): string {
   const { ride, roadbook, proposals } = review;

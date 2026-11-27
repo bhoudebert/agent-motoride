@@ -54,7 +54,12 @@ import { effectivePreferences } from "./preferences.ts";
 import { describeProfile } from "./profile.ts";
 import type { RideContext } from "./session.ts";
 import { formatStopPlan } from "./stops.ts";
-import { applyProposalDecisions, formatRecordedReview, reviewRecordedRide } from "./recordedReview.ts";
+import {
+  applyProposalDecisions,
+  formatRecordedReview,
+  recordedReviewFacts,
+  reviewRecordedRide,
+} from "./recordedReview.ts";
 import { Store } from "./store.ts";
 import { resolvePoint, setGeoAnchor, usePersistentGeoCache } from "./tools/geo.ts";
 import { createToolDefinitions } from "./tools/index.ts";
@@ -1448,25 +1453,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       }
       const review = await reviewRecordedRide(store, args.ride);
       const shown = (status: "review" | "applied", results: string[], readable: string) =>
-        structuredResult(
-          {
-            status,
-            ride: { id: review.ride.id, name: review.ride.name, distanceKm: review.ride.distanceKm },
-            roadbook: review.roadbook,
-            proposals: review.proposals.map((p) => ({
-              n: p.n,
-              road: p.road ?? null,
-              at: p.at,
-              guess: p.guess,
-              median: p.median,
-              p85: p.p85,
-              seconds: p.seconds,
-              proposed: p.proposed,
-            })),
-            results,
-          },
-          readable,
-        );
+        structuredResult(recordedReviewFacts(status, review, results), readable);
       if (!args.decisions) return shown("review", [], formatRecordedReview(review));
       const results = applyProposalDecisions(store, review, args.decisions);
       return shown("applied", results, results.join("\n"));

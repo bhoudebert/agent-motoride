@@ -11,6 +11,21 @@ import { locateStops, planStops } from "../stops.ts";
 import { type StopKind, speedCamerasAlong, stopsAlong } from "./along.ts";
 import { fmtCoords, haversineKm, resolvePoint } from "./geo.ts";
 import { searchRoads } from "./roads.ts";
+import {
+  calculateTripOutput,
+  checkConditionsOutput,
+  findStopsOutput,
+  getDaylightOutput,
+  getSpeedCamerasOutput,
+  getTrafficOutput,
+  getWeatherOutput,
+  importRouteOutput,
+  listSavedRidesOutput,
+  planStopsOutput,
+  recallAreaOutput,
+  scoutAreasOutput,
+  searchRoadsOutput,
+} from "./outputSchemas.ts";
 import { getTraffic } from "./traffic.ts";
 import { type CalculateTripInput, computeTrip, overviewWhenSplit, type TripComputation } from "./trip.ts";
 import { getDaylight, getWeather, utcOffsetSecondsOn } from "./weather.ts";
@@ -89,10 +104,11 @@ function traced<I, O>(context: RideContext, scope: string, name: string, fn: (in
     const seen = context.calls.get(callKey);
     if (seen) seen.count++;
     if (seen && seen.count >= REPEAT_LIMIT && REPEAT_GUARDED.has(name)) {
+      // The earlier result keeps its shape (the tool's outputSchema still holds); the repeat notice rides beside it, under a key of its own so a tool's own `note` survives.
       const result = JSON.stringify({
+        ...(JSON.parse(seen.result) as Record<string, unknown>),
         repeatedCall: seen.count,
-        note: `You already called ${name} with exactly this input ${seen.count - 1} times; the result has not changed and is repeated below. Use it and move on: do not call ${name} with this input again.`,
-        result: JSON.parse(seen.result) as unknown,
+        repeatNote: `You already called ${name} with exactly this input ${seen.count - 1} times; the result has not changed and is repeated here. Use it and move on: do not call ${name} with this input again.`,
       });
       context.repeatsInARow ??= new Map();
       context.repeatsInARow.set(scope, (context.repeatsInARow.get(scope) ?? 0) + 1);
@@ -122,6 +138,8 @@ export interface ToolDefinition {
   name: string;
   description: string;
   inputSchema: z.ZodType;
+  /** Shape of the JSON object `run` returns: sent to MCP clients as outputSchema, and checked against every real result by the tests. */
+  outputSchema: z.ZodObject;
   /** The four MCP hints, under MCP's own name, written out on each tool so they read the same in the source and on the wire. */
   annotations: ToolHints;
   // Method syntax on purpose: each definition's run takes its own input type,
@@ -149,8 +167,9 @@ export interface ToolOptions {
 /** Tools for the API tool runner. */
 export function createTools(context: RideContext, options: ToolOptions = {}) {
   // MCP annotations mean nothing to the API tool runner: they are not sent there.
-  return createToolDefinitions(context, options).map(({ annotations: _annotations, ...definition }) =>
-    betaZodTool(definition),
+  // Nor is outputSchema: the runner hands the model the result as text.
+  return createToolDefinitions(context, options).map(
+    ({ annotations: _annotations, outputSchema: _outputSchema, ...definition }) => betaZodTool(definition),
   );
 }
 
@@ -204,6 +223,7 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
   const tools: ToolDefinition[] = [
     {
       name: "listSavedRides",
+      outputSchema: listSavedRidesOutput,
       // Reads the local library only.
       // Reads the local library only.
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
@@ -263,6 +283,7 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
     },
     {
       name: "recallArea",
+      outputSchema: recallAreaOutput,
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       description:
         "What the app already knows around a place, from earlier sessions: saved rides with their ratings, stretches the rider loved (4-5) or avoids (0-1) with their two ends (fromCoords, toCoords: route through a loved one when it fits), areas scouts already visited with their verdict, open-road share and age in days, and known winding roads with curviness and from/to coordinates usable directly as calculateTrip waypoints. With words (query), also the best matches anywhere, e.g. a road ref or a village. Call it before scouting or searching roads in a region: do not scout again an area recently found poor without a reason, and route known winding roads directly instead of a new road search. Weather is never remembered.",
@@ -284,6 +305,7 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
     },
     {
       name: "getWeather",
+      outputSchema: getWeatherOutput,
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       description:
         "Hourly weather forecast for one place on one day (up to 16 days ahead): temperature, rain probability and amount, wind, gusts, sky. Read from several forecast models at once: every figure is the most cautious one (most rain, strongest gust), each hour lists the rain and gust of every model, and summary.disagreement says when the models disagree; mention it to the rider. Call it for the start point and for several points along a candidate route, covering the hours the rider would actually be there.",
@@ -300,6 +322,7 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
     },
     {
       name: "searchRoads",
+      outputSchema: searchRoadsOutput,
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       description:
         "Find winding paved secondary/tertiary roads and mountain passes around a place, from OpenStreetMap. Roads are ranked by curvinessDegPerKm (cumulative heading change per km: under 200 mostly straight, 200-400 flowing bends, over 400 properly twisty mountain road); areaMedianCurviness tells you how twisty the area is overall. Each road comes with `from`/`to` coordinates usable as waypoints in calculateTrip. Search around an area you expect to be good riding country, not around a city centre.",
@@ -313,6 +336,7 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
     },
     {
       name: "calculateTrip",
+      outputSchema: calculateTripOutput,
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       description: `Route through waypoints in order with a motorcycle profile. Returns a routeId identifying this exact routed trip, real road distance, and per leg and in total: estimated riding time and average speed (from each road segment's speed limit and bends, without stops or traffic; the router's own pessimistic time is given as routerUpperBoundTime), main roads, and a Google Maps link. speedLimits gives openRoadPct (share of distance outside built-up areas and off motorways, the figure to maximise), km and percent in zones of 30 km/h or less and of 31-50 km/h (untagged streets in built-up areas are counted as 50 zones), above 50, and untagged open road (assumed at the legal default of its country and region), plus the longest 30 and 50 stretches by road name so you can move waypoints to bypass them. savedRides compares the route with the rider's saved rides: a verdict plus the percent of this route that runs on roads of each similar saved ride. ratedRoads tells how much of it runs on roads the rider rated 0-1 (avoid) or 4-5 (loved). speedLimits.surface gives the km on cobbles or setts and on unpaved surfaces, with the stretches by road. speedLimits.fastExpressway gives the km and share on roads that are not motorways but are limited to 100 km/h or more (expressways), with the longest stretches: keep it small for a leisure ride. Motorways: the result says whether the rider currently permits them (motorwaysPermitted) and whether this trip was routed with them excluded (motorwaysAvoided). When they are not permitted they are excluded whatever you pass; if usesMotorway is still true, no motorway-free route exists between those waypoints and they must be changed. When they are permitted, pass avoidMotorways false to let the router take them where faster. Use it to check every candidate loop; straight-line guesses are not reliable on winding roads.`,
       inputSchema: z.object({
@@ -344,6 +368,7 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
     },
     {
       name: "importRoute",
+      outputSchema: importRouteOutput,
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       description:
         "Turn a route file the rider has (GPX track or route, KML line; a path on this machine) into a routed trip: its line is reduced to waypoints and routed with the motorcycle profile, with waypoints added where the router strays from the file. Returns a routeId like calculateTrip, with the same figures and checks, plus fidelityPct (share of the file's line the routed trip follows; under 90% say where it differs, e.g. motorways avoided), the file's name and length, and the waypoints used, which you can edit and route again with calculateTrip. Present, finish and save it like any planned ride.",
@@ -372,6 +397,7 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
     },
     {
       name: "getTraffic",
+      outputSchema: getTrafficOutput,
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       description:
         "Expected traffic along a route for a given departure time: travel time with traffic, free-flow time and the delay between them. Meant for the final loop once it is chosen on road data, not for comparing candidates. trafficDelayMinutes is the expected congestion for that departure (travel time minus free-flow time); incidentDelayMinutes is the part due to reported incidents. Report trafficDelayMinutes on top of the riding-time estimate from calculateTrip. May report that no traffic source is configured; in that case say so in the answer instead of estimating.",
@@ -393,6 +419,7 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
     },
     {
       name: "getDaylight",
+      outputSchema: getDaylightOutput,
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       description:
         "Sunrise, sunset, first and last usable light, and daylight hours for a place and a date, any date. Use it to set the departure time and to check the return is before sunset; weather results carry the same figures for the forecast day.",
@@ -407,6 +434,7 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
     },
     {
       name: "getSpeedCameras",
+      outputSchema: getSpeedCamerasOutput,
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       description:
         "Fixed speed cameras mapped in OpenStreetMap on or beside a routed trip, with position along the route, leg, posted limit and direction. Call it for the final loop so the itinerary can warn where to watch the speed. Fixed cameras only, no mobile controls, and only those mappers recorded.",
@@ -421,6 +449,7 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
     },
     {
       name: "findStops",
+      outputSchema: findStopsOutput,
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       description:
         "Fuel stations, cafés, restaurants and bakeries within a short detour of a routed trip, ordered by distance from the start, with opening hours when mapped. Use it on the final loop to place a fuel stop within the tank range and a coffee or lunch stop at a sensible point, and name them in the itinerary.",
@@ -456,6 +485,7 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
     },
     {
       name: "planStops",
+      outputSchema: planStopsOutput,
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       description:
         "Choose the stops of a routed trip from the rider's bike profile: the last fuel station before each fuel deadline (tank range minus reserve, from the fuel at departure), a café or bakery pause after the pause interval, a restaurant where the ride crosses midday, preferring places open at the arrival time when the ride date is given. Returns the stops with arrival times and whether each is open, the return time with breaks, warnings (no fuel in reach, long stint), and navigation links that include the stops so they are announced on the bike. Call it once for the final loop, after calculateTrip, and name the stops in the itinerary. findStops is only for browsing alternatives.",
@@ -527,6 +557,7 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
     },
     {
       name: "checkConditions",
+      outputSchema: checkConditionsOutput,
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       description:
         "Crosswind and low-sun glare along a routed trip for a date and departure: stretches where gusts blow 35 km/h or more across the direction of travel (50 or more: strong), and stretches where the sun is low (0-15 degrees) within 30 degrees ahead at the time of passage. Wind needs the date within 16 days; glare works for any date. Call it on the final loop and name any stretch in the itinerary; a long glare stretch on the way home can be a reason to leave earlier.",
@@ -564,6 +595,7 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
     },
     {
       name: "scoutAreas",
+      outputSchema: scoutAreasOutput,
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       description:
         "Send one scout per area, in parallel, to find the best loop from the start point through that area within the constraints. Each scout searches roads, assembles and routes a loop, reads its open-road and slow-zone shares, checks the weather, and reports a candidate with its routeId, which you can present directly or route again (free, cached) to refine. Use it once at the start of a new leisure ride with 2 to 4 areas; not for edits, questions or practical trips. Give each area a name and a central town or village of good riding country, not a city.",

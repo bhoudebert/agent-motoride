@@ -26,7 +26,8 @@ import { describeRoadbookFile, exportSavedRide, exportSavedRideGpx, pushableRoad
 import { pushFile } from "./remote.ts";
 import { currentContext } from "./requestContext.ts";
 import { rideMapPng } from "./rideMap.ts";
-import { localDay, parseRideDay, planRideFrom } from "./planRide.ts";
+import { RIDE_OUTPUT_SCHEMAS } from "./rideOutputSchemas.ts";
+import { localDay, parseDeparture, parseRideDay, planRideFrom } from "./planRide.ts";
 import {
   DuplicateRideError,
   enrichRide,
@@ -210,8 +211,15 @@ Use only the agentMotoride tools (recallArea, searchRoads, calculateTrip, getWea
 For a new leisure ride: call listSavedRides and recallArea around the start (what earlier sessions learnt: scouted areas and their verdicts, known winding roads), then ${scoutsOff ? "scout 2-4 areas with parallel subagents as planningGuide explains (API scouts are off here, scoutAreas cannot run)" : "scoutAreas with 2-4 areas"}, skipping areas recently found poor${scoutsOff ? "" : " (or searchRoads and calculateTrip yourself if scouts are unavailable)"}, pick the best candidate, then finish it: getDaylight, getWeather along the loop for the riding hours, getSpeedCameras, checkConditions (crosswind, low sun) with the date and departure, planStops with the date and departure, getTraffic for the departure. Before presenting it, call checkItinerary with its routeId, the rider's request and your text, and fix what it reports once (or say plainly which limit cannot be met). Present the itinerary in plain text (never JSON) with legs named by towns, the figures from the tools, the stops with times, the navigation links from planStops (and its overviewLink as "Whole ride (overview, not for navigation)" when there are several parts), and end with one line "Route: <routeId>". Save only when the rider asks, with saveRide; after a change to a saved roadbook, saving changes it in place and keeps the previous version (restoreRoadbook undoes it), and asCopy is only for a rider who wants a separate copy. During a ride, a remark about the road ("last 10 min awesome", "cobbles, never again") is a note: call addRideNote at once with the rider's words, and a rating 0-5 only when they gave one. After the ride, reviewRide places the notes on the recorded track (gpxPath) or on the plan, shows detours and pace, and proposes ratings; apply them with reviewRide and decisions only once the rider confirms. If the rider has a route file (GPX or KML, from another app, a club or a friend), call importRoute with its path: it returns a routeId to present, finish and save like a planned ride. If the rider shares an image (photo of a paper map, route screenshot, list of places), read the places on it in order and route them with calculateTrip by name, then finish the ride as usual. For an edit or a question about a saved ride, work from its data (showRide) without replanning. For a practical trip (commute), route point to point, motorways if permitted, with traffic.`;
 
   const server = new McpServer({ name: "agentMotoride", version: "0.1.0" }, { instructions: INSTRUCTIONS });
-  const text = (value: unknown) => ({
-    content: [{ type: "text" as const, text: typeof value === "string" ? value : JSON.stringify(value) }],
+  /**
+   * A result for a tool that declares an outputSchema: the object as
+   * structuredContent (what a typed client or code-mode binding reads), and a
+   * text block for clients that only read text, the object as JSON unless a
+   * sentence reads better for the model.
+   */
+  const structuredResult = (structured: Record<string, unknown>, readable?: string) => ({
+    content: [{ type: "text" as const, text: readable ?? JSON.stringify(structured) }],
+    structuredContent: structured,
   });
 
   /** Whether the client can show a form to the rider (MCP elicitation). */
@@ -292,6 +300,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       {
         description: tool.description,
         inputSchema: tool.inputSchema,
+        outputSchema: tool.outputSchema,
         annotations: tool.annotations,
       },
       async (args: unknown) => {
@@ -299,9 +308,10 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
         usage.toolCalls++;
         const result =
           tool.name === "scoutAreas" && scoutsOff ? await clientScouting(args as ScoutInput) : await tool.run(args);
-        if (tool.name === "calculateTrip") lastRouteId = (JSON.parse(result) as { routeId: string }).routeId;
+        const structured = JSON.parse(result) as Record<string, unknown>;
+        if (tool.name === "calculateTrip") lastRouteId = structured.routeId as string;
         syncRun();
-        return text(result);
+        return structuredResult(structured, result);
       },
     );
   }
@@ -312,6 +322,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       description:
         "Show or change the rider's settings: start and end point, whether motorways are permitted, the long-straight and slow-zone targets, the bike profile. What the rider sets is saved in their library and applies to their next sessions too (reset forgets it). Call it first with the home when the rider has not set one. Returns the settings in force.",
       annotations: hintsOf("rideSettings"),
+      outputSchema: RIDE_OUTPUT_SCHEMAS.rideSettings,
       inputSchema: z.object({
         home: z.string().optional().describe('Start and end point: town, address or "lat,lon"'),
         allowMotorways: z.boolean().optional(),
@@ -379,7 +390,27 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
         maxStraightPct: args.maxStraightPct,
       });
       if (args.allowRepeat !== undefined) context.allowRepeat = args.allowRepeat;
-      return text(settingsText());
+      const profile = store.getProfile();
+      const { avoidMotorways, max30Pct, max50Pct, maxFastPct, maxStraightPct } = context.preferences;
+      return structuredResult(
+        {
+          home: context.home.label ? context.home : null,
+          preferences: { avoidMotorways, max30Pct, max50Pct, maxFastPct, maxStraightPct },
+          allowRepeat: context.allowRepeat,
+          bike: {
+            tankRangeKm: profile.tankRangeKm,
+            reserveKm: profile.reserveKm,
+            pauseEveryMin: profile.pauseEveryMin,
+            maxStintMin: profile.maxStintMin,
+            lunch: profile.lunch,
+          },
+          savedRides: store.listRides().length,
+          runId,
+          pendingNotes: pendingNotesSummary(store),
+          situation: settingsText(),
+        },
+        settingsText(),
+      );
     },
   );
 
@@ -391,6 +422,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       description:
         "For a scout subagent, once, before it answers: its verdict on its area, remembered for later sessions (recallArea lists it with its age). Give the routeId of the best loop it routed, if any: distance, open-road and 50-zone shares and the place of the verdict are taken from that loop, not from your text. Without a loop, the area's central town places it.",
       annotations: hintsOf("reportScout"),
+      outputSchema: RIDE_OUTPUT_SCHEMAS.reportScout,
       inputSchema: z.object({
         area: z.string().describe("Name of the area scouted, e.g. Condroz"),
         location: z.string().describe("Central town of the area, e.g. Ciney"),
@@ -432,7 +464,17 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       const shown = route
         ? `, ${figures.distanceKm} km, ${figures.openRoadPct ?? "?"}% open road, ${figures.pct50 ?? "?"}% in 50 zones`
         : "";
-      return text(
+      return structuredResult(
+        {
+          remembered: true,
+          area: args.area,
+          found: args.found,
+          routeId: args.routeId ?? null,
+          distanceKm: figures.distanceKm ?? null,
+          openRoadPct: figures.openRoadPct ?? null,
+          pct50: figures.pct50 ?? null,
+          verdict,
+        },
         `Remembered: ${args.area}, ${args.found ? "a loop found" : "nothing good found"}${shown}. ${verdict}`,
       );
     },
@@ -444,6 +486,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       description:
         "Check an itinerary in code before presenting it: routed distance and riding time against the caps in the rider's words, motorways when forbidden, repeats of saved rides, roads rated 0-1, and the distance stated in your text against the routed one. Returns PASS, or what failed. Fix the itinerary once and check again, or say plainly in the answer which limit cannot be met.",
       annotations: hintsOf("checkItinerary"),
+      outputSchema: RIDE_OUTPUT_SCHEMAS.checkItinerary,
       inputSchema: z.object({
         routeId: z.string().describe("routeId of the itinerary, from calculateTrip"),
         request: z.string().describe("The rider's request, in their words"),
@@ -466,8 +509,10 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
         payload: violations,
       });
       const say = notes.length ? `\nSay it in the answer:\n${notes.map((n) => `- ${n}`).join("\n")}` : "";
-      if (!violations.length) return text(`PASS${say}`);
-      return text(
+      const result = { passed: !violations.length, acknowledged, violations, notes };
+      if (!violations.length) return structuredResult(result, `PASS${say}`);
+      return structuredResult(
+        result,
         `${acknowledged ? "Failed, but your text already says a limit is missed; present it if that is the closest option." : "FAILED:"}\n${violations.map((v) => `- ${v}`).join("\n")}${say}`,
       );
     },
@@ -479,6 +524,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       description:
         "Save an itinerary to the rider's library. Only when the rider asks to save. routeId must be one returned by calculateTrip in this session; the saved distances and geometry come from that routed trip. A ride that duplicates a saved one (70% or more of the same roads) is refused; pass force only when the rider explicitly wants a copy. Returns the saved ride id.",
       annotations: hintsOf("saveRide"),
+      outputSchema: RIDE_OUTPUT_SCHEMAS.saveRide,
       inputSchema: z.object({
         routeId: z.string(),
         name: z.string().describe("A few words a rider would recognise the ride by"),
@@ -515,6 +561,8 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
             asCopy: args.asCopy,
           },
         );
+      const notSaved = (reason: string) =>
+        structuredResult({ status: "not_saved", rideId: null, name: null, version: null, reason }, reason);
       let id: number;
       try {
         id = save(args.force);
@@ -522,12 +570,12 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
         if (!(error instanceof DuplicateRideError)) throw error;
         // The rider decides, in the client's own dialog when it has one.
         if (!canElicit()) {
-          return text(
+          return notSaved(
             `Not saved: ${error.message} Tell the rider, and only call saveRide again with force if they want the copy.`,
           );
         }
         const answer = await ask(duplicateForm(error.message));
-        if (answer?.save !== true) return text(`Not saved: ${error.message} The rider chose not to keep a copy.`);
+        if (answer?.save !== true) return notSaved(`Not saved: ${error.message} The rider chose not to keep a copy.`);
         id = save(true);
       }
       const revised = id === inHand;
@@ -537,7 +585,8 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       syncRun();
       void enrichRide(store, store.findRide(String(id))!).catch(() => undefined);
       if (revised) {
-        return text(
+        return structuredResult(
+          { status: "changed", rideId: id, name: args.name, version: store.versionOf(id), reason: null },
           `Roadbook #${id} changed in place, now version ${store.versionOf(id)}; the previous version is kept (restoreRoadbook brings it back).${(() => {
             const following = followingRides(store, id);
             return following
@@ -546,7 +595,10 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
           })()}`,
         );
       }
-      return text(`Saved as roadbook #${id} "${args.name}". Export with exportGpx, or: npm run rides -- show ${id}`);
+      return structuredResult(
+        { status: "saved", rideId: id, name: args.name, version: null, reason: null },
+        `Saved as roadbook #${id} "${args.name}". Export with exportGpx, or: npm run rides -- show ${id}`,
+      );
     },
   );
 
@@ -556,6 +608,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       description:
         "Write a ride as a GPX file for a GPS app: either a routeId from this session or the id of a saved ride. A saved ride also gets a roadbook file (speed limits and cameras) for the MobileMotoRide app. Returns the file paths.",
       annotations: hintsOf("exportGpx"),
+      outputSchema: RIDE_OUTPUT_SCHEMAS.exportGpx,
       inputSchema: z.object({
         routeId: z.string().optional(),
         rideId: z.number().int().optional(),
@@ -578,10 +631,18 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
         if (args.push) {
           // Only the GPX and the push: the server traces the limits itself, so nothing is traced here.
           const gpx = await exportSavedRideGpx(store, ride, args.file);
-          return text(`GPX written: ${gpx.path}\n${await pushFile(await pushableRoadbookFile(store, ride))}`);
+          const pushed = await pushFile(await pushableRoadbookFile(store, ride));
+          return structuredResult(
+            { gpxPath: gpx.path, pushed: true, detail: pushed },
+            `GPX written: ${gpx.path}\n${pushed}`,
+          );
         }
         const exported = await exportSavedRide(store, ride, args.file);
-        return text(`GPX written: ${exported.path}\n${describeRoadbookFile(exported)}`);
+        const detail = describeRoadbookFile(exported);
+        return structuredResult(
+          { gpxPath: exported.path, pushed: false, detail },
+          `GPX written: ${exported.path}\n${detail}`,
+        );
       }
       if (args.push) throw new Error("Only a saved ride can be pushed: give its rideId.");
       const route = args.routeId ? context.routes.get(args.routeId) : undefined;
@@ -597,7 +658,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
         route.id,
         args.file,
       );
-      return text(`GPX written: ${path}`);
+      return structuredResult({ gpxPath: path, pushed: false, detail: null }, `GPX written: ${path}`);
     },
   );
 
@@ -607,6 +668,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       description:
         "Recompute a saved ride without changing it: route the same waypoints again with the ride's own motorway setting, update distance, times, road mix and leg names, then re-gather daylight, weather, fixed cameras and stops, and rebuild the stop plan from the current bike profile. Deterministic, no planning involved; takes a minute or two. Use it when the rider says refresh, update or recompute a ride; with stopsOnly when only the stops or the bike profile changed. Returns the refreshed view, or the new stop plan. It does not renew the roadbook file the phone downloads nor its speed limits: the phone's own refresh does that.",
       annotations: hintsOf("refreshRide"),
+      outputSchema: RIDE_OUTPUT_SCHEMAS.refreshRide,
       inputSchema: z.object({
         ride: z.string().describe("Roadbook number or name"),
         stopsOnly: z
@@ -622,7 +684,8 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
         const extras = await replanStops(store, target);
         if (!extras?.stopPlan)
           throw new Error(`Roadbook #${target.id} has no stored route line; run a full refresh first.`);
-        return text(formatStopPlan(extras.stopPlan, target.departure ?? "09:00", target.ridingMinutes).join("\n"));
+        const view = formatStopPlan(extras.stopPlan, target.departure ?? "09:00", target.ridingMinutes).join("\n");
+        return structuredResult({ rideId: target.id, stopsOnly: true, failedLookups: [], view }, view);
       }
       await setGeoAnchor(startPoint(target));
       const trip = await computeTrip({
@@ -637,8 +700,10 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       store.refreshRide(target.id, tripFigures(trip, routeCells(trip.shapes)));
       const extras = await enrichRide(store, store.findRide(String(target.id))!);
       const failed = Object.entries(extras?.errors ?? {}).map(([name, reason]) => `${name}: ${reason.split(".")[0]}`);
-      return text(
-        `${failed.length ? `Some lookups failed and kept their previous result: ${failed.join("; ")}\n\n` : ""}${formatRideDetail(store.findRide(String(target.id))!, store)}`,
+      const view = formatRideDetail(store.findRide(String(target.id))!, store);
+      return structuredResult(
+        { rideId: target.id, stopsOnly: false, failedLookups: failed, view },
+        `${failed.length ? `Some lookups failed and kept their previous result: ${failed.join("; ")}\n\n` : ""}${view}`,
       );
     },
   );
@@ -649,6 +714,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       description:
         "Ride-day briefing for a saved ride: forecast along the route now, daylight and return time, traffic at departure, the stops re-planned and checked against opening hours at arrival, fixed cameras, and a go, caution or no-go verdict with reasons. Deterministic; show it as returned. Without a ride, takes the next dated ride.",
       annotations: hintsOf("rideBriefing"),
+      outputSchema: RIDE_OUTPUT_SCHEMAS.rideBriefing,
       inputSchema: z.object({
         ride: z.string().optional().describe("Roadbook number or name; default the next planned ride"),
         date: z
@@ -659,7 +725,9 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
     },
     async (args) => {
       const today = localDay(new Date());
-      return text(await rideBriefing(store, rideToBrief(store, today, args.ride, args.date), today));
+      const ride = rideToBrief(store, today, args.ride, args.date);
+      const briefing = await rideBriefing(store, ride, today);
+      return structuredResult({ rideId: ride.id, name: ride.name, rideDate: ride.rideDate, briefing }, briefing);
     },
   );
 
@@ -669,6 +737,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       description:
         'Plan a ride from a saved roadbook on a date, without copying it: "plan a ride from roadbook 7 on Saturday at 9", or "plan a ride on Saturday" right after roadbook 7 was shown or discussed. Adds a ride to the roadbook (or updates the one already on that date), gathers the day: forecast along the loop, daylight, crosswind and low sun, the stop plan with opening hours at arrival, traffic at departure; returns the briefing with a go, caution or no-go verdict and the navigation links. Deterministic; show it as returned. Not for changing the route: a change ("50 km longer", "skip Tournai") goes through planningGuide with the roadbook.',
       annotations: hintsOf("planRide"),
+      outputSchema: RIDE_OUTPUT_SCHEMAS.planRide,
       inputSchema: z.object({
         roadbook: z.string().describe("Roadbook number or name"),
         date: z.string().describe("Day of the ride: YYYY-MM-DD, or in words: today, tomorrow, saturday, 17/10"),
@@ -678,7 +747,10 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
     async (args) => {
       const date = parseRideDay(args.date);
       if (!date) throw new Error(`"${args.date}" is not a day: give YYYY-MM-DD, or today, tomorrow, saturday, 17/10.`);
-      return text(await planRideFrom(store, args.roadbook, date, args.departure ?? null));
+      const plan = await planRideFrom(store, args.roadbook, date, args.departure ?? null);
+      const saved = store.findRide(args.roadbook)!;
+      const departure = (args.departure && parseDeparture(args.departure)) || saved.departure || "09:00";
+      return structuredResult({ roadbookId: saved.id, date, departure, plan }, plan);
     },
   );
 
@@ -686,17 +758,28 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
    * Delete only once the rider said yes: in the client's dialog when it has one,
    * else in the chat, the model calling again with confirm.
    */
-  async function confirmedDelete(question: string, confirm: boolean | undefined, tool: string, act: () => string) {
+  async function confirmedDelete(
+    question: string,
+    confirm: boolean | undefined,
+    tool: string,
+    act: () => string,
+    facts: Record<string, unknown>,
+  ) {
+    const result = (status: "deleted" | "not_deleted" | "confirmation_needed", message: string) =>
+      structuredResult({ status, ...facts, message }, message);
     if (canElicit()) {
       const answer = await ask(deleteForm(question));
-      return text(answer?.delete === true ? act() : "Not deleted: the rider said no.");
+      return answer?.delete === true
+        ? result("deleted", act())
+        : result("not_deleted", "Not deleted: the rider said no.");
     }
     if (confirm !== true) {
-      return text(
+      return result(
+        "confirmation_needed",
         `${question}\nNothing deleted yet. Ask the rider this question; call ${tool} again with confirm true only if they say yes.`,
       );
     }
-    return text(act());
+    return result("deleted", act());
   }
 
   const confirmInput = z
@@ -710,20 +793,27 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       description:
         "Delete a saved roadbook with its rides and notes, after the rider confirms (a dialog, or a question in the chat). Road ratings stay: they are about the roads. Only when the rider asks to delete it.",
       annotations: hintsOf("deleteRoadbook"),
+      outputSchema: RIDE_OUTPUT_SCHEMAS.deleteRoadbook,
       inputSchema: z.object({ roadbook: z.string().describe("Roadbook number or name"), confirm: confirmInput }),
     },
     async (args) => {
       const saved = roadbookOf(store, args.roadbook);
-      return confirmedDelete(deleteRoadbookQuestion(store, saved), args.confirm, "deleteRoadbook", () => {
-        store.deleteRide(saved.id);
-        // This session's run no longer points to it.
-        if (inHand === saved.id) inHand = null;
-        if (lastSavedId === saved.id) {
-          lastSavedId = null;
-          syncRun();
-        }
-        return `Deleted roadbook #${saved.id} "${saved.name}".`;
-      });
+      return confirmedDelete(
+        deleteRoadbookQuestion(store, saved),
+        args.confirm,
+        "deleteRoadbook",
+        () => {
+          store.deleteRide(saved.id);
+          // This session's run no longer points to it.
+          if (inHand === saved.id) inHand = null;
+          if (lastSavedId === saved.id) {
+            lastSavedId = null;
+            syncRun();
+          }
+          return `Deleted roadbook #${saved.id} "${saved.name}".`;
+        },
+        { roadbookId: saved.id },
+      );
     },
   );
 
@@ -733,6 +823,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       description:
         "Delete one ride (a roadbook on a day), after the rider confirms. The roadbook and the ride's notes stay. To keep the ride but mark it called off, use cancelRide instead.",
       annotations: hintsOf("deleteRide"),
+      outputSchema: RIDE_OUTPUT_SCHEMAS.deleteRide,
       inputSchema: z.object({
         roadbook: z.string().describe("Roadbook number or name"),
         date: z.string().describe("Day of the ride: YYYY-MM-DD, 10/10, today, or a weekday"),
@@ -741,10 +832,16 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
     },
     async (args) => {
       const found = rideOnDay(store, args.roadbook, args.date);
-      return confirmedDelete(deleteRideQuestion(found), args.confirm, "deleteRide", () => {
-        store.deleteRideDay(found.ride.id);
-        return `Deleted the ride of ${found.date} from roadbook #${found.saved.id}.`;
-      });
+      return confirmedDelete(
+        deleteRideQuestion(found),
+        args.confirm,
+        "deleteRide",
+        () => {
+          store.deleteRideDay(found.ride.id);
+          return `Deleted the ride of ${found.date} from roadbook #${found.saved.id}.`;
+        },
+        { roadbookId: found.saved.id, date: found.date },
+      );
     },
   );
 
@@ -754,6 +851,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       description:
         'Bring back an earlier version of a roadbook, listed under Versions in showRide. The current design is kept as a version too, so nothing is lost. For "undo that change" or "go back to the original".',
       annotations: hintsOf("restoreRoadbook"),
+      outputSchema: RIDE_OUTPUT_SCHEMAS.restoreRoadbook,
       inputSchema: z.object({
         roadbook: z.string().describe("Roadbook number or name"),
         version: z.number().int().min(1).describe("Version to bring back"),
@@ -763,7 +861,8 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       const saved = roadbookOf(store, args.roadbook);
       const now = restoreVersion(store, saved.id, args.version);
       const following = followingRides(store, saved.id);
-      return text(
+      return structuredResult(
+        { roadbookId: saved.id, restoredVersion: args.version, newVersion: now, followingRides: following || null },
         `Roadbook #${saved.id} is back to version ${args.version}, saved as version ${now}; the one it replaced is kept.${following ? ` ${following.replace(/ To keep one as it was: .*$/, " To keep one as it was: keepRideVersion.")}` : ""}`,
       );
     },
@@ -775,6 +874,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       description:
         'Make a separate roadbook with the same design, recorded as a variant of the original, to change on its own: "copy 7 as Avesnois short". Changes to a roadbook otherwise happen in place.',
       annotations: hintsOf("copyRoadbook"),
+      outputSchema: RIDE_OUTPUT_SCHEMAS.copyRoadbook,
       inputSchema: z.object({
         roadbook: z.string().describe("Roadbook number or name"),
         name: z.string().optional().describe("Name of the copy"),
@@ -783,7 +883,11 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
     async (args) => {
       const saved = roadbookOf(store, args.roadbook);
       const id = copyRoadbook(store, saved.id, args.name);
-      return text(`Copied roadbook #${saved.id} as #${id} "${store.findRide(String(id))!.name}".`);
+      const name = store.findRide(String(id))!.name;
+      return structuredResult(
+        { sourceId: saved.id, rideId: id, name },
+        `Copied roadbook #${saved.id} as #${id} "${name}".`,
+      );
     },
   );
 
@@ -793,6 +897,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       description:
         'Cancel a planned ride (a roadbook on a day): it stays in the list, shown as cancelled. For "I\'m not riding Saturday".',
       annotations: hintsOf("cancelRide"),
+      outputSchema: RIDE_OUTPUT_SCHEMAS.cancelRide,
       inputSchema: z.object({
         roadbook: z.string().describe("Roadbook number or name"),
         date: z.string().describe("Day of the ride: YYYY-MM-DD, 10/10, today, or a weekday"),
@@ -801,7 +906,8 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
     async (args) => {
       const found = rideOnDay(store, args.roadbook, args.date);
       store.cancelRide(found.ride.id);
-      return text(
+      return structuredResult(
+        { roadbookId: found.saved.id, rideDayId: found.ride.id, date: found.date, cancelled: true },
         `Cancelled the ride of ${found.date} from roadbook #${found.saved.id} "${found.saved.name}"; it stays in the list.`,
       );
     },
@@ -813,6 +919,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       description:
         "Full view of one saved ride, as the rider sees it in the app: figures, road mix, time at 70+, daylight, fixed cameras, fuel and café stops, legs with names, main roads, times and ratings, map link and the itinerary text. Show it to the rider as is; do not rebuild it from other tools.",
       annotations: hintsOf("showRide"),
+      outputSchema: RIDE_OUTPUT_SCHEMAS.showRide,
       inputSchema: z.object({
         ride: z.string().describe("Roadbook number or name"),
         date: z
@@ -822,13 +929,29 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       }),
     },
     async (args) => {
+      let ride: NonNullable<ReturnType<typeof store.findRide>>;
       if (args.date) {
         const found = rideOnDay(store, args.ride, args.date);
-        return text(formatRideDetail(store.rideView(found.saved.id, found.ride.id)!, store));
+        ride = store.rideView(found.saved.id, found.ride.id)!;
+      } else {
+        const saved = store.findRide(args.ride);
+        if (!saved) throw new Error(`No saved ride matches "${args.ride}". Call listRoadbooks.`);
+        ride = saved;
       }
-      const ride = store.findRide(args.ride);
-      if (!ride) throw new Error(`No saved ride matches "${args.ride}". Call listRoadbooks.`);
-      return text(formatRideDetail(ride, store));
+      const detail = formatRideDetail(ride, store);
+      return structuredResult(
+        {
+          rideId: ride.id,
+          name: ride.name,
+          rideDate: ride.rideDate,
+          departure: ride.departure,
+          distanceKm: ride.distanceKm,
+          ridingMinutes: ride.ridingMinutes,
+          rating: ride.rating,
+          detail,
+        },
+        detail,
+      );
     },
   );
 
@@ -838,6 +961,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       description:
         'Keep a planned ride on the roadbook as it was before the last change: for a ride already settled when the rider changed the roadbook for later ones. "Keep Saturday\'s ride on the previous version". Rides already done always keep their route.',
       annotations: hintsOf("keepRideVersion"),
+      outputSchema: RIDE_OUTPUT_SCHEMAS.keepRideVersion,
       inputSchema: z.object({
         roadbook: z.string().describe("Roadbook number or name"),
         date: z.string().describe("Day of the planned ride: YYYY-MM-DD, saturday"),
@@ -846,7 +970,10 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
     async (args) => {
       const found = rideOnDay(store, args.roadbook, args.date);
       const version = store.keepPreviousVersion(found.ride.id);
-      return text(`The ride of ${found.date} keeps roadbook #${found.saved.id} as it was (version ${version}).`);
+      return structuredResult(
+        { roadbookId: found.saved.id, date: found.date, version },
+        `The ride of ${found.date} keeps roadbook #${found.saved.id} as it was (version ${version}).`,
+      );
     },
   );
 
@@ -856,16 +983,19 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       description:
         "A picture of a saved ride, to show the rider: the route leg by leg, towns in riding order, planned stops with their arrival times, fixed speed cameras with their limits, km marks, scale and the ride's figures. Drawn from the ride's own data, no map background. Returns the image; show it as is. exportMarkdown and rides map also write it to a file.",
       annotations: hintsOf("showRideMap"),
+      outputSchema: RIDE_OUTPUT_SCHEMAS.showRideMap,
       inputSchema: z.object({ ride: z.string().describe("Roadbook number or name") }),
     },
     async (args) => {
       const ride = store.findRide(args.ride);
       if (!ride) throw new Error(`No saved ride matches "${args.ride}". Call listRoadbooks.`);
+      const png = rideMapPng(ride);
       return {
         content: [
-          { type: "image" as const, data: rideMapPng(ride).toString("base64"), mimeType: "image/png" },
+          { type: "image" as const, data: png.toString("base64"), mimeType: "image/png" },
           { type: "text" as const, text: `Map of roadbook #${ride.id} "${ride.name}".` },
         ],
+        structuredContent: { rideId: ride.id, name: ride.name, mimeType: "image/png", bytes: png.length },
       };
     },
   );
@@ -876,6 +1006,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       description:
         "Write a saved ride as a Markdown document in the app's standard layout (figures, road mix, legs table, daylight, cameras, stops, itinerary), for versioning elsewhere. Returns the file path, and the document itself when asked.",
       annotations: hintsOf("exportMarkdown"),
+      outputSchema: RIDE_OUTPUT_SCHEMAS.exportMarkdown,
       inputSchema: z.object({
         ride: z.string().describe("Roadbook number or name"),
         file: z.string().optional().describe("Destination path; default exports/ in the project"),
@@ -886,8 +1017,10 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       const ride = store.findRide(args.ride);
       if (!ride) throw new Error(`No saved ride matches "${args.ride}". Call listRoadbooks.`);
       const path = writeRideMarkdown(ride, args.file);
-      return text(
-        args.includeContent ? `Markdown written: ${path}\n\n${formatRideMarkdown(ride)}` : `Markdown written: ${path}`,
+      const markdown = args.includeContent ? formatRideMarkdown(ride) : null;
+      return structuredResult(
+        { path, markdown },
+        markdown ? `Markdown written: ${path}\n\n${markdown}` : `Markdown written: ${path}`,
       );
     },
   );
@@ -898,6 +1031,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       description:
         'During a ride: keep a note about the road just ridden, timed now, e.g. "last 10 min awesome" or "cobbles, never again". The note covers the minutes before it (default 10) and is placed on the road after the ride by reviewRide. Call it as soon as the rider says something about the road, with their words; no planning, no questions. Without a ride, it goes to the ride dated today, else the last saved one.',
       annotations: hintsOf("addRideNote"),
+      outputSchema: RIDE_OUTPUT_SCHEMAS.addRideNote,
       inputSchema: z.object({
         text: z.string().min(1).describe("The rider's words"),
         rating: z
@@ -915,8 +1049,19 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       const { note, ride } = addRideNote(store, args);
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const end = Date.parse(note.createdAt);
-      return text(
-        `Noted #${note.id} on roadbook #${ride.id} "${ride.name}", ${clockAt(end - note.minutesBack * 60_000, timezone)}-${clockAt(end, timezone)}. It will be reviewed after the ride.`,
+      const window = `${clockAt(end - note.minutesBack * 60_000, timezone)}-${clockAt(end, timezone)}`;
+      return structuredResult(
+        {
+          noteId: note.id,
+          rideId: ride.id,
+          rideName: ride.name,
+          text: note.text,
+          rating: note.rating,
+          minutesBack: note.minutesBack,
+          createdAt: note.createdAt,
+          window,
+        },
+        `Noted #${note.id} on roadbook #${ride.id} "${ride.name}", ${window}. It will be reviewed after the ride.`,
       );
     },
   );
@@ -927,6 +1072,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       description:
         "After a ride: place its pending notes on the road. With gpxPath (a track recorded by any app, as a GPX file on this machine), each note lands on the road actually ridden, detours of 2 km or more from the plan are listed, and the moving pace is compared with the plan; without it, notes are placed on the plan by elapsed time (approximate). Returns the stretches with a proposed rating each. Show the review as returned and ask the rider to confirm or change the ratings; then call again with decisions to store them. Stored road ratings steer future planning (0-1 avoided, 4-5 preferred).",
       annotations: hintsOf("reviewRide"),
+      outputSchema: RIDE_OUTPUT_SCHEMAS.reviewRide,
       inputSchema: z.object({
         ride: z.string().optional().describe("Roadbook number or name; default the ride of the latest pending note"),
         gpxPath: z.string().optional().describe("Path of the recorded track on this machine"),
@@ -943,23 +1089,61 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       }),
     },
     async (args) => {
-      if (args.decisions) return text(applyReview(store, args.decisions).join("\n"));
+      if (args.decisions) {
+        const results = applyReview(store, args.decisions);
+        return structuredResult(
+          { status: "applied", rideId: null, track: null, detours: [], notes: [], results },
+          results.join("\n"),
+        );
+      }
       const ride = rideToReview(store, args.ride, args.gpxPath ? readTrackOrigin(args.gpxPath) : null);
       const review = await reviewRide(store, ride, {
         track: args.gpxPath ? readTrack(args.gpxPath) : undefined,
         trackPath: args.gpxPath,
       });
+      const shown = (status: "review" | "answered" | "form_closed", results: string[], readable: string) =>
+        structuredResult(
+          {
+            status,
+            rideId: review.ride.id,
+            track: review.track,
+            detours: review.detours,
+            notes: review.notes.map(({ note, placement, problem }) => ({
+              noteId: note.id,
+              text: note.text,
+              rating: note.rating,
+              placement: placement && {
+                road: placement.road,
+                from: placement.from,
+                to: placement.to,
+                window: placement.window,
+                km: placement.km,
+                approximate: placement.approximate,
+                proposedRating: placement.proposedRating,
+              },
+              problem,
+            })),
+            results,
+          },
+          readable,
+        );
       const form = canElicit() ? reviewForm(review) : null;
-      if (!form) return text(formatReview(review));
+      if (!form) return shown("review", [], formatReview(review));
       // The rider rates in the client's form; the model never rates on their behalf.
       const answer = await ask(form);
       if (!answer) {
-        return text(
+        return shown(
+          "form_closed",
+          [],
           `${formatReview(review)}\n\nThe rider closed the form: nothing stored, the notes stay pending. Do not rate them yourself.`,
         );
       }
       const stored = applyReview(store, reviewDecisions(review, answer));
-      return text(`${formatReview(review)}\n\nThe rider's answers:\n${stored.join("\n") || "nothing rated"}`);
+      return shown(
+        "answered",
+        stored,
+        `${formatReview(review)}\n\nThe rider's answers:\n${stored.join("\n") || "nothing rated"}`,
+      );
     },
   );
 
@@ -969,6 +1153,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       description:
         "Rate a roadbook after riding it, one of its legs, or (with day) how a ride went: 0 (never again) to 5 (loved), with the rider's words. The narrowest rating steers later plans: a stretch over a leg over a roadbook. A roadbook rating judges the loop: rated 4-5 it lifts its roads; rated 0-1 the rider is asked whether the roads or the way the loop was put together were bad (a dialog, or call again with scope); with scope roads its legs are rated too and avoided, with scope loop its roads stay usable and loops much like it are not proposed again. For part of a road, rateStretch is more precise. Use the rider's own rating; ask when they gave none.",
       annotations: hintsOf("rateRide"),
+      outputSchema: RIDE_OUTPUT_SCHEMAS.rateRide,
       inputSchema: z.object({
         ride: z.string().describe("Roadbook number or name"),
         rating: z.number().int().min(0).max(5).describe("0 never again, 5 loved"),
@@ -990,10 +1175,21 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       const ride = store.findRide(args.ride);
       if (!ride) throw new Error(`No saved ride matches "${args.ride}". Call listRoadbooks.`);
       const note = args.note?.trim() || null;
+      const rated = (
+        facts: {
+          target: "ride_day" | "leg" | "roadbook";
+          rating: number | null;
+          leg: number | null;
+          date: string | null;
+        },
+        message: string,
+        status: "rated" | "scope_needed" | "cancelled" = "rated",
+      ) => structuredResult({ status, roadbookId: ride.id, ...facts, message }, message);
       if (args.day !== undefined && args.leg === undefined) {
         const found = rideOnDay(store, args.ride, args.day);
         store.rateRideDay(found.ride.id, args.rating, note);
-        return text(
+        return rated(
+          { target: "ride_day", rating: args.rating, leg: null, date: found.date },
           `Rated the ride of ${found.date} on roadbook #${ride.id} ${args.rating}/5; the roads keep their own rating.`,
         );
       }
@@ -1003,24 +1199,35 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
         }
         context.ratedRoads = undefined;
         const leg = ride.legs.find((l) => l.seq === args.leg)!;
-        return text(`Rated leg ${leg.seq} (${leg.from} -> ${leg.to}) of #${ride.id} "${ride.name}" ${args.rating}/5.`);
+        return rated(
+          { target: "leg", rating: args.rating, leg: leg.seq, date: null },
+          `Rated leg ${leg.seq} (${leg.from} -> ${leg.to}) of #${ride.id} "${ride.name}" ${args.rating}/5.`,
+        );
       }
       let scope = args.scope;
       if (args.rating <= 1 && !scope) {
         // What was bad is the rider's to say: in the client's dialog, else in the chat.
         if (!canElicit()) {
-          return text(
+          return rated(
+            { target: "roadbook", rating: null, leg: null, date: null },
             `Not rated yet. ${scopeQuestion(ride.name)} Ask the rider, then call rateRide again with scope "roads" or "loop".`,
+            "scope_needed",
           );
         }
         const answer = await ask(scopeForm(scopeQuestion(ride.name)));
-        if (!answer) return text("Not rated: the rider closed the question.");
+        if (!answer) {
+          return rated(
+            { target: "roadbook", rating: null, leg: null, date: null },
+            "Not rated: the rider closed the question.",
+            "cancelled",
+          );
+        }
         scope = answer.roads === true ? "roads" : "loop";
       }
       const done = rateRoadbook(store, ride, args.rating, note, scope);
       // The next routed trip of this session must see the new rating.
       context.ratedRoads = undefined;
-      return text(done);
+      return rated({ target: "roadbook", rating: args.rating, leg: null, date: null }, done);
     },
   );
 
@@ -1030,6 +1237,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       description:
         'Rate a stretch of road the rider rode, outside any roadbook: "Rue de Longuesault from Ere to Hollain was very nice, 5". Routes it without motorways from the two places (and any via), and stores a road rating that steers later plans (0-1 avoided, 4-5 sought out); no roadbook or ride is created. Show the rider the length, roads and map link it returns so they can check it is the road they rode. Use the rider\'s own rating and words; ask when they gave no rating. For a whole ride, save it and use rateRide instead.',
       annotations: hintsOf("rateStretch"),
+      outputSchema: RIDE_OUTPUT_SCHEMAS.rateStretch,
       inputSchema: z.object({
         from: z.string().describe('Where the stretch starts: an address with its village, a town, or "lat,lon"'),
         to: z.string().describe("Where it ends, the same way"),
@@ -1039,7 +1247,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       }),
     },
     async (args) => {
-      const { text: summary } = await rateStretch(store, {
+      const { id, text: summary } = await rateStretch(store, {
         from: args.from,
         to: args.to,
         via: args.via,
@@ -1048,7 +1256,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       });
       // The next routed trip of this session must see the new rating.
       context.ratedRoads = undefined;
-      return text(summary);
+      return structuredResult({ stretchId: id, rating: args.rating, summary }, summary);
     },
   );
 
@@ -1059,9 +1267,13 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       description:
         "Everything agentMotoride does, grouped by moment (plan, ride day, on the road, after the ride, library, settings), with what to say for each and the Claude Code shortcut. Call it when the rider asks what the app can do or how to do something, and show it as returned.",
       annotations: hintsOf("capabilities"),
+      outputSchema: RIDE_OUTPUT_SCHEMAS.capabilities,
       inputSchema: z.object({}),
     },
-    async () => text(formatForClients()),
+    async () => {
+      const guide = formatForClients();
+      return structuredResult({ guide }, guide);
+    },
   );
 
   server.registerTool(
@@ -1070,9 +1282,35 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       description:
         "Every rating that steers planning: roadbooks and legs rated, and stretches rated directly or from reviewed notes, each stretch with its id (for deleteStretchRating).",
       annotations: hintsOf("listRatedRoads"),
+      outputSchema: RIDE_OUTPUT_SCHEMAS.listRatedRoads,
       inputSchema: z.object({}),
     },
-    async () => text(formatRatedRoads(store)),
+    async () => {
+      const summary = formatRatedRoads(store);
+      const rides = store.listRides();
+      return structuredResult(
+        {
+          roadbooks: rides
+            .filter((r) => r.rating !== null)
+            .map((r) => ({ id: r.id, name: r.name, rating: r.rating, notes: r.notes })),
+          legs: rides.flatMap((r) =>
+            r.legs
+              .filter((l) => l.rating !== null)
+              .map((l) => ({ roadbookId: r.id, leg: l.seq, from: l.from, to: l.to, rating: l.rating, notes: l.notes })),
+          ),
+          stretches: store.listRoadRatings().map((r) => ({
+            id: r.id,
+            road: r.road,
+            rating: r.rating,
+            reason: r.reason,
+            approximate: r.approximate,
+            roadbookId: r.rideId,
+          })),
+          summary,
+        },
+        summary,
+      );
+    },
   );
 
   server.registerTool(
@@ -1081,6 +1319,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       description:
         "Remove a stretch rating (id from listRatedRoads), e.g. one rated by mistake, after the rider confirms (a dialog, or a question in the chat).",
       annotations: hintsOf("deleteStretchRating"),
+      outputSchema: RIDE_OUTPUT_SCHEMAS.deleteStretchRating,
       inputSchema: z.object({
         id: z.number().int().describe("Stretch id, from listRatedRoads"),
         confirm: confirmInput,
@@ -1098,6 +1337,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
           context.ratedRoads = undefined;
           return `Removed stretch rating #${args.id}.`;
         },
+        { stretchId: args.id },
       );
     },
   );
@@ -1110,10 +1350,30 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       description:
         'The rider\'s roadbooks (saved loops and trips), newest first, 20 per page: number, name, distance, time, how many rides and the next planned date, rating. The last line says the page and how to get the next one: call again with that page when the rider asks for more. The number is what the rider calls "ride 7".',
       annotations: hintsOf("listRoadbooks"),
+      outputSchema: RIDE_OUTPUT_SCHEMAS.listRoadbooks,
       inputSchema: z.object({ page }),
     },
-    async (args) =>
-      text(formatRoadbookPage(store.listRoadbooks(args.page ?? 1), (n) => `call listRoadbooks with page ${n}`)),
+    async (args) => {
+      const listed = store.listRoadbooks(args.page ?? 1);
+      return structuredResult(
+        {
+          page: listed.page,
+          pages: listed.pages,
+          total: listed.total,
+          roadbooks: listed.items.map(({ roadbook: r, rides, nextDate }) => ({
+            id: r.id,
+            name: r.name,
+            parentId: r.parentId,
+            distanceKm: r.distanceKm,
+            ridingMinutes: r.ridingMinutes,
+            rides,
+            nextDate,
+            rating: r.rating,
+          })),
+        },
+        formatRoadbookPage(listed, (n) => `call listRoadbooks with page ${n}`),
+      );
+    },
   );
 
   server.registerTool(
@@ -1122,15 +1382,28 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       description:
         "The rides the rider recorded with the MotoRide app and uploaded to this server (not planned rides: listRides and listRoadbooks are those), latest first: id, name, date, distance, points, the roadbook it followed. Use it for 'my last ride', 'the ride I recorded', 'the track I uploaded'.",
       annotations: hintsOf("listRecordedRides"),
+      outputSchema: RIDE_OUTPUT_SCHEMAS.listRecordedRides,
       inputSchema: z.object({}),
     },
     async () => {
       const rides = store.listRecordedRides();
+      const structured = {
+        rides: rides.map((r) => ({
+          id: r.id,
+          name: r.name,
+          startedAt: r.startedAt,
+          distanceKm: r.distanceKm,
+          points: r.points,
+          roadbook: r.roadbook,
+        })),
+      };
       if (!rides.length)
-        return text(
+        return structuredResult(
+          structured,
           "No recorded ride in this library. The MotoRide app uploads one from the end of a ride or from My rides, to the rider's server.",
         );
-      return text(
+      return structuredResult(
+        structured,
         rides
           .map(
             (r) =>
@@ -1147,6 +1420,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       description:
         "Compares a recorded, uploaded ride (latest by default) with the roadbook it followed and lists the speed limits the roadbook only guessed that look too high, because the rider held a steady lower speed there (a speed never raises a limit, and posted or sign limits are never questioned). Show the list exactly as returned and ask the rider which to confirm or reject; never decide for them. Then call again with decisions, all of the rider's answers in one call (the numbers change once some are kept): a confirmed limit replaces the guess on that road in the roadbook file for the phone, which the phone's refresh makes again (refreshRide is not needed: it updates the saved ride's route, weather, cameras and stops, not the phone's file); a rejected one is not proposed again.",
       annotations: hintsOf("reviewRecordedRide"),
+      outputSchema: RIDE_OUTPUT_SCHEMAS.reviewRecordedRide,
       inputSchema: z.object({
         ride: z.string().optional().describe("Recorded ride id, or a part of its id or name; default the latest"),
         decisions: z
@@ -1166,11 +1440,36 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       }),
     },
     async (args) => {
-      if (!store.listRecordedRides().length)
-        return text("No recorded ride in this library. The MotoRide app uploads one to the rider's server.");
+      if (!store.listRecordedRides().length) {
+        return structuredResult(
+          { status: "no_recorded_ride", ride: null, roadbook: null, proposals: [], results: [] },
+          "No recorded ride in this library. The MotoRide app uploads one to the rider's server.",
+        );
+      }
       const review = await reviewRecordedRide(store, args.ride);
-      if (!args.decisions) return text(formatRecordedReview(review));
-      return text(applyProposalDecisions(store, review, args.decisions).join("\n"));
+      const shown = (status: "review" | "applied", results: string[], readable: string) =>
+        structuredResult(
+          {
+            status,
+            ride: { id: review.ride.id, name: review.ride.name, distanceKm: review.ride.distanceKm },
+            roadbook: review.roadbook,
+            proposals: review.proposals.map((p) => ({
+              n: p.n,
+              road: p.road ?? null,
+              at: p.at,
+              guess: p.guess,
+              median: p.median,
+              p85: p.p85,
+              seconds: p.seconds,
+              proposed: p.proposed,
+            })),
+            results,
+          },
+          readable,
+        );
+      if (!args.decisions) return shown("review", [], formatRecordedReview(review));
+      const results = applyProposalDecisions(store, review, args.decisions);
+      return shown("applied", results, results.join("\n"));
     },
   );
 
@@ -1180,9 +1479,33 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       description:
         "The rider's rides (a roadbook on a day), latest date first, rides with no date yet last, 20 per page: date, weekday, departure, roadbook number and name, distance, time, status (planned, ridden, cancelled). The last line says the page and how to get the next one: call again with that page when the rider asks for more. Use the roadbook number with showRide and the other ride tools.",
       annotations: hintsOf("listRides"),
+      outputSchema: RIDE_OUTPUT_SCHEMAS.listRides,
       inputSchema: z.object({ page }),
     },
-    async (args) => text(formatRideDayPage(store.listRideDays(args.page ?? 1), (n) => `call listRides with page ${n}`)),
+    async (args) => {
+      const listed = store.listRideDays(args.page ?? 1);
+      return structuredResult(
+        {
+          page: listed.page,
+          pages: listed.pages,
+          total: listed.total,
+          rides: listed.items.map((d) => ({
+            id: d.id,
+            roadbookId: d.roadbookId,
+            name: d.name,
+            rideDate: d.rideDate,
+            departure: d.departure,
+            status: d.status,
+            stale: d.stale,
+            passed: d.passed,
+            distanceKm: d.distanceKm,
+            ridingMinutes: d.ridingMinutes,
+            rating: d.rating,
+          })),
+        },
+        formatRideDayPage(listed, (n) => `call listRides with page ${n}`),
+      );
+    },
   );
 
   // Read-only documents the rider can attach (in Claude Code: @ then ride:).
@@ -1288,6 +1611,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       description:
         "The full planning guidance for a new ride (how to search, what to check, how to lay out the itinerary), with the rider's request and current settings. Call it first whenever the rider asks for a new ride in plain words, whatever the client; then follow it. Not needed after the plan-ride command, which carries the same text. With a saved ride id, returns the guidance for editing that ride instead.",
       annotations: hintsOf("planningGuide"),
+      outputSchema: RIDE_OUTPUT_SCHEMAS.planningGuide,
       inputSchema: z.object({
         request: z.string().describe("What the rider asked for, verbatim"),
         ride: z.string().optional().describe("Roadbook number or name, when the request is about an existing ride"),
@@ -1297,12 +1621,14 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       if (args.ride) {
         const saved = store.findRide(args.ride);
         if (!saved) throw new Error(`No saved ride matches "${args.ride}". Call listRoadbooks.`);
-        return text(editText(saved, args.request));
+        const guide = editText(saved, args.request);
+        return structuredResult({ guide, rideId: saved.id }, guide);
       }
       requests.push(args.request);
       usage.turns++;
       syncRun();
-      return text(newRideText(args.request));
+      const guide = newRideText(args.request);
+      return structuredResult({ guide, rideId: null }, guide);
     },
   );
 

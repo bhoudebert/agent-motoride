@@ -274,8 +274,23 @@ cd deploy
 ```
 
 It stops Overpass, empties its database, recreates it so it downloads today's extracts and imports them, and waits until it answers. About once
-a month is plenty for cameras, and a cron entry does it: `0 4 1 * * cd /path/to/deploy && ./update-overpass.sh --yes >> update-overpass.log 2>&1`.
-Set `MAP_COMPOSE_FILE=docker-compose.yml` for the other compose file.
+a month is plenty for cameras. Set `MAP_COMPOSE_FILE=docker-compose.yml` for the other compose file.
+
+**Automatic.** At 4 am on the second of each month (the Valhalla refresh runs on the first and takes about 2 hours: the two must not run together, both are heavy). Register it once,
+after the first import has worked, replacing `/path/to/deploy` with the full path of your `deploy` folder:
+
+```
+(crontab -l 2>/dev/null; echo '0 4 2 * * cd /path/to/deploy && ./update-overpass.sh --yes >> update-overpass.log 2>&1') | crontab -
+```
+
+The line it adds (see it with `crontab -l`, change it with `crontab -e`):
+
+```
+0 4 2 * * cd /path/to/deploy && ./update-overpass.sh --yes >> update-overpass.log 2>&1
+```
+
+The log (`update-overpass.log`, in the `deploy` folder) shows each run. Cron runs with a short `PATH`: if the log says `docker: not found`,
+add `PATH=/usr/local/bin:/usr/bin:/bin` as a first line of the crontab. While a run imports, agentRide uses the public Overpass servers.
 
 Not checked on a real server when this was written: the import time, the disk and memory it takes, that the image has the tools the merge line
 uses (`osmium`, `curl` or `wget`), and that the image keeps serving after the import with `OVERPASS_STOP_AFTER_INIT` false. If one differs, the

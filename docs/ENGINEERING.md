@@ -698,6 +698,8 @@ cannot ship without being discoverable.
 
 ## MCP server: tools and prompts
 
+Every tool declares an `outputSchema` and returns `structuredContent` that matches it, with the same object as JSON (or the readable text, for prose tools) in the text block: a client that exposes tools as a typed API (code mode) reads fields instead of parsing text, and the SDK checks each result against its schema ([ADR 0062](adr/0062-tools-return-typed-results.md)). Shared tools keep their schema in `src/tools/outputSchemas.ts`, the others in `src/rideOutputSchemas.ts`; a test runs every tool offline and validates its real result.
+
 | Tool                                                                         | Purpose                                                                                                                                                                                              |
 | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `rideSettings`                                                               | Show or set the start point, motorway permission, slow-zone targets, repeat allowance. Required before anything else unless `RIDE_HOME` is set                                                       |

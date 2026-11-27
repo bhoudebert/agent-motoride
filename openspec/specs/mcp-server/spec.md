@@ -56,6 +56,25 @@ returned. Each tool's behaviour is specified in the capability named next to it.
 - **WHEN** the client calls `saveRide` with a route id that no `calculateTrip` of this session returned
 - **THEN** nothing is saved and the call fails with "Unknown routeId ...; it must come from calculateTrip in this session."
 
+### Requirement: Typed results
+
+Every tool SHALL declare an `outputSchema` (a JSON object schema, written once in code with the field meanings described) and SHALL return its result as `structuredContent` matching it, so a client that exposes the tools as typed functions (code mode) can read fields without guessing. The text content block SHALL stay beside it for clients that read only text: the same object as JSON for tools whose result is data, the sentence or document the model reads today for tools whose result is prose (settings, the itinerary check, exports, guides). A tool that is called again with exactly the same input after the repeat limit SHALL return the earlier result with `repeatedCall` and `repeatNote` fields beside the original fields (its own `note`, if any, kept), not wrapped. A failure SHALL stay an error result (thrown, reported with `isError`), never a structured result that does not match its schema. A test SHALL run every tool offline and validate its real result against its own schema.
+
+#### Scenario: A client reads a typed result
+
+- **WHEN** a client lists the tools and calls `calculateTrip`
+- **THEN** the listing carries an `outputSchema` for it, and the result's `structuredContent` has `routeId`, `totalDistanceKm` and `legs` as the schema declares, with the same object as JSON in the text block
+
+#### Scenario: Prose result keeps its text
+
+- **WHEN** `checkItinerary` passes an itinerary
+- **THEN** the text block reads "PASS" as before, and `structuredContent` says `passed` true with empty `violations`
+
+#### Scenario: Repeated call stays typed
+
+- **WHEN** the same `getDaylight` call is made a third time
+- **THEN** the result carries the daylight fields as usual, with `repeatedCall` 3 and a `repeatNote`, and still matches the schema
+
 ### Requirement: Prompts
 
 The server SHALL expose 17 prompts that become slash commands: `plan-ride`, `commute`, `edit-ride`, `plan-from` (planning); `save-ride`, `show-ride`, `refresh`, `list-roadbooks`, `list-rides` (library); `export-gpx`, `export-md` (exports); `today` (ride day); `note`, `review`, `rate`, `rate-stretch` (feedback); `help`. Each, except `help` (rendered from the catalogue, no tool call), SHALL ask the client's model to call the matching tools with the rider's arguments. `plan-ride` SHALL carry the shared planning instructions, the rules for MCP (use the tools, plain text, end with a `Route:` line, settings changes through `rideSettings`), the request and the current settings.

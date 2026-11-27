@@ -57,3 +57,4 @@ not rewritten.
 | [0058](0058-spec-drift-is-checked-by-code-first-and-a-local-model-second.md) | Spec drift is checked by code first and a local model second                     | accepted |
 | [0059](0059-a-spec-reviewer-could-be-an-external-app.md)                     | A spec reviewer could be an external app                                         | proposed |
 | [0060](0060-weather-is-the-cautious-reading-of-several-models.md)            | Read the weather as the cautious reading of several models                       | accepted |
+| [0062](0062-tools-return-typed-results.md)                                   | Tools declare an output schema and return structured results                     | accepted |

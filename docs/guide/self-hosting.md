@@ -227,6 +227,48 @@ Because nothing goes down, you can run it more often: every week keeps the newes
 so the pair alternates). A server that does not answer `/status` counts as the oldest and is rebuilt first. The public server is not in the list on
 purpose: its map is rebuilt often, so it would usually win and yours would idle; add it only as a last resort you accept.
 
+## Your own Overpass (optional)
+
+### What Overpass does here, and what changes if you run your own
+
+[Overpass](https://wiki.openstreetmap.org/wiki/Overpass_API) is the query service agentRide asks for the fixed speed cameras, the fuel
+stations, cafés, restaurants and bakeries (with their opening hours) along a route, the winding-road search, and the built-up land of a roadbook
+file. The speed limits and the routes themselves do not come from it: they come from Valhalla.
+
+By default it asks the public Overpass servers: free, shared, and sometimes at capacity (they answer 502) or closed to you (the OSM France mirror
+answers 403). A lookup along a route then fails after at most 75 seconds, and the itinerary says the cameras or stops were not checked. With
+your own instances, those lookups no longer depend on them. The public servers stay as the fallback, for the minutes your own are importing,
+restarting or down.
+
+### How it differs from Valhalla
+
+- **It follows the map by itself.** Each instance applies its region's changes (every hour by default, from the daily changes Geofabrik
+  publishes): no rebuild, no second instance, no downtime, no cron job. Cameras and stops are as fresh as OpenStreetMap's daily changes.
+- **One instance per region.** The image imports one extract and follows one feed. Belgium and the north of France are two instances, and
+  agentRide asks every instance you list and merges the answers.
+- **It is small.** The extracts are Belgium 668 MB, Nord-Pas-de-Calais 231 MB and Picardie 128 MB (Geofabrik, November 2026): a few GB of disk
+  for the databases, to be measured on your server (`docker compose ... exec overpass-be du -sh /db`).
+- **Outside your regions, your instances know nothing.** A ride that goes into a country you did not import gets no cameras and no stops
+  there, and is not told so: the public servers are asked only when one of your instances does not answer. Import every region you ride in.
+
+### Set it up
+
+1. Start it: `docker compose -f deploy/docker-compose.yml --env-file deploy/.env --profile overpass up -d overpass-be overpass-nord`. The first
+   start downloads each extract, converts it (Geofabrik offers `.pbf` only, the image wants `.osm.bz2`) and imports it; follow it with
+   `docker compose logs -f overpass-be`. When the import is done the container stops and Docker restarts it by itself: from then on it applies
+   the changes. Until then agentRide uses the public servers.
+2. Put `OVERPASS_URL=http://overpass-be,http://overpass-nord` in `deploy/.env` and restart the server (`up -d ride`). Nothing is published:
+   only the server reaches them.
+3. Check one: `docker compose exec ride wget -qO- 'http://overpass-be/api/interpreter?data=[out:json];node(50.85,4.35,50.86,4.36)[amenity];out%201;'`
+   answers JSON with elements once the import is done.
+
+Another region (Picardie, Ile-de-France...): copy a service block in the compose files, change its name, its volume and the two Geofabrik
+addresses, and add its address to `OVERPASS_URL`. Unset `OVERPASS_URL` and agentRide goes back to the public servers only.
+
+Not checked on a real server when this was written: the import time, the disk and memory it takes, that the image's `osmium` conversion line
+runs as written, and the update address of each region (the directory must hold a `state.txt`). If one of them differs, the logs of the
+container say so; the public fallback keeps agentRide working meanwhile.
+
 ## Traffic for the phone (optional)
 
 One server does it all: the same container serves the planning tools (MCP), the live ride relay and the phone's traffic. Traffic needs no key and no

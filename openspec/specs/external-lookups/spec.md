@@ -27,6 +27,20 @@ Queries SHALL go one at a time from the process, through a list of instances (ma
 - **THEN** the answer is not used and the query is sent to OSM France, then to the second entry point after a pause
 - **AND** a scout's road search waiting meanwhile is sent only once that query is done
 
+### Requirement: Own Overpass instances
+
+When `OVERPASS_URL` lists the host's own Overpass instances (addresses separated by commas, the path `/api/interpreter` added to an address that has none), every query SHALL go to all of them first, as each knows its own region, and their elements SHALL be merged by type and id. If any of them does not answer within 20 seconds (or the call's deadline), its answer being missing, the query SHALL be sent to the public instances instead, and an instance that failed for a reason other than a server remark SHALL be left alone for a minute, without delaying the queries meanwhile. A query SHALL never be answered from only some of the listed instances. Unset, only the public instances SHALL be used. An address that is not an http or https URL SHALL be refused with its name.
+
+#### Scenario: Two regions, one answer
+
+- **WHEN** `OVERPASS_URL` lists a Belgium and a northern-France instance and a route chunk crosses the border
+- **THEN** both are asked, their elements are merged (an element on the border once), and the public instances are not asked
+
+#### Scenario: One region's instance is down
+
+- **WHEN** the France instance is importing (connection refused) and the Belgium one answers
+- **THEN** the query is sent to the public instances, the answer is theirs, the failure names the France instance, and the next queries go to the public instances at once, without waiting for it, for a minute
+
 ### Requirement: Lookups along a route
 
 Cameras and stops SHALL be queried along the simplified route line in chunks of about 25 km with one regex filter per tag key; a chunk that fails SHALL be split in two and retried, down to a few km; results SHALL be merged by element id. A lookup along a route SHALL answer within 75 seconds, the waiting its turn and the retries included (the client gives up on a call after 2 minutes): when the time is used, no further attempt starts and no chunk is split, and the tool fails saying the map service did not answer, so the itinerary can say the check was not done. A lookup asked again while the same one is running (same route line and same kinds) SHALL wait for the running one and not queue a second copy.

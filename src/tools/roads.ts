@@ -56,8 +56,41 @@ let failedInARow = 0;
 let leftAloneUntil = 0;
 let lastFailure = "";
 
+/** How long one of the host's own instances has to answer before the public ones are asked. */
+const OWN_TIMEOUT_MS = 20_000;
+/** Own instances that did not answer, until when they are left alone. */
+const ownDownUntil = new Map<string, number>();
+
+/**
+ * The host's own Overpass instances (`OVERPASS_URL`, docs/guide/self-hosting.md): one address or several separated by commas,
+ * each an address of the query endpoint (the path `/api/interpreter` is added to an address that has none). Several are regions
+ * of one map (Belgium and the north of France), not copies: a query goes to all of them and the answers are merged. Read at each
+ * use, so a change of environment needs no restart. Empty: the public instances only.
+ */
+export function overpassUrls(env: NodeJS.ProcessEnv = process.env): string[] {
+  const set = env.OVERPASS_URL?.trim();
+  if (!set) return [];
+  return set
+    .split(",")
+    .map((u) => u.trim())
+    .filter((u) => u !== "")
+    .map((address) => {
+      let url: URL;
+      try {
+        url = new URL(address);
+      } catch {
+        throw new Error(`OVERPASS_URL is not a URL: ${address}`);
+      }
+      if (url.protocol !== "http:" && url.protocol !== "https:")
+        throw new Error(`OVERPASS_URL must be http or https: ${address}`);
+      if (url.pathname === "/") url.pathname = "/api/interpreter";
+      return url.toString();
+    });
+}
+
 /** Forget what was learnt about the instances (tests, and a long-lived server whose instances changed). */
 export function resetOverpass(): void {
+  ownDownUntil.clear();
   refusedHosts.clear();
   failedInARow = 0;
   leftAloneUntil = 0;
@@ -77,17 +110,74 @@ export function overpass<T = OverpassElement>(query: string, options: OverpassOp
   return turn;
 }
 
+/** One query to one instance. A remark means the query was cut short (timeout, memory): the result is partial or empty. */
+async function askInstance(url: string, query: string, timeoutMs: number): Promise<OverpassElement[]> {
+  const data = await fetchJson<{ elements: OverpassElement[]; remark?: string }>(
+    url,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `data=${encodeURIComponent(query)}`,
+    },
+    timeoutMs,
+  );
+  if (data.remark) throw new RemarkError(`server remark: ${data.remark.slice(0, 80)}`);
+  return data.elements;
+}
+
+class RemarkError extends Error {}
+
+const reasonOf = (error: unknown) => (error instanceof Error ? error.message.slice(0, 80) : String(error));
+
+/**
+ * The host's own instances, all of them: each knows its region only, so an answer missing from one would look like "nothing
+ * there". The elements are merged by id. Null when any of them did not answer (it is named in `errors`): the public instances
+ * are asked instead, and the one that failed is left alone for a minute (a query cut short by a remark does not count).
+ */
+async function askOwnInstances(
+  urls: string[],
+  query: string,
+  errors: string[],
+  left: () => number,
+): Promise<OverpassElement[] | null> {
+  const now = Date.now();
+  const resting = urls.filter((u) => (ownDownUntil.get(u) ?? 0) > now);
+  if (resting.length) {
+    errors.push(`${resting.map((u) => new URL(u).host).join(", ")}: left alone after a failure`);
+    return null;
+  }
+  if (left() < 2_000) return null;
+  const answers = await Promise.allSettled(urls.map((u) => askInstance(u, query, Math.min(OWN_TIMEOUT_MS, left()))));
+  const merged = new Map<string, OverpassElement>();
+  let complete = true;
+  answers.forEach((answer, i) => {
+    if (answer.status === "fulfilled") {
+      for (const e of answer.value) merged.set(`${e.type}/${e.id}`, e);
+      return;
+    }
+    complete = false;
+    if (!(answer.reason instanceof RemarkError)) ownDownUntil.set(urls[i]!, Date.now() + BREAKER_FOR_MS);
+    errors.push(`${new URL(urls[i]!).host}: ${reasonOf(answer.reason)}`);
+  });
+  return complete ? [...merged.values()] : null;
+}
+
 async function overpassNow(query: string, options: OverpassOptions): Promise<OverpassElement[]> {
   const errors: string[] = [];
+  const left = () => (options.deadline === undefined ? Infinity : options.deadline - Date.now());
+  const own = overpassUrls();
+  if (own.length) {
+    const ours = await askOwnInstances(own, query, errors, left);
+    if (ours) return ours;
+  }
   const now = Date.now();
   if (now < leftAloneUntil) {
     throw new Error(
-      `OpenStreetMap query service is unavailable (${lastFailure}); not asked again for ${Math.ceil((leftAloneUntil - now) / 1000)} s. Retry later.`,
+      `OpenStreetMap query service is unavailable (${[...errors, lastFailure].filter(Boolean).join("; ")}); not asked again for ${Math.ceil((leftAloneUntil - now) / 1000)} s. Retry later.`,
     );
   }
   // Quick mode: two attempts, no pauses; the caller has a cheaper fallback (a smaller query).
   const attempts = options.quick ? OVERPASS_ATTEMPTS.slice(0, 2).map((a) => ({ ...a, waitMs: 0 })) : OVERPASS_ATTEMPTS;
-  const left = () => (options.deadline === undefined ? Infinity : options.deadline - Date.now());
   for (const { url, timeoutMs, waitMs } of attempts) {
     const host = new URL(url).host;
     if (refusedHosts.has(host)) continue;
@@ -97,23 +187,12 @@ async function overpassNow(query: string, options: OverpassOptions): Promise<Ove
     }
     if (waitMs) await new Promise((resolve) => setTimeout(resolve, waitMs));
     try {
-      const data = await fetchJson<{ elements: OverpassElement[]; remark?: string }>(
-        url,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: `data=${encodeURIComponent(query)}`,
-        },
-        Math.min(timeoutMs, left()),
-      );
-      // A remark means the query was cut short (timeout, memory); the result is partial or empty.
-      if (data.remark) throw new Error(`server remark: ${data.remark.slice(0, 80)}`);
+      const elements = await askInstance(url, query, Math.min(timeoutMs, left()));
       failedInARow = 0;
-      return data.elements;
+      return elements;
     } catch (error) {
       if (error instanceof HttpError && (error.status === 401 || error.status === 403)) refusedHosts.add(host);
-      const reason = error instanceof Error ? error.message.slice(0, 80) : String(error);
-      errors.push(`${host}: ${reason}`);
+      errors.push(`${host}: ${reasonOf(error)}`);
     }
   }
   lastFailure = errors.join("; ");

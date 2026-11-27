@@ -13,6 +13,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { ElicitRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { addRideNote } from "../src/feedback.ts";
 import { routeCells } from "../src/geometry.ts";
+import { keepRide } from "../src/recordedRides.ts";
 import { DEFAULT_PREFERENCES } from "../src/preferences.ts";
 import { RIDE_OUTPUT_SCHEMAS } from "../src/rideOutputSchemas.ts";
 import { Store } from "../src/store.ts";
@@ -282,5 +283,42 @@ test("outputSchemas: refused saves and closed dialogs still match their schema",
     assert.equal((await call(forms, "deleteRoadbook", { roadbook: "1" })).status, "not_deleted");
   } finally {
     await forms.close();
+  }
+});
+
+/** A GPX as the phone writes it, riding the roadbook of `library()` (the header names it). */
+function recordedGpx(): string {
+  const pts = Array.from({ length: 30 }, (_, i) => {
+    const time = new Date(Date.UTC(2026, 9, 31, 9, 0, i)).toISOString();
+    return `<trkpt lat="${(50.4 + i * 0.0002).toFixed(6)}" lon="3.000000"><time>${time}</time><extensions><motoride:speed>17.4</motoride:speed></extensions></trkpt>`;
+  }).join("\n");
+  return `<?xml version="1.0"?><gpx version="1.1" creator="MotoRide" xmlns="http://www.topografix.com/GPX/1/1" xmlns:motoride="https://example.org/m"><metadata><name>Straight north, 2026-10-31</name><extensions><motoride:ride roadbook="1" name="Straight north" source="MotoRide" sourceRoadbook="1" sourceName="Straight north" state="completed"/></extensions></metadata><trk><trkseg>${pts}</trkseg></trk></gpx>`;
+}
+
+test("outputSchemas: a recorded ride is listed and reviewed against its roadbook, then decisions are answered", async () => {
+  const { db } = library();
+  const store = new Store(db);
+  keepRide(store, "2026-10-31T09-00-00-straight-north", recordedGpx());
+  store.close();
+  const client = await connect(db);
+  try {
+    await call(client, "rideSettings", { home: "Lille" });
+    const listed = await call(client, "listRecordedRides");
+    assert.equal(listed.rides.length, 1);
+    assert.equal(listed.rides[0].id, "2026-10-31T09-00-00-straight-north");
+    assert.deepEqual(listed.rides[0].roadbook, { id: 1, name: "Straight north" });
+
+    const review = await call(client, "reviewRecordedRide");
+    assert.equal(review.status, "review");
+    assert.equal(review.ride.id, "2026-10-31T09-00-00-straight-north");
+    assert.deepEqual(review.roadbook, { id: 1, name: "Straight north" });
+    assert.ok(Array.isArray(review.proposals));
+
+    // A decision on a proposal that does not exist is answered, not an error.
+    const applied = await call(client, "reviewRecordedRide", { decisions: [{ n: 9, action: "reject" }] });
+    assert.equal(applied.status, "applied");
+    assert.deepEqual(applied.results, ["No proposal 9."]);
+  } finally {
+    await client.close();
   }
 });

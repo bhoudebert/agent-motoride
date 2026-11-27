@@ -276,17 +276,17 @@ cd deploy
 It stops Overpass, empties its database, recreates it so it downloads today's extracts and imports them, and waits until it answers. About once
 a month is plenty for cameras. Set `MAP_COMPOSE_FILE=docker-compose.yml` for the other compose file.
 
-**Automatic.** At 4 am on the first of each month (an hour after the Valhalla refresh above, so the two do not run together). Register it once,
+**Automatic.** At 4 am on the second of each month (the Valhalla refresh runs on the first and takes about 2 hours: the two must not run together, both are heavy). Register it once,
 after the first import has worked, replacing `/path/to/deploy` with the full path of your `deploy` folder:
 
 ```
-(crontab -l 2>/dev/null; echo '0 4 1 * * cd /path/to/deploy && ./update-overpass.sh --yes >> update-overpass.log 2>&1') | crontab -
+(crontab -l 2>/dev/null; echo '0 4 2 * * cd /path/to/deploy && ./update-overpass.sh --yes >> update-overpass.log 2>&1') | crontab -
 ```
 
 The line it adds (see it with `crontab -l`, change it with `crontab -e`):
 
 ```
-0 4 1 * * cd /path/to/deploy && ./update-overpass.sh --yes >> update-overpass.log 2>&1
+0 4 2 * * cd /path/to/deploy && ./update-overpass.sh --yes >> update-overpass.log 2>&1
 ```
 
 The log (`update-overpass.log`, in the `deploy` folder) shows each run. Cron runs with a short `PATH`: if the log says `docker: not found`,

@@ -20,7 +20,7 @@ npm run rides -- note "nice bends" --rating 4 --roadbook 7
 # in a refine> session: /note last 10 min awesome
 ```
 
-```text [Claude Code / Codex]
+```text [Claude Code / Codex / OpenCode]
 last 10 minutes awesome
 cobbles, never again
 
@@ -43,7 +43,7 @@ OsmAnd: any GPX with times), then review:
 npm run rides -- review 7 ~/Downloads/track.gpx
 ```
 
-```text [Claude Code / Codex]
+```text [Claude Code / Codex / OpenCode]
 review my ride with ~/Downloads/track.gpx
 ```
 
@@ -103,7 +103,7 @@ npm run rides -- rated               # every rating that steers plans, stretches
 npm run rides -- unrate-stretch 4    # remove one, after you confirm
 ```
 
-```text [Claude Code / Codex]
+```text [Claude Code / Codex / OpenCode]
 the stretch from Rue de Longuesault 1, Tournai to 50.5393,3.4250 was very nice, 5
 which roads have I rated?
 remove that last stretch rating

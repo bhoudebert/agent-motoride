@@ -122,7 +122,7 @@ holds the rider's rules. Constraints act on three layers:
 | Check: verify output | Caps, motorways, repeats, rated roads, stated distance                                | `src/checks.ts` (ADR 0014)                                       | No, but only reports   |
 
 Who runs the loop depends on the mode. In API mode our code is the harness; in
-MCP mode the client (Claude Code, Codex) is, and agentMotoride only answers
+MCP mode the client (Claude Code, Codex, OpenCode) is, and agentMotoride only answers
 tool calls. The tool code is the same in both, which is why a rule that must
 never break goes in a tool or in `checks.ts`, never only in a prompt (ADR 0002).
 
@@ -793,7 +793,7 @@ prints the `plan-ride` prompt exactly as the server serves it.
 | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | `npm run ride -- ...`                    | Run the agent                                                                                                                      |
 | `npm run rides -- ...`                   | Roadbooks, rides, plan a ride, show, rate, export, replay, delete                                                                  |
-| `npm run mcp`                            | MCP server on stdio, for Claude Code, Codex or another MCP client                                                                  |
+| `npm run mcp`                            | MCP server on stdio, for Claude Code, Codex, OpenCode or another MCP client                                                        |
 | `npm run mcp:smoke`                      | Protocol-level check of the MCP server, no model involved                                                                          |
 | `npm run codex:register`                 | Register the server in Codex CLI's user config (once per machine)                                                                  |
 | `node scripts/mcp-prompt.ts "<request>"` | Print the `plan-ride` prompt exactly as the server serves it                                                                       |

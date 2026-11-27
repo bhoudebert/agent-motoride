@@ -313,7 +313,8 @@ test("along the route: cameras, stops, plan, conditions, listSavedRides", async 
   // Beyond the forecast range: glare only, same shape.
   const real = globalThis.fetch;
   globalThis.fetch = (async (input: any, init: any) => {
-    if (String(input).includes("api.open-meteo.com")) return new Response("out of range", { status: 400 });
+    const host = new URL(input instanceof Request ? input.url : String(input)).hostname;
+    if (host === "api.open-meteo.com") return new Response("out of range", { status: 400 });
     return real(input, init);
   }) as typeof fetch;
   try {

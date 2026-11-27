@@ -107,6 +107,10 @@ Done: a registry of riders with a library each, `npm run admin`, and the MCP too
   possible: unsupported in Claude Code and deprecated in the MCP spec. Instead,
   with API scouts off, Claude Code scouts with its own parallel subagents, done
   (ADR 0021), and their verdicts reach the road memory through `reportScout`.
+- **MCP code mode**: done (ADR 0062): every tool declares an output schema and
+  returns structured results, so a client that exposes the tools as a typed API
+  reads fields instead of parsing text. Next: a `confirm` guard check on every
+  destructive tool when called from a script.
 - **Evaluation harness**: done (cases, code graders, record and replay, injection
   case; README "Evaluating the agent"). Next: an LLM judge with a rubric for
   what code cannot grade, checked against the rider's own ratings; a runner

@@ -156,6 +156,11 @@ A rider who plans on a library kept elsewhere SHALL be able to send a roadbook f
 - **WHEN** two riders connect with their own tokens and list their roadbooks
 - **THEN** each gets only their own, and neither can open the other's session
 
+#### Scenario: Typed results over HTTP
+
+- **WHEN** a rider's client lists the tools over HTTP and calls one
+- **THEN** the listing carries the same `outputSchema` as over stdio and the result's `structuredContent` matches it (spec mcp-server, "Typed results")
+
 ### Requirement: Files stay in the rider's folder
 
 On the server, every path a tool reads or writes SHALL be inside the rider's own folder (`data/tenants/<id>/`): exports go to its `exports/` by default, a relative path is taken from there, and an absolute path elsewhere, a path with `..` or a path with `~` SHALL be refused with a message saying files stay inside the rider's folder. This SHALL cover the GPX, Markdown and map exports, the track given to a review and the route file given to an import. The place-name state that depends on a rider's start point SHALL be that rider's own while their request is served.

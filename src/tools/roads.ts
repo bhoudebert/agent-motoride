@@ -1,4 +1,4 @@
-import { fetchJson } from "../http.ts";
+import { fetchJson, HttpError } from "../http.ts";
 import { bearingDeg, fmtCoords, haversineKm, resolvePoint } from "./geo.ts";
 
 export interface SearchRoadsInput {
@@ -47,17 +47,54 @@ const UNPAVED = new Set([
 // parallel must take turns.
 let overpassQueue: Promise<unknown> = Promise.resolve();
 
-export function overpass<T = OverpassElement>(query: string, options: { quick?: boolean } = {}): Promise<T[]> {
+/** Hosts that refused us for good (401, 403: a mirror that is not open to us): not asked again by this process. */
+const refusedHosts = new Set<string>();
+/** After this many queries in a row that no instance answered, Overpass is left alone for a while. */
+const BREAKER_AFTER = 2;
+const BREAKER_FOR_MS = 60_000;
+let failedInARow = 0;
+let leftAloneUntil = 0;
+let lastFailure = "";
+
+/** Forget what was learnt about the instances (tests, and a long-lived server whose instances changed). */
+export function resetOverpass(): void {
+  refusedHosts.clear();
+  failedInARow = 0;
+  leftAloneUntil = 0;
+  lastFailure = "";
+}
+
+export interface OverpassOptions {
+  /** Two attempts, no pauses; the caller has a cheaper fallback (a smaller query). */
+  quick?: boolean;
+  /** Epoch ms after which no attempt starts and none waits longer: the caller's answer is due. */
+  deadline?: number;
+}
+
+export function overpass<T = OverpassElement>(query: string, options: OverpassOptions = {}): Promise<T[]> {
   const turn = overpassQueue.then(() => overpassNow(query, options)) as Promise<T[]>;
   overpassQueue = turn.catch(() => undefined);
   return turn;
 }
 
-async function overpassNow(query: string, options: { quick?: boolean }): Promise<OverpassElement[]> {
+async function overpassNow(query: string, options: OverpassOptions): Promise<OverpassElement[]> {
   const errors: string[] = [];
+  const now = Date.now();
+  if (now < leftAloneUntil) {
+    throw new Error(
+      `OpenStreetMap query service is unavailable (${lastFailure}); not asked again for ${Math.ceil((leftAloneUntil - now) / 1000)} s. Retry later.`,
+    );
+  }
   // Quick mode: two attempts, no pauses; the caller has a cheaper fallback (a smaller query).
   const attempts = options.quick ? OVERPASS_ATTEMPTS.slice(0, 2).map((a) => ({ ...a, waitMs: 0 })) : OVERPASS_ATTEMPTS;
+  const left = () => (options.deadline === undefined ? Infinity : options.deadline - Date.now());
   for (const { url, timeoutMs, waitMs } of attempts) {
+    const host = new URL(url).host;
+    if (refusedHosts.has(host)) continue;
+    if (left() < 2_000 + waitMs) {
+      errors.push("time budget used");
+      break;
+    }
     if (waitMs) await new Promise((resolve) => setTimeout(resolve, waitMs));
     try {
       const data = await fetchJson<{ elements: OverpassElement[]; remark?: string }>(
@@ -67,18 +104,24 @@ async function overpassNow(query: string, options: { quick?: boolean }): Promise
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: `data=${encodeURIComponent(query)}`,
         },
-        timeoutMs,
+        Math.min(timeoutMs, left()),
       );
       // A remark means the query was cut short (timeout, memory); the result is partial or empty.
       if (data.remark) throw new Error(`server remark: ${data.remark.slice(0, 80)}`);
+      failedInARow = 0;
       return data.elements;
     } catch (error) {
+      if (error instanceof HttpError && (error.status === 401 || error.status === 403)) refusedHosts.add(host);
       const reason = error instanceof Error ? error.message.slice(0, 80) : String(error);
-      errors.push(`${new URL(url).host}: ${reason}`);
+      errors.push(`${host}: ${reason}`);
     }
   }
+  lastFailure = errors.join("; ");
+  // A query cut short by its caller's deadline says nothing about the instances: only real failures count.
+  if (!errors.includes("time budget used") && ++failedInARow >= BREAKER_AFTER)
+    leftAloneUntil = Date.now() + BREAKER_FOR_MS;
   throw new Error(
-    `OpenStreetMap query service is unavailable right now (${errors.join("; ")}). Retry later or try a smaller radius.`,
+    `OpenStreetMap query service is unavailable right now (${lastFailure}). Retry later or try a smaller radius.`,
   );
 }
 

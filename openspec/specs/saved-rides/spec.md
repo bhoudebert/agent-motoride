@@ -79,6 +79,11 @@ Right after a save, on every `refresh`, when a ride is planned from a roadbook a
 - **WHEN** the rider changes the bike's tank range and runs `rides refresh 7 --stops`
 - **THEN** only the stop plan of roadbook 7 is rebuilt, from the cached candidates, and printed
 
+#### Scenario: Refresh while the map service is down
+
+- **WHEN** a saved ride's stops are rebuilt while the map service does not answer, a lookup for the same route already running
+- **THEN** the refresh waits for that lookup instead of starting a second one, fails within the lookup's time limit, and the ride keeps its previous stops
+
 ### Requirement: Duplicate avoidance
 
 The planner SHALL read the library at the start; candidates sharing 70% or more of their grid cells with a roadbook SHALL be rejected unless repeats are allowed or the ride is the one being evolved; 40% or more SHALL be mentioned as similar. Saving a candidate that duplicates a roadbook outside the session's lineage SHALL be refused unless explicitly forced. Both the planner's warning and the refusal SHALL offer to ride that roadbook again on the rider's day (planning a ride from it) instead of a new plan.

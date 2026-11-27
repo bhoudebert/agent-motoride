@@ -126,3 +126,8 @@ Every routed trip SHALL report the distance on rough paved surfaces (cobblestone
 
 - **WHEN** a loop crosses 1.2 km of setts on a village road
 - **THEN** the result lists 1.2 km rough paved with the road name and leg
+
+#### Scenario: Lookups along the route are bounded
+
+- **WHEN** the cameras or stops of a routed trip are looked up while the map service is down
+- **THEN** the lookup ends within the 75 seconds spec external-lookups sets, and the route's own figures (distance, time, limits, surface) are unaffected

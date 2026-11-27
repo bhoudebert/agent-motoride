@@ -96,6 +96,11 @@ The planner SHALL state only what tools returned and SHALL mark unverified parts
 - **THEN** the trip says "Slow-zone share is unverified for this route" and its time is the router's estimate only
 - **AND** the itinerary says the slow-zone share is unverified instead of giving a figure
 
+#### Scenario: Cameras and stops not answered
+
+- **WHEN** the speed-camera or stop lookup along the loop fails because the map service did not answer in time (spec external-lookups, "Lookups along a route")
+- **THEN** the itinerary says the cameras or the stops were not checked, with no invented ones, and gives the rest
+
 ### Requirement: Structured final answer (API mode)
 
 The built-in planner's final answer SHALL be validated by the API against a schema with `message` (text for the rider) and `ride` (route id, date, departure, name, or null for a plain answer). An answer naming a route id unknown to the session SHALL be shown with a warning and SHALL NOT be saveable. A model that does not enforce structured output may wrap the JSON in a code fence or prose, or give `ride` as one string (route id, date and name joined by `_`): the answer SHALL be read from any of these forms, and an answer that cannot be read SHALL be asked for again once, as the JSON object only; if the second answer cannot be read either, it SHALL be shown as the message with `ride: null`.

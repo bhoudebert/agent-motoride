@@ -88,7 +88,7 @@
     },
     "external-lookups": {
       "code": ["src/http.ts", "src/tools/roads.ts"],
-      "tests": ["test/versions.test.ts"]
+      "tests": ["test/versions.test.ts", "test/overpassBudget.test.ts"]
     },
     "mcp-server": {
       "code": ["src/mcp.ts", "src/capabilities.ts", "src/rideOutputSchemas.ts", "src/tools/outputSchemas.ts"],

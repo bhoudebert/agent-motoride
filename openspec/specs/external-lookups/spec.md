@@ -9,7 +9,17 @@ their failures.
 
 ### Requirement: Overpass access
 
-Queries SHALL go one at a time from the process, through a list of instances (main, OSM France, the main service's second entry point) with pauses between retries, with a contact-style User-Agent. A response carrying a server remark SHALL count as a failure. Road searches SHALL use a bounding box, not a radius filter.
+Queries SHALL go one at a time from the process, through a list of instances (main, OSM France, the main service's second entry point) with pauses between retries, with a contact-style User-Agent. A response carrying a server remark SHALL count as a failure. Road searches SHALL use a bounding box, not a radius filter. An instance that answers 401 or 403 (not open to this client) SHALL NOT be asked again by the process. After two queries in a row that no instance answered, Overpass SHALL be left alone for a minute and a query in that time SHALL fail at once, saying when to retry; a query cut short by its caller's deadline SHALL NOT count towards that.
+
+#### Scenario: A mirror that is not open to us
+
+- **WHEN** OSM France answers 403 "only available to white-listed usages"
+- **THEN** it is named in the failure and not asked again by the process; the other instances are still tried
+
+#### Scenario: Overpass at capacity
+
+- **WHEN** every instance answers 502 "at capacity" for two queries in a row
+- **THEN** the next query fails at once with "not asked again for N s" and sends no request, until the minute is over
 
 #### Scenario: The main instance cuts a query short
 
@@ -19,7 +29,13 @@ Queries SHALL go one at a time from the process, through a list of instances (ma
 
 ### Requirement: Lookups along a route
 
-Cameras and stops SHALL be queried along the simplified route line in chunks of about 25 km with one regex filter per tag key; a chunk that fails SHALL be split in two and retried, down to a few km; results SHALL be merged by element id.
+Cameras and stops SHALL be queried along the simplified route line in chunks of about 25 km with one regex filter per tag key; a chunk that fails SHALL be split in two and retried, down to a few km; results SHALL be merged by element id. A lookup along a route SHALL answer within 75 seconds, the waiting its turn and the retries included (the client gives up on a call after 2 minutes): when the time is used, no further attempt starts and no chunk is split, and the tool fails saying the map service did not answer, so the itinerary can say the check was not done. A lookup asked again while the same one is running (same route line and same kinds) SHALL wait for the running one and not queue a second copy.
+
+#### Scenario: The map service does not answer
+
+- **WHEN** `getSpeedCameras` is called on a 130 km route while Overpass answers nothing
+- **THEN** the call fails within 75 seconds with the instances and reasons, not after minutes of retries
+- **AND** the same call repeated meanwhile waits for the running one instead of queueing a copy
 
 #### Scenario: Dense area
 

@@ -237,37 +237,49 @@ file. The speed limits and the routes themselves do not come from it: they come 
 
 By default it asks the public Overpass servers: free, shared, and sometimes at capacity (they answer 502) or closed to you (the OSM France mirror
 answers 403). A lookup along a route then fails after at most 75 seconds, and the itinerary says the cameras or stops were not checked. With
-your own instances, those lookups no longer depend on them. The public servers stay as the fallback, for the minutes your own are importing,
-restarting or down.
+your own instance, those lookups no longer depend on them. The public servers stay as the fallback: for the time your own is importing, restarting
+or refreshing, and if it ever fails.
 
-### How it differs from Valhalla
+### One instance for your whole area
 
-- **It follows the map by itself.** Each instance applies its region's changes (every hour by default, from the daily changes Geofabrik
-  publishes): no rebuild, no second instance, no downtime, no cron job. Cameras and stops are as fresh as OpenStreetMap's daily changes.
-- **One instance per region.** The image imports one extract and follows one feed. Belgium and the north of France are two instances, and
-  agentRide asks every instance you list and merges the answers.
-- **It is small.** The extracts are Belgium 668 MB, Nord-Pas-de-Calais 231 MB and Picardie 128 MB (Geofabrik, November 2026): a few GB of disk
-  for the databases, to be measured on your server (`docker compose ... exec overpass-be du -sh /db`).
-- **Outside your regions, your instances know nothing.** A ride that goes into a country you did not import gets no cameras and no stops
-  there, and is not told so: the public servers are asked only when one of your instances does not answer. Import every region you ride in.
+One `overpass` service holds Belgium and the north of France together: the first start downloads the extracts, merges them into one map,
+converts and imports it. It is small: the extracts are Belgium 668 MB and Nord-Pas-de-Calais 231 MB (Geofabrik, November 2026), a few GB of
+disk for the database, to be measured on your server (`docker compose ... exec overpass du -sh /db`).
+
+Like Valhalla, it follows nothing by itself: the map stays the one of the last import, and `deploy/update-overpass.sh` refreshes it. The
+difference is the downtime: while it imports, agentRide asks the public servers, so nothing is down.
+
+To cover other places, list their Geofabrik extracts in `deploy/.env`: `OVERPASS_EXTRACT` (the first) and `OVERPASS_EXTRA_EXTRACTS`
+(the others, separated by spaces), then run the update script. **Outside the areas you import, your instance knows nothing**: a ride into a
+country you did not import gets no cameras and no stops there, and is not told so, because the public servers are asked only when your own
+fails. Import every region you ride in.
 
 ### Set it up
 
-1. Start it: `docker compose -f deploy/docker-compose.yml --env-file deploy/.env --profile overpass up -d overpass-be overpass-nord`. The first
-   start downloads each extract, converts it (Geofabrik offers `.pbf` only, the image wants `.osm.bz2`) and imports it; follow it with
-   `docker compose logs -f overpass-be`. When the import is done the container stops and Docker restarts it by itself: from then on it applies
-   the changes. Until then agentRide uses the public servers.
-2. Put `OVERPASS_URL=http://overpass-be,http://overpass-nord` in `deploy/.env` and restart the server (`up -d ride`). Nothing is published:
-   only the server reaches them.
-3. Check one: `docker compose exec ride wget -qO- 'http://overpass-be/api/interpreter?data=[out:json];node(50.85,4.35,50.86,4.36)[amenity];out%201;'`
+1. Start it: `docker compose -f deploy/docker-compose.single.yml --env-file deploy/.env --profile overpass up -d overpass`. The first start
+   downloads, merges, converts and imports the extracts; follow it with `docker compose logs -f overpass`. Until it is done agentRide uses
+   the public servers.
+2. Put `OVERPASS_URL=http://overpass` in `deploy/.env` and restart the server (`up -d ride`). Nothing is published: only the server reaches it.
+   (`OVERPASS_URL` accepts several addresses separated by commas: each is then taken for a region of the map, all are asked and their answers
+   merged. One address covering your whole area is the simple case.)
+3. Check it: `docker compose exec overpass wget -qO- 'http://localhost/api/interpreter?data=[out:json];node(50.85,4.35,50.86,4.36)[amenity];out%201;'`
    answers JSON with elements once the import is done.
 
-Another region (Picardie, Ile-de-France...): copy a service block in the compose files, change its name, its volume and the two Geofabrik
-addresses, and add its address to `OVERPASS_URL`. Unset `OVERPASS_URL` and agentRide goes back to the public servers only.
+### Keep it current
 
-Not checked on a real server when this was written: the import time, the disk and memory it takes, that the image's `osmium` conversion line
-runs as written, and the update address of each region (the directory must hold a `state.txt`). If one of them differs, the logs of the
-container say so; the public fallback keeps agentRide working meanwhile.
+```
+cd deploy
+./update-overpass.sh            # asks first
+./update-overpass.sh --yes      # does not ask (for cron)
+```
+
+It stops Overpass, empties its database, recreates it so it downloads today's extracts and imports them, and waits until it answers. About once
+a month is plenty for cameras, and a cron entry does it: `0 4 1 * * cd /path/to/deploy && ./update-overpass.sh --yes >> update-overpass.log 2>&1`.
+Set `MAP_COMPOSE_FILE=docker-compose.yml` for the other compose file.
+
+Not checked on a real server when this was written: the import time, the disk and memory it takes, that the image has the tools the merge line
+uses (`osmium`, `curl` or `wget`), and that the image keeps serving after the import with `OVERPASS_STOP_AFTER_INIT` false. If one differs, the
+container's logs say so; the public fallback keeps agentRide working meanwhile.
 
 ## Traffic for the phone (optional)
 

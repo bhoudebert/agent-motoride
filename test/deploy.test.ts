@@ -180,27 +180,33 @@ test("update-map.sh stops with a message when no Valhalla container exists", () 
   assert.deepEqual(r.changing, []);
 });
 
-test("the compose files hand OVERPASS_URL to the server and offer an own Overpass per region only on request (profile)", () => {
+test("the compose files hand OVERPASS_URL to the server and offer one own Overpass for the area only on request (profile)", () => {
   for (const file of ["deploy/docker-compose.yml", "deploy/docker-compose.single.yml"]) {
     const compose = read(file);
-    assert.ok(compose.includes("OVERPASS_URL: ${OVERPASS_URL:-}"), `${file} passes the addresses`);
-    for (const name of ["overpass-be", "overpass-nord"]) {
-      assert.ok(
-        new RegExp(`${name}:\\n\\s+image: wiktorn/overpass-api`).test(compose),
-        `${file} has the ${name} service`,
-      );
-      assert.ok(compose.includes(`${name}-data:/db`), `${file}: ${name} has its own volume`);
-      assert.ok(new RegExp(`\\n  ${name}-data:\\n`).test(compose), `${file} declares the ${name} volume`);
-      const block = compose.slice(compose.indexOf(`\n  ${name}:\n`)).split(/\n(?: {2}\w[\w-]*:\n|volumes:)/)[1] ?? "";
-      assert.ok(
-        block.includes("profiles:") && block.includes('"overpass"'),
-        `${file}: ${name} starts only with its profile`,
-      );
-      assert.ok(
-        block.includes("OVERPASS_DIFF_URL") && !block.includes("ports:"),
-        `${file}: ${name} follows a feed and publishes nothing`,
-      );
-    }
+    assert.ok(compose.includes("OVERPASS_URL: ${OVERPASS_URL:-}"), `${file} passes the address`);
+    assert.ok(/\n {2}overpass:\n\s+image: wiktorn\/overpass-api/.test(compose), `${file} has the service`);
+    assert.ok(compose.includes("overpass-data:/db"), `${file}: the service has its own volume`);
+    assert.ok(/\n {2}overpass-data:\n/.test(compose), `${file} declares the volume`);
+    const block = compose.slice(compose.indexOf("\n  overpass:\n")).split(/\n(?: {2}\w[\w-]*:\n|volumes:)/)[1] ?? "";
+    assert.ok(block.includes("profiles:") && block.includes('"overpass"'), `${file}: it starts only with its profile`);
+    assert.ok(!block.includes("ports:"), `${file}: the service publishes nothing`);
+    assert.ok(
+      block.includes("OVERPASS_EXTRA_EXTRACTS") && block.includes("osmium merge"),
+      `${file}: the extracts are merged`,
+    );
+    assert.ok(block.includes('OVERPASS_STOP_AFTER_INIT: "false"'), `${file}: it keeps serving after the import`);
   }
   assert.ok(read("deploy/.env.example").includes("OVERPASS_URL"));
+});
+
+test("update-overpass.sh refreshes the own Overpass: empties the volume, imports again, waits, and asks first", () => {
+  const script = read("deploy/update-overpass.sh");
+  assert.ok(script.includes("--profile overpass"));
+  assert.ok(script.includes("find /db -mindepth 1 -delete"), "it empties the database before importing again");
+  assert.ok(script.includes("--force-recreate overpass"));
+  assert.ok(script.includes('"--yes"'), "cron can run it without a question");
+  assert.ok(
+    (statSync(new URL("../deploy/update-overpass.sh", import.meta.url)).mode & 0o111) !== 0,
+    "it is executable",
+  );
 });

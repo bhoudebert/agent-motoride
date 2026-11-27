@@ -59,3 +59,4 @@ not rewritten.
 | [0060](0060-weather-is-the-cautious-reading-of-several-models.md)            | Read the weather as the cautious reading of several models                       | accepted |
 | [0062](0062-tools-return-typed-results.md)                                   | Tools declare an output schema and return structured results                     | accepted |
 | [0063](0063-own-overpass-instances-with-the-public-ones-as-fallback.md)      | Own Overpass instances, one per region, with the public ones as fallback         | accepted |
+| [0064](0064-one-own-overpass-for-the-area-refreshed-like-valhalla.md)        | One own Overpass for the whole area, refreshed like Valhalla                     | accepted |

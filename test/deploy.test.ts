@@ -179,3 +179,28 @@ test("update-map.sh stops with a message when no Valhalla container exists", () 
   assert.match(r.stderr, /No Valhalla container exists/);
   assert.deepEqual(r.changing, []);
 });
+
+test("the compose files hand OVERPASS_URL to the server and offer an own Overpass per region only on request (profile)", () => {
+  for (const file of ["deploy/docker-compose.yml", "deploy/docker-compose.single.yml"]) {
+    const compose = read(file);
+    assert.ok(compose.includes("OVERPASS_URL: ${OVERPASS_URL:-}"), `${file} passes the addresses`);
+    for (const name of ["overpass-be", "overpass-nord"]) {
+      assert.ok(
+        new RegExp(`${name}:\\n\\s+image: wiktorn/overpass-api`).test(compose),
+        `${file} has the ${name} service`,
+      );
+      assert.ok(compose.includes(`${name}-data:/db`), `${file}: ${name} has its own volume`);
+      assert.ok(new RegExp(`\\n  ${name}-data:\\n`).test(compose), `${file} declares the ${name} volume`);
+      const block = compose.slice(compose.indexOf(`\n  ${name}:\n`)).split(/\n(?: {2}\w[\w-]*:\n|volumes:)/)[1] ?? "";
+      assert.ok(
+        block.includes("profiles:") && block.includes('"overpass"'),
+        `${file}: ${name} starts only with its profile`,
+      );
+      assert.ok(
+        block.includes("OVERPASS_DIFF_URL") && !block.includes("ports:"),
+        `${file}: ${name} follows a feed and publishes nothing`,
+      );
+    }
+  }
+  assert.ok(read("deploy/.env.example").includes("OVERPASS_URL"));
+});

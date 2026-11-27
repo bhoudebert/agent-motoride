@@ -30,6 +30,8 @@ services:
       RIDE_ADMIN_HOST: ${RIDE_ADMIN_HOST:-0.0.0.0}
       # Your own Valhalla (optional, the `valhalla` service below): http://valhalla:8002. Empty: the public server.
       VALHALLA_URL: ${VALHALLA_URL:-}
+      # Your own Overpass (optional, the `overpass-*` services below): http://overpass-be,http://overpass-nord. Empty: the public servers.
+      OVERPASS_URL: ${OVERPASS_URL:-}
     volumes:
       # The data: a folder of your own when RIDE_DATA_PATH is set (an absolute path, owned by uid 1000), else a Docker volume.
       - ${RIDE_DATA_PATH:-ride-data}:/data
@@ -81,6 +83,42 @@ services:
     expose:
       - "8002"
 
+  # Your own Overpass, the query service for cameras, stops and road search (optional, docs/guide/self-hosting.md): one small
+  # instance per region, `docker compose --profile overpass up -d`, then set OVERPASS_URL=http://overpass-be,http://overpass-nord
+  # (agentRide asks all of them and the public servers when one does not answer). The first start downloads the extract, converts
+  # and imports it, then the container stops and restarts by itself to follow the region's daily changes: no rebuild, no downtime.
+  # Reached by the ride service only: nothing is published. Another region (Picardie...): copy a block, change the names and URLs.
+  overpass-be:
+    image: wiktorn/overpass-api:latest
+    profiles: ["overpass"]
+    restart: unless-stopped
+    environment:
+      OVERPASS_MODE: init
+      OVERPASS_PLANET_URL: ${OVERPASS_BE_EXTRACT:-https://download.geofabrik.de/europe/belgium/belgium-latest.osm.pbf}
+      # Geofabrik offers .pbf only: the image wants .osm.bz2, so it is converted after the download.
+      OVERPASS_PLANET_PREPROCESS: mv /db/planet.osm.bz2 /db/planet.osm.pbf && osmium cat -o /db/planet.osm.bz2 /db/planet.osm.pbf && rm /db/planet.osm.pbf
+      OVERPASS_DIFF_URL: ${OVERPASS_BE_UPDATES:-https://download.geofabrik.de/europe/belgium/updates}
+      OVERPASS_UPDATE_SLEEP: ${OVERPASS_UPDATE_SLEEP:-3600}
+    volumes:
+      - overpass-be-data:/db
+    expose:
+      - "80"
+
+  overpass-nord:
+    image: wiktorn/overpass-api:latest
+    profiles: ["overpass"]
+    restart: unless-stopped
+    environment:
+      OVERPASS_MODE: init
+      OVERPASS_PLANET_URL: ${OVERPASS_NORD_EXTRACT:-https://download.geofabrik.de/europe/france/nord-pas-de-calais/nord-pas-de-calais-latest.osm.pbf}
+      OVERPASS_PLANET_PREPROCESS: mv /db/planet.osm.bz2 /db/planet.osm.pbf && osmium cat -o /db/planet.osm.bz2 /db/planet.osm.pbf && rm /db/planet.osm.pbf
+      OVERPASS_DIFF_URL: ${OVERPASS_NORD_UPDATES:-https://download.geofabrik.de/europe/france/nord-pas-de-calais/updates}
+      OVERPASS_UPDATE_SLEEP: ${OVERPASS_UPDATE_SLEEP:-3600}
+    volumes:
+      - overpass-nord-data:/db
+    expose:
+      - "80"
+
   caddy:
     image: caddy:2
     restart: unless-stopped
@@ -99,6 +137,8 @@ services:
 volumes:
   valhalla-data:
   valhalla2-data:
+  overpass-be-data:
+  overpass-nord-data:
   ride-data:
   caddy-data:
   caddy-config:

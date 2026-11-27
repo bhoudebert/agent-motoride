@@ -124,3 +124,8 @@ For an uploaded ride (ADR 0054) that followed a roadbook of the library, the sys
 
 - **WHEN** a ride holds 66 to 68 km/h on a stretch planned at an inferred 50, or 45 km/h on a posted 80
 - **THEN** no proposal is made
+
+#### Scenario: Review of a recorded ride is typed
+
+- **WHEN** a client calls `reviewRecordedRide` on a recorded ride that followed a roadbook of the library
+- **THEN** `structuredContent` has `status` "review", the ride and roadbook, and one entry per proposed limit with its number, road, position, guessed limit, median and 85th-percentile speed, duration and proposed limit, without the road geometry kept for confirming; with `decisions` it has `status` "applied" and one line per decision in `results`, and a decision on a proposal that does not exist is answered ("No proposal 9."), not an error; the text block reads as before

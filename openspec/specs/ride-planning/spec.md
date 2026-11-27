@@ -183,3 +183,12 @@ Routes and traces (the trip calculation, the roadbook legs, the `check` command)
 
 - **WHEN** `VALHALLA_URL=valhalla:8002` is set
 - **THEN** the request fails with "VALHALLA_URL must be http or https" before anything is sent
+
+### Requirement: A repeated lookup answers from the first result
+
+A pure lookup (the library near a place, weather, daylight, traffic, road search, speed cameras, stops, conditions) called a third time or more with exactly the same input in one scope SHALL return the earlier result with its own fields unchanged, plus `repeatedCall` (how many times so far) and `repeatNote` (use it and move on), instead of calling the service again; a tool's own `note` SHALL be kept. Tools that register a route, store a plan or start a session SHALL NOT be repeat-guarded.
+
+#### Scenario: Third identical call
+
+- **WHEN** the planner calls `getDaylight` three times with the same place and date
+- **THEN** the third result has the daylight fields of the first, `repeatedCall` 3 and a `repeatNote`, and the service was called once

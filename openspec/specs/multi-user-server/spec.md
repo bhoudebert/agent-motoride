@@ -141,6 +141,7 @@ A rider who plans on a library kept elsewhere SHALL be able to send a roadbook f
 
 - **WHEN** a rider has pushed a roadbook and then asks the server to `refreshRoadbook` or `deleteRoadbook` it, or the phone to download or refresh it
 - **THEN** it behaves as a roadbook planned on the server, with its limits traced on the server's map
+- **AND** `listSavedRoadbooks` lists it under `roadbooks` and `rideSettings` counts it in `savedRoadbooks`, with the rider's other roadbooks
 
 #### Scenario: Another rider's library
 

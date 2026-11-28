@@ -124,12 +124,12 @@ test("outputSchemas: library, reading and note tools return matching structured 
   try {
     const settings = await call(client, "rideSettings", { home: "Lille" });
     assert.match(settings.home.label, /^Lille/);
-    assert.equal(settings.savedRides, 1);
+    assert.equal(settings.savedRoadbooks, 1);
     assert.match(settings.pendingNotes, /1 ride note/);
 
     const guide = await call(client, "planningGuide", { request: "a ride north" });
     assert.equal(guide.roadbookId, null);
-    assert.equal((await call(client, "planningGuide", { request: "shorter", ride: "1" })).roadbookId, 1);
+    assert.equal((await call(client, "planningGuide", { request: "shorter", roadbook: "1" })).roadbookId, 1);
     assert.match((await call(client, "capabilities")).guide, /\S/);
 
     const roadbooks = await call(client, "listRoadbooks");
@@ -139,20 +139,20 @@ test("outputSchemas: library, reading and note tools return matching structured 
     assert.equal((await call(client, "listRecordedRides")).rides.length, 0);
     assert.equal((await call(client, "reviewRecordedRide")).status, "no_recorded_ride");
 
-    const shown = await call(client, "showRide", { ride: "1" });
+    const shown = await call(client, "showRoadbook", { roadbook: "1" });
     assert.equal(shown.name, "Straight north");
-    await call(client, "showRide", { ride: "1", date: today });
-    const map = await call(client, "showRideMap", { ride: "1" });
+    await call(client, "showRoadbook", { roadbook: "1", date: today });
+    const map = await call(client, "showRoadbookMap", { roadbook: "1" });
     assert.equal(map.mimeType, "image/png");
-    const md = await call(client, "exportMarkdown", { ride: "1", file: join(dir, "r.md"), includeContent: true });
+    const md = await call(client, "exportMarkdown", { roadbook: "1", file: join(dir, "r.md"), includeContent: true });
     assert.match(md.markdown, /Straight north/);
-    assert.equal((await call(client, "exportMarkdown", { ride: "1", file: join(dir, "r2.md") })).markdown, null);
+    assert.equal((await call(client, "exportMarkdown", { roadbook: "1", file: join(dir, "r2.md") })).markdown, null);
     const gpx = await call(client, "exportGpx", { roadbookId: 1, file: join(dir, "r.gpx") });
     assert.equal(gpx.pushed, false);
 
     const note = await call(client, "addRideNote", { text: "cobbles, never again", rating: 1 });
     assert.equal(note.roadbookId, 1);
-    const review = await call(client, "reviewRide", { ride: "1" });
+    const review = await call(client, "reviewRide", { roadbook: "1" });
     assert.equal(review.status, "review");
     assert.equal(review.notes.length, 2);
     const applied = await call(client, "reviewRide", {
@@ -160,10 +160,10 @@ test("outputSchemas: library, reading and note tools return matching structured 
     });
     assert.equal(applied.status, "applied");
 
-    await call(client, "rateRide", { ride: "1", rating: 3, day: today });
-    await call(client, "rateRide", { ride: "1", rating: 4, leg: 1 });
-    assert.equal((await call(client, "rateRide", { ride: "1", rating: 0 })).status, "scope_needed");
-    assert.equal((await call(client, "rateRide", { ride: "1", rating: 5 })).status, "rated");
+    await call(client, "rateRide", { roadbook: "1", rating: 3, day: today });
+    await call(client, "rateRide", { roadbook: "1", rating: 4, leg: 1 });
+    assert.equal((await call(client, "rateRide", { roadbook: "1", rating: 0 })).status, "scope_needed");
+    assert.equal((await call(client, "rateRide", { roadbook: "1", rating: 5 })).status, "rated");
     const stretch = await call(client, "rateStretch", { from: "Lille", to: "Cassel", rating: 5 });
     const rated = await call(client, "listRatedRoads");
     assert.equal(rated.roadbooks[0].id, 1);
@@ -175,11 +175,11 @@ test("outputSchemas: library, reading and note tools return matching structured 
       "deleted",
     );
 
-    const briefing = await call(client, "rideBriefing", { ride: "1" });
+    const briefing = await call(client, "rideBriefing", { roadbook: "1" });
     assert.equal(briefing.roadbookId, 1);
     const planned = await call(client, "planRide", { roadbook: "1", date: "tomorrow", departure: "10:00" });
     assert.equal(planned.departure, "10:00");
-    const refreshed = await call(client, "refreshRide", { ride: "1" });
+    const refreshed = await call(client, "refreshRoadbook", { roadbook: "1" });
     assert.equal(refreshed.stopsOnly, false);
     await call(client, "reportScout", { area: "Flandre", location: "Cassel", found: false, verdict: "Too straight." });
   } finally {
@@ -194,7 +194,7 @@ test("outputSchemas: routing, saving, versions, copies and deletions return matc
     await call(client, "rideSettings", { home: "Lille" });
     await call(client, "planRide", { roadbook: "1", date: "tomorrow", departure: "08:00" });
     // Open roadbook 1 for a change, then save a routed loop over it: a change in place, one version kept.
-    await call(client, "planningGuide", { request: "change it", ride: "1" });
+    await call(client, "planningGuide", { request: "change it", roadbook: "1" });
     const trip = await call(client, "calculateTrip", {
       waypoints: ["Lille", "Cassel", "Mont des Cats"],
       roundTrip: true,
@@ -206,7 +206,7 @@ test("outputSchemas: routing, saving, versions, copies and deletions return matc
     });
     assert.equal(typeof checked.passed, "boolean");
     assert.ok(Array.isArray(checked.violations));
-    const saved = await call(client, "saveRide", {
+    const saved = await call(client, "saveRoadbook", {
       routeId: trip.routeId,
       name: "Flandre",
       rideDate: null,
@@ -222,7 +222,7 @@ test("outputSchemas: routing, saving, versions, copies and deletions return matc
     const copy = await call(client, "copyRoadbook", { roadbook: "1", name: "Variant" });
     assert.equal(copy.sourceId, 1);
     await call(client, "planRide", { roadbook: String(copy.roadbookId), date: "tomorrow", departure: "09:00" });
-    await call(client, "keepRideVersion", { roadbook: "1", date: "tomorrow" });
+    await call(client, "keepRoadbookVersion", { roadbook: "1", date: "tomorrow" });
     const cancelled = await call(client, "cancelRide", { roadbook: String(copy.roadbookId), date: "tomorrow" });
     assert.equal(cancelled.cancelled, true);
     assert.equal(
@@ -257,7 +257,7 @@ test("outputSchemas: refused saves and closed dialogs still match their schema",
   try {
     await call(first, "rideSettings", { home: "Lille" });
     const trip = await call(first, "calculateTrip", loop);
-    assert.equal((await call(first, "saveRide", save(trip.routeId))).status, "saved");
+    assert.equal((await call(first, "saveRoadbook", save(trip.routeId))).status, "saved");
   } finally {
     await first.close();
   }
@@ -266,7 +266,7 @@ test("outputSchemas: refused saves and closed dialogs still match their schema",
   try {
     await call(plain, "rideSettings", { home: "Lille" });
     const trip = await call(plain, "calculateTrip", loop);
-    const refused = await call(plain, "saveRide", save(trip.routeId));
+    const refused = await call(plain, "saveRoadbook", save(trip.routeId));
     assert.equal(refused.status, "not_saved");
     assert.equal(refused.roadbookId, null);
   } finally {
@@ -277,9 +277,9 @@ test("outputSchemas: refused saves and closed dialogs still match their schema",
   try {
     await call(forms, "rideSettings", { home: "Lille" });
     const trip = await call(forms, "calculateTrip", loop);
-    assert.equal((await call(forms, "saveRide", save(trip.routeId))).status, "not_saved");
-    assert.equal((await call(forms, "reviewRide", { ride: "1" })).status, "form_closed");
-    assert.equal((await call(forms, "rateRide", { ride: "1", rating: 0 })).status, "cancelled");
+    assert.equal((await call(forms, "saveRoadbook", save(trip.routeId))).status, "not_saved");
+    assert.equal((await call(forms, "reviewRide", { roadbook: "1" })).status, "form_closed");
+    assert.equal((await call(forms, "rateRide", { roadbook: "1", rating: 0 })).status, "cancelled");
     assert.equal((await call(forms, "deleteRoadbook", { roadbook: "1" })).status, "not_deleted");
   } finally {
     await forms.close();

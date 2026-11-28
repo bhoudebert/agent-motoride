@@ -198,6 +198,11 @@ Routes and traces (the trip calculation, the roadbook legs, the `check` command)
 
 A pure lookup (the library near a place, weather, daylight, traffic, road search, speed cameras, stops, conditions) called a third time or more with exactly the same input in one scope SHALL return the earlier result with its own fields unchanged, plus `repeatedCall` (how many times so far) and `repeatNote` (use it and move on), instead of calling the service again; a tool's own `note` SHALL be kept. Tools that register a route, store a plan or start a session SHALL NOT be repeat-guarded.
 
+#### Scenario: The library lookup lists roadbooks
+
+- **WHEN** the planner calls `listSavedRoadbooks` near its start point
+- **THEN** the result lists the saved roadbooks under `roadbooks`, each with its `roadbookId`, and a routed trip compares itself with them under `savedRoadbooks`
+
 #### Scenario: Third identical call
 
 - **WHEN** the planner calls `getDaylight` three times with the same place and date

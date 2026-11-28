@@ -31,6 +31,11 @@ Every step SHALL be traced with its scope (planner or scout), kind, name, durati
 - **WHEN** a traced `getWeather` call returned a summary whose models disagree
 - **THEN** its line in the timeline ends with ", models disagree"
 
+#### Scenario: Library lookup in a trace
+
+- **WHEN** a run called `listSavedRoadbooks` and `calculateTrip`
+- **THEN** each step is shown under that tool name, the first with the number of saved roadbooks found, the second with the verdict of `savedRoadbooks`
+
 ### Requirement: OpenTelemetry export
 
 `npm run rides -- otel <run|last>` SHALL export a logged session as OTLP/JSON traces following the GenAI semantic conventions: an `invoke_agent` span for the planner and one per scout under the `scoutAreas` call that ran it, a `chat` span per model call with token usage and finish reason, an `execute_tool` span per tool call with failures as error status. It SHALL post to `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`, else `OTEL_EXPORTER_OTLP_ENDPOINT` plus `/v1/traces`, with `OTEL_EXPORTER_OTLP_HEADERS`, and otherwise write a file. Prompts, answers, tool arguments and results SHALL be exported only with `--content`.

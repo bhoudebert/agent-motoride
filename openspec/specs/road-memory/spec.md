@@ -26,7 +26,7 @@ incrementally and SHALL never hold weather.
 ### Requirement: Recall by place and by words
 
 `recallArea` SHALL take a place and a radius (default 40 km) and return the
-items within it: rides with their ratings, loved (4-5) and avoided (0-1)
+items within it: the saved roadbooks (`savedRoadbooks`) with their ratings, loved (4-5) and avoided (0-1)
 stretches, scout verdicts with their age in days, and known winding roads
 best first. With words, it SHALL also return the best keyword matches
 (BM25, diacritics folded) wherever they are.
@@ -39,7 +39,7 @@ best first. With words, it SHALL also return the best keyword matches
 #### Scenario: Remembered roads name their roadbook
 
 - **WHEN** `recallArea` returns a saved ride or a rated leg
-- **THEN** its data carries the roadbook's number as `roadbookId`
+- **THEN** its data carries the roadbook's number as `roadbookId`, and the area's saved roadbooks are listed as saved roadbooks (`savedRoadbooks`), never as rides
 
 ### Requirement: Consulted before scouting
 

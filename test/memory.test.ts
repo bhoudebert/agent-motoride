@@ -142,7 +142,7 @@ test("memory: what is known around a place, with ages, stretches and roads ready
   const { store } = library();
   const known = recall(new Memory(store), { lat: 50.3, lon: 5.0 }, { radiusKm: 40 });
   assert.deepEqual(
-    known.savedRides.map((r) => [r.name, r.rating]),
+    known.savedRoadbooks.map((r) => [r.name, r.rating]),
     [["Meuse valley loop", 4]],
   );
   assert.deepEqual(
@@ -172,7 +172,7 @@ test("memory: far away is out of reach; words find things anywhere and cannot br
   const { store } = library();
   const memory = new Memory(store);
   const far = recall(memory, { lat: 45.18, lon: 5.72 }, { radiusKm: 40, query: "Godinne cobbles" });
-  assert.equal(far.savedRides.length + far.scoutedAreas.length + far.knownWindingRoads.length, 0);
+  assert.equal(far.savedRoadbooks.length + far.scoutedAreas.length + far.knownWindingRoads.length, 0);
   assert.ok(
     far.wordMatches!.some((m) => m.kind === "leg"),
     "found by words, wherever it is",

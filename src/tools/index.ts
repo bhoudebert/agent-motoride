@@ -20,7 +20,7 @@ import {
   getTrafficOutput,
   getWeatherOutput,
   importRouteOutput,
-  listSavedRidesOutput,
+  listSavedRoadbooksOutput,
   planStopsOutput,
   recallAreaOutput,
   scoutAreasOutput,
@@ -78,7 +78,7 @@ const REPEAT_LIMIT = 3;
  * planStops (stores the plan) or scoutAreas (starts sessions).
  */
 const REPEAT_GUARDED = new Set([
-  "listSavedRides",
+  "listSavedRoadbooks",
   "getWeather",
   "getDaylight",
   "getTraffic",
@@ -224,8 +224,8 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
 
   const tools: ToolDefinition[] = [
     {
-      name: "listSavedRides",
-      outputSchema: listSavedRidesOutput,
+      name: "listSavedRoadbooks",
+      outputSchema: listSavedRoadbooksOutput,
       // Reads the local library only.
       // Reads the local library only.
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
@@ -235,7 +235,7 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
         location: location.optional().describe("Centre of the search, default the rider's start point"),
         radiusKm: z.number().min(10).max(500).optional().describe("Default 150"),
       }),
-      run: trace("listSavedRides", async (input: { location?: string; radiusKm?: number }) => {
+      run: trace("listSavedRoadbooks", async (input: { location?: string; radiusKm?: number }) => {
         const centre = input.location ? await resolvePoint(input.location) : context.home;
         const radiusKm = input.radiusKm ?? 150;
         const rides = store
@@ -280,7 +280,7 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
         const roadRatings = store
           .listRoadRatings()
           .map((r) => ({ road: r.road, rating: r.rating, why: r.reason, approximate: r.approximate }));
-        return { centre: centre.label, radiusKm, count: rides.length, rides, roadRatings };
+        return { centre: centre.label, radiusKm, count: rides.length, roadbooks: rides, roadRatings };
       }),
     },
     {
@@ -340,7 +340,7 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
       name: "calculateTrip",
       outputSchema: calculateTripOutput,
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
-      description: `Route through waypoints in order with a motorcycle profile. Returns a routeId identifying this exact routed trip, real road distance, and per leg and in total: estimated riding time and average speed (from each road segment's speed limit and bends, without stops or traffic; the router's own pessimistic time is given as routerUpperBoundTime), main roads, and a Google Maps link. speedLimits gives openRoadPct (share of distance outside built-up areas and off motorways, the figure to maximise), km and percent in zones of 30 km/h or less and of 31-50 km/h (untagged streets in built-up areas are counted as 50 zones), above 50, and untagged open road (assumed at the legal default of its country and region), plus the longest 30 and 50 stretches by road name so you can move waypoints to bypass them. savedRides compares the route with the rider's saved rides: a verdict plus the percent of this route that runs on roads of each similar saved ride. ratedRoads tells how much of it runs on roads the rider rated 0-1 (avoid) or 4-5 (loved). speedLimits.surface gives the km on cobbles or setts and on unpaved surfaces, with the stretches by road. speedLimits.fastExpressway gives the km and share on roads that are not motorways but are limited to 100 km/h or more (expressways), with the longest stretches: keep it small for a leisure ride. Motorways: the result says whether the rider currently permits them (motorwaysPermitted) and whether this trip was routed with them excluded (motorwaysAvoided). When they are not permitted they are excluded whatever you pass; if usesMotorway is still true, no motorway-free route exists between those waypoints and they must be changed. When they are permitted, pass avoidMotorways false to let the router take them where faster. Use it to check every candidate loop; straight-line guesses are not reliable on winding roads.`,
+      description: `Route through waypoints in order with a motorcycle profile. Returns a routeId identifying this exact routed trip, real road distance, and per leg and in total: estimated riding time and average speed (from each road segment's speed limit and bends, without stops or traffic; the router's own pessimistic time is given as routerUpperBoundTime), main roads, and a Google Maps link. speedLimits gives openRoadPct (share of distance outside built-up areas and off motorways, the figure to maximise), km and percent in zones of 30 km/h or less and of 31-50 km/h (untagged streets in built-up areas are counted as 50 zones), above 50, and untagged open road (assumed at the legal default of its country and region), plus the longest 30 and 50 stretches by road name so you can move waypoints to bypass them. savedRoadbooks compares the route with the rider's saved roadbooks: a verdict plus the percent of this route that runs on roads of each similar saved ride. ratedRoads tells how much of it runs on roads the rider rated 0-1 (avoid) or 4-5 (loved). speedLimits.surface gives the km on cobbles or setts and on unpaved surfaces, with the stretches by road. speedLimits.fastExpressway gives the km and share on roads that are not motorways but are limited to 100 km/h or more (expressways), with the longest stretches: keep it small for a leisure ride. Motorways: the result says whether the rider currently permits them (motorwaysPermitted) and whether this trip was routed with them excluded (motorwaysAvoided). When they are not permitted they are excluded whatever you pass; if usesMotorway is still true, no motorway-free route exists between those waypoints and they must be changed. When they are permitted, pass avoidMotorways false to let the router take them where faster. Use it to check every candidate loop; straight-line guesses are not reliable on winding roads.`,
       inputSchema: z.object({
         waypoints,
         roundTrip: z.boolean().optional().describe("Return to the first waypoint at the end, default false"),
@@ -363,7 +363,7 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
           routeId: route.id,
           motorwaysPermitted: !context.preferences.avoidMotorways,
           ...trip.result,
-          savedRides: savedRideOverlap(context, route.cells),
+          savedRoadbooks: savedRideOverlap(context, route.cells),
           ratedRoads: ratedOverlap(context, route.cells),
         };
       }),
@@ -392,7 +392,7 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
           roundTrip: imported.roundTrip,
           motorwaysPermitted: !context.preferences.avoidMotorways,
           ...imported.trip.result,
-          savedRides: savedRideOverlap(context, route.cells),
+          savedRoadbooks: savedRideOverlap(context, route.cells),
           ratedRoads: ratedOverlap(context, route.cells),
         };
       }),

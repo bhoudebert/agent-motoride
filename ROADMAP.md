@@ -164,7 +164,7 @@ Done: a registry of riders with a library each, `npm run admin`, and the MCP too
   briefing on a chosen ride, overlap offering to ride the roadbook again.
 - **A map of the ride**: the loop, towns, stops and fixed cameras with their
   limits as a picture, drawn from the ride's own data (`rides map`, `/map`,
-  `showRideMap` in Claude Code or Codex, the Markdown export, the share page).
+  `showRoadbookMap` in Claude Code or Codex, the Markdown export, the share page).
   Next, maybe: a real map background through a provider that allows static
   images, with its own key.
 - **Road memory** (`recallArea`, ADR 0020): rides, ratings, scout verdicts and

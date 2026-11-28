@@ -24,7 +24,7 @@ const instructions = client.getInstructions() ?? "";
 if (!instructions.includes("planningGuide")) fail("server instructions missing or not mentioning planningGuide");
 const byName = Object.fromEntries(tools.tools.map((t) => [t.name, t]));
 if (!byName.calculateTrip?.annotations?.readOnlyHint) fail("calculateTrip should be annotated read-only");
-if (byName.saveRide?.annotations?.readOnlyHint) fail("saveRide must not be annotated read-only");
+if (byName.saveRoadbook?.annotations?.readOnlyHint) fail("saveRoadbook must not be annotated read-only");
 if (!byName.planningGuide) fail("planningGuide tool missing");
 console.log(
   "instructions:",
@@ -80,8 +80,8 @@ console.log(
 );
 if (!guide.startsWith("You plan one-day")) fail("planningGuide does not return the planning text");
 console.log(
-  "\n5 saveRide ->",
-  await call("saveRide", {
+  "\n5 saveRoadbook ->",
+  await call("saveRoadbook", {
     routeId: trip.routeId,
     name: "Monts de Flandre",
     rideDate: "2026-10-10",
@@ -91,9 +91,16 @@ console.log(
   }),
 );
 console.log(
-  "6 saveRide bad routeId ->",
+  "6 saveRoadbook bad routeId ->",
   (
-    await call("saveRide", { routeId: "r99", name: "x", rideDate: null, departure: null, itinerary: "", request: "" })
+    await call("saveRoadbook", {
+      routeId: "r99",
+      name: "x",
+      rideDate: null,
+      departure: null,
+      itinerary: "",
+      request: "",
+    })
   ).slice(0, 90),
 );
 console.log(

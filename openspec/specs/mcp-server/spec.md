@@ -24,14 +24,14 @@ The server SHALL speak the protocol over stdio with all logging on stderr (or, f
 
 ### Requirement: Tools
 
-The server SHALL expose these 40 tools, the planner's own shared with the API
-runner, and SHALL refuse a `saveRide` whose route id no tool of the session
+The server SHALL expose these 42 tools, the planner's own shared with the API
+runner, and SHALL refuse a `saveRoadbook` whose route id no tool of the session
 returned. Each tool's behaviour is specified in the capability named next to it.
 
 - Settings and help: `rideSettings` (start point, motorways, targets: this
   spec, "Transport and state"), `capabilities` and `planningGuide` (this spec,
   "Everything discoverable", "Client portability").
-- Planning and routing: `listSavedRides` (the library near a place, read
+- Planning and routing: `listSavedRoadbooks` (the library near a place, read
   before planning: saved-rides, "Duplicate avoidance"), `recallArea`
   (road-memory), `searchRoads` and `calculateTrip` (route-analysis),
   `importRoute` (route-import), `scoutAreas` (ride-planning, "Scouts for new
@@ -40,20 +40,23 @@ returned. Each tool's behaviour is specified in the capability named next to it.
 - Finishing a ride: `getWeather`, `getDaylight`, `checkConditions` and
   `getTraffic` (weather-daylight, traffic), `getSpeedCameras`
   (external-lookups), `findStops` and `planStops` (stop-planning).
-- Library: `saveRide`, `showRide`, `refreshRide` (full or stops only),
+- Library: `saveRoadbook`, `showRoadbook`, `refreshRoadbook` (full or stops only),
   `listRoadbooks` and `listRides` (paged with `page`), `planRide` (a ride from
-  a roadbook on a day), `keepRideVersion`, `restoreRoadbook`, `copyRoadbook`,
+  a roadbook on a day), `keepRoadbookVersion`, `restoreRoadbook`, `copyRoadbook`,
   `cancelRide`, and the destructive `deleteRoadbook` and `deleteRide`,
   confirmed by the rider (saved-rides).
-- Exports: `exportGpx`, `exportMarkdown` and `showRideMap` (route-exports).
+- Exports: `exportGpx`, `exportMarkdown` and `showRoadbookMap` (route-exports).
 - Ride day: `rideBriefing` (saved-rides, "Ride-day briefing").
+- Recorded rides (tracks the phone uploaded): `listRecordedRides` and
+  `reviewRecordedRide` (multi-user-server, "Recorded rides uploaded to the
+  library"; ride-feedback, "Limit proposals from an uploaded ride").
 - Feedback and memory: `addRideNote`, `reviewRide`, `rateStretch`,
   `listRatedRoads` and the destructive `deleteStretchRating` (ride-feedback),
   `rateRide` (saved-rides, "Ratings").
 
 #### Scenario: Saving a route from elsewhere
 
-- **WHEN** the client calls `saveRide` with a route id that no `calculateTrip` of this session returned
+- **WHEN** the client calls `saveRoadbook` with a route id that no `calculateTrip` of this session returned
 - **THEN** nothing is saved and the call fails with "Unknown routeId ...; it must come from calculateTrip in this session."
 
 ### Requirement: Typed results
@@ -78,11 +81,11 @@ Every tool SHALL declare an `outputSchema` (a JSON object schema, written once i
 #### Scenario: One name for a roadbook's number
 
 - **WHEN** a result names a roadbook (a saved ride, a copy, a briefing, a similar saved ride, a remembered road, a library listing)
-- **THEN** the field is `roadbookId` in every tool, and `exportGpx` takes the number as `roadbookId`; a tool that takes a roadbook by number or by name calls the input `ride` or `roadbook`, never `rideId`
+- **THEN** the field is `roadbookId` in every tool, and `exportGpx` takes the number as `roadbookId`; a tool that takes a roadbook by number or by name calls the input `roadbook`, never `ride` or `rideId` (only `reviewRecordedRide` has a `ride`: a recorded ride); a tool that lists or saves roadbooks says so in its name (`saveRoadbook`, `showRoadbook`, `showRoadbookMap`, `refreshRoadbook`, `keepRoadbookVersion`, `listSavedRoadbooks`), and the similar saved roadbooks of a routed trip, an import or a recalled area are `savedRoadbooks`
 
 ### Requirement: Prompts
 
-The server SHALL expose 17 prompts that become slash commands: `plan-ride`, `commute`, `edit-ride`, `plan-from` (planning); `save-ride`, `show-ride`, `refresh`, `list-roadbooks`, `list-rides` (library); `export-gpx`, `export-md` (exports); `today` (ride day); `note`, `review`, `rate`, `rate-stretch` (feedback); `help`. Each, except `help` (rendered from the catalogue, no tool call), SHALL ask the client's model to call the matching tools with the rider's arguments. `plan-ride` SHALL carry the shared planning instructions, the rules for MCP (use the tools, plain text, end with a `Route:` line, settings changes through `rideSettings`), the request and the current settings.
+The server SHALL expose 17 prompts that become slash commands: `plan-ride`, `commute`, `edit-roadbook`, `plan-from` (planning); `save-roadbook`, `show-roadbook`, `refresh`, `list-roadbooks`, `list-rides` (library); `export-gpx`, `export-md` (exports); `today` (ride day); `note`, `review`, `rate`, `rate-stretch` (feedback); `help`. Each, except `help` (rendered from the catalogue, no tool call), SHALL ask the client's model to call the matching tools with the rider's arguments. `plan-ride` SHALL carry the shared planning instructions, the rules for MCP (use the tools, plain text, end with a `Route:` line, settings changes through `rideSettings`), the request and the current settings.
 
 #### Scenario: Settings change in the request
 
@@ -91,7 +94,7 @@ The server SHALL expose 17 prompts that become slash commands: `plan-ride`, `com
 
 ### Requirement: Elicitation for the rider's decisions
 
-When the client advertises form elicitation, `reviewRide` SHALL ask the rider in one form for the rating of each placed note (0-5, the proposal filled in) or its dismissal, and apply the answer; `saveRide` SHALL ask whether to save a copy when the ride duplicates a saved one. A declined or cancelled form SHALL change nothing. Without elicitation, the tools SHALL behave as before (review returned for the model to confirm in chat, duplicate refused with the instruction to ask).
+When the client advertises form elicitation, `reviewRide` SHALL ask the rider in one form for the rating of each placed note (0-5, the proposal filled in) or its dismissal, and apply the answer; `saveRoadbook` SHALL ask whether to save a copy when the ride duplicates a saved one. A declined or cancelled form SHALL change nothing. Without elicitation, the tools SHALL behave as before (review returned for the model to confirm in chat, duplicate refused with the instruction to ask).
 
 #### Scenario: Review confirmed in a form
 
@@ -100,7 +103,7 @@ When the client advertises form elicitation, `reviewRide` SHALL ask the rider in
 
 ### Requirement: Resources
 
-The server SHALL publish, as text: `ride://library` (the 20 newest roadbooks, one line each, ending with how to page through the rest with `listRoadbooks`), `ride://ride/{id}` (one roadbook, as `showRide` returns it, offered for the 20 newest and readable for any), and `ride://roads/rated` (road stretches, rides and legs rated, with their ratings).
+The server SHALL publish, as text: `ride://library` (the 20 newest roadbooks, one line each, ending with how to page through the rest with `listRoadbooks`), `ride://ride/{id}` (one roadbook, as `showRoadbook` returns it, offered for the 20 newest and readable for any), and `ride://roads/rated` (road stretches, rides and legs rated, with their ratings).
 
 #### Scenario: A large library
 
@@ -161,7 +164,7 @@ or site list SHALL fail the documentation check.
 
 Each MCP session SHALL keep one run row with the model recorded as
 `mcp-client` and the effort as `n/a`; the row SHALL hold the requests given to
-`plan-ride`, `commute`, `edit-ride` and `planningGuide` (for a new ride), the tool calls, the
+`plan-ride`, `commute`, `edit-roadbook` and `planningGuide` (for a new ride), the tool calls, the
 ride figures (distance, riding time, open-road, 50-zone and 30-zone shares,
 motorway km) from the ride saved last in the session, else the last routed
 trip, and as tokens and cost only those of the API scouts, priced at the scout

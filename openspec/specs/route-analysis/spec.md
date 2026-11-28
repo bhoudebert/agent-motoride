@@ -118,10 +118,10 @@ Every routed trip SHALL be compared with roadbooks and carry a verdict, listing 
 - **WHEN** repeats are allowed this session and a trip shares 80% of its cells with roadbook #1
 - **THEN** its verdict reads "repeat of roadbook #1 ... repeats are allowed this session", not "DUPLICATE"
 
-#### Scenario: Similar saved rides name their roadbook
+#### Scenario: Similar saved roadbooks name their roadbook
 
 - **WHEN** a routed trip runs on roads of saved rides
-- **THEN** each entry of `savedRides` and `ratedRoads` names the roadbook as `roadbookId`, with the verdict text unchanged
+- **THEN** each entry of `savedRoadbooks` and `ratedRoads` names the roadbook as `roadbookId`, with the verdict text unchanged
 
 ### Requirement: Road surface
 

@@ -18,7 +18,7 @@ did not fetch. It calls tools and reads what they return.
 
 1. **Your limits are read from your words** by code, before any model call:
    "150 km", "3 hours", "no rain".
-2. **The planner asks what is already known**: `listSavedRides` (your
+2. **The planner asks what is already known**: `listSavedRoadbooks` (your
    roadbooks near the start) and `recallArea` (the road memory: areas
    already scouted and their verdict, winding roads already found, with their
    coordinates).

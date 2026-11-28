@@ -138,7 +138,7 @@ test("each rider sees only their own library", async () => {
     assert.match(listB, /Bob's loop/);
     assert.doesNotMatch(listB, /Alice's loop/);
     // A rider cannot open another's roadbook by number or by name.
-    assert.match((await s.call(b, "showRide", { ride: "Alice" })).text + "", /No saved ride|not found|Alice/i);
+    assert.match((await s.call(b, "showRoadbook", { roadbook: "Alice" })).text + "", /No saved ride|not found|Alice/i);
     await a.close();
     await b.close();
   } finally {
@@ -240,7 +240,7 @@ test("exports stay in the rider's own folder: a default goes there, a path that 
     assert.equal(named.error, false);
     assert.ok(existsSync(join(mine, "mine.gpx")));
     // Reading a recorded track or a route file is confined the same way.
-    const review = await s.call(a, "reviewRide", { ride: "Alice", gpxPath: "/etc/passwd" });
+    const review = await s.call(a, "reviewRide", { roadbook: "Alice", gpxPath: "/etc/passwd" });
     assert.equal(review.error, true);
     assert.match(review.text, /stay inside your own folder/);
     await a.close();

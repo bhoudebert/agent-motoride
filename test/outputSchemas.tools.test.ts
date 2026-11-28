@@ -177,7 +177,7 @@ test("getWeather when the models disagree", async () => {
 
 test("searchRoads and recallArea (nothing learnt yet, then roads and a scout's verdict)", async () => {
   const before = await call("recallArea", { location: "Lille", radiusKm: 150 });
-  assert.equal(before.savedRides.length, 1);
+  assert.equal(before.savedRoadbooks.length, 1);
   assert.ok(before.lovedStretches.length > 0 && before.avoidedStretches.length > 0);
 
   api.overpass = [
@@ -261,7 +261,7 @@ test("scoutAreas when scouts cannot run, and when the client runs them", async (
   assert.deepEqual(tool.outputSchema.parse(clientShape), clientShape);
 });
 
-test("along the route: cameras, stops, plan, conditions, listSavedRides", async () => {
+test("along the route: cameras, stops, plan, conditions, listSavedRoadbooks", async () => {
   api.overpass = [
     {
       type: "node",
@@ -324,15 +324,15 @@ test("along the route: cameras, stops, plan, conditions, listSavedRides", async 
     globalThis.fetch = real;
   }
 
-  const saved = await call("listSavedRides", {});
+  const saved = await call("listSavedRoadbooks", {});
   assert.equal(saved.count, 1);
-  assert.equal(saved.rides[0].stops.fuel[0], "Total (km 30)");
+  assert.equal(saved.roadbooks[0].stops.fuel[0], "Total (km 30)");
   assert.ok(saved.roadRatings.length > 0);
 });
 
 test("a call repeated three times returns the earlier result with repeatedCall and repeatNote beside it", async () => {
   const inputs: Array<[string, unknown]> = [
-    ["listSavedRides", { radiusKm: 100 }],
+    ["listSavedRoadbooks", { radiusKm: 100 }],
     ["getWeather", { location: "Lille", date: DATE, fromHour: 10, toHour: 14 }],
     ["getDaylight", { location: "Cassel", date: DATE }],
     ["getTraffic", { waypoints: ["Lille", "Cassel"], departAt: `${DATE}T11:00:00` }],

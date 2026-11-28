@@ -40,7 +40,7 @@ export const CAPABILITIES: Capability[] = [
     slash: "plan-ride <request>",
     tools: [
       "planningGuide",
-      "listSavedRides",
+      "listSavedRoadbooks",
       "recallArea",
       "scoutAreas",
       "reportScout",
@@ -77,7 +77,7 @@ export const CAPABILITIES: Capability[] = [
     what: "Change a roadbook in words: changed in place, the previous version kept, rides already ridden untouched",
     say: "make roadbook 7 50 km longer, lunch in Die",
     terminal: ['npm run ride -- --roadbook <id> "<change>"'],
-    slash: "edit-ride <id|name> <change>",
+    slash: "edit-roadbook <id|name> <change>",
     tools: ["planningGuide"],
   },
   {
@@ -99,8 +99,8 @@ export const CAPABILITIES: Capability[] = [
     what: "Save the itinerary on the table as a roadbook",
     say: "save it as Monts de Flandre",
     terminal: ["/save [name]", "/save --copy [name]"],
-    slash: "save-ride [name]",
-    tools: ["saveRide"],
+    slash: "save-roadbook [name]",
+    tools: ["saveRoadbook"],
   },
   // Ride day
   {
@@ -116,7 +116,7 @@ export const CAPABILITIES: Capability[] = [
     what: "The whole ride on one map: the loop, towns, stops and every fixed camera with its limit",
     say: "show me roadbook 7 on a map",
     terminal: ["npm run rides -- map <roadbook>", "/map"],
-    tools: ["showRideMap"],
+    tools: ["showRoadbookMap"],
   },
   {
     moment: "Ride day",
@@ -215,8 +215,8 @@ export const CAPABILITIES: Capability[] = [
     what: "Everything about a roadbook (versions, rides), or one ride with the route it rode",
     say: "show roadbook 7; show Saturday's ride of roadbook 7",
     terminal: ["npm run rides -- show <roadbook> [day]", "/show"],
-    slash: "show-ride <id|name>",
-    tools: ["showRide"],
+    slash: "show-roadbook <id|name>",
+    tools: ["showRoadbook"],
   },
   {
     moment: "Your library",
@@ -228,7 +228,7 @@ export const CAPABILITIES: Capability[] = [
       "npm run rides -- copy <roadbook> [name]",
       "npm run rides -- keep <roadbook> <day>",
     ],
-    tools: ["restoreRoadbook", "copyRoadbook", "keepRideVersion"],
+    tools: ["restoreRoadbook", "copyRoadbook", "keepRoadbookVersion"],
   },
   {
     moment: "Your library",
@@ -236,7 +236,7 @@ export const CAPABILITIES: Capability[] = [
     say: "refresh roadbook 7",
     terminal: ["npm run rides -- refresh <roadbook|all> [--stops]"],
     slash: "refresh <id|name>",
-    tools: ["refreshRide"],
+    tools: ["refreshRoadbook"],
   },
   {
     moment: "Your library",

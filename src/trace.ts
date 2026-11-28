@@ -30,13 +30,13 @@ function summariseTool(name: string, payload: any): string {
         .join(", ")}`;
     case "calculateTrip": {
       const s = o.speedLimits ?? {};
-      return `${o.routeId}: ${o.totalDistanceKm} km, ${o.totalRidingTime}, open ${s.openRoadPct ?? "?"}%, 70+ ${s.timeOnRoads70PlusPct ?? "?"}%t, 50z ${s.limit31to50?.pct ?? "?"}%, 30z ${s.limit30OrLess?.pct ?? "?"}%${o.usesMotorway ? ", MOTORWAY" : ""} | ${clip(o.savedRides?.verdict ?? "", 60)}`;
+      return `${o.routeId}: ${o.totalDistanceKm} km, ${o.totalRidingTime}, open ${s.openRoadPct ?? "?"}%, 70+ ${s.timeOnRoads70PlusPct ?? "?"}%t, 50z ${s.limit31to50?.pct ?? "?"}%, 30z ${s.limit30OrLess?.pct ?? "?"}%${o.usesMotorway ? ", MOTORWAY" : ""} | ${clip(o.savedRoadbooks?.verdict ?? "", 60)}`;
     }
     case "getWeather": {
       const s = o.summary ?? {};
       return `${o.location}: ${s.dry ? "dry" : "rain risk"}, rain prob max ${s.maxRainProbPct}%, ${s.totalRainMm} mm, ${s.minTempC}-${s.maxTempC}°C${s.modelsDisagree ? ", models disagree" : ""}`;
     }
-    case "listSavedRides":
+    case "listSavedRoadbooks":
       return `${o.count} saved ride(s) within ${o.radiusKm} km`;
     case "getDaylight":
       return `${o.location}: sunrise ${o.sunrise}, sunset ${o.sunset}, last light ${o.lastLight}`;

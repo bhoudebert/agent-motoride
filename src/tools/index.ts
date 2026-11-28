@@ -243,9 +243,9 @@ export function createToolDefinitions(context: RideContext, options: ToolOptions
           .filter((ride) => haversineKm(centre, { lat: ride.centerLat, lon: ride.centerLon }) <= radiusKm)
           .slice(-25)
           .map((ride) => ({
-            rideId: ride.id,
+            roadbookId: ride.id,
             name: ride.name,
-            derivedFromRideId: ride.parentId,
+            derivedFromRoadbookId: ride.parentId,
             rideDate: ride.rideDate,
             distanceKm: ride.distanceKm,
             ridingMinutes: ride.ridingMinutes,

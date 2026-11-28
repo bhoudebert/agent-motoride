@@ -75,6 +75,11 @@ Every tool SHALL declare an `outputSchema` (a JSON object schema, written once i
 - **WHEN** the same `getDaylight` call is made a third time
 - **THEN** the result carries the daylight fields as usual, with `repeatedCall` 3 and a `repeatNote`, and still matches the schema
 
+#### Scenario: One name for a roadbook's number
+
+- **WHEN** a result names a roadbook (a saved ride, a copy, a briefing, a similar saved ride, a remembered road, a library listing)
+- **THEN** the field is `roadbookId` in every tool, and `exportGpx` takes the number as `roadbookId`; a tool that takes a roadbook by number or by name calls the input `ride` or `roadbook`, never `rideId`
+
 ### Requirement: Prompts
 
 The server SHALL expose 17 prompts that become slash commands: `plan-ride`, `commute`, `edit-ride`, `plan-from` (planning); `save-ride`, `show-ride`, `refresh`, `list-roadbooks`, `list-rides` (library); `export-gpx`, `export-md` (exports); `today` (ride day); `note`, `review`, `rate`, `rate-stretch` (feedback); `help`. Each, except `help` (rendered from the catalogue, no tool call), SHALL ask the client's model to call the matching tools with the rider's arguments. `plan-ride` SHALL carry the shared planning instructions, the rules for MCP (use the tools, plain text, end with a `Route:` line, settings changes through `rideSettings`), the request and the current settings.

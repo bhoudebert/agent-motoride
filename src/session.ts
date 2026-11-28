@@ -159,11 +159,11 @@ export function ratedOverlap(context: RideContext, cells: string[]) {
 export function duplicateOf(
   context: RideContext,
   cells: string[],
-): { rideId: number; name: string; overlapPct: number } | undefined {
+): { roadbookId: number; name: string; overlapPct: number } | undefined {
   for (const ride of context.store.listRides()) {
     if (context.lineage.has(ride.id)) continue;
     const pct = overlapPct(cells, new Set(ride.cells));
-    if (pct >= DUPLICATE_PCT) return { rideId: ride.id, name: ride.name, overlapPct: pct };
+    if (pct >= DUPLICATE_PCT) return { roadbookId: ride.id, name: ride.name, overlapPct: pct };
   }
   return undefined;
 }
@@ -172,12 +172,12 @@ export function duplicateOf(
 export function dislikedOf(
   context: RideContext,
   cells: string[],
-): { rideId: number; name: string; overlapPct: number; rating: number; notes: string | null } | undefined {
+): { roadbookId: number; name: string; overlapPct: number; rating: number; notes: string | null } | undefined {
   for (const ride of context.store.listRides()) {
     if (context.lineage.has(ride.id) || ride.rating === null || ride.rating > 1) continue;
     const pct = overlapPct(cells, new Set(ride.cells));
     if (pct >= DISLIKED_PCT) {
-      return { rideId: ride.id, name: ride.name, overlapPct: pct, rating: ride.rating, notes: ride.notes };
+      return { roadbookId: ride.id, name: ride.name, overlapPct: pct, rating: ride.rating, notes: ride.notes };
     }
   }
   return undefined;
@@ -219,7 +219,7 @@ export function savedRideOverlap(context: RideContext, cells: string[]) {
   const overlaps = context.store
     .listRides()
     .map((ride) => ({
-      rideId: ride.id,
+      roadbookId: ride.id,
       name: ride.name,
       overlapPct: overlapPct(cells, new Set(ride.cells)),
       rating: ride.rating,
@@ -232,17 +232,17 @@ export function savedRideOverlap(context: RideContext, cells: string[]) {
   const worst = overlaps.find((o) => !o.baseRideOfThisSession);
   const base = overlaps.find((o) => o.baseRideOfThisSession);
   let verdict = base
-    ? `variant of roadbook #${base.rideId} "${base.name}", the ride this session evolves (${base.overlapPct}% same roads, as expected)`
+    ? `variant of roadbook #${base.roadbookId} "${base.name}", the ride this session evolves (${base.overlapPct}% same roads, as expected)`
     : "new: no significant overlap with saved rides";
   if (worst && worst.overlapPct >= DUPLICATE_PCT) {
     verdict = context.allowRepeat
-      ? `repeat of roadbook #${worst.rideId} "${worst.name}" (${worst.overlapPct}% same roads); repeats are allowed this session`
-      : `DUPLICATE of roadbook #${worst.rideId} "${worst.name}" (${worst.overlapPct}% same roads). Do not propose it as new unless the rider asked for a variant; pick other roads or another area, or offer the rider to ride roadbook #${worst.rideId} again on their day (planRide), which needs no new plan.`;
+      ? `repeat of roadbook #${worst.roadbookId} "${worst.name}" (${worst.overlapPct}% same roads); repeats are allowed this session`
+      : `DUPLICATE of roadbook #${worst.roadbookId} "${worst.name}" (${worst.overlapPct}% same roads). Do not propose it as new unless the rider asked for a variant; pick other roads or another area, or offer the rider to ride roadbook #${worst.roadbookId} again on their day (planRide), which needs no new plan.`;
   } else if (!context.allowRepeat && dislikedOf(context, cells)) {
     const disliked = dislikedOf(context, cells)!;
-    verdict = `LIKE A LOOP THE RIDER DISLIKED: ${disliked.overlapPct}% the same roads as roadbook #${disliked.rideId} "${disliked.name}", rated ${disliked.rating}${disliked.notes ? ` ("${disliked.notes}")` : ""}. Not a valid proposal as new unless the rider asked for it: change what they disliked, or pick other roads.`;
+    verdict = `LIKE A LOOP THE RIDER DISLIKED: ${disliked.overlapPct}% the same roads as roadbook #${disliked.roadbookId} "${disliked.name}", rated ${disliked.rating}${disliked.notes ? ` ("${disliked.notes}")` : ""}. Not a valid proposal as new unless the rider asked for it: change what they disliked, or pick other roads.`;
   } else if (worst && worst.overlapPct >= SIMILAR_PCT) {
-    verdict = `similar to roadbook #${worst.rideId} "${worst.name}" (${worst.overlapPct}% same roads); acceptable, mention it to the rider`;
+    verdict = `similar to roadbook #${worst.roadbookId} "${worst.name}" (${worst.overlapPct}% same roads); acceptable, mention it to the rider`;
   }
   return { verdict, overlaps };
 }

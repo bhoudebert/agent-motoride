@@ -98,7 +98,7 @@ console.log(
 );
 console.log(
   "7 exportGpx ->",
-  await call("exportGpx", { rideId: 1, file: process.env.RIDE_DB!.replace(".db", ".gpx") }),
+  await call("exportGpx", { roadbookId: 1, file: process.env.RIDE_DB!.replace(".db", ".gpx") }),
 );
 console.log("8 listRides ->", await call("listRides", {}));
 const prompt: any = await client.getPrompt({ name: "plan-ride", arguments: { request: "this Saturday, no rain" } });

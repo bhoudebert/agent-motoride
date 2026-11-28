@@ -145,7 +145,7 @@ export class Memory {
           rating: ride.rating,
           learntAt: ride.createdAt,
           data: {
-            rideId: ride.id,
+            roadbookId: ride.id,
             name: ride.name,
             distanceKm: ride.distanceKm,
             rating: ride.rating,
@@ -163,7 +163,7 @@ export class Memory {
             rating: leg.rating,
             learntAt: ride.createdAt,
             data: {
-              rideId: ride.id,
+              roadbookId: ride.id,
               leg: leg.seq,
               from: leg.from,
               to: leg.to,

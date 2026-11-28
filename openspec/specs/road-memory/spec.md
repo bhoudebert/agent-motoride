@@ -36,6 +36,11 @@ best first. With words, it SHALL also return the best keyword matches
 - **WHEN** a region was scouted a week ago and found poor for open road
 - **THEN** recalling it returns that verdict with its age, so the planner can choose another area without scouting it again
 
+#### Scenario: Remembered roads name their roadbook
+
+- **WHEN** `recallArea` returns a saved ride or a rated leg
+- **THEN** its data carries the roadbook's number as `roadbookId`
+
 ### Requirement: Consulted before scouting
 
 The planner and the scouts SHALL be instructed to call `recallArea` before

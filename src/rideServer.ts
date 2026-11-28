@@ -567,7 +567,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
           },
         );
       const notSaved = (reason: string) =>
-        structuredResult({ status: "not_saved", rideId: null, name: null, version: null, reason }, reason);
+        structuredResult({ status: "not_saved", roadbookId: null, name: null, version: null, reason }, reason);
       let id: number;
       try {
         id = save(args.force);
@@ -591,7 +591,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       void enrichRide(store, store.findRide(String(id))!).catch(() => undefined);
       if (revised) {
         return structuredResult(
-          { status: "changed", rideId: id, name: args.name, version: store.versionOf(id), reason: null },
+          { status: "changed", roadbookId: id, name: args.name, version: store.versionOf(id), reason: null },
           `Roadbook #${id} changed in place, now version ${store.versionOf(id)}; the previous version is kept (restoreRoadbook brings it back).${(() => {
             const following = followingRides(store, id);
             return following
@@ -601,7 +601,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
         );
       }
       return structuredResult(
-        { status: "saved", rideId: id, name: args.name, version: null, reason: null },
+        { status: "saved", roadbookId: id, name: args.name, version: null, reason: null },
         `Saved as roadbook #${id} "${args.name}". Export with exportGpx, or: npm run rides -- show ${id}`,
       );
     },
@@ -616,7 +616,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       outputSchema: RIDE_OUTPUT_SCHEMAS.exportGpx,
       inputSchema: z.object({
         routeId: z.string().optional(),
-        rideId: z.number().int().optional(),
+        roadbookId: z.number().int().optional(),
         name: z.string().optional().describe("Name inside the file, for a routeId"),
         file: z.string().optional().describe("Destination path; default exports/ in the project"),
         push: z
@@ -628,9 +628,9 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       }),
     },
     async (args) => {
-      if (args.rideId !== undefined) {
-        const ride = store.findRide(String(args.rideId));
-        if (!ride) throw new Error(`No roadbook #${args.rideId}`);
+      if (args.roadbookId !== undefined) {
+        const ride = store.findRide(String(args.roadbookId));
+        if (!ride) throw new Error(`No roadbook #${args.roadbookId}`);
         if (args.push && currentContext().fileRoot)
           throw new Error("This library already lives on a server: the MotoRide app lists it there, nothing to push.");
         if (args.push) {
@@ -649,9 +649,9 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
           `GPX written: ${exported.path}\n${detail}`,
         );
       }
-      if (args.push) throw new Error("Only a saved ride can be pushed: give its rideId.");
+      if (args.push) throw new Error("Only a saved ride can be pushed: give its roadbookId.");
       const route = args.routeId ? context.routes.get(args.routeId) : undefined;
-      if (!route) throw new Error("Give a routeId from calculateTrip in this session, or a saved rideId.");
+      if (!route) throw new Error("Give a routeId from calculateTrip in this session, or a saved roadbookId.");
       const { trip } = route;
       const path = writeGpx(
         {
@@ -690,7 +690,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
         if (!extras?.stopPlan)
           throw new Error(`Roadbook #${target.id} has no stored route line; run a full refresh first.`);
         const view = formatStopPlan(extras.stopPlan, target.departure ?? "09:00", target.ridingMinutes).join("\n");
-        return structuredResult({ rideId: target.id, stopsOnly: true, failedLookups: [], view }, view);
+        return structuredResult({ roadbookId: target.id, stopsOnly: true, failedLookups: [], view }, view);
       }
       await setGeoAnchor(startPoint(target));
       const trip = await computeTrip({
@@ -707,7 +707,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       const failed = Object.entries(extras?.errors ?? {}).map(([name, reason]) => `${name}: ${reason.split(".")[0]}`);
       const view = formatRideDetail(store.findRide(String(target.id))!, store);
       return structuredResult(
-        { rideId: target.id, stopsOnly: false, failedLookups: failed, view },
+        { roadbookId: target.id, stopsOnly: false, failedLookups: failed, view },
         `${failed.length ? `Some lookups failed and kept their previous result: ${failed.join("; ")}\n\n` : ""}${view}`,
       );
     },
@@ -732,7 +732,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       const today = localDay(new Date());
       const ride = rideToBrief(store, today, args.ride, args.date);
       const briefing = await rideBriefing(store, ride, today);
-      return structuredResult({ rideId: ride.id, name: ride.name, rideDate: ride.rideDate, briefing }, briefing);
+      return structuredResult({ roadbookId: ride.id, name: ride.name, rideDate: ride.rideDate, briefing }, briefing);
     },
   );
 
@@ -890,7 +890,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       const id = copyRoadbook(store, saved.id, args.name);
       const name = store.findRide(String(id))!.name;
       return structuredResult(
-        { sourceId: saved.id, rideId: id, name },
+        { sourceId: saved.id, roadbookId: id, name },
         `Copied roadbook #${saved.id} as #${id} "${name}".`,
       );
     },
@@ -946,7 +946,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       const detail = formatRideDetail(ride, store);
       return structuredResult(
         {
-          rideId: ride.id,
+          roadbookId: ride.id,
           name: ride.name,
           rideDate: ride.rideDate,
           departure: ride.departure,
@@ -1000,7 +1000,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
           { type: "image" as const, data: png.toString("base64"), mimeType: "image/png" },
           { type: "text" as const, text: `Map of roadbook #${ride.id} "${ride.name}".` },
         ],
-        structuredContent: { rideId: ride.id, name: ride.name, mimeType: "image/png", bytes: png.length },
+        structuredContent: { roadbookId: ride.id, name: ride.name, mimeType: "image/png", bytes: png.length },
       };
     },
   );
@@ -1058,7 +1058,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       return structuredResult(
         {
           noteId: note.id,
-          rideId: ride.id,
+          roadbookId: ride.id,
           rideName: ride.name,
           text: note.text,
           rating: note.rating,
@@ -1097,7 +1097,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
       if (args.decisions) {
         const results = applyReview(store, args.decisions);
         return structuredResult(
-          { status: "applied", rideId: null, track: null, detours: [], notes: [], results },
+          { status: "applied", roadbookId: null, track: null, detours: [], notes: [], results },
           results.join("\n"),
         );
       }
@@ -1110,7 +1110,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
         structuredResult(
           {
             status,
-            rideId: review.ride.id,
+            roadbookId: review.ride.id,
             track: review.track,
             detours: review.detours,
             notes: review.notes.map(({ note, placement, problem }) => ({
@@ -1554,7 +1554,7 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
     inHand = saved.id;
     context.lineage.add(saved.id);
     const data = {
-      rideId: saved.id,
+      roadbookId: saved.id,
       name: saved.name,
       lastPlannedFor: saved.rideDate,
       departure: saved.departure,
@@ -1609,13 +1609,13 @@ For a new leisure ride: call listSavedRides and recallArea around the start (wha
         const saved = store.findRide(args.ride);
         if (!saved) throw new Error(`No saved ride matches "${args.ride}". Call listRoadbooks.`);
         const guide = editText(saved, args.request);
-        return structuredResult({ guide, rideId: saved.id }, guide);
+        return structuredResult({ guide, roadbookId: saved.id }, guide);
       }
       requests.push(args.request);
       usage.turns++;
       syncRun();
       const guide = newRideText(args.request);
-      return structuredResult({ guide, rideId: null }, guide);
+      return structuredResult({ guide, roadbookId: null }, guide);
     },
   );
 

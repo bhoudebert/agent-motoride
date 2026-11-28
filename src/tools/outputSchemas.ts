@@ -49,9 +49,9 @@ export const listSavedRidesOutput = withRepeat({
   count: z.number().int().describe("Number of rides listed (the 25 most recent within the radius)"),
   rides: z.array(
     z.object({
-      rideId: z.number().int().describe("Roadbook number"),
+      roadbookId: z.number().int().describe("Roadbook number"),
       name: z.string(),
-      derivedFromRideId: z.number().int().nullable().describe("Roadbook this one was derived from, if any"),
+      derivedFromRoadbookId: z.number().int().nullable().describe("Roadbook this one was derived from, if any"),
       rideDate: nullableString.describe("YYYY-MM-DD of the last planned day, null if none"),
       distanceKm: z.number(),
       ridingMinutes: z.number(),
@@ -93,7 +93,7 @@ const stretch = z.object({
   road: z.string().optional().describe("Name of a stretch rated directly"),
   why: nullableString.optional().describe("The rider's reason, on a stretch rated directly"),
   approximate: z.boolean().optional().describe("On a stretch rated directly: placed from the plan, not a track"),
-  rideId: z.number().int().optional().describe("On a rated leg: its roadbook"),
+  roadbookId: z.number().int().optional().describe("On a rated leg: its roadbook"),
   leg: z.number().int().optional().describe("On a rated leg: its number"),
   from: z.string().optional().describe("On a rated leg: where it starts"),
   to: z.string().optional().describe("On a rated leg: where it ends"),
@@ -109,7 +109,7 @@ export const recallAreaOutput = z.object({
   note: z.string(),
   savedRides: z.array(
     z.object({
-      rideId: z.number().int(),
+      roadbookId: z.number().int(),
       name: z.string(),
       distanceKm: z.number(),
       rating: z.number().nullable(),
@@ -345,7 +345,7 @@ const savedRides = z.object({
   verdict: z.string(),
   overlaps: z.array(
     z.object({
-      rideId: z.number().int(),
+      roadbookId: z.number().int(),
       name: z.string(),
       overlapPct: z.number().describe("Share of this route on roads of that saved ride"),
       rating: z.number().nullable(),

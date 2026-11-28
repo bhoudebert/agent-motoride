@@ -84,12 +84,12 @@ export function checkItinerary(
   const disliked = context.allowRepeat || practical || duplicate ? undefined : dislikedOf(context, route.cells);
   if (disliked) {
     violations.push(
-      `disliked loop: ${disliked.overlapPct}% the same roads as roadbook #${disliked.rideId} "${disliked.name}", which the rider rated ${disliked.rating}${disliked.notes ? ` ("${disliked.notes}")` : ""}; change what they disliked or pick other roads, or say why this one`,
+      `disliked loop: ${disliked.overlapPct}% the same roads as roadbook #${disliked.roadbookId} "${disliked.name}", which the rider rated ${disliked.rating}${disliked.notes ? ` ("${disliked.notes}")` : ""}; change what they disliked or pick other roads, or say why this one`,
     );
   }
   if (duplicate) {
     violations.push(
-      `repeat: ${duplicate.overlapPct}% of the roads of roadbook #${duplicate.rideId} "${duplicate.name}"`,
+      `repeat: ${duplicate.overlapPct}% of the roads of roadbook #${duplicate.roadbookId} "${duplicate.name}"`,
     );
   }
   // Not a motorway, but a leisure ride mostly on 100+ expressways is not a motorcycle ride.

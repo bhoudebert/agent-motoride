@@ -460,7 +460,7 @@ test("mcp: every tool answers when called by name through a client", async () =>
       await call("copyRoadbook", { roadbook: "2", name: "Flandre bis" }),
       /^Copied roadbook #2 as #3 "Flandre bis"/,
     );
-    await call("exportGpx", { rideId: 2, file: join(dir, "ride.gpx") });
+    await call("exportGpx", { roadbookId: 2, file: join(dir, "ride.gpx") });
     await call("exportMarkdown", { ride: "2", file: join(dir, "ride.md") });
     await call("refreshRide", { ride: "2", stopsOnly: true });
     await call("rideBriefing", { ride: "2" });

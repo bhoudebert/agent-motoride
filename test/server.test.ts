@@ -218,7 +218,7 @@ test("exports stay in the rider's own folder: a default goes there, a path that 
   const s = await setup();
   try {
     const a = await s.connect(s.alice.token);
-    const ok = await s.call(a, "exportGpx", { rideId: 1 });
+    const ok = await s.call(a, "exportGpx", { roadbookId: 1 });
     assert.equal(ok.error, false, ok.text);
     const mine = join(tenantDir(s.alice.tenant.id), "exports");
     assert.ok(
@@ -232,11 +232,11 @@ test("exports stay in the rider's own folder: a default goes there, a path that 
       "~/escape.gpx",
       join(tenantDir(s.bob.tenant.id), "x.gpx"),
     ]) {
-      const r = await s.call(a, "exportGpx", { rideId: 1, file });
+      const r = await s.call(a, "exportGpx", { roadbookId: 1, file });
       assert.equal(r.error, true, file);
       assert.match(r.text, /stay inside your own folder/, file);
     }
-    const named = await s.call(a, "exportGpx", { rideId: 1, file: "mine.gpx" });
+    const named = await s.call(a, "exportGpx", { roadbookId: 1, file: "mine.gpx" });
     assert.equal(named.error, false);
     assert.ok(existsSync(join(mine, "mine.gpx")));
     // Reading a recorded track or a route file is confined the same way.

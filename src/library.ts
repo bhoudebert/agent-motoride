@@ -44,10 +44,10 @@ export function tripFigures(trip: TripComputation, cells: string[]) {
 }
 
 export class DuplicateRideError extends Error {
-  readonly duplicate: { rideId: number; name: string; overlapPct: number };
-  constructor(duplicate: { rideId: number; name: string; overlapPct: number }) {
+  readonly duplicate: { roadbookId: number; name: string; overlapPct: number };
+  constructor(duplicate: { roadbookId: number; name: string; overlapPct: number }) {
     super(
-      `This ride is ${duplicate.overlapPct}% the same roads as roadbook #${duplicate.rideId} "${duplicate.name}". Not saved. Ride it again instead ("plan a ride from roadbook ${duplicate.rideId} on Saturday"), change it, or force the save if it is meant as a copy.`,
+      `This ride is ${duplicate.overlapPct}% the same roads as roadbook #${duplicate.roadbookId} "${duplicate.name}". Not saved. Ride it again instead ("plan a ride from roadbook ${duplicate.roadbookId} on Saturday"), change it, or force the save if it is meant as a copy.`,
     );
     this.duplicate = duplicate;
   }

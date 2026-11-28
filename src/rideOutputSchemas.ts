@@ -58,7 +58,7 @@ export const saveRideOutput = z.object({
     .describe(
       "saved: a new roadbook; changed: the roadbook in hand was changed in place; not_saved: refused as a repeat",
     ),
-  rideId: z.number().int().nullable().describe("The roadbook number; null when not saved"),
+  roadbookId: z.number().int().nullable().describe("The roadbook number; null when not saved"),
   name: z.string().nullable(),
   version: z.number().int().nullable().describe("Version of the roadbook after a change in place; null otherwise"),
   reason: z.string().nullable().describe("Why it was not saved (with what to tell the rider); null otherwise"),
@@ -74,14 +74,14 @@ export const exportGpxOutput = z.object({
 });
 
 export const refreshRideOutput = z.object({
-  rideId: roadbookId,
+  roadbookId: roadbookId,
   stopsOnly: z.boolean(),
   failedLookups: z.array(z.string()).describe("Lookups that failed and kept their previous result"),
   view: z.string().describe("The refreshed view, or the new stop plan with stopsOnly"),
 });
 
 export const rideBriefingOutput = z.object({
-  rideId: roadbookId,
+  roadbookId: roadbookId,
   name: z.string(),
   rideDate: z.string().nullable().describe("YYYY-MM-DD of the briefed ride"),
   briefing: z.string().describe("The briefing, ending with the go, caution or no-go verdict"),
@@ -124,7 +124,7 @@ export const restoreRoadbookOutput = z.object({
 
 export const copyRoadbookOutput = z.object({
   sourceId: roadbookId,
-  rideId: roadbookId.describe("Number of the copy"),
+  roadbookId: roadbookId.describe("Number of the copy"),
   name: z.string(),
 });
 
@@ -142,7 +142,7 @@ export const keepRideVersionOutput = z.object({
 });
 
 export const showRideOutput = z.object({
-  rideId: roadbookId,
+  roadbookId: roadbookId,
   name: z.string(),
   rideDate: z.string().nullable(),
   departure: z.string().nullable(),
@@ -153,7 +153,7 @@ export const showRideOutput = z.object({
 });
 
 export const showRideMapOutput = z.object({
-  rideId: roadbookId,
+  roadbookId: roadbookId,
   name: z.string(),
   mimeType: z.literal("image/png"),
   bytes: z.number().int().describe("Size of the PNG returned as the image content block"),
@@ -166,7 +166,7 @@ export const exportMarkdownOutput = z.object({
 
 export const addRideNoteOutput = z.object({
   noteId: z.number().int(),
-  rideId: roadbookId,
+  roadbookId: roadbookId,
   rideName: z.string(),
   text: z.string(),
   rating: nullableRating,
@@ -181,7 +181,7 @@ export const reviewRideOutput = z.object({
     .describe(
       "review: placements to confirm with the rider; applied: decisions stored; answered: the rider rated in a form and it was stored; form_closed: the rider closed the form, nothing stored",
     ),
-  rideId: roadbookId.nullable().describe("Null when only decisions were applied"),
+  roadbookId: roadbookId.nullable().describe("Null when only decisions were applied"),
   track: z
     .object({
       points: z.number(),
@@ -355,7 +355,7 @@ export const reviewRecordedRideOutput = z.object({
 
 export const planningGuideOutput = z.object({
   guide: z.string().describe("The planning guidance, with the rider's request and settings"),
-  rideId: roadbookId.nullable().describe("The roadbook the guidance edits; null for a new ride"),
+  roadbookId: roadbookId.nullable().describe("The roadbook the guidance edits; null for a new ride"),
 });
 
 /** One schema per hand-registered tool, by name. */

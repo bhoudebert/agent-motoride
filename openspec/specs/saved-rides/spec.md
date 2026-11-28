@@ -50,6 +50,11 @@ A roadbook SHALL be saved only on request, from a route id routed in the session
 - **WHEN** the route id was not routed in this session
 - **THEN** the save is refused
 
+#### Scenario: The saved roadbook's number is `roadbookId`
+
+- **WHEN** a client saves a ride, copies a roadbook or lists the library near a place
+- **THEN** each result carries the roadbook's number as `roadbookId` (and `derivedFromRoadbookId` for the roadbook a ride was derived from)
+
 ### Requirement: Extras gathered after save and on refresh
 
 Right after a save, on every `refresh`, when a ride is planned from a roadbook and in the briefing, the system SHALL gather and store what a ride needs: route-bound extras (fixed cameras, fuel and café shortlists) on the roadbook, gathered again when its route changes; day-bound extras (daylight, the forecast within range, conditions, the stop plan) on the ride. A lookup that fails SHALL keep the previous result and record the reason; the view SHALL show it.

@@ -118,6 +118,11 @@ Every routed trip SHALL be compared with roadbooks and carry a verdict, listing 
 - **WHEN** repeats are allowed this session and a trip shares 80% of its cells with roadbook #1
 - **THEN** its verdict reads "repeat of roadbook #1 ... repeats are allowed this session", not "DUPLICATE"
 
+#### Scenario: Similar saved rides name their roadbook
+
+- **WHEN** a routed trip runs on roads of saved rides
+- **THEN** each entry of `savedRides` and `ratedRoads` names the roadbook as `roadbookId`, with the verdict text unchanged
+
 ### Requirement: Road surface
 
 Every routed trip SHALL report the distance on rough paved surfaces (cobblestones, setts) and on unpaved surfaces (compacted, gravel, dirt, path), with the longest such stretches by road name and leg, from the router's per-segment surface data. The planner SHALL avoid such stretches when an alternative exists and SHALL name them in the itinerary otherwise.

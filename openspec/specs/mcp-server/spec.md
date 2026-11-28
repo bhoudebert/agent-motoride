@@ -24,7 +24,7 @@ The server SHALL speak the protocol over stdio with all logging on stderr (or, f
 
 ### Requirement: Tools
 
-The server SHALL expose these 40 tools, the planner's own shared with the API
+The server SHALL expose these 42 tools, the planner's own shared with the API
 runner, and SHALL refuse a `saveRoadbook` whose route id no tool of the session
 returned. Each tool's behaviour is specified in the capability named next to it.
 
@@ -47,6 +47,9 @@ returned. Each tool's behaviour is specified in the capability named next to it.
   confirmed by the rider (saved-rides).
 - Exports: `exportGpx`, `exportMarkdown` and `showRoadbookMap` (route-exports).
 - Ride day: `rideBriefing` (saved-rides, "Ride-day briefing").
+- Recorded rides (tracks the phone uploaded): `listRecordedRides` and
+  `reviewRecordedRide` (multi-user-server, "Recorded rides uploaded to the
+  library"; ride-feedback, "Limit proposals from an uploaded ride").
 - Feedback and memory: `addRideNote`, `reviewRide`, `rateStretch`,
   `listRatedRoads` and the destructive `deleteStretchRating` (ride-feedback),
   `rateRide` (saved-rides, "Ratings").

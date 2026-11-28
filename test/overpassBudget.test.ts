@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
+import { overpassBuiltUpWithin } from "../src/builtUp.ts";
 import { joinInFlight } from "../src/tools/along.ts";
 import { overpass, overpassUrls, resetOverpass } from "../src/tools/roads.ts";
 
@@ -185,4 +186,17 @@ test("attempts that fail on their own count towards resting Overpass, even when 
   const hosts = fakeFetch(() => answer(200, { elements: [] }));
   await assert.rejects(overpass("q"), /not asked again for \d+ s/);
   assert.equal(hosts.length, 0, "the third query sends nothing while Overpass rests");
+});
+
+test("the built-up land of an export is looked up within one shared deadline, however many cells the route crosses", async () => {
+  fakeFetch(() => new Promise<Response>(() => {}));
+  // Three cells of 0.1 degree: one deadline for all, not one per cell (the queue would add them up).
+  const points = [
+    { lat: 50.05, lon: 3.05 },
+    { lat: 50.15, lon: 3.15 },
+    { lat: 50.25, lon: 3.25 },
+  ];
+  const started = Date.now();
+  await assert.rejects(overpassBuiltUpWithin(2_500)(points), /time budget used|unavailable/);
+  assert.ok(Date.now() - started < 4_500, `took ${Date.now() - started} ms`);
 });

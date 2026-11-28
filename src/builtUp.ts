@@ -80,7 +80,7 @@ export function builtUpShare(points: LatLon[], from: number, to: number, inBuilt
 }
 
 /** The built-up land of one 0.1 degree cell of the map, kept for the life of the process. */
-function cellPolygons(i: number, j: number): Promise<Polygon[]> {
+function cellPolygons(i: number, j: number, deadline?: number): Promise<Polygon[]> {
   const key = `${i},${j}`;
   let cell = cells.get(key);
   if (!cell) {
@@ -89,6 +89,7 @@ function cellPolygons(i: number, j: number): Promise<Polygon[]> {
     const bbox = [s, w, s + CELL_DEGREES, w + CELL_DEGREES].map((n) => n.toFixed(4)).join(",");
     cell = overpass<{ geometry?: Array<{ lat: number; lon: number } | null> }>(
       `[out:json][timeout:60];way["landuse"~"^(${LANDUSE})$"](${bbox});out geom;`,
+      { deadline },
     ).then((elements) =>
       elements.flatMap((el) => {
         const ring = (el.geometry ?? []).filter((p): p is LatLon => p !== null);
@@ -107,14 +108,21 @@ function cellPolygons(i: number, j: number): Promise<Polygon[]> {
  * Built-up land from OpenStreetMap's land use, for the map cells a line crosses (one slow query each, cached). A query
  * for a cell returns every way that touches it, so land across the edge of a cell is not lost.
  */
-export const overpassBuiltUp: BuiltUpLookup = async (points) => {
-  const wanted = new Set<string>();
-  for (const p of points) wanted.add(`${Math.floor(p.lat / CELL_DEGREES)},${Math.floor(p.lon / CELL_DEGREES)}`);
-  const lists = await Promise.all(
-    [...wanted].map((key) => {
-      const [i, j] = key.split(",").map(Number) as [number, number];
-      return cellPolygons(i, j);
-    }),
-  );
-  return builtUpFrom(lists.flat().map((p) => p.ring));
-};
+export function overpassBuiltUpWithin(ms?: number): BuiltUpLookup {
+  return async (points) => {
+    // One deadline for all the cells: a client waiting on an export gets its answer, or the reason there is none, in time.
+    const deadline = ms === undefined ? undefined : Date.now() + ms;
+    const wanted = new Set<string>();
+    for (const p of points) wanted.add(`${Math.floor(p.lat / CELL_DEGREES)},${Math.floor(p.lon / CELL_DEGREES)}`);
+    const lists = await Promise.all(
+      [...wanted].map((key) => {
+        const [i, j] = key.split(",").map(Number) as [number, number];
+        return cellPolygons(i, j, deadline);
+      }),
+    );
+    return builtUpFrom(lists.flat().map((p) => p.ring));
+  };
+}
+
+/** Without a limit of its own (the query's 50 s apply to each cell): for the roadbook files built in the background. */
+export const overpassBuiltUp: BuiltUpLookup = overpassBuiltUpWithin();

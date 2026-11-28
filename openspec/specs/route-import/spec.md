@@ -42,4 +42,4 @@ The line SHALL be reduced to waypoints and routed with the rider's motorway sett
 #### Scenario: Import through the planner
 
 - **WHEN** the model calls `importRoute` with the path of a GPX file
-- **THEN** it gets a route id with the trip's figures, the fidelity and the waypoints, which `getSpeedCameras`, `planStops`, `checkItinerary` and `saveRide` accept like one from `calculateTrip`
+- **THEN** it gets a route id with the trip's figures, the fidelity and the waypoints, which `getSpeedCameras`, `planStops`, `checkItinerary` and `saveRoadbook` accept like one from `calculateTrip`

@@ -139,7 +139,7 @@ A rider who plans on a library kept elsewhere SHALL be able to send a roadbook f
 
 #### Scenario: A push is a roadbook like the others
 
-- **WHEN** a rider has pushed a roadbook and then asks the server to `refreshRide` or `deleteRoadbook` it, or the phone to download or refresh it
+- **WHEN** a rider has pushed a roadbook and then asks the server to `refreshRoadbook` or `deleteRoadbook` it, or the phone to download or refresh it
 - **THEN** it behaves as a roadbook planned on the server, with its limits traced on the server's map
 
 #### Scenario: Another rider's library
@@ -163,7 +163,7 @@ A rider who plans on a library kept elsewhere SHALL be able to send a roadbook f
 
 #### Scenario: The same names over HTTP
 
-- **WHEN** a rider's client calls `saveRide` or `exportGpx` over HTTP
+- **WHEN** a rider's client calls `saveRoadbook` or `exportGpx` over HTTP
 - **THEN** the result carries `roadbookId` and the input takes `roadbookId`, as over stdio (spec mcp-server, "Typed results")
 
 ### Requirement: Files stay in the rider's folder

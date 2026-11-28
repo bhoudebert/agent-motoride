@@ -162,7 +162,7 @@ Saving a change SHALL replace the roadbook's design (waypoints, legs, route line
 
 ### Requirement: Rides keep what was ridden
 
-A ride SHALL be shown, briefed and reviewed with the design of the version it uses, not the roadbook's current one: route, legs, figures and route-bound extras from that version, day data from the ride. A version referenced by a ride SHALL never be changed or deleted, except with its roadbook. The rider SHALL be able to keep a planned ride on the version it had before a change (`rides keep <roadbook> <day>`, MCP `keepRideVersion`). A planned ride whose date has passed SHALL be listed as "date passed: ridden or cancelled?" until the rider rates its day, reviews it or cancels it.
+A ride SHALL be shown, briefed and reviewed with the design of the version it uses, not the roadbook's current one: route, legs, figures and route-bound extras from that version, day data from the ride. A version referenced by a ride SHALL never be changed or deleted, except with its roadbook. The rider SHALL be able to keep a planned ride on the version it had before a change (`rides keep <roadbook> <day>`, MCP `keepRoadbookVersion`). A planned ride whose date has passed SHALL be listed as "date passed: ridden or cancelled?" until the rider rates its day, reviews it or cancels it.
 
 #### Scenario: Change after a ride
 
@@ -267,7 +267,7 @@ like the terminal app, SHALL remove expired lookups when it starts.
 
 ### Requirement: Ride-day briefing
 
-`today [roadbook] [day]` and the `rideBriefing` tool (`ride`, `date`) SHALL take that roadbook's ride on that day, else the roadbook's shown ride, else the next planned ride of any roadbook (soonest date, then earliest departure), refresh that ride's day data, and SHALL report daylight and the return time with breaks, the stop plan rebuilt with opening hours at arrival, the forecast now at four points of the route, traffic at departure when available, and the stored cameras, ending with GO, GO with caution or NO-GO and the reasons. When the forecast models disagree at a point (see the weather-daylight capability), the briefing SHALL say so as a caution, with the hour and the range, and the verdict SHALL use the cautious reading. It SHALL make no model call.
+`today [roadbook] [day]` and the `rideBriefing` tool (`roadbook`, `date`) SHALL take that roadbook's ride on that day, else the roadbook's shown ride, else the next planned ride of any roadbook (soonest date, then earliest departure), refresh that ride's day data, and SHALL report daylight and the return time with breaks, the stop plan rebuilt with opening hours at arrival, the forecast now at four points of the route, traffic at departure when available, and the stored cameras, ending with GO, GO with caution or NO-GO and the reasons. When the forecast models disagree at a point (see the weather-daylight capability), the briefing SHALL say so as a caution, with the hour and the range, and the verdict SHALL use the cautious reading. It SHALL make no model call.
 
 #### Scenario: Rain likely
 

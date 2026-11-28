@@ -1,0 +1,312 @@
+{
+  "health": {
+    "body": {
+      "oauth": false,
+      "ok": true,
+      "route": true,
+      "sessions": 0,
+      "shares": 0,
+      "traffic": true,
+      "trafficCountries": ["FR"],
+      "version": "0.1.0"
+    },
+    "headers": {
+      "allow": null,
+      "cache-control": "no-store",
+      "content-type": "application/json",
+      "etag": null,
+      "www-authenticate": null
+    },
+    "status": 200
+  },
+  "me": {
+    "body": {
+      "hosted": false,
+      "library": {
+        "limitMb": null,
+        "usedBytes": "<n>"
+      },
+      "requestsPerMinute": 300,
+      "riderRef": "<ref>",
+      "traffic": {
+        "mode": "host",
+        "perDay": null,
+        "provider": "open",
+        "usedToday": 0
+      }
+    },
+    "headers": {
+      "allow": null,
+      "cache-control": "no-store",
+      "content-type": "application/json",
+      "etag": null,
+      "www-authenticate": null
+    },
+    "status": 200
+  },
+  "roadbooks list": {
+    "body": {
+      "roadbooks": [
+        {
+          "distanceKm": 120,
+          "id": 1,
+          "mapDay": "2026-11-01",
+          "name": "Contract loop",
+          "ready": false,
+          "ridingMinutes": 150,
+          "stamp": "5558d32615c4917f",
+          "state": "refreshing"
+        }
+      ]
+    },
+    "headers": {
+      "allow": null,
+      "cache-control": "no-store",
+      "content-type": "application/json",
+      "etag": null,
+      "www-authenticate": null
+    },
+    "status": 200
+  },
+  "roadbook file": {
+    "body": {
+      "cameras": [],
+      "countries": [
+        {
+          "code": "FR",
+          "from": 0,
+          "to": 39
+        }
+      ],
+      "description": "120 km, about 2h30 riding. Planned with agentMotoride from Lille.",
+      "format": "motoride-roadbook",
+      "generatedAt": "<ts>",
+      "junctions": [],
+      "limits": [
+        {
+          "from": 0,
+          "kmh": 80,
+          "posted": true,
+          "road": "D 938",
+          "to": 30
+        },
+        {
+          "from": 30,
+          "kmh": 50,
+          "posted": true,
+          "road": "Rue de la Gare",
+          "to": 39
+        }
+      ],
+      "line": "_odc_B_kbvDyS?{S?yS?yS?{S?yS?yS?{S?yS?yS?{S?yS?yS?{S?yS?yS?{S?yS?yS?{S?yS?yS?{S?yS?yS?{S?yS?yS?{S?yS?yS?{S?yS?yS?{S?yS?yS?{S?yS?yS?{S?yS?yS?{S?yS?yS?{S?yS?yS?{S?yS?yS?{S?yS?yS?{S?yS?yS?{S?yS?",
+      "name": "Contract loop",
+      "origin": {
+        "app": "agentRide",
+        "name": "Contract loop",
+        "ride": 1,
+        "roadbook": 1
+      },
+      "stops": [
+        {
+          "kind": "waypoint",
+          "lat": 50.4,
+          "lon": 3,
+          "name": "Start: Lille"
+        },
+        {
+          "kind": "waypoint",
+          "lat": 50.42,
+          "lon": 3,
+          "name": "Finish: Mont"
+        }
+      ],
+      "version": 1
+    },
+    "headers": {
+      "allow": null,
+      "cache-control": "private, no-cache",
+      "content-type": "application/json; charset=utf-8",
+      "etag": "\"5558d32615c4917f\"",
+      "www-authenticate": null
+    },
+    "status": 200
+  },
+  "roadbook refresh": {
+    "body": {
+      "id": 1,
+      "state": "current"
+    },
+    "headers": {
+      "allow": null,
+      "cache-control": "no-store",
+      "content-type": "application/json",
+      "etag": null,
+      "www-authenticate": null
+    },
+    "status": 200
+  },
+  "roadbooks list after refresh": {
+    "body": {
+      "roadbooks": [
+        {
+          "distanceKm": 120,
+          "id": 1,
+          "mapDay": "2026-11-01",
+          "name": "Contract loop",
+          "ready": true,
+          "ridingMinutes": 150,
+          "stamp": "5558d32615c4917f",
+          "state": "current"
+        }
+      ]
+    },
+    "headers": {
+      "allow": null,
+      "cache-control": "no-store",
+      "content-type": "application/json",
+      "etag": null,
+      "www-authenticate": null
+    },
+    "status": 200
+  },
+  "ride upload": {
+    "body": {
+      "id": "2026-10-31T09-00-00-contract-loop",
+      "roadbook": {
+        "id": 1,
+        "name": "Contract loop"
+      },
+      "status": "created"
+    },
+    "headers": {
+      "allow": null,
+      "cache-control": "no-store",
+      "content-type": "application/json",
+      "etag": null,
+      "www-authenticate": null
+    },
+    "status": 201
+  },
+  "rides list": {
+    "body": {
+      "rides": [
+        {
+          "bytes": 1180,
+          "distanceKm": 0.2,
+          "endedAt": "<ts>",
+          "id": "2026-10-31T09-00-00-contract-loop",
+          "name": "Contract loop",
+          "points": 10,
+          "roadbook": {
+            "id": 1,
+            "name": "Contract loop"
+          },
+          "startedAt": "<ts>",
+          "state": "completed",
+          "uploadedAt": "<ts>"
+        }
+      ]
+    },
+    "headers": {
+      "allow": null,
+      "cache-control": "no-store",
+      "content-type": "application/json",
+      "etag": null,
+      "www-authenticate": null
+    },
+    "status": 200
+  },
+  "ride read back": {
+    "body": "<?xml version=\"1.0\"?><gpx version=\"1.1\" creator=\"MotoRide\" xmlns=\"http://www.topografix.com/GPX/1/1\" xmlns:motoride=\"https://example.org/m\"><metadata><name>Contract loop, 2026-10-31</name><extensions><motoride:ride roadbook=\"x\" name=\"Contract loop\" source=\"MotoRide\" sourceRoadbook=\"1\" sourceName=\"Contract loop\" state=\"completed\"/></extensions></metadata><trk><trkseg><trkpt lat=\"50.400000\" lon=\"3.000000\"><time><ts></time></trkpt><trkpt lat=\"50.400200\" lon=\"3.000000\"><time><ts></time></trkpt><trkpt lat=\"50.400400\" lon=\"3.000000\"><time><ts></time></trkpt><trkpt lat=\"50.400600\" lon=\"3.000000\"><time><ts></time></trkpt><trkpt lat=\"50.400800\" lon=\"3.000000\"><time><ts></time></trkpt><trkpt lat=\"50.401000\" lon=\"3.000000\"><time><ts></time></trkpt><trkpt lat=\"50.401200\" lon=\"3.000000\"><time><ts></time></trkpt><trkpt lat=\"50.401400\" lon=\"3.000000\"><time><ts></time></trkpt><trkpt lat=\"50.401600\" lon=\"3.000000\"><time><ts></time></trkpt><trkpt lat=\"50.401800\" lon=\"3.000000\"><time><ts></time></trkpt></trkseg></trk></gpx>",
+    "headers": {
+      "allow": null,
+      "cache-control": "private, no-cache",
+      "content-type": "application/gpx+xml; charset=utf-8",
+      "etag": null,
+      "www-authenticate": null
+    },
+    "status": 200
+  },
+  "ride delete": {
+    "body": {
+      "deleted": true,
+      "id": "2026-10-31T09-00-00-contract-loop"
+    },
+    "headers": {
+      "allow": null,
+      "cache-control": "no-store",
+      "content-type": "application/json",
+      "etag": null,
+      "www-authenticate": null
+    },
+    "status": 200
+  },
+  "route": {
+    "body": {
+      "trip": {
+        "legs": [
+          {
+            "shape": "_odc_B_kbvDscC?_cC?uaC?w_C?c}B?_zB?gvB?{qB?amB?sgB?yaB?q{A?ytA?ymA?qfA?{~@?ew@?eo@?cg@?a_@?}V?}N?}F?E?jF?vM?vT?l[?ta@?pg@?|l@?vq@?bv@?|y@?`}@?r_A?paA?zbA?pcA?",
+            "summary": {
+              "has_highway": false,
+              "has_toll": false,
+              "length": 40,
+              "time": 3000
+            }
+          }
+        ],
+        "summary": {
+          "length": 40,
+          "time": 3000
+        }
+      }
+    },
+    "headers": {
+      "allow": null,
+      "cache-control": "no-store",
+      "content-type": "application/json",
+      "etag": null,
+      "www-authenticate": null
+    },
+    "status": 200
+  },
+  "route refused": {
+    "body": {
+      "error": "Two to 5 locations {lat, lon} are needed."
+    },
+    "headers": {
+      "allow": null,
+      "cache-control": "no-store",
+      "content-type": "application/json",
+      "etag": null,
+      "www-authenticate": null
+    },
+    "status": 400
+  },
+  "roadbook unknown": {
+    "body": {
+      "error": "No such roadbook."
+    },
+    "headers": {
+      "allow": null,
+      "cache-control": "no-store",
+      "content-type": "application/json",
+      "etag": null,
+      "www-authenticate": null
+    },
+    "status": 404
+  },
+  "roadbooks wrong method": {
+    "body": {
+      "error": "Method not allowed."
+    },
+    "headers": {
+      "allow": "GET, PUT",
+      "cache-control": "no-store",
+      "content-type": "application/json",
+      "etag": null,
+      "www-authenticate": null
+    },
+    "status": 405
+  }
+}

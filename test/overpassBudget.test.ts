@@ -166,3 +166,23 @@ test("own instances and every public one failing: the failure names them all", a
     /overpass-be: .*overpass-api\.de: .*overpass\.openstreetmap\.fr/,
   );
 });
+
+test("a query nobody gave a deadline to still ends within the default budget, not after every retry", async () => {
+  resetOverpass({ budgetMs: 2_500 });
+  const hosts = fakeFetch(() => new Promise<Response>(() => {}));
+  const started = Date.now();
+  await assert.rejects(overpass("q"), /time budget used/);
+  assert.ok(Date.now() - started < 4_000, `took ${Date.now() - started} ms`);
+  assert.equal(hosts.length, 1);
+});
+
+test("attempts that fail on their own count towards resting Overpass, even when the budget then ends the query", async () => {
+  // Each attempt is answered in time with an error, then the budget (set low) ends the query: the failures are real.
+  resetOverpass({ budgetMs: 2_200 });
+  fakeFetch(() => answer(502, "at capacity"));
+  await assert.rejects(overpass("q"), /unavailable right now/);
+  await assert.rejects(overpass("q"), /unavailable right now/);
+  const hosts = fakeFetch(() => answer(200, { elements: [] }));
+  await assert.rejects(overpass("q"), /not asked again for \d+ s/);
+  assert.equal(hosts.length, 0, "the third query sends nothing while Overpass rests");
+});

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
+import { overpassBuiltUpWithin } from "../src/builtUp.ts";
 import { joinInFlight } from "../src/tools/along.ts";
 import { overpass, overpassUrls, resetOverpass } from "../src/tools/roads.ts";
 
@@ -165,4 +166,37 @@ test("own instances and every public one failing: the failure names them all", a
     overpass("q", { quick: true }),
     /overpass-be: .*overpass-api\.de: .*overpass\.openstreetmap\.fr/,
   );
+});
+
+test("a query nobody gave a deadline to still ends within the default budget, not after every retry", async () => {
+  resetOverpass({ budgetMs: 2_500 });
+  const hosts = fakeFetch(() => new Promise<Response>(() => {}));
+  const started = Date.now();
+  await assert.rejects(overpass("q"), /time budget used/);
+  assert.ok(Date.now() - started < 4_000, `took ${Date.now() - started} ms`);
+  assert.equal(hosts.length, 1);
+});
+
+test("attempts that fail on their own count towards resting Overpass, even when the budget then ends the query", async () => {
+  // Each attempt is answered in time with an error, then the budget (set low) ends the query: the failures are real.
+  resetOverpass({ budgetMs: 2_200 });
+  fakeFetch(() => answer(502, "at capacity"));
+  await assert.rejects(overpass("q"), /unavailable right now/);
+  await assert.rejects(overpass("q"), /unavailable right now/);
+  const hosts = fakeFetch(() => answer(200, { elements: [] }));
+  await assert.rejects(overpass("q"), /not asked again for \d+ s/);
+  assert.equal(hosts.length, 0, "the third query sends nothing while Overpass rests");
+});
+
+test("the built-up land of an export is looked up within one shared deadline, however many cells the route crosses", async () => {
+  fakeFetch(() => new Promise<Response>(() => {}));
+  // Three cells of 0.1 degree: one deadline for all, not one per cell (the queue would add them up).
+  const points = [
+    { lat: 50.05, lon: 3.05 },
+    { lat: 50.15, lon: 3.15 },
+    { lat: 50.25, lon: 3.25 },
+  ];
+  const started = Date.now();
+  await assert.rejects(overpassBuiltUpWithin(2_500)(points), /time budget used|unavailable/);
+  assert.ok(Date.now() - started < 4_500, `took ${Date.now() - started} ms`);
 });

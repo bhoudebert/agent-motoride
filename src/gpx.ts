@@ -1,4 +1,4 @@
-import { overpassBuiltUp } from "./builtUp.ts";
+import { overpassBuiltUp, overpassBuiltUpWithin } from "./builtUp.ts";
 import { correctedLimits } from "./limitProposals.ts";
 import { configuredSigns } from "./signs.ts";
 import { exportDir, inRoot } from "./requestContext.ts";
@@ -222,12 +222,15 @@ function roadbookInput(ride: SavedRide, gpx: GpxInput) {
   };
 }
 
+/** An export waits for the built-up land this long at most: a client gives up on a request after 60 s, the rest of the export needs the others. */
+const EXPORT_BUILT_UP_MS = 35_000;
+
 /** The roadbook file of a saved ride, from the GPX input already built for it (one tracing, shared by export and share). */
-export function savedRideRoadbook(ride: SavedRide, gpx: GpxInput, store?: Store) {
+export function savedRideRoadbook(ride: SavedRide, gpx: GpxInput, store?: Store, builtUpWithinMs?: number) {
   return buildRoadbookFile(
     roadbookInput(ride, gpx),
     undefined,
-    overpassBuiltUp,
+    builtUpWithinMs === undefined ? overpassBuiltUp : overpassBuiltUpWithin(builtUpWithinMs),
     configuredSigns(),
     store ? correctedLimits(store.listLimitCorrections()) : undefined,
   );
@@ -290,7 +293,7 @@ export async function exportSavedRide(
     signsError,
     signLowered,
     signHigher,
-  } = await savedRideRoadbook(ride, gpx, store);
+  } = await savedRideRoadbook(ride, gpx, store, EXPORT_BUILT_UP_MS);
   const roadbookFile = roadbookFilePath(path);
   writeFileSync(roadbookFile, JSON.stringify(roadbook));
   return {

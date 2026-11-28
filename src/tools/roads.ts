@@ -88,8 +88,17 @@ export function overpassUrls(env: NodeJS.ProcessEnv = process.env): string[] {
     });
 }
 
+/**
+ * How long a query nobody gave a deadline to may take, all its attempts included (the built-up land of a roadbook file, an export):
+ * five attempts of 45 s with pauses would hold a client's request for minutes while the instances are down. The MCP SDK gives
+ * up on a request after 60 s, so one full attempt fits and the retries do not.
+ */
+const DEFAULT_BUDGET_MS = 50_000;
+let defaultBudgetMs = DEFAULT_BUDGET_MS;
+
 /** Forget what was learnt about the instances (tests, and a long-lived server whose instances changed). */
-export function resetOverpass(): void {
+export function resetOverpass(options: { budgetMs?: number } = {}): void {
+  defaultBudgetMs = options.budgetMs ?? DEFAULT_BUDGET_MS;
   ownDownUntil.clear();
   refusedHosts.clear();
   failedInARow = 0;
@@ -164,7 +173,10 @@ async function askOwnInstances(
 
 async function overpassNow(query: string, options: OverpassOptions): Promise<OverpassElement[]> {
   const errors: string[] = [];
-  const left = () => (options.deadline === undefined ? Infinity : options.deadline - Date.now());
+  // True once an instance failed on its own account: an error, or a timeout that was not cut short by the deadline.
+  let real = false;
+  const deadline = options.deadline ?? Date.now() + defaultBudgetMs;
+  const left = () => deadline - Date.now();
   const own = overpassUrls();
   if (own.length) {
     const ours = await askOwnInstances(own, query, errors, left);
@@ -186,19 +198,21 @@ async function overpassNow(query: string, options: OverpassOptions): Promise<Ove
       break;
     }
     if (waitMs) await new Promise((resolve) => setTimeout(resolve, waitMs));
+    // An attempt shortened to fit the deadline that then times out says nothing about the instance.
+    const timeout = Math.min(timeoutMs, left());
     try {
-      const elements = await askInstance(url, query, Math.min(timeoutMs, left()));
+      const elements = await askInstance(url, query, timeout);
       failedInARow = 0;
       return elements;
     } catch (error) {
+      if (!(timeout < timeoutMs && error instanceof Error && error.name === "TimeoutError")) real = true;
       if (error instanceof HttpError && (error.status === 401 || error.status === 403)) refusedHosts.add(host);
       errors.push(`${host}: ${reasonOf(error)}`);
     }
   }
   lastFailure = errors.join("; ");
-  // A query cut short by its caller's deadline says nothing about the instances: only real failures count.
-  if (!errors.includes("time budget used") && ++failedInARow >= BREAKER_AFTER)
-    leftAloneUntil = Date.now() + BREAKER_FOR_MS;
+  // A query cut short by the deadline says nothing about the instances: only real failures count.
+  if (real && ++failedInARow >= BREAKER_AFTER) leftAloneUntil = Date.now() + BREAKER_FOR_MS;
   throw new Error(
     `OpenStreetMap query service is unavailable right now (${lastFailure}). Retry later or try a smaller radius.`,
   );

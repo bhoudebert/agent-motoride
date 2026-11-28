@@ -87,7 +87,7 @@ test("mcp: the review asks the rider in a form and stores their answer", async (
     return { action: "accept", content: { rating_1: 4, dismiss_1: false } };
   });
   try {
-    const result = textOf(await client.callTool({ name: "reviewRide", arguments: { ride: "1" } }));
+    const result = textOf(await client.callTool({ name: "reviewRide", arguments: { roadbook: "1" } }));
     const form = asked[0] as { message: string; requestedSchema: { properties: Record<string, { default?: number }> } };
     assert.match(form.message, /Rate the roads of roadbook #1/);
     assert.equal(form.requestedSchema.properties.rating_1!.default, 5, "proposal from 'awesome' filled in");
@@ -106,14 +106,14 @@ test("mcp: a closed form stores nothing; a client without forms gets the review 
   const withForms = await connect(db, true);
   withForms.setRequestHandler(ElicitRequestSchema, async () => ({ action: "cancel" }));
   try {
-    const closed = textOf(await withForms.callTool({ name: "reviewRide", arguments: { ride: "1" } }));
+    const closed = textOf(await withForms.callTool({ name: "reviewRide", arguments: { roadbook: "1" } }));
     assert.match(closed, /nothing stored, the notes stay pending/);
   } finally {
     await withForms.close();
   }
   const plain = await connect(db, false);
   try {
-    const review = textOf(await plain.callTool({ name: "reviewRide", arguments: { ride: "1" } }));
+    const review = textOf(await plain.callTool({ name: "reviewRide", arguments: { roadbook: "1" } }));
     assert.match(review, /proposed rating 5/);
     assert.doesNotMatch(review, /rider's answers/);
   } finally {
@@ -173,7 +173,7 @@ test("mcp: saving a repeat of an earlier ride asks the rider; yes keeps a copy, 
     const routeId = JSON.parse(textOf(await client.callTool({ name: "calculateTrip", arguments: loop }))).routeId;
     return textOf(
       await client.callTool({
-        name: "saveRide",
+        name: "saveRoadbook",
         arguments: { routeId, name: "Flandre", rideDate: null, departure: null, itinerary: "135 km", request: "loop" },
       }),
     );
@@ -247,14 +247,14 @@ test("mcp: a low roadbook rating asks in a dialog whether the roads or the loop 
     return answers.shift()! as never;
   });
   const rate = async () =>
-    textOf(await client.callTool({ name: "rateRide", arguments: { ride: "1", rating: 1, note: "dull" } }));
+    textOf(await client.callTool({ name: "rateRide", arguments: { roadbook: "1", rating: 1, note: "dull" } }));
   try {
     assert.equal(await rate(), "Not rated: the rider closed the question.");
     assert.match(asked[0]!, /^What was bad about "Straight north": the roads themselves, or the way the loop/);
     assert.match(await rate(), /^Rated #1 "Straight north" 1\/5 as a loop: its roads stay usable/);
     assert.match(await rate(), /^Rated #1 "Straight north" 1\/5, and its \d+ leg\(s\): their roads are avoided/);
     const scoped = textOf(
-      await client.callTool({ name: "rateRide", arguments: { ride: "1", rating: 0, scope: "loop" } }),
+      await client.callTool({ name: "rateRide", arguments: { roadbook: "1", rating: 0, scope: "loop" } }),
     );
     assert.match(scoped, /as a loop/, "a scope given up front asks nothing");
     assert.equal(asked.length, 3);
@@ -275,7 +275,7 @@ test("mcp: plain words get the full guidance, in any client", async () => {
     assert.match(guide, /^You plan one-day motorcycle rides/);
     assert.match(guide, /Rider's request: plan me a ride this Saturday/);
     const edit = textOf(
-      await client.callTool({ name: "planningGuide", arguments: { request: "50 km longer", ride: "1" } }),
+      await client.callTool({ name: "planningGuide", arguments: { request: "50 km longer", roadbook: "1" } }),
     );
     assert.match(edit, /This concerns roadbook #1 "Straight north"/);
   } finally {
@@ -293,7 +293,7 @@ test("mcp: with API scouts off, the client is told to scout with parallel subage
     assert.match(guide, /call reportScout once with your area/);
     assert.ok(guide.indexOf("Scout brief:") < guide.indexOf("Rider's request: a twisty loop"), "with the rules");
     const edit = textOf(
-      await off.callTool({ name: "planningGuide", arguments: { request: "50 km longer", ride: "1" } }),
+      await off.callTool({ name: "planningGuide", arguments: { request: "50 km longer", roadbook: "1" } }),
     );
     assert.doesNotMatch(edit, /subagent/, "an edit is not scouted");
   } finally {
@@ -311,6 +311,29 @@ test("mcp: with API scouts off, the client is told to scout with parallel subage
   }
 });
 
+test("mcp: a roadbook is named as such: tools say roadbook and take `roadbook`, only a recorded ride is `ride`", async () => {
+  const client = await connect(library(), false);
+  try {
+    const tools = (await client.listTools()).tools;
+    const names = tools.map((t) => t.name);
+    for (const old of ["saveRide", "showRide", "refreshRide", "showRideMap", "keepRideVersion", "listSavedRides"]) {
+      assert.ok(!names.includes(old), `${old} is gone`);
+    }
+    const withRide = tools.filter((t) => "ride" in (t.inputSchema.properties ?? {})).map((t) => t.name);
+    assert.deepEqual(withRide, ["reviewRecordedRide"]);
+    const prompts = (await client.listPrompts()).prompts;
+    for (const p of prompts) {
+      assert.ok(!p.arguments?.some((a) => a.name === "ride"), `${p.name} takes roadbook, not ride`);
+    }
+    assert.deepEqual(
+      ["save-roadbook", "show-roadbook", "edit-roadbook"].filter((n) => !prompts.some((p) => p.name === n)),
+      [],
+    );
+  } finally {
+    await client.close();
+  }
+});
+
 test("mcp: every tool declares all four hints, as the server means them", async () => {
   const client = await connect(library(), false);
   try {
@@ -322,11 +345,11 @@ test("mcp: every tool declares all four hints, as the server means them", async 
     }
     const hints = Object.fromEntries(tools.map((t) => [t.name, t.annotations!]));
     assert.equal(hints.calculateTrip!.readOnlyHint, true);
-    assert.equal(hints.listSavedRides!.openWorldHint, false, "the library is local");
-    assert.equal(hints.saveRide!.readOnlyHint, false);
-    assert.equal(hints.saveRide!.idempotentHint, false, "saving twice stores twice");
+    assert.equal(hints.listSavedRoadbooks!.openWorldHint, false, "the library is local");
+    assert.equal(hints.saveRoadbook!.readOnlyHint, false);
+    assert.equal(hints.saveRoadbook!.idempotentHint, false, "saving twice stores twice");
     assert.equal(hints.exportGpx!.destructiveHint, true, "may overwrite a file");
-    assert.equal(hints.showRide!.openWorldHint, false);
+    assert.equal(hints.showRoadbook!.openWorldHint, false);
   } finally {
     await client.close();
   }
@@ -353,7 +376,7 @@ test("mcp: every tool answers when called by name through a client", async () =>
   const loop = { waypoints: ["Lille", "Cassel", "Mont des Cats"], roundTrip: true };
   try {
     await call("rideSettings", { home: "Lille" });
-    await call("listSavedRides", {});
+    await call("listSavedRoadbooks", {});
     assert.match(await call("listRecordedRides", {}), /No recorded ride/);
     assert.match(await call("reviewRecordedRide", {}), /No recorded ride/);
     assert.match(await call("recallArea", { location: "Lille", query: "Flandre" }), /"radiusKm":40/);
@@ -423,7 +446,7 @@ test("mcp: every tool answers when called by name through a client", async () =>
     assert.ok(unknown.isError, "a routeId must come from calculateTrip");
     await call("checkItinerary", { routeId, request: "under 200 km", itinerary: "Loop, 135 km." });
     assert.match(
-      await call("saveRide", {
+      await call("saveRoadbook", {
         routeId,
         name: "Flandre",
         rideDate: ahead,
@@ -435,7 +458,7 @@ test("mcp: every tool answers when called by name through a client", async () =>
     );
     // Saving again changes roadbook 2 in place; restoring brings version 1 back as version 3.
     assert.match(
-      await call("saveRide", {
+      await call("saveRoadbook", {
         routeId,
         name: "Flandre",
         rideDate: null,
@@ -444,7 +467,7 @@ test("mcp: every tool answers when called by name through a client", async () =>
         request: "tweak",
       }),
       new RegExp(
-        `^Roadbook #2 changed in place, now version 2; the previous version is kept .*Planned rides now following the new route \\(refresh before riding\\): ${ahead}\\..*keepRideVersion`,
+        `^Roadbook #2 changed in place, now version 2; the previous version is kept .*Planned rides now following the new route \\(refresh before riding\\): ${ahead}\\..*keepRoadbookVersion`,
       ),
     );
     assert.match(
@@ -452,20 +475,24 @@ test("mcp: every tool answers when called by name through a client", async () =>
       /^Roadbook #2 is back to version 1, saved as version 3/,
     );
     assert.match(
-      await call("keepRideVersion", { roadbook: "2", date: ahead }),
+      await call("keepRoadbookVersion", { roadbook: "2", date: ahead }),
       new RegExp(`^The ride of ${ahead} keeps roadbook #2 as it was \\(version 2\\)\\.`),
     );
-    assert.match(await call("showRide", { ride: "2", date: ahead }), /135 km, v2/, "that ride, with its version");
+    assert.match(
+      await call("showRoadbook", { roadbook: "2", date: ahead }),
+      /135 km, v2/,
+      "that ride, with its version",
+    );
     assert.match(
       await call("copyRoadbook", { roadbook: "2", name: "Flandre bis" }),
       /^Copied roadbook #2 as #3 "Flandre bis"/,
     );
     await call("exportGpx", { roadbookId: 2, file: join(dir, "ride.gpx") });
-    await call("exportMarkdown", { ride: "2", file: join(dir, "ride.md") });
-    await call("refreshRide", { ride: "2", stopsOnly: true });
-    await call("rideBriefing", { ride: "2" });
-    await call("showRide", { ride: "2" });
-    await call("rateRide", { ride: "2", rating: 4, note: "nice" });
+    await call("exportMarkdown", { roadbook: "2", file: join(dir, "ride.md") });
+    await call("refreshRoadbook", { roadbook: "2", stopsOnly: true });
+    await call("rideBriefing", { roadbook: "2" });
+    await call("showRoadbook", { roadbook: "2" });
+    await call("rateRide", { roadbook: "2", rating: 4, note: "nice" });
     // A stretch rated outside any roadbook: listed with its id, removed after the rider confirms.
     const stretch = await call("rateStretch", { from: "Lille", to: "Cassel", rating: 5, note: "great bends" });
     assert.match(
@@ -483,15 +510,15 @@ test("mcp: every tool answers when called by name through a client", async () =>
       new RegExp(`^Removed stretch rating #${stretchId}\\.`),
     );
     assert.match(
-      await call("rateRide", { ride: "2", rating: 2, day: ahead, note: "cold" }),
+      await call("rateRide", { roadbook: "2", rating: 2, day: ahead, note: "cold" }),
       new RegExp(`^Rated the ride of ${ahead} on roadbook #2 2/5; the roads keep their own rating\\.`),
     );
     assert.match(
-      await call("rideBriefing", { ride: "2", date: ahead }),
+      await call("rideBriefing", { roadbook: "2", date: ahead }),
       new RegExp(`^Briefing for the ride of ${ahead} from roadbook #2 `),
     );
-    called.add("showRideMap");
-    const map = (await client.callTool({ name: "showRideMap", arguments: { ride: "2" } })) as {
+    called.add("showRoadbookMap");
+    const map = (await client.callTool({ name: "showRoadbookMap", arguments: { roadbook: "2" } })) as {
       isError?: boolean;
       content: Array<{ type: string; mimeType?: string; data?: string }>;
     };
@@ -499,8 +526,8 @@ test("mcp: every tool answers when called by name through a client", async () =>
     assert.equal(map.content[0]!.type, "image");
     assert.equal(map.content[0]!.mimeType, "image/png");
     assert.ok(Buffer.from(map.content[0]!.data!, "base64").subarray(1, 4).toString() === "PNG");
-    await call("addRideNote", { text: "nice bends", ride: "2" });
-    await call("reviewRide", { ride: "1" });
+    await call("addRideNote", { text: "nice bends", roadbook: "2" });
+    await call("reviewRide", { roadbook: "1" });
     assert.match(await call("listRides", {}), /#\d+ {2}.*\| {2}(planned|ridden)[\s\S]*Page 1 of 1 \(\d+ rides?\)\.$/);
     assert.match(await call("listRoadbooks", { page: 1 }), /^#3 {2}[\s\S]*Page 1 of 1 \(3 roadbooks\)\.$/);
     assert.match(
@@ -546,11 +573,11 @@ test("mcp: rating a ride or a leg is stored and counts at once in the next route
     await client.callTool({ name: "rideSettings", arguments: { home: "Lille" } });
     const routeId = JSON.parse(textOf(await client.callTool({ name: "calculateTrip", arguments: loop }))).routeId;
     await client.callTool({
-      name: "saveRide",
+      name: "saveRoadbook",
       arguments: { routeId, name: "Flandre", rideDate: null, departure: null, itinerary: "135 km", request: "loop" },
     });
     assert.match(
-      textOf(await client.callTool({ name: "rateRide", arguments: { ride: "2", rating: 0, note: "never again" } })),
+      textOf(await client.callTool({ name: "rateRide", arguments: { roadbook: "2", rating: 0, note: "never again" } })),
       /^Not rated yet\. What was bad about "Flandre": the roads themselves, or the way the loop was put together/,
       "a low roadbook rating asks what was bad",
     );
@@ -558,7 +585,7 @@ test("mcp: rating a ride or a leg is stored and counts at once in the next route
       textOf(
         await client.callTool({
           name: "rateRide",
-          arguments: { ride: "2", rating: 0, note: "never again", scope: "roads" },
+          arguments: { roadbook: "2", rating: 0, note: "never again", scope: "roads" },
         }),
       ),
       /^Rated #2 "Flandre" 0\/5, and its 3 leg\(s\): their roads are avoided by later plans\./,
@@ -567,10 +594,10 @@ test("mcp: rating a ride or a leg is stored and counts at once in the next route
     const again = JSON.parse(textOf(await client.callTool({ name: "calculateTrip", arguments: loop })));
     assert.match(again.ratedRoads.verdict, /^AVOID/);
     assert.match(
-      textOf(await client.callTool({ name: "rateRide", arguments: { ride: "Flandre", leg: 2, rating: 5 } })),
+      textOf(await client.callTool({ name: "rateRide", arguments: { roadbook: "Flandre", leg: 2, rating: 5 } })),
       /Rated leg 2 \(.+\) of #2 "Flandre" 5\/5/,
     );
-    const bad = (await client.callTool({ name: "rateRide", arguments: { ride: "2", leg: 9, rating: 3 } })) as {
+    const bad = (await client.callTool({ name: "rateRide", arguments: { roadbook: "2", leg: 9, rating: 3 } })) as {
       isError?: boolean;
     };
     assert.equal(bad.isError, true);

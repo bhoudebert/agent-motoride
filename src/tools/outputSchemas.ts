@@ -29,7 +29,7 @@ const daylight = z.object({
   daylightHours: z.number(),
 });
 
-// ---------- listSavedRides ----------
+// ---------- listSavedRoadbooks ----------
 
 const savedLeg = z.object({
   leg: z.number().int().describe("Leg number, from 1"),
@@ -43,11 +43,11 @@ const savedLeg = z.object({
   notes: nullableString,
 });
 
-export const listSavedRidesOutput = withRepeat({
+export const listSavedRoadbooksOutput = withRepeat({
   centre: z.string().describe("Label of the centre of the search"),
   radiusKm: z.number(),
-  count: z.number().int().describe("Number of rides listed (the 25 most recent within the radius)"),
-  rides: z.array(
+  count: z.number().int().describe("Number of roadbooks listed (the 25 most recent within the radius)"),
+  roadbooks: z.array(
     z.object({
       roadbookId: z.number().int().describe("Roadbook number"),
       name: z.string(),
@@ -107,7 +107,7 @@ export const recallAreaOutput = z.object({
   centre: z.string().describe("Label of the centre of the region"),
   radiusKm: z.number(),
   note: z.string(),
-  savedRides: z.array(
+  savedRoadbooks: z.array(
     z.object({
       roadbookId: z.number().int(),
       name: z.string(),
@@ -341,7 +341,7 @@ const tripFields = {
   overviewLink: z.string().optional().describe("Only with several navigationLinks: the whole ride, not for navigating"),
 };
 
-const savedRides = z.object({
+const savedRoadbooks = z.object({
   verdict: z.string(),
   overlaps: z.array(
     z.object({
@@ -364,7 +364,7 @@ export const calculateTripOutput = z.object({
   routeId: z.string().describe("Identifies this exact routed trip in the session"),
   motorwaysPermitted: z.boolean().describe("Whether the rider currently permits motorways"),
   ...tripFields,
-  savedRides: savedRides.describe("How the route compares with the rider's saved rides"),
+  savedRoadbooks: savedRoadbooks.describe("How the route compares with the rider's saved roadbooks"),
   ratedRoads,
 });
 
@@ -383,7 +383,7 @@ export const importRouteOutput = z.object({
   roundTrip: z.boolean(),
   motorwaysPermitted: z.boolean(),
   ...tripFields,
-  savedRides,
+  savedRoadbooks,
   ratedRoads,
 });
 

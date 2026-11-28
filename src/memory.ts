@@ -345,7 +345,7 @@ export type Recalled = Record<string, unknown> & { kmAway: number };
 export interface Recall {
   radiusKm: number;
   note: string;
-  savedRides: Recalled[];
+  savedRoadbooks: Recalled[];
   lovedStretches: Recalled[];
   avoidedStretches: Recalled[];
   scoutedAreas: Recalled[];
@@ -382,7 +382,7 @@ export function recall(
   return {
     radiusKm,
     note: "Knowledge from earlier sessions. Reuse roads and verdicts; weather is never remembered, check it fresh.",
-    savedRides: of("ride").map((i) => ({ ...(i.data as Record<string, unknown>), kmAway: i.km })),
+    savedRoadbooks: of("ride").map((i) => ({ ...(i.data as Record<string, unknown>), kmAway: i.km })),
     lovedStretches: stretches
       .filter((i) => (i.rating ?? 0) >= 4)
       .map((i) => ({ ...(i.data as Record<string, unknown>), rating: i.rating, kmAway: i.km })),

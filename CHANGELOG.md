@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.16.0](https://github.com/bhoudebert/agent-motoride/compare/v1.15.0...v1.16.0) (2026-11-28)
+
+
+### Features
+
+* **deploy:** run one own Overpass for the whole area, refreshed like Valhalla ([#216](https://github.com/bhoudebert/agent-motoride/issues/216)) ([8ed7146](https://github.com/bhoudebert/agent-motoride/commit/8ed71465aba14eb870874322436f0d58d569f4b0))
+* **external-lookups:** ask the host's own Overpass instances first ([#214](https://github.com/bhoudebert/agent-motoride/issues/214)) ([c841b6d](https://github.com/bhoudebert/agent-motoride/commit/c841b6dd211047747c2534dbe5c7c6c172471d54))
+* **mcp-server:** give every tool an output schema and structured results ([bfce5c1](https://github.com/bhoudebert/agent-motoride/commit/bfce5c1f294fb789b48e3252b978b555e54695d0))
+* **server:** answer POST /route for the phone from the host's Valhalla ([c7b061e](https://github.com/bhoudebert/agent-motoride/commit/c7b061e53a0e92b07028a598f1d3aeb075cbb8cb))
+
+
+### Bug Fixes
+
+* **external-lookups:** answer a lookup along a route within 75 seconds ([572ccdc](https://github.com/bhoudebert/agent-motoride/commit/572ccdcc1c0ed964075475b04bf91c4e55b84335))
+
 ## [1.15.0](https://github.com/bhoudebert/agent-motoride/compare/v1.14.0...v1.15.0) (2026-11-20)
 
 

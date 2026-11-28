@@ -19,7 +19,7 @@ slow zones, speed, main roads.
 
 ### Requirement: Speed-limit profile
 
-For every road segment the system SHALL take the tagged limit; where none is tagged it SHALL count the segment as a 50 zone inside a built-up area and otherwise as open road at the legal default of its country and region (table in `src/tools/trip.ts`), capped by road class for minor lanes. The result SHALL give km and percent at 30 or less, 31-50, above 50, untagged open road (with the assumed limits), open-road share, and the longest 30 and 50 stretches by road name.
+For every road segment the system SHALL take the tagged limit; where none is tagged it SHALL count the segment as a 50 zone inside a built-up area and otherwise as open road at the legal default of its country and region (table in `src/tools/trip.ts`), capped by road class for minor lanes. The result SHALL give km and percent at 30 or less, 31-50, above 50, untagged open road (with the assumed limits), open-road share, and the longest 30 and 50 stretches by road name. The built-up land of an exported roadbook file is a refinement that is asked of the map service with a deadline (spec external-lookups): without it the segment keeps the country default and the profile of the trip itself is unchanged.
 
 #### Scenario: Untagged road in Wallonia
 

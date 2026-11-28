@@ -152,7 +152,8 @@
         "test/oauth.test.ts",
         "test/invite.test.ts",
         "test/requestContext.test.ts",
-        "test/deploy.test.ts"
+        "test/deploy.test.ts",
+        "test/phoneContract.test.ts"
       ]
     },
     "hosted-provisioning": {

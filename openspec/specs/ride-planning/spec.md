@@ -63,6 +63,11 @@ Every itinerary SHALL be checked by code before it is shown: routed distance and
 - **WHEN** the answer says the request cannot be met and presents the closest option
 - **THEN** it is shown as is, without a retry
 
+#### Scenario: A repeat names the roadbook it repeats
+
+- **WHEN** a loop shares 70% or more of its roads with a saved roadbook and the itinerary does not own up to it
+- **THEN** the check's message reads `repeat: 82% of the roads of roadbook #7 "Collines"`, from the similar ride's `roadbookId`
+
 ### Requirement: Rides from an image
 
 The rider SHALL be able to attach images to a request (`--image`, `/image`; pasted in MCP clients): a photo of a paper map, a screenshot of a route, a list of places. The planner SHALL read the places on it in order, say what it read, route them by name with the tools, and finish the ride as usual; an unreadable image or one that is not a map SHALL be reported. Only PNG, JPEG, WebP and GIF images of at most 5 MB SHALL be accepted, checked by their content before any model call, and only their names SHALL be stored in the trace.

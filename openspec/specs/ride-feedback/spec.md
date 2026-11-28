@@ -119,7 +119,7 @@ For an uploaded ride (ADR 0054) that followed a roadbook of the library, the sys
 - **WHEN** a ride holds 49 to 51 km/h for 30 s on a stretch planned at a guessed 80
 - **THEN** a proposal of 50 is listed, with the speed held
 - **AND** the roadbook keeps 80 until the rider confirms
-- **AND** once the rider keeps a proposal, the answer says the phone makes its roadbook file again by its own refresh and that `refreshRoadbook` is not needed for it
+- **AND** once the rider keeps a proposal, the answer tells that the phone makes its roadbook file again by its own refresh, so refreshing the roadbook (`refreshRoadbook`) is not needed
 
 #### Scenario: Faster than planned or on a posted limit
 

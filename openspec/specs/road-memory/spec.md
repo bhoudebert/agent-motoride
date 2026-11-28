@@ -39,7 +39,7 @@ best first. With words, it SHALL also return the best keyword matches
 #### Scenario: Remembered roads name their roadbook
 
 - **WHEN** `recallArea` returns a saved ride or a rated leg
-- **THEN** its data carries the roadbook's number as `roadbookId`, and the saved roadbooks of the area are listed under `savedRoadbooks`
+- **THEN** its data carries the roadbook's number as `roadbookId`, and the area's saved roadbooks are listed as saved roadbooks (`savedRoadbooks`), never as rides
 
 ### Requirement: Consulted before scouting
 

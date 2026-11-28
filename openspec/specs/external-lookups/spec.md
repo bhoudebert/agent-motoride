@@ -9,7 +9,7 @@ their failures.
 
 ### Requirement: Overpass access
 
-Queries SHALL go one at a time from the process, through a list of instances (main, OSM France, the main service's second entry point) with pauses between retries, with a contact-style User-Agent. A response carrying a server remark SHALL count as a failure. Road searches SHALL use a bounding box, not a radius filter. An instance that answers 401 or 403 (not open to this client) SHALL NOT be asked again by the process. After two queries in a row that no instance answered, Overpass SHALL be left alone for a minute and a query in that time SHALL fail at once, saying when to retry; a query cut short by its caller's deadline SHALL NOT count towards that, nor an attempt shortened to fit the deadline that then times out. A query nobody gave a deadline to (the built-up land of a roadbook file or an export) SHALL still end within 50 seconds, all its attempts included, because the MCP SDK gives up on a request after 60: one full attempt fits and the retries do not.
+Queries SHALL go one at a time from the process, through a list of instances (main, OSM France, the main service's second entry point) with pauses between retries, with a contact-style User-Agent. A response carrying a server remark SHALL count as a failure. Road searches SHALL use a bounding box, not a radius filter. An instance that answers 401 or 403 (not open to this client) SHALL NOT be asked again by the process. After two queries in a row that no instance answered, Overpass SHALL be left alone for a minute and a query in that time SHALL fail at once, saying when to retry; a query cut short by its caller's deadline SHALL NOT count towards that, nor an attempt shortened to fit the deadline that then times out. A query nobody gave a deadline to (the built-up land of a roadbook file or an export) SHALL still end within 50 seconds, all its attempts included, because the MCP SDK gives up on a request after 60: one full attempt fits and the retries do not. An export SHALL wait at most 35 seconds in all for the built-up land of its route, however many map cells the route crosses, and go on without it.
 
 #### Scenario: A mirror that is not open to us
 
@@ -19,7 +19,7 @@ Queries SHALL go one at a time from the process, through a list of instances (ma
 #### Scenario: Export while Overpass does not answer
 
 - **WHEN** `exportGpx` needs the built-up land of a roadbook and no Overpass instance answers
-- **THEN** the lookup fails within 50 seconds, the export goes on without the built-up refinement and says so, and it does not hold the client's request until the client gives up
+- **THEN** the lookup fails within 35 seconds, the export goes on without the built-up refinement and says so, and it does not hold the client's request until the client gives up
 
 #### Scenario: Overpass at capacity
 
